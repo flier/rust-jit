@@ -1,0 +1,7 @@
+[package]
+name = "llvm-bpf"
+version = "0.1.0"
+authors = ["Flier Lu <flier.lu@gmail.com>"]
+
+[dependencies]
+llvm-jit = { path = "../llvm-jit" }
