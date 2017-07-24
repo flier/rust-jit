@@ -7,6 +7,8 @@ use llvm::prelude::*;
 use llvm::core::*;
 
 use context::Context;
+use block::BasicBlock;
+use utils::unchecked_cstring;
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct TypeRef(LLVMTypeRef);
@@ -15,8 +17,14 @@ pub struct TypeRef(LLVMTypeRef);
 pub struct ValueRef(LLVMValueRef);
 
 impl ValueRef {
-    pub fn wrap(v: LLVMValueRef) -> Self {
+    /// Wrap a raw value reference.
+    pub fn from_raw(v: LLVMValueRef) -> Self {
         ValueRef(v)
+    }
+
+    /// Extracts the raw value reference.
+    pub fn as_raw(&self) -> LLVMValueRef {
+        self.0
     }
 }
 
@@ -40,7 +48,7 @@ impl TypeRef {
 
     /// Obtain the context to which this type instance is associated.
     pub fn context(&self) -> Context {
-        Context::wrap(unsafe { LLVMGetTypeContext(self.0) })
+        Context::from_raw(unsafe { LLVMGetTypeContext(self.0) })
     }
 }
 
@@ -141,9 +149,9 @@ pub fn int_type(bits: u32) -> IntegerType {
     TypeRef(unsafe { LLVMIntType(bits) })
 }
 
-pub type Function = TypeRef;
+pub type FunctionType = TypeRef;
 
-impl Function {
+impl FunctionType {
     /// Obtain a function type consisting of a specified signature.
     pub fn new(return_type: TypeRef, params_type: &[TypeRef], var_arg: bool) -> Self {
         let mut params = params_type
@@ -195,5 +203,37 @@ impl Function {
         unsafe { LLVMGetParamTypes(self.0, params.as_mut_ptr()) };
 
         params.into_iter().map(|t| TypeRef(t)).collect()
+    }
+}
+
+pub type Function = ValueRef;
+
+impl Function {
+    pub fn append_basic_block<S: AsRef<str>>(&self, context: &Context, name: S) -> BasicBlock {
+        let cname = unchecked_cstring(name);
+        let block =
+            unsafe { LLVMAppendBasicBlockInContext(context.as_raw(), self.0, cname.as_ptr()) };
+
+        trace!(
+            "create `{}` basic block@{:?} in {}",
+            cname.to_string_lossy(),
+            block,
+            context
+        );
+
+        BasicBlock::from_raw(block)
+    }
+
+    pub fn params(&self) -> Vec<ValueRef> {
+        let count = unsafe { LLVMCountParams(self.0) };
+        let mut params: Vec<LLVMValueRef> = vec![ptr::null_mut(); count as usize];
+
+        unsafe { LLVMGetParams(self.0, params.as_mut_ptr()) };
+
+        params.into_iter().map(|v| ValueRef(v)).collect()
+    }
+
+    pub fn param(&self, index: u32) -> ValueRef {
+        ValueRef(unsafe { LLVMGetParam(self.0, index) })
     }
 }
