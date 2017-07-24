@@ -3,7 +3,14 @@ use llvm::prelude::*;
 
 /// Contexts are execution states for the core LLVM IR system.
 #[derive(Debug, PartialEq)]
-pub struct Context(LLVMContextRef, bool);
+pub struct Context(State);
+
+#[derive(Debug, PartialEq)]
+enum State {
+    Owned(LLVMContextRef),
+    Global(LLVMContextRef),
+    Borrowed(LLVMContextRef),
+}
 
 impl Context {
     /// Create a new context.
@@ -12,7 +19,7 @@ impl Context {
 
         trace!("create Context({:?})", context);
 
-        Context(context, true)
+        Context(State::Owned(context))
     }
 
     /// Obtain the global context instance.
@@ -21,26 +28,30 @@ impl Context {
 
         trace!("obtain global Context({:?})", context);
 
-        Context(context, false)
+        Context(State::Global(context))
     }
 
     /// Wrap a raw context reference.
     pub fn from_raw(context: LLVMContextRef) -> Self {
-        Context(context, false)
+        Context(State::Borrowed(context))
     }
 
     /// Extracts the raw context reference.
     pub fn as_raw(&self) -> LLVMContextRef {
-        self.0
+        match self.0 {
+            State::Owned(context) |
+            State::Global(context) |
+            State::Borrowed(context) => context,
+        }
     }
 }
 
 impl Drop for Context {
     fn drop(&mut self) {
-        if self.1 {
+        if let State::Owned(context) = self.0 {
             trace!("drop {:?}", self);
 
-            unsafe { LLVMContextDispose(self.0) }
+            unsafe { LLVMContextDispose(context) }
         }
     }
 }
