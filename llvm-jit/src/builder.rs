@@ -6,8 +6,8 @@ use llvm::prelude::*;
 
 use block::BasicBlock;
 use context::Context;
-use types::ValueRef;
 use utils::unchecked_cstring;
+use value::ValueRef;
 
 /// An instruction builder represents a point within a basic block and is the exclusive means of building instructions.
 #[derive(Debug)]

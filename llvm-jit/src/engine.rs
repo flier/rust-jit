@@ -6,8 +6,8 @@ use llvm::execution_engine::*;
 
 use errors::Result;
 use module::Module;
-use types::Function;
 use utils::unchecked_cstring;
+use value::Function;
 
 pub struct MCJIT;
 

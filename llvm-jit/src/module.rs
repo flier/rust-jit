@@ -2,8 +2,9 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use context::Context;
-use types::{Function, FunctionType, ValueRef};
+use types::FunctionType;
 use utils::unchecked_cstring;
+use value::{Function, ValueRef};
 
 /// Modules represent the top-level structure in an LLVM program.
 #[derive(Debug)]
