@@ -4,6 +4,9 @@ extern crate log;
 extern crate error_chain;
 extern crate llvm_sys as llvm;
 
+#[cfg(test)]
+extern crate tempfile;
+
 pub mod errors;
 mod context;
 mod module;
@@ -12,6 +15,7 @@ mod builder;
 mod block;
 mod types;
 mod value;
+#[macro_use]
 mod utils;
 mod engine;
 mod target;

@@ -11,7 +11,7 @@ fn main() {
 
     // Set up a context, module and builder in that context.
     let context = jit::Context::new();
-    let module = jit::Module::with_context("sum", &context);
+    let module = jit::Module::with_name_in_context("sum", &context);
     let builder = jit::Builder::with_context(&context);
 
     // get a type for sum function

@@ -9,7 +9,7 @@ fn main() {
 
     // Set up a context, module and builder in that context.
     let context = jit::Context::new();
-    let module = jit::Module::with_context("nop", &context);
+    let module = jit::Module::with_name_in_context("nop", &context);
     let builder = jit::Builder::with_context(&context);
 
     // Get the type signature for void nop(void);
