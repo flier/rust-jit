@@ -1,9 +1,8 @@
-use std::fmt;
-
-use llvm::prelude::*;
 use llvm::core::*;
+use llvm::prelude::*;
 
 /// Contexts are execution states for the core LLVM IR system.
+#[derive(Debug)]
 pub struct Context(LLVMContextRef);
 
 impl Context {
@@ -11,7 +10,7 @@ impl Context {
     pub fn new() -> Self {
         let context = unsafe { LLVMContextCreate() };
 
-        trace!("create context@{:?}", context);
+        trace!("create Context({:?})", context);
 
         Context(context)
     }
@@ -20,7 +19,7 @@ impl Context {
     pub fn global() -> Self {
         let context = unsafe { LLVMGetGlobalContext() };
 
-        trace!("obtain global context@{:?}", context);
+        trace!("obtain global Context({:?})", context);
 
         Context(context)
     }
@@ -38,14 +37,8 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
-        trace!("drop context@{:?}", self.0);
+        trace!("drop {:?}", self);
 
         unsafe { LLVMContextDispose(self.0) }
-    }
-}
-
-impl fmt::Display for Context {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "context@{:?}", self.0)
     }
 }

@@ -1,32 +1,18 @@
-use std::ptr;
-use std::fmt;
+use std::borrow::Cow;
 use std::ffi::CStr;
+use std::fmt;
+use std::ptr;
 
 use llvm::*;
-use llvm::prelude::*;
 use llvm::core::*;
+use llvm::prelude::*;
 
-use context::Context;
 use block::BasicBlock;
+use context::Context;
 use utils::unchecked_cstring;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub struct TypeRef(LLVMTypeRef);
-
-#[derive(Clone, Copy, PartialEq)]
-pub struct ValueRef(LLVMValueRef);
-
-impl ValueRef {
-    /// Wrap a raw value reference.
-    pub fn from_raw(v: LLVMValueRef) -> Self {
-        ValueRef(v)
-    }
-
-    /// Extracts the raw value reference.
-    pub fn as_raw(&self) -> LLVMValueRef {
-        self.0
-    }
-}
 
 pub type TypeKind = LLVMTypeKind;
 
@@ -34,6 +20,11 @@ impl TypeRef {
     /// Extracts the raw typedef reference.
     pub fn as_raw(&self) -> LLVMTypeRef {
         self.0
+    }
+
+    /// Dump a representation of a type to stderr.
+    pub fn dump(&self) {
+        unsafe { LLVMDumpType(self.0) }
     }
 
     /// Obtain the enumerated type of a Type instance.
@@ -169,7 +160,8 @@ impl FunctionType {
         };
 
         trace!(
-            "create function ({}) -> {} #{:?}",
+            "create Function({:?}): ({}) -> {}",
+            function,
             params_type.iter().fold(
                 "".to_owned(),
                 |s, t| if s.is_empty() {
@@ -179,7 +171,6 @@ impl FunctionType {
                 },
             ),
             return_type,
-            function
         );
 
         TypeRef(function)
@@ -206,6 +197,72 @@ impl FunctionType {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ValueRef(LLVMValueRef);
+
+pub type ValueKind = LLVMValueKind;
+
+impl ValueRef {
+    /// Wrap a raw value reference.
+    pub fn from_raw(v: LLVMValueRef) -> Self {
+        ValueRef(v)
+    }
+
+    /// Extracts the raw value reference.
+    pub fn as_raw(&self) -> LLVMValueRef {
+        self.0
+    }
+
+    /// Dump a representation of a value to stderr.
+    pub fn dump(&self) {
+        unsafe { LLVMDumpValue(self.0) }
+    }
+
+    /// Obtain the type of a value.
+    pub fn type_of(&self) -> TypeRef {
+        TypeRef(unsafe { LLVMTypeOf(self.0) })
+    }
+
+    /// Obtain the enumerated type of a Value instance.
+    pub fn value_kind(&self) -> ValueKind {
+        unsafe { LLVMGetValueKind(self.0) }
+    }
+
+    /// Obtain the string name of a value.
+    pub fn name(&self) -> Cow<str> {
+        unsafe { CStr::from_ptr(LLVMGetValueName(self.0)).to_string_lossy() }
+    }
+
+    /// Set the string name of a value.
+    pub fn set_name<S: AsRef<str>>(&mut self, name: S) {
+        unsafe { LLVMSetValueName(self.0, unchecked_cstring(name).as_ptr()) }
+    }
+
+    /// Determine whether the specified value instance is constant.
+    pub fn is_constant(&self) -> bool {
+        unsafe { LLVMIsConstant(self.0) != 0 }
+    }
+
+    /// Determine whether a value instance is undefined.
+    pub fn is_undef(&self) -> bool {
+        unsafe { LLVMIsUndef(self.0) != 0 }
+    }
+}
+
+impl fmt::Display for ValueRef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        unsafe {
+            let s = LLVMPrintValueToString(self.0);
+
+            let r = write!(f, "{}", CStr::from_ptr(s).to_string_lossy());
+
+            LLVMDisposeMessage(s);
+
+            r
+        }
+    }
+}
+
 pub type Function = ValueRef;
 
 impl Function {
@@ -215,7 +272,8 @@ impl Function {
             unsafe { LLVMAppendBasicBlockInContext(context.as_raw(), self.0, cname.as_ptr()) };
 
         trace!(
-            "create `{}` basic block@{:?} in {}",
+            "{:?} create `{}` BasicBlock({:?}) in {:?}",
+            self,
             cname.to_string_lossy(),
             block,
             context

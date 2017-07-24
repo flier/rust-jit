@@ -1,5 +1,9 @@
 extern crate pretty_env_logger;
+#[macro_use]
 extern crate llvm_jit as jit;
+extern crate llvm_sys as llvm;
+
+use std::mem;
 
 use jit::IntegerTypes;
 
@@ -28,4 +32,38 @@ fn main() {
     let x = function.param(0);
     let y = function.param(1);
     let z = function.param(2);
+
+    let sum = builder.emit(add!(x, y, "sum.1"));
+    let sum = builder.emit(add!(sum, z, "sum.2"));
+
+    // Emit a `ret` into the function
+    builder.emit(ret!(sum));
+
+    // done building
+    drop(builder);
+
+    // Dump the module as IR to stdout.
+    module.dump();
+
+    // may need to set `LLVM_SYS_40_FFI_WORKAROUND` when build `llvm-sys`
+    //
+    // see also: https://bitbucket.org/tari/llvm-sys.rs/issues/12/
+
+    jit::MCJIT::init();
+    jit::NativeTarget::init().unwrap();
+    jit::NativeAsmPrinter::init().unwrap();
+
+    // build an execution engine
+    let engine = jit::ExecutionEngine::for_module(&module).unwrap();
+
+    let addr = engine.get_function_address("sum").unwrap();
+
+    let f: extern "C" fn(u64, u64, u64) -> u64 = unsafe { mem::transmute(addr) };
+
+    let x = 1;
+    let y = 1;
+    let z = 1;
+    let res = f(x, y, z);
+
+    println!("{} + {} + {} = {}", x, y, z, res);
 }

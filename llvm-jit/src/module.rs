@@ -1,13 +1,12 @@
-use std::fmt;
-
-use llvm::prelude::*;
 use llvm::core::*;
+use llvm::prelude::*;
 
 use context::Context;
-use types::{ValueRef, FunctionType, Function};
+use types::{Function, FunctionType, ValueRef};
 use utils::unchecked_cstring;
 
 /// Modules represent the top-level structure in an LLVM program.
+#[derive(Debug)]
 pub struct Module(LLVMModuleRef);
 
 impl Module {
@@ -17,7 +16,7 @@ impl Module {
         let module = unsafe { LLVMModuleCreateWithName(cname.as_ptr()) };
 
         trace!(
-            "create `{}` module@{:?} in global context",
+            "create `{}` module in global context: Module({:?})",
             cname.to_string_lossy(),
             module
         );
@@ -31,28 +30,50 @@ impl Module {
         let module = unsafe { LLVMModuleCreateWithNameInContext(cname.as_ptr(), context.as_raw()) };
 
         trace!(
-            "create `{}` module@{:?} in {}",
+            "create `{}` module in {:?}: Module({:?})",
             cname.to_string_lossy(),
+            context,
             module,
-            context
         );
 
         Module(module)
     }
 
-    /// Add a function to a module under a specified name.
-    pub fn add_function<S: AsRef<str>>(&self, name: S, func: FunctionType) -> Function {
-        let cname = unchecked_cstring(name);
+    /// Wrap a raw module reference.
+    pub fn from_raw(module: LLVMModuleRef) -> Self {
+        Module(module)
+    }
 
-        ValueRef::from_raw(unsafe {
-            LLVMAddFunction(self.0, cname.as_ptr(), func.as_raw())
-        })
+    /// Extracts the raw module reference.
+    pub fn as_raw(&self) -> LLVMModuleRef {
+        self.0
+    }
+
+    /// Dump a representation of a module to stderr.
+    pub fn dump(&self) {
+        unsafe { LLVMDumpModule(self.0) }
+    }
+
+    /// Add a function to a module under a specified name.
+    pub fn add_function<S: AsRef<str>>(&self, name: S, func_type: FunctionType) -> Function {
+        let cname = unchecked_cstring(name);
+        let func = unsafe { LLVMAddFunction(self.0, cname.as_ptr(), func_type.as_raw()) };
+
+        trace!(
+            "add `{}` function: {:?} to {:?} as Function({:?})",
+            cname.to_string_lossy(),
+            func_type,
+            self,
+            func,
+        );
+
+        ValueRef::from_raw(func)
     }
 }
 
 impl Drop for Module {
     fn drop(&mut self) {
-        trace!("drop module@{:?}", self.0);
+        trace!("drop {:?}", self);
 
         unsafe { LLVMDisposeModule(self.0) }
     }
@@ -60,14 +81,8 @@ impl Drop for Module {
 
 impl Clone for Module {
     fn clone(&self) -> Self {
-        trace!("clone module@{:?}", self.0);
+        trace!("clone {:?}", self);
 
         Module(unsafe { LLVMCloneModule(self.0) })
-    }
-}
-
-impl fmt::Display for Module {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "module@{:?}", self.0)
     }
 }
