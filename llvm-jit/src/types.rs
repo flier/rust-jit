@@ -140,6 +140,43 @@ pub fn int_type(bits: u32) -> IntegerType {
     TypeRef(unsafe { LLVMIntType(bits) })
 }
 
+// Other Types
+pub type OtherType = TypeRef;
+
+pub trait OtherTypes {
+    fn void(&self) -> OtherType;
+
+    fn label(&self) -> OtherType;
+
+    fn x86mmx(&self) -> OtherType;
+}
+
+impl OtherTypes for Context {
+    fn void(&self) -> OtherType {
+        TypeRef(unsafe { LLVMVoidTypeInContext(self.as_raw()) })
+    }
+
+    fn label(&self) -> OtherType {
+        TypeRef(unsafe { LLVMLabelTypeInContext(self.as_raw()) })
+    }
+
+    fn x86mmx(&self) -> OtherType {
+        TypeRef(unsafe { LLVMX86MMXTypeInContext(self.as_raw()) })
+    }
+}
+
+pub fn void() -> OtherType {
+    TypeRef(unsafe { LLVMVoidType() })
+}
+
+pub fn label() -> OtherType {
+    TypeRef(unsafe { LLVMLabelType() })
+}
+
+pub fn x86mmx() -> OtherType {
+    TypeRef(unsafe { LLVMX86MMXType() })
+}
+
 pub type FunctionType = TypeRef;
 
 impl FunctionType {

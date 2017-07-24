@@ -21,5 +21,10 @@ pub use engine::{ExecutionEngine, Interpreter, MCJIT};
 pub use module::Module;
 pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos, AllTargetMCs,
                  AllTargets, NativeAsmParser, NativeAsmPrinter, NativeDisassembler, NativeTarget};
-pub use types::{FunctionType, IntegerType, IntegerTypes, TypeRef, int1, int128, int16, int32,
-                int64, int8, int_type};
+pub use types::{FunctionType, IntegerType, OtherType, TypeRef, int1, int128, int16, int32, int64,
+                int8, int_type, label, void, x86mmx};
+
+pub mod prelude {
+    pub use types::IntegerTypes;
+    pub use types::OtherTypes;
+}
