@@ -67,16 +67,22 @@ impl IntegerType {
 
 /// Obtain an integer type from a context with specified bit width.
 pub trait IntegerTypes {
+    /// a single-bit integer.
     fn int1(&self) -> IntegerType;
 
+    /// a 8-bit integer.
     fn int8(&self) -> IntegerType;
 
+    /// a 16-bit integer.
     fn int16(&self) -> IntegerType;
 
+    /// a 32-bit integer.
     fn int32(&self) -> IntegerType;
 
+    /// a 64-bit integer.
     fn int64(&self) -> IntegerType;
 
+    /// a 64-bit integer.
     fn int128(&self) -> IntegerType;
 
     fn int_type(&self, bits: u32) -> IntegerType;
@@ -138,6 +144,85 @@ pub fn int128() -> IntegerType {
 
 pub fn int_type(bits: u32) -> IntegerType {
     TypeRef(unsafe { LLVMIntType(bits) })
+}
+
+// Floating Point Types
+pub type FloatingPointType = TypeRef;
+
+pub trait FloatingPointTypes {
+    /// Obtain a 16-bit floating point type from a context.
+    fn half(&self) -> FloatingPointType;
+
+    /// Obtain a 32-bit floating point type from a context.
+    fn float(&self) -> FloatingPointType;
+
+    /// Obtain a 64-bit floating point type from a context.
+    fn double(&self) -> FloatingPointType;
+
+    /// Obtain a 80-bit floating point type (X87) from a context.
+    fn x86_fp80(&self) -> FloatingPointType;
+
+    /// Obtain a 128-bit floating point type (112-bit mantissa) from a context.
+    fn fp128(&self) -> FloatingPointType;
+
+    /// Obtain a 128-bit floating point type (two 64-bits) from a context.
+    fn ppc_fp128(&self) -> FloatingPointType;
+}
+
+impl FloatingPointTypes for Context {
+    fn half(&self) -> FloatingPointType {
+        TypeRef(unsafe { LLVMHalfTypeInContext(self.as_raw()) })
+    }
+
+    fn float(&self) -> FloatingPointType {
+        TypeRef(unsafe { LLVMFloatTypeInContext(self.as_raw()) })
+    }
+
+    fn double(&self) -> FloatingPointType {
+        TypeRef(unsafe { LLVMDoubleTypeInContext(self.as_raw()) })
+    }
+
+    fn x86_fp80(&self) -> FloatingPointType {
+        TypeRef(unsafe { LLVMX86FP80TypeInContext(self.as_raw()) })
+    }
+
+    fn fp128(&self) -> FloatingPointType {
+        TypeRef(unsafe { LLVMFP128TypeInContext(self.as_raw()) })
+    }
+
+    fn ppc_fp128(&self) -> FloatingPointType {
+        TypeRef(unsafe { LLVMPPCFP128TypeInContext(self.as_raw()) })
+    }
+}
+
+/// Obtain a 16-bit floating point type from the global context.
+pub fn half() -> FloatingPointType {
+    TypeRef(unsafe { LLVMHalfType() })
+}
+
+/// Obtain a 32-bit floating point type from the global context.
+pub fn float() -> FloatingPointType {
+    TypeRef(unsafe { LLVMFloatType() })
+}
+
+/// Obtain a 64-bit floating point type from the global context.
+pub fn double() -> FloatingPointType {
+    TypeRef(unsafe { LLVMDoubleType() })
+}
+
+/// Obtain a 80-bit floating point type (X87) from the global context.
+pub fn x86_fp80() -> FloatingPointType {
+    TypeRef(unsafe { LLVMX86FP80Type() })
+}
+
+/// Obtain a 128-bit floating point type (112-bit mantissa) from the global context.
+pub fn fp128() -> FloatingPointType {
+    TypeRef(unsafe { LLVMFP128Type() })
+}
+
+/// Obtain a 128-bit floating point type (two 64-bits) from the global context.
+pub fn ppc_fp128() -> FloatingPointType {
+    TypeRef(unsafe { LLVMPPCFP128Type() })
 }
 
 // Other Types
