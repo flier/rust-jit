@@ -187,45 +187,16 @@ impl Module {
 
     /// Obtain an iterator to the Function in a module.
     pub fn functions(&self) -> FuncIter {
-        FuncIter {
-            m: Some(self.as_raw()),
-            f: None,
-        }
+        FuncIter::new(self.as_raw())
     }
 }
 
-pub struct FuncIter {
-    m: Option<LLVMModuleRef>,
-    f: Option<LLVMValueRef>,
-}
-
-impl Iterator for FuncIter {
-    type Item = Function;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(m) = self.m {
-            let next = unsafe {
-                if let Some(f) = self.f {
-                    LLVMGetNextFunction(f)
-                } else {
-                    LLVMGetFirstFunction(m)
-                }
-            };
-
-            self.f = if next.is_null() {
-                self.m = None;
-
-                None
-            } else {
-                Some(next)
-            };
-
-            self.f.map(|f| Function::from_raw(f))
-        } else {
-            None
-        }
-    }
-}
+impl_iter!(
+    FuncIter,
+    LLVMGetFirstFunction[LLVMModuleRef],
+    LLVMGetNextFunction[LLVMValueRef],
+    Function::from_raw
+);
 
 impl Drop for Module {
     fn drop(&mut self) {

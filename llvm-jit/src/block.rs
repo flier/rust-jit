@@ -73,45 +73,16 @@ impl BasicBlock {
 
     /// Obtain an iterator to the instructions in a basic block.
     pub fn instructions(&self) -> InstrIter {
-        InstrIter {
-            b: Some(self.0),
-            i: None,
-        }
+        InstrIter::new(self.0)
     }
 }
 
-pub struct InstrIter {
-    b: Option<LLVMBasicBlockRef>,
-    i: Option<LLVMValueRef>,
-}
-
-impl Iterator for InstrIter {
-    type Item = Instruction;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(b) = self.b {
-            let next = unsafe {
-                if let Some(i) = self.i {
-                    LLVMGetNextInstruction(i)
-                } else {
-                    LLVMGetFirstInstruction(b)
-                }
-            };
-
-            self.i = if next.is_null() {
-                self.b = None;
-
-                None
-            } else {
-                Some(next)
-            };
-
-            self.i.map(|i| Instruction::from_raw(i))
-        } else {
-            None
-        }
-    }
-}
+impl_iter!(
+    InstrIter,
+    LLVMGetFirstInstruction[LLVMBasicBlockRef],
+    LLVMGetNextInstruction[LLVMValueRef],
+    Instruction::from_raw
+);
 
 #[cfg(test)]
 mod tests {

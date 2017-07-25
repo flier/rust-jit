@@ -14,6 +14,8 @@ extern crate matches;
 extern crate hamcrest;
 
 pub mod errors;
+#[macro_use]
+mod utils;
 mod context;
 mod module;
 #[macro_use]
@@ -21,8 +23,6 @@ mod builder;
 mod block;
 mod types;
 mod value;
-#[macro_use]
-mod utils;
 mod engine;
 mod target;
 

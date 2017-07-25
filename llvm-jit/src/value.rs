@@ -368,10 +368,7 @@ pub type Function = ValueRef;
 impl Function {
     /// Obtain an iterator to the basic blocks in a function.
     pub fn basic_blocks(&self) -> BasicBlockIter {
-        BasicBlockIter {
-            f: Some(self.0),
-            b: None,
-        }
+        BasicBlockIter::new(self.0)
     }
 
     /// Obtain all of the basic blocks in a function.
@@ -411,10 +408,7 @@ impl Function {
 
     /// Obtain an iterator to the parameters in a function.
     pub fn params(&self) -> ParamIter {
-        ParamIter {
-            f: Some(self.0),
-            p: None,
-        }
+        ParamIter::new(self.0)
     }
 
     /// Obtain the parameters in a function.
@@ -444,71 +438,19 @@ impl Function {
     }
 }
 
-pub struct BasicBlockIter {
-    f: Option<LLVMValueRef>,
-    b: Option<LLVMBasicBlockRef>,
-}
+impl_iter!(
+    BasicBlockIter,
+    LLVMGetFirstBasicBlock[LLVMValueRef],
+    LLVMGetNextBasicBlock[LLVMBasicBlockRef],
+    BasicBlock::from_raw
+);
 
-impl Iterator for BasicBlockIter {
-    type Item = BasicBlock;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(f) = self.f {
-            let next = unsafe {
-                if let Some(b) = self.b {
-                    LLVMGetNextBasicBlock(b)
-                } else {
-                    LLVMGetFirstBasicBlock(f)
-                }
-            };
-
-            self.b = if next.is_null() {
-                self.f = None;
-
-                None
-            } else {
-                Some(next)
-            };
-
-            self.b.map(|b| BasicBlock::from_raw(b))
-        } else {
-            None
-        }
-    }
-}
-
-pub struct ParamIter {
-    f: Option<LLVMValueRef>,
-    p: Option<LLVMValueRef>,
-}
-
-impl Iterator for ParamIter {
-    type Item = ValueRef;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(f) = self.f {
-            let next = unsafe {
-                if let Some(p) = self.p {
-                    LLVMGetNextParam(p)
-                } else {
-                    LLVMGetFirstParam(f)
-                }
-            };
-
-            self.p = if next.is_null() {
-                self.f = None;
-
-                None
-            } else {
-                Some(next)
-            };
-
-            self.p.map(|p| ValueRef::from_raw(p))
-        } else {
-            None
-        }
-    }
-}
+impl_iter!(
+    ParamIter,
+    LLVMGetFirstParam[LLVMValueRef],
+    LLVMGetNextParam[LLVMValueRef],
+    ValueRef::from_raw
+);
 
 pub type Instruction = ValueRef;
 
