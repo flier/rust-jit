@@ -398,13 +398,9 @@ impl StructType {
     /// Obtain the name of a structure.
     pub fn name(&self) -> Option<Cow<str>> {
         unsafe {
-            let name = LLVMGetStructName(self.as_raw());
-
-            if name.is_null() {
-                None
-            } else {
-                Some(CStr::from_ptr(name).to_string_lossy())
-            }
+            LLVMGetStructName(self.as_raw()).as_ref().map(|name| {
+                CStr::from_ptr(name).to_string_lossy()
+            })
         }
     }
 
@@ -447,9 +443,8 @@ impl StructType {
         if index >= self.element_count() {
             None
         } else {
-            let t = unsafe { LLVMStructGetTypeAtIndex(self.as_raw(), index as u32) };
-
-            if t.is_null() { None } else { Some(TypeRef(t)) }
+            unsafe { LLVMStructGetTypeAtIndex(self.as_raw(), index as u32).as_mut() }
+                .map(|t| TypeRef::from_raw(t))
         }
     }
 

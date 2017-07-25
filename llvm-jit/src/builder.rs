@@ -7,7 +7,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use context::Context;
 use utils::unchecked_cstring;
-use value::ValueRef;
+use value::{Instruction, ValueRef};
 
 /// An instruction builder represents a point within a basic block and is the exclusive means of building instructions.
 #[derive(Debug)]
@@ -15,6 +15,8 @@ pub struct Builder(LLVMBuilderRef);
 
 #[derive(Debug)]
 pub enum Position {
+    To(BasicBlock, Instruction),
+    Before(Instruction),
     AtEnd(BasicBlock),
 }
 
@@ -74,6 +76,7 @@ impl<'a> fmt::Display for Inst<'a> {
 }
 
 impl Builder {
+    /// Create a new IR builder in the global context.
     pub fn new() -> Self {
         let builder = unsafe { LLVMCreateBuilder() };
 
@@ -82,7 +85,8 @@ impl Builder {
         Builder(builder)
     }
 
-    pub fn with_context(context: &Context) -> Self {
+    /// Create a new IR builder in a specific context.
+    pub fn within_context(context: &Context) -> Self {
         let builder = unsafe { LLVMCreateBuilderInContext(context.as_raw()) };
 
         trace!("create builder in {:?}: Builder({:?})", context, builder);
@@ -90,11 +94,20 @@ impl Builder {
         Builder(builder)
     }
 
+    pub fn insert_block(&self) -> Option<BasicBlock> {
+        unsafe { LLVMGetInsertBlock(self.0).as_mut() }.map(|block| BasicBlock::from_raw(block))
+    }
+
+    /// This specifies that created instructions should be inserted at the specified point.
     pub fn position(&self, position: Position) -> &Self {
         trace!("{:?} move position {:?}", self, position);
 
         unsafe {
             match position {
+                Position::To(block, instr) => {
+                    LLVMPositionBuilder(self.0, block.as_raw(), instr.as_raw())
+                }
+                Position::Before(instr) => LLVMPositionBuilderBefore(self.0, instr.as_raw()),
                 Position::AtEnd(block) => LLVMPositionBuilderAtEnd(self.0, block.as_raw()),
             }
         }

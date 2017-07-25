@@ -33,24 +33,13 @@ impl BasicBlock {
 
     /// Obtain the function to which a basic block belongs.
     pub fn parent(&self) -> Option<ValueRef> {
-        let parent = unsafe { LLVMGetBasicBlockParent(self.0) };
-
-        if parent.is_null() {
-            None
-        } else {
-            Some(ValueRef::from_raw(parent))
-        }
+        unsafe { LLVMGetBasicBlockParent(self.0).as_mut() }.map(|parent| ValueRef::from_raw(parent))
     }
 
     /// Obtain the terminator instruction for a basic block.
     pub fn terminator(&self) -> Option<Instruction> {
-        let terminator = unsafe { LLVMGetBasicBlockTerminator(self.0) };
-
-        if terminator.is_null() {
-            None
-        } else {
-            Some(Instruction::from_raw(terminator))
-        }
+        unsafe { LLVMGetBasicBlockTerminator(self.0).as_mut() }
+            .map(|terminator| Instruction::from_raw(terminator))
     }
 
     /// Convert a basic block instance to a value type.
@@ -138,7 +127,7 @@ mod tests {
         // Set up a context, module and builder in that context.
         let context = Context::new();
         let module = Module::with_name_in_context("sum", &context);
-        let builder = Builder::with_context(&context);
+        let builder = Builder::within_context(&context);
 
         // get a type for sum function
         let i64t = context.int64();

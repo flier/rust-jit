@@ -128,22 +128,21 @@ impl Module {
     /// Obtain a Type from a module by its registered name.
     pub fn get_type<S: AsRef<str>>(&self, name: S) -> Option<TypeRef> {
         let cname = unchecked_cstring(name);
-        let t = unsafe { LLVMGetTypeByName(self.0, cname.as_ptr()) };
-        if t.is_null() {
-            trace!("not found `{}` type in {:?}", cname.to_string_lossy(), self);
+        let t = unsafe { LLVMGetTypeByName(self.0, cname.as_ptr()).as_mut() }
+            .map(|t| TypeRef::from_raw(t));
 
-            None
-        } else {
-            let t = TypeRef::from_raw(t);
+        if let Some(t) = t {
             trace!(
                 "found `{}` type in {:?}: {:?}",
                 cname.to_string_lossy(),
                 self,
                 t
             );
-
-            Some(t)
+        } else {
+            trace!("not found `{}` type in {:?}", cname.to_string_lossy(), self);
         }
+
+        t
     }
 
     /// Add a function to a module under a specified name.
@@ -165,28 +164,25 @@ impl Module {
     /// Obtain a Function value from a Module by its name.
     pub fn get_function<S: AsRef<str>>(&self, name: S) -> Option<Function> {
         let cname = unchecked_cstring(name);
-        let func = unsafe { LLVMGetNamedFunction(self.0, cname.as_ptr()) };
+        let func = unsafe { LLVMGetNamedFunction(self.0, cname.as_ptr()).as_mut() }
+            .map(|f| Function::from_raw(f));
 
-        if func.is_null() {
-            trace!(
-                "not found `{}` function in {:?}",
-                cname.to_string_lossy(),
-                self
-            );
-
-            None
-        } else {
-            let f = Function::from_raw(func);
-
+        if let Some(f) = func {
             trace!(
                 "found `{}` function in {:?}: {:?}",
                 cname.to_string_lossy(),
                 self,
                 f
             );
-
-            Some(f)
+        } else {
+            trace!(
+                "not found `{}` function in {:?}",
+                cname.to_string_lossy(),
+                self
+            );
         }
+
+        func
     }
 
     /// Obtain an iterator to the Function in a module.

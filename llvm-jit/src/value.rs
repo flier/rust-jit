@@ -62,13 +62,9 @@ impl ValueRef {
     /// Obtain the string name of a value.
     pub fn name(&self) -> Option<Cow<str>> {
         unsafe {
-            let name = LLVMGetValueName(self.0);
-
-            if name.is_null() {
-                None
-            } else {
-                Some(CStr::from_ptr(name).to_string_lossy())
-            }
+            LLVMGetValueName(self.0).as_ref().map(|name| {
+                CStr::from_ptr(name).to_string_lossy()
+            })
         }
     }
 
@@ -101,13 +97,7 @@ impl ValueRef {
 
     /// Convert an LLVMValueRef to an LLVMBasicBlockRef instance.
     pub fn as_basic_block(&self) -> Option<BasicBlock> {
-        let block = unsafe { LLVMValueAsBasicBlock(self.0) };
-
-        if block.is_null() {
-            None
-        } else {
-            Some(BasicBlock::from_raw(block))
-        }
+        unsafe { LLVMValueAsBasicBlock(self.0).as_mut() }.map(|block| BasicBlock::from_raw(block))
     }
 }
 
@@ -254,12 +244,10 @@ impl ConstantString {
     pub fn as_str(&self) -> Option<Cow<str>> {
         let mut len = 0;
 
-        let p = unsafe { LLVMGetAsString(self.as_raw(), &mut len) };
-
-        if p.is_null() {
-            None
-        } else {
-            Some(from_unchecked_cstr(p as *const u8, len))
+        unsafe {
+            LLVMGetAsString(self.as_raw(), &mut len).as_ref().map(|p| {
+                from_unchecked_cstr(mem::transmute(p), len)
+            })
         }
     }
 }
@@ -327,13 +315,8 @@ pub type ConstantDataSequential = Constant;
 impl ConstantDataSequential {
     /// Get an element at specified index as a constant.
     pub fn element(&self, index: usize) -> Option<Constant> {
-        let element = unsafe { LLVMGetElementAsConstant(self.as_raw(), index as u32) };
-
-        if element.is_null() {
-            None
-        } else {
-            Some(Constant::from_raw(element))
-        }
+        unsafe { LLVMGetElementAsConstant(self.as_raw(), index as u32).as_mut() }
+            .map(|element| Constant::from_raw(element))
     }
 }
 
@@ -406,13 +389,7 @@ impl Function {
 
     /// Obtain the basic block that corresponds to the entry point of a function.
     pub fn entry(&self) -> Option<BasicBlock> {
-        let entry = unsafe { LLVMGetEntryBasicBlock(self.0) };
-
-        if entry.is_null() {
-            None
-        } else {
-            Some(BasicBlock::from_raw(entry))
-        }
+        unsafe { LLVMGetEntryBasicBlock(self.0).as_mut() }.map(|entry| BasicBlock::from_raw(entry))
     }
 
     /// Append a basic block to the end of a function.
@@ -457,13 +434,7 @@ impl Function {
         if index >= count {
             None
         } else {
-            let param = unsafe { LLVMGetParam(self.0, index) };
-
-            if param.is_null() {
-                None
-            } else {
-                Some(ValueRef(param))
-            }
+            unsafe { LLVMGetParam(self.0, index).as_mut() }.map(|param| ValueRef::from_raw(param))
         }
     }
 
