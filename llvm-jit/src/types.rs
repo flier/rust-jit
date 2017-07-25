@@ -62,6 +62,34 @@ impl fmt::Display for TypeRef {
 pub type IntegerType = TypeRef;
 
 impl IntegerType {
+    pub fn int1() -> IntegerType {
+        TypeRef(unsafe { LLVMInt1Type() })
+    }
+
+    pub fn int8() -> IntegerType {
+        TypeRef(unsafe { LLVMInt8Type() })
+    }
+
+    pub fn int16() -> IntegerType {
+        TypeRef(unsafe { LLVMInt16Type() })
+    }
+
+    pub fn int32() -> IntegerType {
+        TypeRef(unsafe { LLVMInt32Type() })
+    }
+
+    pub fn int64() -> IntegerType {
+        TypeRef(unsafe { LLVMInt64Type() })
+    }
+
+    pub fn int128() -> IntegerType {
+        TypeRef(unsafe { LLVMInt128Type() })
+    }
+
+    pub fn int_type(bits: u32) -> IntegerType {
+        TypeRef(unsafe { LLVMIntType(bits) })
+    }
+
     pub fn width(&self) -> u32 {
         unsafe { LLVMGetIntTypeWidth(self.0) }
     }
@@ -120,36 +148,40 @@ impl IntegerTypes for Context {
     }
 }
 
-pub fn int1() -> IntegerType {
-    TypeRef(unsafe { LLVMInt1Type() })
-}
-
-pub fn int8() -> IntegerType {
-    TypeRef(unsafe { LLVMInt8Type() })
-}
-
-pub fn int16() -> IntegerType {
-    TypeRef(unsafe { LLVMInt16Type() })
-}
-
-pub fn int32() -> IntegerType {
-    TypeRef(unsafe { LLVMInt32Type() })
-}
-
-pub fn int64() -> IntegerType {
-    TypeRef(unsafe { LLVMInt64Type() })
-}
-
-pub fn int128() -> IntegerType {
-    TypeRef(unsafe { LLVMInt128Type() })
-}
-
-pub fn int_type(bits: u32) -> IntegerType {
-    TypeRef(unsafe { LLVMIntType(bits) })
-}
-
 // Floating Point Types
 pub type FloatingPointType = TypeRef;
+
+impl FloatingPointType {
+    /// Obtain a 16-bit floating point type from the global context.
+    pub fn half() -> FloatingPointType {
+        TypeRef(unsafe { LLVMHalfType() })
+    }
+
+    /// Obtain a 32-bit floating point type from the global context.
+    pub fn float() -> FloatingPointType {
+        TypeRef(unsafe { LLVMFloatType() })
+    }
+
+    /// Obtain a 64-bit floating point type from the global context.
+    pub fn double() -> FloatingPointType {
+        TypeRef(unsafe { LLVMDoubleType() })
+    }
+
+    /// Obtain a 80-bit floating point type (X87) from the global context.
+    pub fn x86_fp80() -> FloatingPointType {
+        TypeRef(unsafe { LLVMX86FP80Type() })
+    }
+
+    /// Obtain a 128-bit floating point type (112-bit mantissa) from the global context.
+    pub fn fp128() -> FloatingPointType {
+        TypeRef(unsafe { LLVMFP128Type() })
+    }
+
+    /// Obtain a 128-bit floating point type (two 64-bits) from the global context.
+    pub fn ppc_fp128() -> FloatingPointType {
+        TypeRef(unsafe { LLVMPPCFP128Type() })
+    }
+}
 
 pub trait FloatingPointTypes {
     /// Obtain a 16-bit floating point type from a context.
@@ -197,44 +229,34 @@ impl FloatingPointTypes for Context {
     }
 }
 
-/// Obtain a 16-bit floating point type from the global context.
-pub fn half() -> FloatingPointType {
-    TypeRef(unsafe { LLVMHalfType() })
-}
-
-/// Obtain a 32-bit floating point type from the global context.
-pub fn float() -> FloatingPointType {
-    TypeRef(unsafe { LLVMFloatType() })
-}
-
-/// Obtain a 64-bit floating point type from the global context.
-pub fn double() -> FloatingPointType {
-    TypeRef(unsafe { LLVMDoubleType() })
-}
-
-/// Obtain a 80-bit floating point type (X87) from the global context.
-pub fn x86_fp80() -> FloatingPointType {
-    TypeRef(unsafe { LLVMX86FP80Type() })
-}
-
-/// Obtain a 128-bit floating point type (112-bit mantissa) from the global context.
-pub fn fp128() -> FloatingPointType {
-    TypeRef(unsafe { LLVMFP128Type() })
-}
-
-/// Obtain a 128-bit floating point type (two 64-bits) from the global context.
-pub fn ppc_fp128() -> FloatingPointType {
-    TypeRef(unsafe { LLVMPPCFP128Type() })
-}
-
 // Other Types
 pub type OtherType = TypeRef;
 
+impl OtherType {
+    /// Create a void type in the global context.
+    pub fn void() -> OtherType {
+        TypeRef(unsafe { LLVMVoidType() })
+    }
+
+    /// Create a label type in the global context.
+    pub fn label() -> OtherType {
+        TypeRef(unsafe { LLVMLabelType() })
+    }
+
+    /// Create a X86 MMX type in the global context.
+    pub fn x86mmx() -> OtherType {
+        TypeRef(unsafe { LLVMX86MMXType() })
+    }
+}
+
 pub trait OtherTypes {
+    /// Create a void type in a context.
     fn void(&self) -> OtherType;
 
+    /// Create a label type in a context.
     fn label(&self) -> OtherType;
 
+    /// Create a X86 MMX type in a context.
     fn x86mmx(&self) -> OtherType;
 }
 
@@ -250,18 +272,6 @@ impl OtherTypes for Context {
     fn x86mmx(&self) -> OtherType {
         TypeRef(unsafe { LLVMX86MMXTypeInContext(self.as_raw()) })
     }
-}
-
-pub fn void() -> OtherType {
-    TypeRef(unsafe { LLVMVoidType() })
-}
-
-pub fn label() -> OtherType {
-    TypeRef(unsafe { LLVMLabelType() })
-}
-
-pub fn x86mmx() -> OtherType {
-    TypeRef(unsafe { LLVMX86MMXType() })
 }
 
 pub type FunctionType = TypeRef;

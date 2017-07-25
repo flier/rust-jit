@@ -26,9 +26,7 @@ pub use engine::{ExecutionEngine, Interpreter, MCJIT};
 pub use module::Module;
 pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos, AllTargetMCs,
                  AllTargets, NativeAsmParser, NativeAsmPrinter, NativeDisassembler, NativeTarget};
-pub use types::{FloatingPointType, FunctionType, IntegerType, OtherType, TypeKind, TypeRef,
-                double, float, fp128, half, int1, int128, int16, int32, int64, int8, int_type,
-                label, ppc_fp128, void, x86_fp80, x86mmx};
+pub use types::{FloatingPointType, FunctionType, IntegerType, OtherType, TypeKind, TypeRef};
 pub use value::{Function, ValueKind, ValueRef};
 
 pub mod prelude {
