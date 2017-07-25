@@ -189,7 +189,7 @@ impl Module {
         }
     }
 
-    /// Obtain an iterator to the Function in a Module.
+    /// Obtain an iterator to the Function in a module.
     pub fn functions(&self) -> FuncIter {
         FuncIter {
             m: Some(self.as_raw()),

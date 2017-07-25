@@ -28,9 +28,9 @@ fn main() {
     builder.position(jit::Position::AtEnd(bb));
 
     // get the function's arguments
-    let x = function.param(0).unwrap();
-    let y = function.param(1).unwrap();
-    let z = function.param(2).unwrap();
+    let x = function.get_param(0).unwrap();
+    let y = function.get_param(1).unwrap();
+    let z = function.get_param(2).unwrap();
 
     let sum = builder.emit(add!(x, y, "sum.1"));
     let sum = builder.emit(add!(sum, z, "sum.2"));

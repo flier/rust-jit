@@ -26,7 +26,7 @@ mod utils;
 mod engine;
 mod target;
 
-pub use builder::{Builder, Instruction, Position};
+pub use builder::{Builder, Inst, Position};
 pub use context::Context;
 pub use engine::{ExecutionEngine, Interpreter, MCJIT};
 pub use module::Module;
@@ -35,7 +35,7 @@ pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos
 pub use types::{ArrayType, FloatingPointType, FunctionType, IntegerType, OtherType, PointerType,
                 StructType, TypeKind, TypeRef, VectorType};
 pub use value::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString, ConstantStruct,
-                ConstantVector, Function, ValueKind, ValueRef};
+                ConstantVector, Function, Instruction, ValueKind, ValueRef};
 
 pub mod prelude {
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, StructTypes};

@@ -93,6 +93,22 @@ impl ValueRef {
     pub fn is_null(&self) -> bool {
         unsafe { LLVMIsNull(self.0) != 0 }
     }
+
+    /// Determine whether an LLVMValueRef is itself a basic block.
+    pub fn is_basic_block(&self) -> bool {
+        unsafe { LLVMValueIsBasicBlock(self.0) != 0 }
+    }
+
+    /// Convert an LLVMValueRef to an LLVMBasicBlockRef instance.
+    pub fn as_basic_block(&self) -> Option<BasicBlock> {
+        let block = unsafe { LLVMValueAsBasicBlock(self.0) };
+
+        if block.is_null() {
+            None
+        } else {
+            Some(BasicBlock::from_raw(block))
+        }
+    }
 }
 
 impl fmt::Display for ValueRef {
@@ -367,6 +383,39 @@ impl ConstantVector {
 pub type Function = ValueRef;
 
 impl Function {
+    /// Obtain an iterator to the basic blocks in a function.
+    pub fn basic_blocks(&self) -> BasicBlockIter {
+        BasicBlockIter {
+            f: Some(self.0),
+            b: None,
+        }
+    }
+
+    /// Obtain all of the basic blocks in a function.
+    pub fn get_basic_blocks(&self) -> Vec<BasicBlock> {
+        let count = unsafe { LLVMCountBasicBlocks(self.0) };
+        let mut blocks: Vec<LLVMBasicBlockRef> = vec![ptr::null_mut(); count as usize];
+
+        unsafe { LLVMGetBasicBlocks(self.0, blocks.as_mut_ptr()) };
+
+        blocks
+            .into_iter()
+            .map(|v| BasicBlock::from_raw(v))
+            .collect()
+    }
+
+    /// Obtain the basic block that corresponds to the entry point of a function.
+    pub fn entry(&self) -> Option<BasicBlock> {
+        let entry = unsafe { LLVMGetEntryBasicBlock(self.0) };
+
+        if entry.is_null() {
+            None
+        } else {
+            Some(BasicBlock::from_raw(entry))
+        }
+    }
+
+    /// Append a basic block to the end of a function.
     pub fn append_basic_block<S: AsRef<str>>(&self, context: &Context, name: S) -> BasicBlock {
         let cname = unchecked_cstring(name);
         let block =
@@ -383,7 +432,16 @@ impl Function {
         BasicBlock::from_raw(block)
     }
 
-    pub fn params(&self) -> Vec<ValueRef> {
+    /// Obtain an iterator to the parameters in a function.
+    pub fn params(&self) -> ParamIter {
+        ParamIter {
+            f: Some(self.0),
+            p: None,
+        }
+    }
+
+    /// Obtain the parameters in a function.
+    pub fn get_params(&self) -> Vec<ValueRef> {
         let count = unsafe { LLVMCountParams(self.0) };
         let mut params: Vec<LLVMValueRef> = vec![ptr::null_mut(); count as usize];
 
@@ -392,7 +450,8 @@ impl Function {
         params.into_iter().map(|v| ValueRef(v)).collect()
     }
 
-    pub fn param(&self, index: u32) -> Option<ValueRef> {
+    /// Obtain the parameter at the specified index.
+    pub fn get_param(&self, index: u32) -> Option<ValueRef> {
         let count = unsafe { LLVMCountParams(self.0) };
 
         if index >= count {
@@ -407,7 +466,80 @@ impl Function {
             }
         }
     }
+
+    /// Remove a function from its containing module and deletes it.
+    pub fn delete(self) {
+        unsafe { LLVMDeleteFunction(self.0) }
+    }
 }
+
+pub struct BasicBlockIter {
+    f: Option<LLVMValueRef>,
+    b: Option<LLVMBasicBlockRef>,
+}
+
+impl Iterator for BasicBlockIter {
+    type Item = BasicBlock;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(f) = self.f {
+            let next = unsafe {
+                if let Some(b) = self.b {
+                    LLVMGetNextBasicBlock(b)
+                } else {
+                    LLVMGetFirstBasicBlock(f)
+                }
+            };
+
+            self.b = if next.is_null() {
+                self.f = None;
+
+                None
+            } else {
+                Some(next)
+            };
+
+            self.b.map(|b| BasicBlock::from_raw(b))
+        } else {
+            None
+        }
+    }
+}
+
+pub struct ParamIter {
+    f: Option<LLVMValueRef>,
+    p: Option<LLVMValueRef>,
+}
+
+impl Iterator for ParamIter {
+    type Item = ValueRef;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(f) = self.f {
+            let next = unsafe {
+                if let Some(p) = self.p {
+                    LLVMGetNextParam(p)
+                } else {
+                    LLVMGetFirstParam(f)
+                }
+            };
+
+            self.p = if next.is_null() {
+                self.f = None;
+
+                None
+            } else {
+                Some(next)
+            };
+
+            self.p.map(|p| ValueRef::from_raw(p))
+        } else {
+            None
+        }
+    }
+}
+
+pub type Instruction = ValueRef;
 
 #[cfg(test)]
 mod tests {
