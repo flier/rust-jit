@@ -106,14 +106,16 @@ impl ExecutionEngine {
         let mut func = ptr::null_mut();
 
         if unsafe { LLVMFindFunction(self.0, cname.as_ptr(), &mut func) } == 0 {
+            let f = Function::from_raw(func);
+
             trace!(
-                "found `{}` function in {:?}: Function({:?})",
+                "found `{}` function in {:?}: {:?}",
                 cname.to_string_lossy(),
                 self,
-                func
+                f
             );
 
-            Some(Function::from_raw(func))
+            Some(f)
         } else {
             trace!(
                 "not found `{}` function in {:?}",
@@ -142,7 +144,7 @@ impl ExecutionEngine {
             None
         } else {
             trace!(
-                "found `{}` global value in {:?}: Value({:?})",
+                "found `{}` global value in {:?}, Address({:?})",
                 cname.to_string_lossy(),
                 self,
                 addr as *const u8
@@ -169,7 +171,7 @@ impl ExecutionEngine {
             None
         } else {
             trace!(
-                "found `{}` function address in {:?}: Function({:p})",
+                "found `{}` function address in {:?}: Address({:p})",
                 cname.to_string_lossy(),
                 self,
                 addr as *const u8
