@@ -11,3 +11,4 @@ llvm-sys = "40"
 [dev-dependencies]
 pretty_env_logger = "0.1"
 tempfile = "2"
+matches = "0.1"

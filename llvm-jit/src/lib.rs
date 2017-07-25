@@ -6,6 +6,9 @@ extern crate llvm_sys as llvm;
 
 #[cfg(test)]
 extern crate tempfile;
+#[cfg(test)]
+#[macro_use]
+extern crate matches;
 
 pub mod errors;
 mod context;

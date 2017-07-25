@@ -8,7 +8,7 @@ use llvm::prelude::*;
 
 use context::Context;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeRef(LLVMTypeRef);
 
 pub type TypeKind = LLVMTypeKind;
@@ -244,7 +244,7 @@ impl OtherType {
     }
 
     /// Create a X86 MMX type in the global context.
-    pub fn x86mmx() -> OtherType {
+    pub fn x86_mmx() -> OtherType {
         TypeRef(unsafe { LLVMX86MMXType() })
     }
 }
@@ -257,7 +257,7 @@ pub trait OtherTypes {
     fn label(&self) -> OtherType;
 
     /// Create a X86 MMX type in a context.
-    fn x86mmx(&self) -> OtherType;
+    fn x86_mmx(&self) -> OtherType;
 }
 
 impl OtherTypes for Context {
@@ -269,7 +269,7 @@ impl OtherTypes for Context {
         TypeRef(unsafe { LLVMLabelTypeInContext(self.as_raw()) })
     }
 
-    fn x86mmx(&self) -> OtherType {
+    fn x86_mmx(&self) -> OtherType {
         TypeRef(unsafe { LLVMX86MMXTypeInContext(self.as_raw()) })
     }
 }
@@ -321,12 +321,124 @@ impl FunctionType {
     }
 
     /// Obtain the types of a function's parameters.
-    pub fn params_type(&self) -> Vec<TypeRef> {
+    pub fn param_types(&self) -> Vec<TypeRef> {
         let count = unsafe { LLVMCountParamTypes(self.0) };
         let mut params: Vec<LLVMTypeRef> = vec![ptr::null_mut(); count as usize];
 
         unsafe { LLVMGetParamTypes(self.0, params.as_mut_ptr()) };
 
         params.into_iter().map(|t| TypeRef(t)).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use llvm;
+
+    use super::*;
+    use context::Context;
+
+    #[test]
+    fn create() {
+        let t = OtherType::void();
+
+        assert!(!t.as_raw().is_null());
+        assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMVoidTypeKind));
+        assert!(!t.is_sized());
+        assert!(!t.context().as_raw().is_null());
+
+        assert_eq!(t.to_string(), "void");
+
+        drop(t);
+
+        let i = IntegerType::int64();
+
+        assert!(!i.as_raw().is_null());
+        assert!(matches!(i.kind(), llvm::LLVMTypeKind::LLVMIntegerTypeKind));
+        assert!(i.is_sized());
+        assert!(!i.context().as_raw().is_null());
+
+        assert_eq!(i.to_string(), "i64");
+    }
+
+    #[test]
+    fn integer() {
+        assert_eq!(IntegerType::int1().to_string(), "i1");
+        assert_eq!(IntegerType::int8().to_string(), "i8");
+        assert_eq!(IntegerType::int16().to_string(), "i16");
+        assert_eq!(IntegerType::int32().to_string(), "i32");
+        assert_eq!(IntegerType::int64().to_string(), "i64");
+        assert_eq!(IntegerType::int128().to_string(), "i128");
+        assert_eq!(IntegerType::int_type(512).to_string(), "i512");
+
+        assert_eq!(IntegerType::int1().width(), 1);
+        assert_eq!(IntegerType::int8().width(), 8);
+        assert_eq!(IntegerType::int16().width(), 16);
+        assert_eq!(IntegerType::int32().width(), 32);
+        assert_eq!(IntegerType::int64().width(), 64);
+        assert_eq!(IntegerType::int128().width(), 128);
+        assert_eq!(IntegerType::int_type(512).width(), 512);
+
+        let c = Context::new();
+
+        assert_eq!(c.int1().to_string(), "i1");
+        assert_eq!(c.int8().to_string(), "i8");
+        assert_eq!(c.int16().to_string(), "i16");
+        assert_eq!(c.int32().to_string(), "i32");
+        assert_eq!(c.int64().to_string(), "i64");
+        assert_eq!(c.int128().to_string(), "i128");
+        assert_eq!(c.int_type(512).to_string(), "i512");
+
+        assert_eq!(c.int1().width(), 1);
+        assert_eq!(c.int8().width(), 8);
+        assert_eq!(c.int16().width(), 16);
+        assert_eq!(c.int32().width(), 32);
+        assert_eq!(c.int64().width(), 64);
+        assert_eq!(c.int128().width(), 128);
+        assert_eq!(c.int_type(512).width(), 512);
+    }
+
+    #[test]
+    fn floating_point() {
+        assert_eq!(FloatingPointType::half().to_string(), "half");
+        assert_eq!(FloatingPointType::float().to_string(), "float");
+        assert_eq!(FloatingPointType::double().to_string(), "double");
+        assert_eq!(FloatingPointType::x86_fp80().to_string(), "x86_fp80");
+        assert_eq!(FloatingPointType::fp128().to_string(), "fp128");
+        assert_eq!(FloatingPointType::ppc_fp128().to_string(), "ppc_fp128");
+
+        let c = Context::new();
+
+        assert_eq!(c.half().to_string(), "half");
+        assert_eq!(c.float().to_string(), "float");
+        assert_eq!(c.double().to_string(), "double");
+        assert_eq!(c.x86_fp80().to_string(), "x86_fp80");
+        assert_eq!(c.fp128().to_string(), "fp128");
+        assert_eq!(c.ppc_fp128().to_string(), "ppc_fp128");
+    }
+
+    #[test]
+    fn other() {
+        assert_eq!(OtherType::void().to_string(), "void");
+        assert_eq!(OtherType::label().to_string(), "label");
+        assert_eq!(OtherType::x86_mmx().to_string(), "x86_mmx");
+
+        let c = Context::new();
+
+        assert_eq!(c.void().to_string(), "void");
+        assert_eq!(c.label().to_string(), "label");
+        assert_eq!(c.x86_mmx().to_string(), "x86_mmx");
+    }
+
+    #[test]
+    fn function() {
+        let i64t = IntegerType::int64();
+        let argts = [i64t, i64t, i64t];
+        let t = FunctionType::new(i64t, &argts, false);
+
+        assert!(!t.as_raw().is_null());
+        assert!(!t.is_var_arg());
+        assert_eq!(t.return_type(), i64t);
+        assert_eq!(t.param_types(), argts);
     }
 }
