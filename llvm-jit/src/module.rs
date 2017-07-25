@@ -68,7 +68,7 @@ impl Module {
             let mut len = 0;
             let p = LLVMGetModuleIdentifier(self.0, &mut len);
 
-            from_unchecked_cstr(p as *const u8, len as usize)
+            from_unchecked_cstr(p as *const u8, len as usize + 1)
         }
     }
 

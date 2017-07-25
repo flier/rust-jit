@@ -7,7 +7,5 @@ pub fn unchecked_cstring<S: AsRef<str>>(s: S) -> CString {
 }
 
 pub fn from_unchecked_cstr<'a>(p: *const u8, len: usize) -> Cow<'a, str> {
-    unsafe {
-        CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(p, len + 1)).to_string_lossy()
-    }
+    unsafe { CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(p, len)).to_string_lossy() }
 }

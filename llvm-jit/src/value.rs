@@ -11,7 +11,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use context::Context;
 use types::TypeRef;
-use utils::unchecked_cstring;
+use utils::{from_unchecked_cstr, unchecked_cstring};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ValueRef(LLVMValueRef);
@@ -95,29 +95,6 @@ impl fmt::Display for ValueRef {
 }
 
 pub type Constant = ValueRef;
-pub type ConstantInt = Constant;
-pub type ConstantFP = Constant;
-
-impl ConstantInt {
-    /// Obtain the zero extended value for an integer constant value.
-    pub fn zero_extended(&self) -> u64 {
-        unsafe { LLVMConstIntGetZExtValue(self.as_raw()) }
-    }
-
-    /// Obtain the sign extended value for an integer constant value.
-    pub fn sign_extended(&self) -> i64 {
-        unsafe { LLVMConstIntGetSExtValue(self.as_raw()) }
-    }
-}
-
-impl ConstantFP {
-    /// Obtain the double value for an floating point constant value.
-    pub fn as_double(&self) -> f64 {
-        let mut loses = unsafe { mem::zeroed() };
-
-        unsafe { LLVMConstRealGetDouble(self.as_raw(), &mut loses) }
-    }
-}
 
 pub trait Constants {
     /// Obtain a constant value referring to the null instance of a type.
@@ -128,25 +105,6 @@ pub trait Constants {
 
     /// Obtain a constant that is a constant pointer pointing to NULL for a specified type.
     fn null_ptr(&self) -> Constant;
-}
-
-pub trait ConstantInts {
-    /// Obtain a constant value for an integer type.
-    fn int(&self, n: u64, sign: bool) -> ConstantInt;
-
-    /// Obtain a constant value for an integer of arbitrary precision.
-    fn int_with_precision(&self, words: &[u64]) -> ConstantInt;
-
-    /// Obtain a constant value for an integer parsed from a string.
-    fn int_of_string<S: AsRef<str>>(&self, s: S, radix: u8) -> ConstantInt;
-}
-
-pub trait ConstantFPs {
-    /// Obtain a constant value referring to a double floating point value.
-    fn real(&self, n: f64) -> ConstantFP;
-
-    /// Obtain a constant for a floating point value parsed from a string.
-    fn real_of_string<S: AsRef<str>>(&self, s: S) -> ConstantFP;
 }
 
 impl Constants for TypeRef {
@@ -161,6 +119,31 @@ impl Constants for TypeRef {
     fn null_ptr(&self) -> Constant {
         Constant::from_raw(unsafe { LLVMConstPointerNull(self.as_raw()) })
     }
+}
+
+pub type ConstantInt = Constant;
+
+impl ConstantInt {
+    /// Obtain the zero extended value for an integer constant value.
+    pub fn zero_extended(&self) -> u64 {
+        unsafe { LLVMConstIntGetZExtValue(self.as_raw()) }
+    }
+
+    /// Obtain the sign extended value for an integer constant value.
+    pub fn sign_extended(&self) -> i64 {
+        unsafe { LLVMConstIntGetSExtValue(self.as_raw()) }
+    }
+}
+
+pub trait ConstantInts {
+    /// Obtain a constant value for an integer type.
+    fn int(&self, n: u64, sign: bool) -> ConstantInt;
+
+    /// Obtain a constant value for an integer of arbitrary precision.
+    fn int_with_precision(&self, words: &[u64]) -> ConstantInt;
+
+    /// Obtain a constant value for an integer parsed from a string.
+    fn int_of_string<S: AsRef<str>>(&self, s: S, radix: u8) -> ConstantInt;
 }
 
 impl ConstantInts for TypeRef {
@@ -186,6 +169,25 @@ impl ConstantInts for TypeRef {
     }
 }
 
+pub type ConstantFP = Constant;
+
+impl ConstantFP {
+    /// Obtain the double value for an floating point constant value.
+    pub fn as_double(&self) -> f64 {
+        let mut loses = unsafe { mem::zeroed() };
+
+        unsafe { LLVMConstRealGetDouble(self.as_raw(), &mut loses) }
+    }
+}
+
+pub trait ConstantFPs {
+    /// Obtain a constant value referring to a double floating point value.
+    fn real(&self, n: f64) -> ConstantFP;
+
+    /// Obtain a constant for a floating point value parsed from a string.
+    fn real_of_string<S: AsRef<str>>(&self, s: S) -> ConstantFP;
+}
+
 impl ConstantFPs for TypeRef {
     fn real(&self, n: f64) -> ConstantFP {
         Constant::from_raw(unsafe { LLVMConstReal(self.as_raw(), n) })
@@ -197,6 +199,52 @@ impl ConstantFPs for TypeRef {
 
         Constant::from_raw(unsafe {
             LLVMConstRealOfStringAndSize(self.as_raw(), s.as_ptr(), len as u32)
+        })
+    }
+}
+
+pub type ConstantString = Constant;
+
+impl ConstantString {
+    /// Create a ConstantString with string content in the global context.
+    pub fn str<S: AsRef<str>>(s: S) -> ConstantString {
+        let len = s.as_ref().len();
+        let buf = unchecked_cstring(s);
+
+        ConstantString::from_raw(unsafe { LLVMConstString(buf.as_ptr(), len as u32, 0) })
+    }
+
+    /// Returns true if the specified constant is an array of i8.
+    pub fn is_const_str(&self) -> bool {
+        unsafe { LLVMIsConstantString(self.as_raw()) != 0 }
+    }
+
+    /// Get the given constant data sequential as a string.
+    pub fn as_str(&self) -> Option<Cow<str>> {
+        let mut len = 0;
+
+        let p = unsafe { LLVMGetAsString(self.as_raw(), &mut len) };
+
+        if p.is_null() {
+            None
+        } else {
+            Some(from_unchecked_cstr(p as *const u8, len))
+        }
+    }
+}
+
+pub trait ConstantStrings {
+    /// Create a ConstantString and initialize it with a string.
+    fn str<S: AsRef<str>>(&self, s: S) -> ConstantString;
+}
+
+impl ConstantStrings for Context {
+    fn str<S: AsRef<str>>(&self, s: S) -> ConstantString {
+        let len = s.as_ref().len();
+        let buf = unchecked_cstring(s);
+
+        ConstantString::from_raw(unsafe {
+            LLVMConstStringInContext(self.as_raw(), buf.as_ptr(), len as u32, 0)
         })
     }
 }
@@ -350,5 +398,44 @@ mod tests {
         assert!(!v.is_null());
 
         assert_that!(v.as_double(), is(close_to(-123f64, f64::EPSILON)));
+    }
+
+    #[test]
+    fn string_in_global_context() {
+        let v = ConstantString::str("hello");
+
+        assert!(!v.as_raw().is_null());
+        assert_eq!(v.to_string(), r#"[6 x i8] c"hello\00""#);
+        assert!(matches!(
+            v.kind(),
+            llvm::LLVMValueKind::LLVMConstantDataArrayValueKind
+        ));
+        assert_eq!(v.name(), Some("".into()));
+        assert!(v.is_constant());
+        assert!(!v.is_undef());
+        assert!(!v.is_null());
+
+        assert!(v.is_const_str());
+        assert_eq!(v.as_str(), Some("hello".into()));
+    }
+
+    #[test]
+    fn string_in_context() {
+        let c = Context::new();
+        let v = c.str("hello");
+
+        assert!(!v.as_raw().is_null());
+        assert_eq!(v.to_string(), r#"[6 x i8] c"hello\00""#);
+        assert!(matches!(
+            v.kind(),
+            llvm::LLVMValueKind::LLVMConstantDataArrayValueKind
+        ));
+        assert_eq!(v.name(), Some("".into()));
+        assert!(v.is_constant());
+        assert!(!v.is_undef());
+        assert!(!v.is_null());
+
+        assert!(v.is_const_str());
+        assert_eq!(v.as_str(), Some("hello".into()));
     }
 }
