@@ -44,8 +44,16 @@ impl ValueRef {
     }
 
     /// Obtain the string name of a value.
-    pub fn name(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetValueName(self.0)).to_string_lossy() }
+    pub fn name(&self) -> Option<Cow<str>> {
+        unsafe {
+            let name = LLVMGetValueName(self.0);
+
+            if name.is_null() {
+                None
+            } else {
+                Some(CStr::from_ptr(name).to_string_lossy())
+            }
+        }
     }
 
     /// Set the string name of a value.

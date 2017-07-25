@@ -1,5 +1,7 @@
+use std::borrow::Cow;
 use std::ffi::CStr;
 use std::fmt;
+use std::ops::Deref;
 use std::ptr;
 
 use llvm::*;
@@ -7,6 +9,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use context::Context;
+use utils::unchecked_cstring;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeRef(LLVMTypeRef);
@@ -274,7 +277,16 @@ impl OtherTypes for Context {
     }
 }
 
-pub type FunctionType = TypeRef;
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FunctionType(TypeRef);
+
+impl Deref for FunctionType {
+    type Target = TypeRef;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl FunctionType {
     /// Obtain a function type consisting of a specified signature.
@@ -307,27 +319,166 @@ impl FunctionType {
             return_type,
         );
 
-        TypeRef(function)
+        FunctionType::from_raw(function)
+    }
+
+    fn from_raw(t: LLVMTypeRef) -> Self {
+        FunctionType(TypeRef(t))
     }
 
     /// Returns whether a function type is variadic.
     pub fn is_var_arg(&self) -> bool {
-        unsafe { LLVMIsFunctionVarArg(self.0) != 0 }
+        unsafe { LLVMIsFunctionVarArg(self.as_raw()) != 0 }
     }
 
     /// Obtain the Type this function Type returns.
     pub fn return_type(&self) -> TypeRef {
-        TypeRef(unsafe { LLVMGetReturnType(self.0) })
+        TypeRef(unsafe { LLVMGetReturnType(self.as_raw()) })
     }
 
     /// Obtain the types of a function's parameters.
     pub fn param_types(&self) -> Vec<TypeRef> {
-        let count = unsafe { LLVMCountParamTypes(self.0) };
+        let count = unsafe { LLVMCountParamTypes(self.as_raw()) };
         let mut params: Vec<LLVMTypeRef> = vec![ptr::null_mut(); count as usize];
 
-        unsafe { LLVMGetParamTypes(self.0, params.as_mut_ptr()) };
+        unsafe { LLVMGetParamTypes(self.as_raw(), params.as_mut_ptr()) };
 
         params.into_iter().map(|t| TypeRef(t)).collect()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StructType(TypeRef);
+
+impl Deref for StructType {
+    type Target = TypeRef;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl StructType {
+    /// Create a new structure type in the global context.
+    pub fn new(elements: &[TypeRef], packed: bool) -> Self {
+        let mut elements = elements
+            .iter()
+            .map(|t| t.as_raw())
+            .collect::<Vec<LLVMTypeRef>>();
+
+        let t = unsafe {
+            LLVMStructType(
+                elements.as_mut_ptr(),
+                elements.len() as u32,
+                if packed { 1 } else { 0 },
+            )
+        };
+
+        StructType(TypeRef(t))
+    }
+
+    fn from_raw(t: LLVMTypeRef) -> Self {
+        StructType(TypeRef(t))
+    }
+
+    /// Obtain the name of a structure.
+    pub fn name(&self) -> Option<Cow<str>> {
+        unsafe {
+            let name = LLVMGetStructName(self.as_raw());
+
+            if name.is_null() {
+                None
+            } else {
+                Some(CStr::from_ptr(name).to_string_lossy())
+            }
+        }
+    }
+
+    /// Set the contents of a structure type.
+    pub fn set_body(&self, elements: &[TypeRef], packed: bool) -> &Self {
+        let mut elements = elements
+            .iter()
+            .map(|t| t.as_raw())
+            .collect::<Vec<LLVMTypeRef>>();
+
+        unsafe {
+            LLVMStructSetBody(
+                self.as_raw(),
+                elements.as_mut_ptr(),
+                elements.len() as u32,
+                if packed { 1 } else { 0 },
+            )
+        }
+
+        &self
+    }
+
+    /// Get the elements within a structure.
+    pub fn element_types(&self) -> Vec<TypeRef> {
+        let count = unsafe { LLVMCountStructElementTypes(self.as_raw()) };
+        let mut elements: Vec<LLVMTypeRef> = vec![ptr::null_mut(); count as usize];
+
+        unsafe { LLVMGetStructElementTypes(self.as_raw(), elements.as_mut_ptr()) };
+
+        elements.into_iter().map(|t| TypeRef(t)).collect()
+    }
+
+    /// Get the number of elements defined inside the structure.
+    pub fn element_count(&self) -> usize {
+        unsafe { LLVMCountStructElementTypes(self.as_raw()) as usize }
+    }
+
+    /// Get the type of the element at a given index in the structure.
+    pub fn element_type(self, index: usize) -> Option<TypeRef> {
+        let t = unsafe { LLVMStructGetTypeAtIndex(self.as_raw(), index as u32) };
+
+        if t.is_null() { None } else { Some(TypeRef(t)) }
+    }
+
+    /// Determine whether a structure is packed.
+    pub fn is_packed(&self) -> bool {
+        unsafe { LLVMIsPackedStruct(self.as_raw()) != 0 }
+    }
+
+    /// Determine whether a structure is opaque.
+    pub fn is_opaque(&self) -> bool {
+        unsafe { LLVMIsOpaqueStruct(self.as_raw()) != 0 }
+    }
+}
+
+pub trait StructTypes {
+    /// Create a new structure type in a context.
+    fn structure(&self, elements: &[TypeRef], packed: bool) -> StructType;
+
+    /// Create an empty structure in a context having a specified name.
+    fn named_struct<S: AsRef<str>>(&self, name: S) -> StructType;
+}
+
+impl StructTypes for Context {
+    fn structure(&self, elements: &[TypeRef], packed: bool) -> StructType {
+        let mut elements = elements
+            .iter()
+            .map(|t| t.as_raw())
+            .collect::<Vec<LLVMTypeRef>>();
+
+        let t = unsafe {
+            LLVMStructTypeInContext(
+                self.as_raw(),
+                elements.as_mut_ptr(),
+                elements.len() as u32,
+                if packed { 1 } else { 0 },
+            )
+        };
+
+        StructType::from_raw(t)
+    }
+
+    fn named_struct<S: AsRef<str>>(&self, name: S) -> StructType {
+        let cname = unchecked_cstring(name);
+
+        StructType::from_raw(unsafe {
+            LLVMStructCreateNamed(self.as_raw(), cname.as_ptr())
+        })
     }
 }
 
@@ -440,5 +591,64 @@ mod tests {
         assert!(!t.is_var_arg());
         assert_eq!(t.return_type(), i64t);
         assert_eq!(t.param_types(), argts);
+    }
+
+    #[test]
+    fn structure() {
+        let i16t = IntegerType::int16();
+        let i32t = IntegerType::int32();
+        let i64t = IntegerType::int64();
+        let argts = [i16t, i32t, i64t];
+        let t = StructType::new(&argts, true);
+
+        assert_eq!(t.name(), None);
+        assert_eq!(t.element_count(), 3);
+        assert_eq!(t.element_type(1), Some(i32t));
+        assert_eq!(t.element_type(4), None);
+        assert_eq!(t.element_types(), argts);
+        assert!(t.is_packed());
+        assert!(!t.is_opaque());
+    }
+
+    #[test]
+    fn struct_in_context() {
+        let c = Context::new();
+
+        let i16t = IntegerType::int16();
+        let i32t = IntegerType::int32();
+        let i64t = IntegerType::int64();
+        let argts = [i16t, i32t, i64t];
+        let t = c.structure(&argts, true);
+
+        assert_eq!(t.name(), None);
+        assert_eq!(t.element_count(), 3);
+        assert_eq!(t.element_type(1), Some(i32t));
+        assert_eq!(t.element_type(4), None);
+        assert_eq!(t.element_types(), argts);
+        assert!(t.is_packed());
+        assert!(!t.is_opaque());
+    }
+
+    #[test]
+    fn named_struct_in_context() {
+        let c = Context::new();
+
+        let t = c.named_struct("test");
+
+        assert_eq!(t.name(), Some("test".into()));
+        assert_eq!(t.element_count(), 0);
+
+        let i16t = IntegerType::int16();
+        let i32t = IntegerType::int32();
+        let i64t = IntegerType::int64();
+        let argts = [i16t, i32t, i64t];
+        t.set_body(&argts, true);
+
+        assert_eq!(t.element_count(), 3);
+        assert_eq!(t.element_type(1), Some(i32t));
+        assert_eq!(t.element_type(4), None);
+        assert_eq!(t.element_types(), argts);
+        assert!(t.is_packed());
+        assert!(!t.is_opaque());
     }
 }

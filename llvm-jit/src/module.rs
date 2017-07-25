@@ -328,7 +328,7 @@ target triple = "x86_64-apple-darwin"
         let argts = [i64t, i64t, i64t];
         let sum = m.add_function("sum", FunctionType::new(i64t, &argts, false));
 
-        assert_eq!(sum.name(), "sum");
+        assert_eq!(sum.name(), Some("sum".into()));
         assert_eq!(m.get_function("sum"), Some(sum));
 
         assert_eq!(m.functions().collect::<Vec<Function>>(), vec![f, sum]);
