@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::ffi::CStr;
+use std::fmt;
 use std::path::Path;
 use std::ptr;
 
@@ -8,7 +9,7 @@ use llvm::prelude::*;
 
 use context::Context;
 use errors::Result;
-use types::FunctionType;
+use types::{FunctionType, TypeRef};
 use utils::{from_unchecked_cstr, unchecked_cstring};
 use value::{Function, ValueRef};
 
@@ -54,6 +55,11 @@ impl Module {
     /// Extracts the raw module reference.
     pub fn as_raw(&self) -> LLVMModuleRef {
         self.0
+    }
+
+    /// Obtain the context to which this module is associated.
+    pub fn context(&self) -> Context {
+        Context::from_raw(unsafe { LLVMGetModuleContext(self.0) })
     }
 
     /// Obtain the identifier of a module.
@@ -119,6 +125,27 @@ impl Module {
         }
     }
 
+    /// Obtain a Type from a module by its registered name.
+    pub fn get_type<S: AsRef<str>>(&self, name: S) -> Option<TypeRef> {
+        let cname = unchecked_cstring(name);
+        let t = unsafe { LLVMGetTypeByName(self.0, cname.as_ptr()) };
+        if t.is_null() {
+            trace!("not found `{}` type in {:?}", cname.to_string_lossy(), self);
+
+            None
+        } else {
+            let t = TypeRef::from_raw(t);
+            trace!(
+                "found `{}` type in {:?}: {:?}",
+                cname.to_string_lossy(),
+                self,
+                t
+            );
+
+            Some(t)
+        }
+    }
+
     /// Add a function to a module under a specified name.
     pub fn add_function<S: AsRef<str>>(&self, name: S, func_type: FunctionType) -> Function {
         let cname = unchecked_cstring(name);
@@ -133,6 +160,74 @@ impl Module {
         );
 
         ValueRef::from_raw(func)
+    }
+
+    /// Obtain a Function value from a Module by its name.
+    pub fn get_function<S: AsRef<str>>(&self, name: S) -> Option<Function> {
+        let cname = unchecked_cstring(name);
+        let func = unsafe { LLVMGetNamedFunction(self.0, cname.as_ptr()) };
+
+        if func.is_null() {
+            trace!(
+                "not found `{}` function in {:?}",
+                cname.to_string_lossy(),
+                self
+            );
+
+            None
+        } else {
+            let f = Function::from_raw(func);
+
+            trace!(
+                "found `{}` function in {:?}: {:?}",
+                cname.to_string_lossy(),
+                self,
+                f
+            );
+
+            Some(f)
+        }
+    }
+
+    /// Obtain an iterator to the Function in a Module.
+    pub fn functions(&self) -> FuncIter {
+        FuncIter {
+            m: Some(self.as_raw()),
+            f: None,
+        }
+    }
+}
+
+pub struct FuncIter {
+    m: Option<LLVMModuleRef>,
+    f: Option<LLVMValueRef>,
+}
+
+impl Iterator for FuncIter {
+    type Item = Function;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(m) = self.m {
+            let next = unsafe {
+                if let Some(f) = self.f {
+                    LLVMGetNextFunction(f)
+                } else {
+                    LLVMGetFirstFunction(m)
+                }
+            };
+
+            self.f = if next.is_null() {
+                self.m = None;
+
+                None
+            } else {
+                Some(next)
+            };
+
+            self.f.map(|f| Function::from_raw(f))
+        } else {
+            None
+        }
     }
 }
 
@@ -152,6 +247,20 @@ impl Clone for Module {
     }
 }
 
+impl fmt::Display for Module {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        unsafe {
+            let s = LLVMPrintModuleToString(self.0);
+
+            let r = write!(f, "{}", CStr::from_ptr(s).to_string_lossy());
+
+            LLVMDisposeMessage(s);
+
+            r
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::io::prelude::*;
@@ -159,6 +268,7 @@ mod tests {
     use tempfile::NamedTempFile;
 
     use super::*;
+    use types::*;
 
     #[test]
     fn create() {
@@ -195,5 +305,32 @@ target datalayout = "e"
 target triple = "x86_64-apple-darwin"
 "#
         );
+
+        assert_eq!(m.to_string(), buf);
+    }
+
+    #[test]
+    fn function() {
+        let context = Context::new();
+        let m = Module::with_name_in_context("test", &context);
+
+        assert_eq!(m.get_function("nop"), None);
+
+        let f = m.add_function("nop", FunctionType::new(context.void(), &[], false));
+
+        assert!(!f.as_raw().is_null());
+        assert_eq!(f.to_string(), "\ndeclare void @nop()\n");
+
+        assert_eq!(m.get_function("nop"), Some(f));
+        assert_eq!(m.get_function("sum"), None);
+
+        let i64t = context.int64();
+        let argts = [i64t, i64t, i64t];
+        let sum = m.add_function("sum", FunctionType::new(i64t, &argts, false));
+
+        assert_eq!(sum.name(), "sum");
+        assert_eq!(m.get_function("sum"), Some(sum));
+
+        assert_eq!(m.functions().collect::<Vec<Function>>(), vec![f, sum]);
     }
 }
