@@ -29,7 +29,7 @@ mod target;
 pub use builder::{Builder, Inst, Position};
 pub use context::Context;
 pub use engine::{ExecutionEngine, Interpreter, MCJIT};
-pub use module::Module;
+pub use module::{GlobalVar, Module, ThreadLocalMode};
 pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos, AllTargetMCs,
                  AllTargets, NativeAsmParser, NativeAsmPrinter, NativeDisassembler, NativeTarget};
 pub use types::{ArrayType, FloatingPointType, FunctionType, IntegerType, OtherType, PointerType,

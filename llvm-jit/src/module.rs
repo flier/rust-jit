@@ -1,9 +1,11 @@
 use std::borrow::Cow;
 use std::ffi::CStr;
 use std::fmt;
+use std::ops::Deref;
 use std::path::Path;
 use std::ptr;
 
+use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
 
@@ -11,7 +13,7 @@ use context::Context;
 use errors::Result;
 use types::{AsTypeRef, FunctionType, TypeRef};
 use utils::{from_unchecked_cstr, unchecked_cstring};
-use value::{Function, ValueRef};
+use value::{Constant, Function, ValueRef};
 
 /// Modules represent the top-level structure in an LLVM program.
 #[derive(Debug)]
@@ -151,7 +153,7 @@ impl Module {
         let func = unsafe { LLVMAddFunction(self.0, cname.as_ptr(), func_type.as_raw()) };
 
         trace!(
-            "add `{}` function: {:?} to {:?} as Function({:?})",
+            "add function `{}`: {:?} to {:?}: Function({:?})",
             cname.to_string_lossy(),
             func_type,
             self,
@@ -189,6 +191,60 @@ impl Module {
     pub fn functions(&self) -> FuncIter {
         FuncIter::new(self.as_raw())
     }
+
+    /// Add a global variable to a module under a specified name.
+    pub fn add_global_var<S: AsRef<str>>(&self, name: S, ty: TypeRef) -> GlobalVar {
+        let cname = unchecked_cstring(name);
+
+        let var = unsafe { LLVMAddGlobal(self.as_raw(), ty.as_raw(), cname.as_ptr()) };
+
+        trace!(
+            "add global var `{}`: {:?} to {:?}: ValueRef({:?})",
+            cname.to_string_lossy(),
+            ty,
+            self,
+            var,
+        );
+
+        GlobalVar::from_raw(var)
+    }
+
+    /// Add a global variable to a module under a specified name.
+    pub fn add_global_var_in_address_space<S: AsRef<str>>(
+        &self,
+        name: S,
+        ty: TypeRef,
+        address_space: u32,
+    ) -> GlobalVar {
+        let cname = unchecked_cstring(name);
+
+        let var = unsafe {
+            LLVMAddGlobalInAddressSpace(self.as_raw(), ty.as_raw(), cname.as_ptr(), address_space)
+        };
+
+        trace!(
+            "add global var `{}`: {:?} to {:?}: ValueRef({:?})",
+            cname.to_string_lossy(),
+            ty,
+            self,
+            var,
+        );
+
+        GlobalVar::from_raw(var)
+    }
+
+    /// Obtain a global variable value from a Module by its name.
+    pub fn get_global_var<S: AsRef<str>>(&self, name: S) -> Option<GlobalVar> {
+        let cname = unchecked_cstring(name);
+
+        unsafe { LLVMGetNamedGlobal(self.as_raw(), cname.as_ptr()).as_mut() }
+            .map(|var| GlobalVar::from_raw(var))
+    }
+
+    /// Obtain an iterator to the global variables in a module.
+    pub fn global_vars(&self) -> GlobalVarIter {
+        GlobalVarIter::new(self.as_raw())
+    }
 }
 
 impl_iter!(
@@ -197,6 +253,82 @@ impl_iter!(
     LLVMGetNextFunction[LLVMValueRef],
     Function::from_raw
 );
+
+impl_iter!(
+    GlobalVarIter,
+    LLVMGetFirstGlobal[LLVMModuleRef],
+    LLVMGetNextGlobal[LLVMValueRef],
+    GlobalVar::from_raw
+);
+
+/// Global Variables
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GlobalVar(ValueRef);
+
+impl Deref for GlobalVar {
+    type Target = ValueRef;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl GlobalVar {
+    fn from_raw(v: LLVMValueRef) -> Self {
+        GlobalVar(ValueRef::from_raw(v))
+    }
+
+    pub fn delete(&self) {
+        unsafe { LLVMDeleteGlobal(self.as_raw()) }
+    }
+
+    pub fn initializer(&self) -> Option<ValueRef> {
+        unsafe { LLVMGetInitializer(self.as_raw()).as_mut() }.map(|var| ValueRef::from_raw(var))
+    }
+
+    pub fn set_initializer(&self, initializer: Constant) {
+        unsafe { LLVMSetInitializer(self.as_raw(), initializer.as_raw()) }
+    }
+
+    pub fn is_thread_local(&self) -> bool {
+        unsafe { LLVMIsThreadLocal(self.as_raw()) != 0 }
+    }
+
+    pub fn set_thread_local(&self, is_thread_local: bool) {
+        unsafe { LLVMSetThreadLocal(self.as_raw(), if is_thread_local { 1 } else { 0 }) }
+    }
+
+    pub fn is_global_constant(&self) -> bool {
+        unsafe { LLVMIsGlobalConstant(self.as_raw()) != 0 }
+    }
+
+    pub fn set_global_constant(&self, is_global_constant: bool) {
+        unsafe { LLVMSetGlobalConstant(self.as_raw(), if is_global_constant { 1 } else { 0 }) }
+    }
+
+    pub fn thread_local_mode(&self) -> ThreadLocalMode {
+        unsafe { LLVMGetThreadLocalMode(self.as_raw()) }
+    }
+
+    pub fn set_thread_local_mode(&self, mode: ThreadLocalMode) {
+        unsafe { LLVMSetThreadLocalMode(self.as_raw(), mode) }
+    }
+
+    pub fn is_externally_initialized(&self) -> bool {
+        unsafe { LLVMIsExternallyInitialized(self.as_raw()) != 0 }
+    }
+
+    pub fn set_externally_initialized(&self, is_externally_initialized: bool) {
+        unsafe {
+            LLVMSetExternallyInitialized(
+                self.as_raw(),
+                if is_externally_initialized { 1 } else { 0 },
+            )
+        }
+    }
+}
+
+pub type ThreadLocalMode = LLVMThreadLocalMode;
 
 impl Drop for Module {
     fn drop(&mut self) {
@@ -232,10 +364,12 @@ impl fmt::Display for Module {
 mod tests {
     use std::io::prelude::*;
 
+    use llvm;
     use tempfile::NamedTempFile;
 
     use super::*;
     use types::*;
+    use value::*;
 
     #[test]
     fn create() {
@@ -299,5 +433,75 @@ target triple = "x86_64-apple-darwin"
         assert_eq!(m.get_function("sum"), Some(sum));
 
         assert_eq!(m.functions().collect::<Vec<Function>>(), vec![f, sum]);
+    }
+
+    #[test]
+    fn global_var() {
+        let c = Context::new();
+        let m = Module::with_name_in_context("test", &c);
+
+        assert_eq!(m.get_global_var("x"), None);
+
+        let i64t = c.int64();
+        let f64t = c.double();
+
+        m.add_global_var("x", i64t);
+        m.add_global_var("y", f64t);
+
+        let x = m.get_global_var("x").unwrap();
+        let y = m.get_global_var("y").unwrap();
+
+        assert_eq!(m.global_vars().collect::<Vec<GlobalVar>>(), vec![x, y]);
+
+        assert_eq!(x.name().unwrap(), "x");
+        assert_eq!(y.name().unwrap(), "y");
+
+        assert_eq!(x.to_string(), "@x = external global i64");
+
+        // set initializer
+        assert_eq!(x.initializer(), None);
+
+        let v = i64t.uint(123);
+
+        x.set_initializer(v);
+
+        assert_eq!(x.initializer(), Some(v));
+
+        assert_eq!(x.to_string(), "@x = global i64 123");
+
+        // set as global constant
+        assert!(!x.is_global_constant());
+
+        x.set_global_constant(true);
+
+        assert_eq!(x.to_string(), "@x = constant i64 123");
+
+        x.set_global_constant(false);
+
+        // set as externally initialized
+        assert!(!x.is_externally_initialized());
+
+        x.set_externally_initialized(true);
+
+        assert_eq!(x.to_string(), "@x = externally_initialized global i64 123");
+
+        x.set_externally_initialized(false);
+
+        // set as thread local
+        assert!(!x.is_thread_local());
+
+        x.set_thread_local(true);
+
+        assert!(x.is_thread_local());
+
+        assert_eq!(x.to_string(), "@x = thread_local global i64 123");
+
+        x.set_thread_local(false);
+
+        // set thread local mod
+        assert!(matches!(
+            x.thread_local_mode(),
+            llvm::LLVMThreadLocalMode::LLVMNotThreadLocal
+        ));
     }
 }

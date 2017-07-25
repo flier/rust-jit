@@ -14,6 +14,12 @@ use utils::unchecked_cstring;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeRef(LLVMTypeRef);
 
+impl From<LLVMTypeRef> for TypeRef {
+    fn from(v: LLVMTypeRef) -> Self {
+        TypeRef(v)
+    }
+}
+
 pub type TypeKind = LLVMTypeKind;
 
 pub trait AsTypeRef {

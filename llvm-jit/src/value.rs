@@ -17,6 +17,12 @@ use utils::{from_unchecked_cstr, unchecked_cstring};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ValueRef(LLVMValueRef);
 
+impl From<LLVMValueRef> for ValueRef {
+    fn from(v: LLVMValueRef) -> Self {
+        ValueRef(v)
+    }
+}
+
 pub trait AsValueRef {
     /// Extracts the raw typedef reference.
     fn as_raw(&self) -> LLVMValueRef;
@@ -165,6 +171,11 @@ pub trait ConstantInts {
 
     /// Obtain a constant value for an integer parsed from a string.
     fn int_of_string<S: AsRef<str>>(&self, s: S, radix: u8) -> ConstantInt;
+
+    /// Obtain a constant value for an unsigned integer type.
+    fn uint(&self, n: u64) -> ConstantInt {
+        self.int(n, false)
+    }
 }
 
 impl ConstantInts for TypeRef {
