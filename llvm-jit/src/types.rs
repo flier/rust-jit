@@ -612,7 +612,7 @@ mod tests {
     use context::Context;
 
     #[test]
-    fn create() {
+    fn typeref() {
         let t = OtherType::void();
 
         assert!(!t.as_raw().is_null());

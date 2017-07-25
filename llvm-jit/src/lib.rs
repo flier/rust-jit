@@ -9,6 +9,9 @@ extern crate tempfile;
 #[cfg(test)]
 #[macro_use]
 extern crate matches;
+#[cfg(test)]
+#[macro_use]
+extern crate hamcrest;
 
 pub mod errors;
 mod context;
@@ -31,8 +34,9 @@ pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos
                  AllTargets, NativeAsmParser, NativeAsmPrinter, NativeDisassembler, NativeTarget};
 pub use types::{ArrayType, FloatingPointType, FunctionType, IntegerType, OtherType, PointerType,
                 StructType, TypeKind, TypeRef, VectorType};
-pub use value::{Function, ValueKind, ValueRef};
+pub use value::{Constant, ConstantFP, ConstantInt, Function, ValueKind, ValueRef};
 
 pub mod prelude {
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, StructTypes};
+    pub use value::{ConstantFPs, ConstantInts, Constants};
 }
