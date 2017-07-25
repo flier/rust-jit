@@ -16,6 +16,20 @@ pub struct TypeRef(LLVMTypeRef);
 
 pub type TypeKind = LLVMTypeKind;
 
+pub trait AsTypeRef {
+    /// Extracts the raw typedef reference.
+    fn as_raw(&self) -> LLVMTypeRef;
+}
+
+impl<T> AsTypeRef for T
+where
+    T: Deref<Target = TypeRef>,
+{
+    fn as_raw(&self) -> LLVMTypeRef {
+        self.deref().as_raw()
+    }
+}
+
 impl TypeRef {
     /// Wrap a raw typedef reference.
     pub fn from_raw(t: LLVMTypeRef) -> Self {
@@ -430,9 +444,13 @@ impl StructType {
 
     /// Get the type of the element at a given index in the structure.
     pub fn element_type(self, index: usize) -> Option<TypeRef> {
-        let t = unsafe { LLVMStructGetTypeAtIndex(self.as_raw(), index as u32) };
+        if index >= self.element_count() {
+            None
+        } else {
+            let t = unsafe { LLVMStructGetTypeAtIndex(self.as_raw(), index as u32) };
 
-        if t.is_null() { None } else { Some(TypeRef(t)) }
+            if t.is_null() { None } else { Some(TypeRef(t)) }
+        }
     }
 
     /// Determine whether a structure is packed.
@@ -479,6 +497,110 @@ impl StructTypes for Context {
         StructType::from_raw(unsafe {
             LLVMStructCreateNamed(self.as_raw(), cname.as_ptr())
         })
+    }
+}
+
+pub trait SeqType: AsTypeRef {
+    /// Obtain the type of elements within a sequential type.
+    fn element_type(&self) -> TypeRef {
+        TypeRef(unsafe { LLVMGetElementType(self.as_raw()) })
+    }
+}
+
+impl SeqType for ArrayType {}
+impl SeqType for PointerType {}
+impl SeqType for VectorType {}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ArrayType(TypeRef);
+
+impl Deref for ArrayType {
+    type Target = TypeRef;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ArrayType {
+    /// Create a fixed size array type that refers to a specific type.
+    ///
+    /// The created type will exist in the context that its element type exists in.
+    pub fn new(element_type: TypeRef, element_count: usize) -> Self {
+        ArrayType::from_raw(unsafe {
+            LLVMArrayType(element_type.as_raw(), element_count as u32)
+        })
+    }
+
+    fn from_raw(t: LLVMTypeRef) -> Self {
+        ArrayType(TypeRef(t))
+    }
+
+    /// Obtain the length of an array type.
+    pub fn len(&self) -> usize {
+        unsafe { LLVMGetArrayLength(self.as_raw()) as usize }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PointerType(TypeRef);
+
+impl Deref for PointerType {
+    type Target = TypeRef;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl PointerType {
+    /// Create a pointer type that points to a defined type.
+    ///
+    /// The created type will exist in the context that its pointee type exists in.
+    pub fn new(element_type: TypeRef, address_space: u32) -> Self {
+        PointerType::from_raw(unsafe {
+            LLVMPointerType(element_type.as_raw(), address_space)
+        })
+    }
+
+    fn from_raw(t: LLVMTypeRef) -> Self {
+        PointerType(TypeRef(t))
+    }
+
+    /// Obtain the address space of a pointer type.
+    pub fn address_space(&self) -> u32 {
+        unsafe { LLVMGetPointerAddressSpace(self.as_raw()) }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct VectorType(TypeRef);
+
+impl Deref for VectorType {
+    type Target = TypeRef;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl VectorType {
+    /// Create a vector type that contains a defined type and has a specific number of elements.
+    ///
+    /// The created type will exist in the context thats its element type exists in.
+    pub fn new(element_type: TypeRef, element_count: usize) -> Self {
+        VectorType::from_raw(unsafe {
+            LLVMVectorType(element_type.as_raw(), element_count as u32)
+        })
+    }
+
+    fn from_raw(t: LLVMTypeRef) -> Self {
+        VectorType(TypeRef(t))
+    }
+
+    /// Obtain the number of elements in a vector type.
+    pub fn size(&self) -> usize {
+        unsafe { LLVMGetVectorSize(self.as_raw()) as usize }
     }
 }
 
@@ -547,6 +669,35 @@ mod tests {
         assert_eq!(c.int64().width(), 64);
         assert_eq!(c.int128().width(), 128);
         assert_eq!(c.int_type(512).width(), 512);
+
+        assert!(matches!(
+            c.int1().kind(),
+            llvm::LLVMTypeKind::LLVMIntegerTypeKind
+        ));
+        assert!(matches!(
+            c.int8().kind(),
+            llvm::LLVMTypeKind::LLVMIntegerTypeKind
+        ));
+        assert!(matches!(
+            c.int16().kind(),
+            llvm::LLVMTypeKind::LLVMIntegerTypeKind
+        ));
+        assert!(matches!(
+            c.int32().kind(),
+            llvm::LLVMTypeKind::LLVMIntegerTypeKind
+        ));
+        assert!(matches!(
+            c.int64().kind(),
+            llvm::LLVMTypeKind::LLVMIntegerTypeKind
+        ));
+        assert!(matches!(
+            c.int128().kind(),
+            llvm::LLVMTypeKind::LLVMIntegerTypeKind
+        ));
+        assert!(matches!(
+            c.int_type(512).kind(),
+            llvm::LLVMTypeKind::LLVMIntegerTypeKind
+        ));
     }
 
     #[test]
@@ -566,6 +717,31 @@ mod tests {
         assert_eq!(c.x86_fp80().to_string(), "x86_fp80");
         assert_eq!(c.fp128().to_string(), "fp128");
         assert_eq!(c.ppc_fp128().to_string(), "ppc_fp128");
+
+        assert!(matches!(
+            c.half().kind(),
+            llvm::LLVMTypeKind::LLVMHalfTypeKind
+        ));
+        assert!(matches!(
+            c.float().kind(),
+            llvm::LLVMTypeKind::LLVMFloatTypeKind
+        ));
+        assert!(matches!(
+            c.double().kind(),
+            llvm::LLVMTypeKind::LLVMDoubleTypeKind
+        ));
+        assert!(matches!(
+            c.x86_fp80().kind(),
+            llvm::LLVMTypeKind::LLVMX86_FP80TypeKind
+        ));
+        assert!(matches!(
+            c.fp128().kind(),
+            llvm::LLVMTypeKind::LLVMFP128TypeKind
+        ));
+        assert!(matches!(
+            c.ppc_fp128().kind(),
+            llvm::LLVMTypeKind::LLVMPPC_FP128TypeKind
+        ));
     }
 
     #[test]
@@ -579,6 +755,19 @@ mod tests {
         assert_eq!(c.void().to_string(), "void");
         assert_eq!(c.label().to_string(), "label");
         assert_eq!(c.x86_mmx().to_string(), "x86_mmx");
+
+        assert!(matches!(
+            c.void().kind(),
+            llvm::LLVMTypeKind::LLVMVoidTypeKind
+        ));
+        assert!(matches!(
+            c.label().kind(),
+            llvm::LLVMTypeKind::LLVMLabelTypeKind
+        ));
+        assert!(matches!(
+            c.x86_mmx().kind(),
+            llvm::LLVMTypeKind::LLVMX86_MMXTypeKind
+        ));
     }
 
     #[test]
@@ -588,19 +777,22 @@ mod tests {
         let t = FunctionType::new(i64t, &argts, false);
 
         assert!(!t.as_raw().is_null());
+        assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMFunctionTypeKind));
         assert!(!t.is_var_arg());
         assert_eq!(t.return_type(), i64t);
         assert_eq!(t.param_types(), argts);
     }
 
     #[test]
-    fn structure() {
+    fn struct_in_global_context() {
         let i16t = IntegerType::int16();
         let i32t = IntegerType::int32();
         let i64t = IntegerType::int64();
         let argts = [i16t, i32t, i64t];
         let t = StructType::new(&argts, true);
 
+        assert!(!t.as_raw().is_null());
+        assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMStructTypeKind));
         assert_eq!(t.name(), None);
         assert_eq!(t.element_count(), 3);
         assert_eq!(t.element_type(1), Some(i32t));
@@ -614,12 +806,14 @@ mod tests {
     fn struct_in_context() {
         let c = Context::new();
 
-        let i16t = IntegerType::int16();
-        let i32t = IntegerType::int32();
-        let i64t = IntegerType::int64();
+        let i16t = c.int16();
+        let i32t = c.int32();
+        let i64t = c.int64();
         let argts = [i16t, i32t, i64t];
         let t = c.structure(&argts, true);
 
+        assert!(!t.as_raw().is_null());
+        assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMStructTypeKind));
         assert_eq!(t.name(), None);
         assert_eq!(t.element_count(), 3);
         assert_eq!(t.element_type(1), Some(i32t));
@@ -635,12 +829,14 @@ mod tests {
 
         let t = c.named_struct("test");
 
+        assert!(!t.as_raw().is_null());
+        assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMStructTypeKind));
         assert_eq!(t.name(), Some("test".into()));
         assert_eq!(t.element_count(), 0);
 
-        let i16t = IntegerType::int16();
-        let i32t = IntegerType::int32();
-        let i64t = IntegerType::int64();
+        let i16t = c.int16();
+        let i32t = c.int32();
+        let i64t = c.int64();
         let argts = [i16t, i32t, i64t];
         t.set_body(&argts, true);
 
@@ -650,5 +846,44 @@ mod tests {
         assert_eq!(t.element_types(), argts);
         assert!(t.is_packed());
         assert!(!t.is_opaque());
+    }
+
+    #[test]
+    fn array() {
+        let c = Context::new();
+        let i64t = c.int64();
+
+        let t = ArrayType::new(i64t, 8);
+
+        assert!(!t.as_raw().is_null());
+        assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMArrayTypeKind));
+        assert_eq!(t.element_type(), i64t);
+        assert_eq!(t.len(), 8);
+    }
+
+    #[test]
+    fn pointer() {
+        let c = Context::new();
+        let i64t = c.int64();
+
+        let t = PointerType::new(i64t, 123);
+
+        assert!(!t.as_raw().is_null());
+        assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMPointerTypeKind));
+        assert_eq!(t.element_type(), i64t);
+        assert_eq!(t.address_space(), 123);
+    }
+
+    #[test]
+    fn vector() {
+        let c = Context::new();
+        let i64t = c.int64();
+
+        let t = VectorType::new(i64t, 8);
+
+        assert!(!t.as_raw().is_null());
+        assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMVectorTypeKind));
+        assert_eq!(t.element_type(), i64t);
+        assert_eq!(t.size(), 8);
     }
 }

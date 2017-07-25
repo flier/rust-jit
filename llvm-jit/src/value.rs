@@ -114,7 +114,19 @@ impl Function {
         params.into_iter().map(|v| ValueRef(v)).collect()
     }
 
-    pub fn param(&self, index: u32) -> ValueRef {
-        ValueRef(unsafe { LLVMGetParam(self.0, index) })
+    pub fn param(&self, index: u32) -> Option<ValueRef> {
+        let count = unsafe { LLVMCountParams(self.0) };
+
+        if index >= count {
+            None
+        } else {
+            let param = unsafe { LLVMGetParam(self.0, index) };
+
+            if param.is_null() {
+                None
+            } else {
+                Some(ValueRef(param))
+            }
+        }
     }
 }
