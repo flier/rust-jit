@@ -1,6 +1,18 @@
+use std::borrow::Cow;
+use std::ffi::CStr;
+
+use llvm::core::*;
 use llvm::prelude::*;
 
-#[derive(Debug)]
+use value::{Instruction, ValueRef};
+
+/// Basic Block
+///
+/// A basic block represents a single entry single exit section of code.
+/// Basic blocks contain a list of instructions which form the body of the block.
+///
+/// Basic blocks belong to functions. They have the type of label.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BasicBlock(LLVMBasicBlockRef);
 
 impl BasicBlock {
@@ -12,5 +24,153 @@ impl BasicBlock {
     /// Extracts the raw basic block reference.
     pub fn as_raw(&self) -> LLVMBasicBlockRef {
         self.0
+    }
+
+    /// Obtain the string name of a basic block.
+    pub fn name(&self) -> Cow<str> {
+        unsafe { CStr::from_ptr(LLVMGetBasicBlockName(self.0)).to_string_lossy() }
+    }
+
+    /// Obtain the function to which a basic block belongs.
+    pub fn parent(&self) -> Option<ValueRef> {
+        let parent = unsafe { LLVMGetBasicBlockParent(self.0) };
+
+        if parent.is_null() {
+            None
+        } else {
+            Some(ValueRef::from_raw(parent))
+        }
+    }
+
+    /// Obtain the terminator instruction for a basic block.
+    pub fn terminator(&self) -> Option<Instruction> {
+        let terminator = unsafe { LLVMGetBasicBlockTerminator(self.0) };
+
+        if terminator.is_null() {
+            None
+        } else {
+            Some(Instruction::from_raw(terminator))
+        }
+    }
+
+    /// Convert a basic block instance to a value type.
+    pub fn as_value(&self) -> ValueRef {
+        ValueRef::from_raw(unsafe { LLVMBasicBlockAsValue(self.0) })
+    }
+
+    /// Remove a basic block from a function and delete it.
+    ///
+    /// This deletes the basic block from its containing function and deletes the basic block itself.
+    pub fn delete(self) {
+        unsafe { LLVMDeleteBasicBlock(self.0) }
+    }
+
+    /// Remove a basic block from a function.
+    ///
+    /// This deletes the basic block from its containing function but keep the basic block alive.
+    pub fn remove_from_parent(&self) {
+        unsafe { LLVMRemoveBasicBlockFromParent(self.0) }
+    }
+
+    /// Move a basic block to before another one.
+    pub fn move_before(&self, pos: BasicBlock) {
+        unsafe { LLVMMoveBasicBlockBefore(self.0, pos.0) }
+    }
+
+    /// Move a basic block to after another one.
+    pub fn move_after(&self, pos: BasicBlock) {
+        unsafe { LLVMMoveBasicBlockAfter(self.0, pos.0) }
+    }
+
+    /// Obtain an iterator to the instructions in a basic block.
+    pub fn instructions(&self) -> InstrIter {
+        InstrIter {
+            b: Some(self.0),
+            i: None,
+        }
+    }
+}
+
+pub struct InstrIter {
+    b: Option<LLVMBasicBlockRef>,
+    i: Option<LLVMValueRef>,
+}
+
+impl Iterator for InstrIter {
+    type Item = Instruction;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(b) = self.b {
+            let next = unsafe {
+                if let Some(i) = self.i {
+                    LLVMGetNextInstruction(i)
+                } else {
+                    LLVMGetFirstInstruction(b)
+                }
+            };
+
+            self.i = if next.is_null() {
+                self.b = None;
+
+                None
+            } else {
+                Some(next)
+            };
+
+            self.i.map(|i| Instruction::from_raw(i))
+        } else {
+            None
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use builder::{Builder, Position};
+    use context::Context;
+    use module::Module;
+    use prelude::*;
+    use types::FunctionType;
+
+    #[test]
+    fn basic_block() {
+        // Set up a context, module and builder in that context.
+        let context = Context::new();
+        let module = Module::with_name_in_context("sum", &context);
+        let builder = Builder::with_context(&context);
+
+        // get a type for sum function
+        let i64t = context.int64();
+        let argts = [i64t, i64t, i64t];
+        let function_type = FunctionType::new(i64t, &argts, false);
+
+        // add it to our module
+        let function = module.add_function("sum", function_type);
+
+        // Create a basic block in the function and set our builder to generate code in it.
+        let bb = function.append_basic_block(&context, "entry");
+
+        builder.position(Position::AtEnd(bb));
+
+        // get the function's arguments
+        let x = function.get_param(0).unwrap();
+        let y = function.get_param(1).unwrap();
+        let z = function.get_param(2).unwrap();
+
+        let sum1 = builder.emit(add!(x, y, "sum.1"));
+        let sum2 = builder.emit(add!(sum1, z, "sum.2"));
+
+        // Emit a `ret` into the function
+        let ret = builder.emit(ret!(sum2));
+
+        assert!(!bb.as_raw().is_null());
+        assert_eq!(bb.name(), "entry");
+        assert_eq!(bb.parent(), Some(function));
+        assert_eq!(bb.terminator(), Some(ret));
+        assert_eq!(
+            bb.instructions().collect::<Vec<Instruction>>(),
+            vec![sum1, sum2, ret]
+        );
     }
 }
