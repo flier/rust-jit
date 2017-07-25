@@ -18,7 +18,7 @@ pub enum Position {
     AtEnd(BasicBlock),
 }
 
-pub enum Instruction<'a> {
+pub enum Inst<'a> {
     Add(ValueRef, ValueRef, Cow<'a, str>),
     Sub(ValueRef, ValueRef, Cow<'a, str>),
     Mul(ValueRef, ValueRef, Cow<'a, str>),
@@ -30,45 +30,45 @@ pub enum Instruction<'a> {
 
 #[macro_export]
 macro_rules! add {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Instruction::Add($lhs, $rhs, $name.into()) }
+    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Inst::Add($lhs, $rhs, $name.into()) }
 }
 
 #[macro_export]
 macro_rules! sub {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Instruction::Sub($lhs, $rhs, $name.into()) }
+    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Inst::Sub($lhs, $rhs, $name.into()) }
 }
 
 #[macro_export]
 macro_rules! mul {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Instruction::Mul($lhs, $rhs, $name.into()) }
+    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Inst::Mul($lhs, $rhs, $name.into()) }
 }
 
 #[macro_export]
 macro_rules! udiv {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Instruction::UDiv($lhs, $rhs, $name.into()) }
+    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Inst::UDiv($lhs, $rhs, $name.into()) }
 }
 
 #[macro_export]
 macro_rules! sdiv {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Instruction::SDiv($lhs, $rhs, $name.into()) }
+    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Inst::SDiv($lhs, $rhs, $name.into()) }
 }
 
 #[macro_export]
 macro_rules! ret {
-    () => { $crate::Instruction::ReturnVoid };
-    ($result:expr) => { $crate::Instruction::Return($result) };
+    () => { $crate::Inst::ReturnVoid };
+    ($result:expr) => { $crate::Inst::Return($result) };
 }
 
-impl<'a> fmt::Display for Instruction<'a> {
+impl<'a> fmt::Display for Inst<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Instruction::Add(lhs, rhs, ref name) => write!(f, "{} = add {}, {}", name, lhs, rhs),
-            Instruction::Sub(lhs, rhs, ref name) => write!(f, "{} = sub {}, {}", name, lhs, rhs),
-            Instruction::Mul(lhs, rhs, ref name) => write!(f, "{} = mul {}, {}", name, lhs, rhs),
-            Instruction::UDiv(lhs, rhs, ref name) => write!(f, "{} = udiv {}, {}", name, lhs, rhs),
-            Instruction::SDiv(lhs, rhs, ref name) => write!(f, "{} = sdiv {}, {}", name, lhs, rhs),
-            Instruction::ReturnVoid => write!(f, "return void"),
-            Instruction::Return(ret) => write!(f, "return {}", ret),
+            Inst::Add(lhs, rhs, ref name) => write!(f, "{} = add {}, {}", name, lhs, rhs),
+            Inst::Sub(lhs, rhs, ref name) => write!(f, "{} = sub {}, {}", name, lhs, rhs),
+            Inst::Mul(lhs, rhs, ref name) => write!(f, "{} = mul {}, {}", name, lhs, rhs),
+            Inst::UDiv(lhs, rhs, ref name) => write!(f, "{} = udiv {}, {}", name, lhs, rhs),
+            Inst::SDiv(lhs, rhs, ref name) => write!(f, "{} = sdiv {}, {}", name, lhs, rhs),
+            Inst::ReturnVoid => write!(f, "return void"),
+            Inst::Return(ret) => write!(f, "return {}", ret),
         }
     }
 }
@@ -102,12 +102,12 @@ impl Builder {
         &self
     }
 
-    pub fn emit(&self, instruction: Instruction) -> ValueRef {
-        trace!("{:?} emit: {}", self, instruction);
+    pub fn emit(&self, inst: Inst) -> ValueRef {
+        trace!("{:?} emit: {}", self, inst);
 
         let result = unsafe {
-            match instruction {
-                Instruction::Add(lhs, rhs, name) => {
+            match inst {
+                Inst::Add(lhs, rhs, name) => {
                     LLVMBuildAdd(
                         self.0,
                         lhs.as_raw(),
@@ -115,7 +115,7 @@ impl Builder {
                         unchecked_cstring(name).as_ptr(),
                     )
                 }
-                Instruction::Sub(lhs, rhs, name) => {
+                Inst::Sub(lhs, rhs, name) => {
                     LLVMBuildSub(
                         self.0,
                         lhs.as_raw(),
@@ -123,7 +123,7 @@ impl Builder {
                         unchecked_cstring(name).as_ptr(),
                     )
                 }
-                Instruction::Mul(lhs, rhs, name) => {
+                Inst::Mul(lhs, rhs, name) => {
                     LLVMBuildMul(
                         self.0,
                         lhs.as_raw(),
@@ -131,7 +131,7 @@ impl Builder {
                         unchecked_cstring(name).as_ptr(),
                     )
                 }
-                Instruction::UDiv(lhs, rhs, name) => {
+                Inst::UDiv(lhs, rhs, name) => {
                     LLVMBuildUDiv(
                         self.0,
                         lhs.as_raw(),
@@ -139,7 +139,7 @@ impl Builder {
                         unchecked_cstring(name).as_ptr(),
                     )
                 }
-                Instruction::SDiv(lhs, rhs, name) => {
+                Inst::SDiv(lhs, rhs, name) => {
                     LLVMBuildSDiv(
                         self.0,
                         lhs.as_raw(),
@@ -147,8 +147,8 @@ impl Builder {
                         unchecked_cstring(name).as_ptr(),
                     )
                 }
-                Instruction::ReturnVoid => LLVMBuildRetVoid(self.0),
-                Instruction::Return(ret) => LLVMBuildRet(self.0, ret.as_raw()),
+                Inst::ReturnVoid => LLVMBuildRetVoid(self.0),
+                Inst::Return(ret) => LLVMBuildRet(self.0, ret.as_raw()),
             }
         };
 
