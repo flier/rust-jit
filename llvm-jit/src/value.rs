@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::ffi::CStr;
 use std::fmt;
 use std::mem;
+use std::ops::Deref;
 use std::ptr;
 
 use llvm::*;
@@ -10,11 +11,25 @@ use llvm::prelude::*;
 
 use block::BasicBlock;
 use context::Context;
-use types::TypeRef;
+use types::{StructType, TypeRef};
 use utils::{from_unchecked_cstr, unchecked_cstring};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ValueRef(LLVMValueRef);
+
+pub trait AsValueRef {
+    /// Extracts the raw typedef reference.
+    fn as_raw(&self) -> LLVMValueRef;
+}
+
+impl<T> AsValueRef for T
+where
+    T: Deref<Target = ValueRef>,
+{
+    fn as_raw(&self) -> LLVMValueRef {
+        self.deref().as_raw()
+    }
+}
 
 pub type ValueKind = LLVMValueKind;
 
@@ -249,6 +264,106 @@ impl ConstantStrings for Context {
     }
 }
 
+pub type ConstantStruct = Constant;
+
+impl ConstantStruct {
+    /// Create a ConstantStruct in the global Context.
+    pub fn structure(values: &[ValueRef], packed: bool) -> Self {
+        let mut values = values
+            .iter()
+            .map(|v| v.as_raw())
+            .collect::<Vec<LLVMValueRef>>();
+
+        let t = unsafe {
+            LLVMConstStruct(
+                values.as_mut_ptr(),
+                values.len() as u32,
+                if packed { 1 } else { 0 },
+            )
+        };
+
+        ConstantStruct::from_raw(t)
+    }
+}
+
+pub trait ConstantStructs {
+    /// Create a non-anonymous ConstantStruct from values.
+    fn structure(&self, values: &[ValueRef]) -> ConstantStruct;
+}
+
+impl ConstantStructs for StructType {
+    fn structure(&self, values: &[ValueRef]) -> ConstantStruct {
+        let mut values = values
+            .iter()
+            .map(|v| v.as_raw())
+            .collect::<Vec<LLVMValueRef>>();
+
+        let t = unsafe {
+            LLVMConstNamedStruct(self.as_raw(), values.as_mut_ptr(), values.len() as u32)
+        };
+
+        ConstantStruct::from_raw(t)
+    }
+}
+
+pub type ConstantDataSequential = Constant;
+
+impl ConstantDataSequential {
+    /// Get an element at specified index as a constant.
+    pub fn element(&self, index: usize) -> Option<Constant> {
+        let element = unsafe { LLVMGetElementAsConstant(self.as_raw(), index as u32) };
+
+        if element.is_null() {
+            None
+        } else {
+            Some(Constant::from_raw(element))
+        }
+    }
+}
+
+pub type ConstantArray = ConstantDataSequential;
+
+impl ConstantArray {
+    /// Create a ConstantArray from values.
+    pub fn array(element_type: TypeRef, values: &[ValueRef]) -> Self {
+        element_type.array(values)
+    }
+}
+
+pub trait ConstantArrays {
+    /// Create a ConstantArray from values.
+    fn array(&self, values: &[ValueRef]) -> ConstantArray;
+}
+
+impl ConstantArrays for TypeRef {
+    fn array(&self, values: &[ValueRef]) -> ConstantArray {
+        let mut values = values
+            .iter()
+            .map(|v| v.as_raw())
+            .collect::<Vec<LLVMValueRef>>();
+
+        let t = unsafe { LLVMConstArray(self.as_raw(), values.as_mut_ptr(), values.len() as u32) };
+
+        ConstantArray::from_raw(t)
+    }
+}
+
+pub type ConstantVector = ConstantDataSequential;
+
+impl ConstantVector {
+    /// Create a ConstantVector from values.
+    pub fn vector(values: &[ValueRef]) -> Self {
+        let mut values = values
+            .iter()
+            .map(|v| v.as_raw())
+            .collect::<Vec<LLVMValueRef>>();
+
+        let t = unsafe { LLVMConstVector(values.as_mut_ptr(), values.len() as u32) };
+
+        ConstantVector::from_raw(t)
+    }
+}
+
 pub type Function = ValueRef;
 
 impl Function {
@@ -437,5 +552,64 @@ mod tests {
 
         assert!(v.is_const_str());
         assert_eq!(v.as_str(), Some("hello".into()));
+    }
+
+    #[test]
+    fn structure() {
+        let c = Context::new();
+        let v = ConstantStruct::structure(&[c.int64().int(123, false), c.str("hello")], true);
+
+        assert!(!v.as_raw().is_null());
+        assert_eq!(
+            v.to_string(),
+            r#"<{ i64, [6 x i8] }> <{ i64 123, [6 x i8] c"hello\00" }>"#
+        );
+        assert!(matches!(
+            v.kind(),
+            llvm::LLVMValueKind::LLVMConstantStructValueKind
+        ));
+        assert_eq!(v.name(), Some("".into()));
+        assert!(v.is_constant());
+        assert!(!v.is_undef());
+        assert!(!v.is_null());
+    }
+
+    #[test]
+    fn array() {
+        let c = Context::new();
+        let i64t = c.int64();
+        let v = i64t.array(&[i64t.int(123, false), i64t.int(456, false)]);
+
+        assert!(!v.as_raw().is_null());
+        assert_eq!(v.to_string(), r#"[2 x i64] [i64 123, i64 456]"#);
+        assert!(matches!(
+            v.kind(),
+            llvm::LLVMValueKind::LLVMConstantDataArrayValueKind
+        ));
+        assert_eq!(v.name(), Some("".into()));
+        assert!(v.is_constant());
+        assert!(!v.is_undef());
+        assert!(!v.is_null());
+    }
+
+    #[test]
+    fn vector() {
+        let c = Context::new();
+        let i64t = c.int64();
+        let v = ConstantVector::vector(&[i64t.int(123, false), i64t.int(456, false)]);
+
+        assert!(!v.as_raw().is_null());
+        assert_eq!(v.to_string(), r#"<2 x i64> <i64 123, i64 456>"#);
+        assert!(matches!(
+            v.kind(),
+            llvm::LLVMValueKind::LLVMConstantDataVectorValueKind
+        ));
+        assert_eq!(v.name(), Some("".into()));
+        assert!(v.is_constant());
+        assert!(!v.is_undef());
+        assert!(!v.is_null());
+
+        assert_eq!(v.element(0), Some(i64t.int(123, false)));
+        assert_eq!(v.element(1), Some(i64t.int(456, false)));
     }
 }
