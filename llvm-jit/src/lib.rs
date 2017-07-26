@@ -45,7 +45,7 @@ pub mod prelude {
 
 pub mod ops {
     pub use builder::{AShr, Add, AggregateRet, And, Br, CondBr, ExactSDiv, ExactUDiv, FAdd, FDiv,
-                      FMul, FRem, FSub, LShr, Mul, NSWAdd, NSWMul, NSWSub, NUWAdd, NUWMul, NUWSub,
-                      Or, Ret, RetVoid, SDiv, SRem, Shl, Sub, Switch, UDiv, URem, Unreachable,
-                      Xor, br, cond_br, ret, ret_void};
+                      FMul, FNeg, FRem, FSub, LShr, Mul, NSWAdd, NSWMul, NSWNeg, NSWSub, NUWAdd,
+                      NUWMul, NUWNeg, NUWSub, Neg, Not, Or, Ret, RetVoid, SDiv, SRem, Shl, Sub,
+                      Switch, UDiv, URem, Unreachable, Xor, br, cond_br, ret, ret_void};
 }

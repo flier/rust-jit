@@ -386,6 +386,12 @@ impl Deref for Function {
     }
 }
 
+impl From<Function> for ValueRef {
+    fn from(f: Function) -> Self {
+        f.0
+    }
+}
+
 impl Function {
     pub fn from_raw(v: LLVMValueRef) -> Self {
         Function(ValueRef(v))
@@ -481,7 +487,35 @@ impl_iter!(
     ValueRef::from_raw
 );
 
-pub type Instruction = ValueRef;
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Instruction(ValueRef);
+
+impl Deref for Instruction {
+    type Target = ValueRef;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl From<Instruction> for ValueRef {
+    fn from(i: Instruction) -> Self {
+        i.0
+    }
+}
+
+impl Instruction {
+    pub fn from_raw(v: LLVMValueRef) -> Self {
+        Instruction(ValueRef(v))
+    }
+
+    /// Create a copy of 'this' instruction that is identical in all ways except the following:
+    ///   * The instruction has no parent
+    ///   * The instruction has no name
+    pub fn copy(&self) -> Self {
+        Instruction::from_raw(unsafe { LLVMInstructionClone(self.as_raw()) })
+    }
+}
 
 #[cfg(test)]
 mod tests {
