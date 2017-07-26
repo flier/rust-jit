@@ -12,7 +12,7 @@ fn main() {
     // Set up a context, module and builder in that context.
     let context = jit::Context::new();
     let module = jit::Module::with_name_in_context("sum", &context);
-    let builder = jit::Builder::within_context(&context);
+    let builder = jit::IRBuilder::within_context(&context);
 
     // get a type for sum function
     let i64t = context.int64();

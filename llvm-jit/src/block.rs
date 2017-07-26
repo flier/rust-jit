@@ -87,7 +87,7 @@ impl_iter!(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use builder::{Builder, Position};
+    use builder::{IRBuilder, Position};
     use context::Context;
     use module::Module;
     use prelude::*;
@@ -98,7 +98,7 @@ mod tests {
         // Set up a context, module and builder in that context.
         let context = Context::new();
         let module = Module::with_name_in_context("sum", &context);
-        let builder = Builder::within_context(&context);
+        let builder = IRBuilder::within_context(&context);
 
         // get a type for sum function
         let i64t = context.int64();

@@ -26,7 +26,7 @@ mod value;
 mod engine;
 mod target;
 
-pub use builder::{Builder, Inst, Position};
+pub use builder::{IRBuilder, Inst, Position};
 pub use context::Context;
 pub use engine::{ExecutionEngine, Interpreter, MCJIT};
 pub use module::{GlobalVar, Module, ThreadLocalMode};

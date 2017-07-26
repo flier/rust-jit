@@ -11,7 +11,7 @@ use value::{Instruction, ValueRef};
 
 /// An instruction builder represents a point within a basic block and is the exclusive means of building instructions.
 #[derive(Debug)]
-pub struct Builder(LLVMBuilderRef);
+pub struct IRBuilder(LLVMBuilderRef);
 
 #[derive(Debug)]
 pub enum Position {
@@ -75,23 +75,23 @@ impl<'a> fmt::Display for Inst<'a> {
     }
 }
 
-impl Builder {
+impl IRBuilder {
     /// Create a new IR builder in the global context.
     pub fn new() -> Self {
         let builder = unsafe { LLVMCreateBuilder() };
 
-        trace!("create builder in global context: Builder({:?})", builder);
+        trace!("create builder in global context: IRBuilder({:?})", builder);
 
-        Builder(builder)
+        IRBuilder(builder)
     }
 
     /// Create a new IR builder in a specific context.
     pub fn within_context(context: &Context) -> Self {
         let builder = unsafe { LLVMCreateBuilderInContext(context.as_raw()) };
 
-        trace!("create builder in {:?}: Builder({:?})", context, builder);
+        trace!("create builder in {:?}: IRBuilder({:?})", context, builder);
 
-        Builder(builder)
+        IRBuilder(builder)
     }
 
     pub fn insert_block(&self) -> Option<BasicBlock> {
@@ -169,7 +169,7 @@ impl Builder {
     }
 }
 
-impl Drop for Builder {
+impl Drop for IRBuilder {
     fn drop(&mut self) {
         trace!("drop {:?}", self);
 
