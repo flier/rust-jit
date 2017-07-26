@@ -59,6 +59,12 @@ impl InstructionBuilder for Ret {
     }
 }
 
+#[macro_export]
+macro_rules! ret {
+    () => { $crate::ops::RetVoid };
+    ($result:expr) => { $crate::ops::Ret::new($result) };
+}
+
 /// Create a sequence of N insertvalue instructions,
 /// with one Value from the retVals array each, that build a aggregate
 /// return value one value at a time, and a ret instruction to return
@@ -241,17 +247,17 @@ impl<'a> InstructionBuilder for BinOp<'a> {
 */
 
 macro_rules! define_binary_operator {
-    ($name:ident, $func:path) => (
+    ($operator:ident, $func:path) => (
         #[derive(Debug)]
-        pub struct $name<'a> {
+        pub struct $operator<'a> {
             lhs: ValueRef,
             rhs: ValueRef,
             name: Cow<'a, str>,
         }
 
-        impl<'a> $name<'a> {
+        impl<'a> $operator<'a> {
             pub fn new(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
-                $name {
+                $operator {
                     lhs: lhs,
                     rhs: rhs,
                     name: name,
@@ -259,7 +265,7 @@ macro_rules! define_binary_operator {
             }
         }
 
-        impl<'a> $crate::builder::InstructionBuilder for $name<'a> {
+        impl<'a> $crate::builder::InstructionBuilder for $operator<'a> {
             fn build(&self, builder: &IRBuilder) -> ValueRef {
                 ValueRef::from_raw(unsafe {
                     $func(
@@ -271,71 +277,44 @@ macro_rules! define_binary_operator {
                 })
             }
         }
+    );
+
+    ($operator:ident, $func:path, $alias:ident) => (
+        define_binary_operator!($operator, $func);
 
         #[macro_export]
-        macro_rules! $name {
-            ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::$name::new($lhs, $rhs, $name.into()) }
+        macro_rules! $alias {
+            ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::$operator::new($lhs, $rhs, $name.into()) }
         }
     )
 }
 
-define_binary_operator!(Add, LLVMBuildAdd);
+define_binary_operator!(Add, LLVMBuildAdd, add);
 define_binary_operator!(NSWAdd, LLVMBuildNSWAdd);
 define_binary_operator!(NUWAdd, LLVMBuildNUWAdd);
-define_binary_operator!(FAdd, LLVMBuildFAdd);
-define_binary_operator!(Sub, LLVMBuildSub);
+define_binary_operator!(FAdd, LLVMBuildFAdd, fadd);
+define_binary_operator!(Sub, LLVMBuildSub, sub);
 define_binary_operator!(NSWSub, LLVMBuildNSWSub);
 define_binary_operator!(NUWSub, LLVMBuildNUWSub);
-define_binary_operator!(FSub, LLVMBuildFSub);
-define_binary_operator!(Mul, LLVMBuildMul);
+define_binary_operator!(FSub, LLVMBuildFSub, fsub);
+define_binary_operator!(Mul, LLVMBuildMul, mul);
 define_binary_operator!(NSWMul, LLVMBuildNSWMul);
 define_binary_operator!(NUWMul, LLVMBuildNUWMul);
-define_binary_operator!(FMul, LLVMBuildFMul);
-define_binary_operator!(UDiv, LLVMBuildUDiv);
+define_binary_operator!(FMul, LLVMBuildFMul, fmul);
+define_binary_operator!(UDiv, LLVMBuildUDiv, udiv);
 define_binary_operator!(ExactUDiv, LLVMBuildExactUDiv);
-define_binary_operator!(SDiv, LLVMBuildSDiv);
+define_binary_operator!(SDiv, LLVMBuildSDiv, sdiv);
 define_binary_operator!(ExactSDiv, LLVMBuildExactSDiv);
-define_binary_operator!(FDiv, LLVMBuildFDiv);
-define_binary_operator!(URem, LLVMBuildURem);
-define_binary_operator!(SRem, LLVMBuildSRem);
-define_binary_operator!(FRem, LLVMBuildFRem);
-define_binary_operator!(Shl, LLVMBuildShl);
-define_binary_operator!(LShr, LLVMBuildLShr);
-define_binary_operator!(AShr, LLVMBuildAShr);
-define_binary_operator!(And, LLVMBuildAnd);
-define_binary_operator!(Or, LLVMBuildOr);
-define_binary_operator!(Xor, LLVMBuildXor);
-
-#[macro_export]
-macro_rules! ret {
-    () => { $crate::ops::RetVoid };
-    ($result:expr) => { $crate::ops::Ret::new($result) };
-}
-
-#[macro_export]
-macro_rules! add {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::Add::new($lhs, $rhs, $name.into()) }
-}
-
-#[macro_export]
-macro_rules! sub {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::Sub::new($lhs, $rhs, $name.into()) }
-}
-
-#[macro_export]
-macro_rules! mul {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::Mul::new($lhs, $rhs, $name.into()) }
-}
-
-#[macro_export]
-macro_rules! udiv {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::UDiv::new($lhs, $rhs, $name.into()) }
-}
-
-#[macro_export]
-macro_rules! sdiv {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::SDiv::new($lhs, $rhs, $name.into()) }
-}
+define_binary_operator!(FDiv, LLVMBuildFDiv, fdiv);
+define_binary_operator!(URem, LLVMBuildURem, urem);
+define_binary_operator!(SRem, LLVMBuildSRem, srem);
+define_binary_operator!(FRem, LLVMBuildFRem, frem);
+define_binary_operator!(Shl, LLVMBuildShl, shl);
+define_binary_operator!(LShr, LLVMBuildLShr, lshr);
+define_binary_operator!(AShr, LLVMBuildAShr, ashr);
+define_binary_operator!(And, LLVMBuildAnd, and);
+define_binary_operator!(Or, LLVMBuildOr, or);
+define_binary_operator!(Xor, LLVMBuildXor, xor);
 
 impl IRBuilder {
     /// Create a new IR builder in the global context.
