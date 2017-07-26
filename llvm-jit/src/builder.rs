@@ -8,7 +8,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use context::Context;
 use utils::unchecked_cstring;
-use value::{Instruction, ValueRef};
+use value::{Function, Instruction, ValueRef};
 
 /// An instruction builder represents a point within a basic block
 /// and is the exclusive means of building instructions.
@@ -111,15 +111,15 @@ impl InstructionBuilder for Br {
 #[derive(Clone, Debug, PartialEq)]
 pub struct CondBr {
     cond: ValueRef,
-    _then: Option<BasicBlock>,
+    then: Option<BasicBlock>,
     _else: Option<BasicBlock>,
 }
 
 impl CondBr {
-    pub fn new(cond: ValueRef, _then: Option<BasicBlock>, _else: Option<BasicBlock>) -> CondBr {
+    pub fn new(cond: ValueRef, then: Option<BasicBlock>, _else: Option<BasicBlock>) -> CondBr {
         CondBr {
             cond: cond,
-            _then: _then,
+            then: then,
             _else: _else,
         }
     }
@@ -127,13 +127,13 @@ impl CondBr {
     pub fn on(cond: ValueRef) -> Self {
         CondBr {
             cond: cond,
-            _then: None,
+            then: None,
             _else: None,
         }
     }
 
-    pub fn _then(mut self, dest: BasicBlock) -> Self {
-        self._then = Some(dest);
+    pub fn then(mut self, dest: BasicBlock) -> Self {
+        self.then = Some(dest);
         self
     }
 
@@ -149,7 +149,7 @@ impl InstructionBuilder for CondBr {
             LLVMBuildCondBr(
                 builder.as_raw(),
                 self.cond.as_raw(),
-                self._then.map_or(ptr::null_mut(), |bb| bb.as_raw()),
+                self.then.map_or(ptr::null_mut(), |bb| bb.as_raw()),
                 self._else.map_or(ptr::null_mut(), |bb| bb.as_raw()),
             )
         })
@@ -162,10 +162,10 @@ macro_rules! br {
         $crate::ops::Br::new($dest.into())
     );
     ($cond:expr => $then:expr) => (
-        $crate::ops::CondBr::on($cond.into())._then($then.into())
+        $crate::ops::CondBr::on($cond.into()).then($then.into())
     );
     ($cond:expr => $then:expr, _ => $else:expr) => (
-        $crate::ops::CondBr::on($cond.into())._then($then.into())._else($else.into())
+        $crate::ops::CondBr::on($cond.into()).then($then.into())._else($else.into())
     );
 }
 
@@ -224,6 +224,74 @@ macro_rules! switch {
     });
     ($cond:expr; $( $on:expr => $dest:expr ),*) => ({
         $crate::ops::Switch::on($cond) $( .case($on, $dest) )*
+    });
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Invoke<'a> {
+    func: Function,
+    args: Vec<ValueRef>,
+    then: Option<BasicBlock>,
+    unwind: Option<BasicBlock>,
+    name: Cow<'a, str>,
+}
+
+impl<'a> Invoke<'a> {
+    pub fn call(func: Function, args: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
+        Invoke {
+            func: func,
+            args: args,
+            then: None,
+            unwind: None,
+            name: name,
+        }
+    }
+
+    pub fn then(mut self, dest: BasicBlock) -> Self {
+        self.then = Some(dest);
+        self
+    }
+
+    pub fn unwind(mut self, dest: BasicBlock) -> Self {
+        self.unwind = Some(dest);
+        self
+    }
+}
+
+impl<'a> InstructionBuilder for Invoke<'a> {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        let mut args = self.args
+            .iter()
+            .map(|arg| arg.as_raw())
+            .collect::<Vec<LLVMValueRef>>();
+
+        Instruction::from_raw(unsafe {
+            LLVMBuildInvoke(
+                builder.as_raw(),
+                self.func.as_raw(),
+                args.as_mut_ptr(),
+                args.len() as u32,
+                self.then.map_or(ptr::null_mut(), |bb| bb.as_raw()),
+                self.unwind.map_or(ptr::null_mut(), |bb| bb.as_raw()),
+                unchecked_cstring(self.name.clone()).as_ptr(),
+            )
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! call {
+    ($func:expr => $name:expr; to $then:expr; unwind $unwind:expr; [ $( $arg:expr ),* ]) => ({
+        $crate::ops::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into()).then($then).unwind($unwind)
+    });
+    ($func:expr => $name:expr; to $then:expr; [ $( $arg:expr ),* ]) => ({
+        $crate::ops::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into()).then($then)
+    });
+    ($func:expr => $name:expr; unwind $unwind:expr; [ $( $arg:expr ),* ]) => ({
+        $crate::ops::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into()).unwind($unwind)
+    });
+    ($func:expr => $name:expr; [ $( $arg:expr ),* ]) => ({
+        $crate::ops::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into())
     });
 }
 
@@ -547,7 +615,7 @@ mod tests {
             "br i1 true, label %then, label %else"
         );
 
-        let inst = CondBr::on(bool_t.uint(1))._then(bb_then)._else(bb_else);
+        let inst = CondBr::on(bool_t.uint(1)).then(bb_then)._else(bb_else);
 
         assert_eq!(
             builder.emit(inst).to_string().trim(),
@@ -584,6 +652,32 @@ mod tests {
     i64 2, label %two
     i64 3, label %three
   ]"#
+        );
+    }
+
+    #[test]
+    fn invoke() {
+        let context = Context::new();
+        let module = Module::with_name_in_context("br", &context);
+        let builder = IRBuilder::within_context(&context);
+
+        let i64t = context.int64();
+        let fn_test = module.add_function("test", FunctionType::new(context.void(), &[], false));
+        let fn_hello = module.add_function("hello", FunctionType::new(i64t, &[i64t, i64t], false));
+
+        let bb = fn_test.append_basic_block_in_context("entry", &context);
+        builder.position(Position::AtEnd(bb));
+
+        let bb_normal = fn_test.append_basic_block_in_context("normal", &context);
+        let bb_catch = fn_test.append_basic_block_in_context("catch", &context);
+
+        let inst =
+            call!(fn_hello => "ret"; to bb_normal; unwind bb_catch; [i64t.uint(123), i64t.int(456)]);
+
+        assert_eq!(
+            builder.emit(inst).to_string().trim(),
+            r#"%ret = invoke i64 @hello(i64 123, i64 456)
+          to label %normal unwind label %catch"#
         );
     }
 }
