@@ -374,20 +374,34 @@ impl ConstantVector {
     }
 }
 
-pub type Function = ValueRef;
+/// Functions in this group operate on LLVMValueRef instances that correspond to llvm::Function instances.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Function(ValueRef);
+
+impl Deref for Function {
+    type Target = ValueRef;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl Function {
+    pub fn from_raw(v: LLVMValueRef) -> Self {
+        Function(ValueRef(v))
+    }
+
     /// Obtain an iterator to the basic blocks in a function.
     pub fn basic_blocks(&self) -> BasicBlockIter {
-        BasicBlockIter::new(self.0)
+        BasicBlockIter::new(self.as_raw())
     }
 
     /// Obtain all of the basic blocks in a function.
     pub fn get_basic_blocks(&self) -> Vec<BasicBlock> {
-        let count = unsafe { LLVMCountBasicBlocks(self.0) };
+        let count = unsafe { LLVMCountBasicBlocks(self.as_raw()) };
         let mut blocks: Vec<LLVMBasicBlockRef> = vec![ptr::null_mut(); count as usize];
 
-        unsafe { LLVMGetBasicBlocks(self.0, blocks.as_mut_ptr()) };
+        unsafe { LLVMGetBasicBlocks(self.as_raw(), blocks.as_mut_ptr()) };
 
         blocks
             .into_iter()
@@ -397,14 +411,16 @@ impl Function {
 
     /// Obtain the basic block that corresponds to the entry point of a function.
     pub fn entry(&self) -> Option<BasicBlock> {
-        unsafe { LLVMGetEntryBasicBlock(self.0).as_mut() }.map(|entry| BasicBlock::from_raw(entry))
+        unsafe { LLVMGetEntryBasicBlock(self.as_raw()).as_mut() }
+            .map(|entry| BasicBlock::from_raw(entry))
     }
 
     /// Append a basic block to the end of a function.
     pub fn append_basic_block<S: AsRef<str>>(&self, context: &Context, name: S) -> BasicBlock {
         let cname = unchecked_cstring(name);
-        let block =
-            unsafe { LLVMAppendBasicBlockInContext(context.as_raw(), self.0, cname.as_ptr()) };
+        let block = unsafe {
+            LLVMAppendBasicBlockInContext(context.as_raw(), self.as_raw(), cname.as_ptr())
+        };
 
         trace!(
             "{:?} create `{}` BasicBlock({:?}) in {:?}",
@@ -419,33 +435,35 @@ impl Function {
 
     /// Obtain an iterator to the parameters in a function.
     pub fn params(&self) -> ParamIter {
-        ParamIter::new(self.0)
+        ParamIter::new(self.as_raw())
     }
 
     /// Obtain the parameters in a function.
     pub fn get_params(&self) -> Vec<ValueRef> {
-        let count = unsafe { LLVMCountParams(self.0) };
+        let count = unsafe { LLVMCountParams(self.as_raw()) };
         let mut params: Vec<LLVMValueRef> = vec![ptr::null_mut(); count as usize];
 
-        unsafe { LLVMGetParams(self.0, params.as_mut_ptr()) };
+        unsafe { LLVMGetParams(self.as_raw(), params.as_mut_ptr()) };
 
         params.into_iter().map(|v| ValueRef(v)).collect()
     }
 
     /// Obtain the parameter at the specified index.
     pub fn get_param(&self, index: u32) -> Option<ValueRef> {
-        let count = unsafe { LLVMCountParams(self.0) };
+        let count = unsafe { LLVMCountParams(self.as_raw()) };
 
         if index >= count {
             None
         } else {
-            unsafe { LLVMGetParam(self.0, index).as_mut() }.map(|param| ValueRef::from_raw(param))
+            unsafe { LLVMGetParam(self.as_raw(), index).as_mut() }.map(
+                |param| ValueRef::from_raw(param),
+            )
         }
     }
 
     /// Remove a function from its containing module and deletes it.
     pub fn delete(self) {
-        unsafe { LLVMDeleteFunction(self.0) }
+        unsafe { LLVMDeleteFunction(self.as_raw()) }
     }
 }
 

@@ -4,7 +4,7 @@ use std::ffi::CStr;
 use llvm::core::*;
 use llvm::prelude::*;
 
-use value::{Instruction, ValueRef};
+use value::{Function, Instruction, ValueRef};
 
 /// Basic Block
 ///
@@ -32,8 +32,8 @@ impl BasicBlock {
     }
 
     /// Obtain the function to which a basic block belongs.
-    pub fn parent(&self) -> Option<ValueRef> {
-        unsafe { LLVMGetBasicBlockParent(self.0).as_mut() }.map(|parent| ValueRef::from_raw(parent))
+    pub fn parent(&self) -> Option<Function> {
+        unsafe { LLVMGetBasicBlockParent(self.0).as_mut() }.map(|parent| Function::from_raw(parent))
     }
 
     /// Obtain the terminator instruction for a basic block.

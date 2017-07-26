@@ -160,7 +160,7 @@ impl Module {
             func,
         );
 
-        ValueRef::from_raw(func)
+        Function::from_raw(func)
     }
 
     /// Obtain a Function value from a Module by its name.
