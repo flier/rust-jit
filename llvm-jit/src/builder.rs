@@ -459,7 +459,7 @@ mod tests {
         // add it to our module
         let function = module.add_function("test", function_type);
 
-        let bb = function.append_basic_block_in_context(&context, "entry");
+        let bb = function.append_basic_block_in_context("entry", &context);
 
         builder.position(Position::AtEnd(bb));
 
@@ -481,7 +481,7 @@ mod tests {
         // add it to our module
         let function = module.add_function("test", function_type);
 
-        let bb = function.append_basic_block_in_context(&context, "entry");
+        let bb = function.append_basic_block_in_context("entry", &context);
 
         builder.position(Position::AtEnd(bb));
 
@@ -505,7 +505,7 @@ mod tests {
         // add it to our module
         let function = module.add_function("test", function_type);
 
-        let bb = function.append_basic_block_in_context(&context, "entry");
+        let bb = function.append_basic_block_in_context("entry", &context);
 
         builder.position(Position::AtEnd(bb));
 

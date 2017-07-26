@@ -109,7 +109,7 @@ mod tests {
         let function = module.add_function("sum", function_type);
 
         // Create a basic block in the function and set our builder to generate code in it.
-        let bb = function.append_basic_block(&context, "entry");
+        let bb = function.append_basic_block_in_context("entry", &context);
 
         builder.position(Position::AtEnd(bb));
 

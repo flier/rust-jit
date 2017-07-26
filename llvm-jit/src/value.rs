@@ -445,8 +445,8 @@ impl Function {
     /// Append a basic block to the end of a function.
     pub fn append_basic_block_in_context<S: AsRef<str>>(
         &self,
-        context: &Context,
         name: S,
+        context: &Context,
     ) -> BasicBlock {
         let cname = unchecked_cstring(name);
         let block = unsafe {
