@@ -60,18 +60,18 @@ impl InstructionBuilder for Ret {
     }
 }
 
-#[macro_export]
-macro_rules! ret {
-    () => { $crate::ops::RetVoid };
-    ($result:expr) => { $crate::ops::Ret::new($result.into()) };
-}
-
 /// Create a sequence of N insertvalue instructions,
 /// with one Value from the retVals array each, that build a aggregate
 /// return value one value at a time, and a ret instruction to return
 /// the resulting aggregate value.
 #[derive(Debug)]
 pub struct AggregateRet(Vec<ValueRef>);
+
+impl AggregateRet {
+    pub fn new(results: Vec<ValueRef>) -> Self {
+        AggregateRet(results)
+    }
+}
 
 impl InstructionBuilder for AggregateRet {
     fn build(&self, builder: &IRBuilder) -> Instruction {
@@ -83,6 +83,19 @@ impl InstructionBuilder for AggregateRet {
         Instruction::from_raw(unsafe {
             LLVMBuildAggregateRet(builder.as_raw(), values.as_mut_ptr(), values.len() as u32)
         })
+    }
+}
+
+#[macro_export]
+macro_rules! ret {
+    () => {
+        $crate::ops::RetVoid
+    };
+    ($result:expr) => {
+        $crate::ops::Ret::new($result.into())
+    };
+    ($( $result:expr ),*) => {
+        $crate::ops::AggregateRet::new(vec![$( $result.into() ),*])
     }
 }
 
@@ -431,14 +444,77 @@ impl Drop for IRBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use module::Module;
+    use types::*;
+    use value::*;
 
     #[test]
-    fn builder() {
-        let builder = IRBuilder::new();
+    fn ret_void() {
+        let context = Context::new();
+        let module = Module::with_name_in_context("ret_void", &context);
+        let builder = IRBuilder::within_context(&context);
 
-        let inst = builder.emit(ret_void());
+        let function_type = FunctionType::new(context.void(), &[], false);
+
+        // add it to our module
+        let function = module.add_function("test", function_type);
+
+        let bb = function.append_basic_block_in_context(&context, "entry");
+
+        builder.position(Position::AtEnd(bb));
+
+        let inst = builder.emit(ret!());
 
         assert!(!inst.as_raw().is_null());
-        assert_eq!(inst.to_string(), "  ret void");
+        assert_eq!(inst.to_string().trim(), "ret void");
+    }
+
+    #[test]
+    fn ret() {
+        let context = Context::new();
+        let module = Module::with_name_in_context("ret", &context);
+        let builder = IRBuilder::within_context(&context);
+
+        let i64t = context.int64();
+        let function_type = FunctionType::new(i64t, &[], false);
+
+        // add it to our module
+        let function = module.add_function("test", function_type);
+
+        let bb = function.append_basic_block_in_context(&context, "entry");
+
+        builder.position(Position::AtEnd(bb));
+
+        let inst = builder.emit(ret!(i64t.uint(123)));
+
+        assert!(!inst.as_raw().is_null());
+        assert_eq!(inst.to_string().trim(), "ret i64 123");
+    }
+
+    #[test]
+    fn aggregate_ret() {
+        let context = Context::new();
+        let module = Module::with_name_in_context("aggregate_ret", &context);
+        let builder = IRBuilder::within_context(&context);
+
+        let i64t = context.int64();
+        let f64t = context.double();
+        let ret = context.structure(&[i64t, f64t], false);
+        let function_type = FunctionType::new(ret.into(), &[], false);
+
+        // add it to our module
+        let function = module.add_function("test", function_type);
+
+        let bb = function.append_basic_block_in_context(&context, "entry");
+
+        builder.position(Position::AtEnd(bb));
+
+        let inst = builder.emit(ret!(i64t.uint(123), f64t.real(456f64)));
+
+        assert!(!inst.as_raw().is_null());
+        assert_eq!(
+            inst.to_string().trim(),
+            "ret { i64, double } { i64 123, double 4.560000e+02 }"
+        );
     }
 }
