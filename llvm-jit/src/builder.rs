@@ -27,7 +27,7 @@ pub trait InstructionBuilder {
 }
 
 /// Create a 'ret void' instruction.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RetVoid;
 
 impl InstructionBuilder for RetVoid {
@@ -37,7 +37,7 @@ impl InstructionBuilder for RetVoid {
 }
 
 /// Create a 'ret <val>' instruction.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Ret(ValueRef);
 
 impl Ret {
@@ -56,7 +56,7 @@ impl InstructionBuilder for Ret {
 /// with one Value from the retVals array each, that build a aggregate
 /// return value one value at a time, and a ret instruction to return
 /// the resulting aggregate value.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AggregateRet(Vec<ValueRef>);
 
 impl AggregateRet {
@@ -92,7 +92,7 @@ macro_rules! ret {
 }
 
 /// Create an unconditional 'br label X' instruction.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Br(BasicBlock);
 
 impl Br {
@@ -108,7 +108,7 @@ impl InstructionBuilder for Br {
 }
 
 /// Create a conditional 'br Cond, TrueDest, FalseDest' instruction.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CondBr {
     cond: ValueRef,
     _then: Option<BasicBlock>,
@@ -171,7 +171,7 @@ macro_rules! br {
 
 /// Create a switch instruction with the specified value, default dest,
 /// and with a hint for the number of cases that will be added (for efficient allocation).
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Switch {
     v: ValueRef,
     dest: Option<BasicBlock>,
@@ -217,7 +217,7 @@ impl InstructionBuilder for Switch {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Unreachable;
 
 impl InstructionBuilder for Unreachable {
@@ -263,7 +263,7 @@ impl<'a> InstructionBuilder for BinOp<'a> {
 
 macro_rules! define_unary_instruction {
     ($operator:ident, $func:path) => (
-        #[derive(Debug)]
+        #[derive(Clone, Debug, PartialEq)]
         pub struct $operator<'a> {
             value: ValueRef,
             name: Cow<'a, str>,
@@ -303,7 +303,7 @@ macro_rules! define_unary_instruction {
 
 macro_rules! define_binary_operator {
     ($operator:ident, $func:path) => (
-        #[derive(Debug)]
+        #[derive(Clone, Debug, PartialEq)]
         pub struct $operator<'a> {
             lhs: ValueRef,
             rhs: ValueRef,
@@ -531,6 +531,13 @@ mod tests {
         let bb_else = function.append_basic_block_in_context("else", &context);
         let bool_t = context.int1();
         let inst = br!(bool_t.uint(1) => bb_then, _ => bb_else);
+
+        assert_eq!(
+            builder.emit(inst).to_string().trim(),
+            "br i1 true, label %then, label %else"
+        );
+
+        let inst = CondBr::on(bool_t.uint(1))._then(bb_then)._else(bb_else);
 
         assert_eq!(
             builder.emit(inst).to_string().trim(),
