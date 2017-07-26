@@ -7,6 +7,7 @@ use llvm::prelude::*;
 
 use block::BasicBlock;
 use context::Context;
+use types::TypeRef;
 use utils::unchecked_cstring;
 use value::{Function, Instruction, ValueRef};
 
@@ -304,41 +305,6 @@ impl InstructionBuilder for Unreachable {
     }
 }
 
-/*
-#[derive(Debug)]
-pub struct BinOp<'a> {
-    op: LLVMOpcode,
-    lhs: ValueRef,
-    rhs: ValueRef,
-    name: Cow<'a, str>,
-}
-
-impl<'a> BinOp<'a> {
-    pub fn new(op: LLVMOpcode, lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
-        BinOp {
-            op: op,
-            lhs: lhs,
-            rhs: rhs,
-            name: name,
-        }
-    }
-}
-
-impl<'a> InstructionBuilder for BinOp<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
-            LLVMBuildBinOp(
-                builder.as_raw(),
-                self.op,
-                self.lhs.as_raw(),
-                self.rhs.as_raw(),
-                unchecked_cstring(self.name).as_ptr(),
-            )
-        })
-    }
-}
-*/
-
 macro_rules! define_unary_instruction {
     ($operator:ident, $func:path) => (
         #[derive(Clone, Debug, PartialEq)]
@@ -424,6 +390,51 @@ macro_rules! define_binary_operator {
     )
 }
 
+macro_rules! define_cast_instruction {
+    ($operator:ident, $func:path) => (
+        #[derive(Clone, Debug, PartialEq)]
+        pub struct $operator<'a> {
+            value: ValueRef,
+            dest_ty: TypeRef,
+            name: Cow<'a, str>,
+        }
+
+        impl<'a> $operator<'a> {
+            pub fn new(value: ValueRef, dest_ty: TypeRef, name: Cow<'a, str>) -> Self {
+                $operator {
+                    value: value,
+                    dest_ty: dest_ty,
+                    name: name,
+                }
+            }
+        }
+
+        impl<'a> $crate::builder::InstructionBuilder for $operator<'a> {
+            fn build(&self, builder: &IRBuilder) -> Instruction {
+                Instruction::from_raw(unsafe {
+                    $func(
+                        builder.as_raw(),
+                        self.value.as_raw(),
+                        self.dest_ty.as_raw(),
+                        unchecked_cstring(self.name.clone()).as_ptr(),
+                    )
+                })
+            }
+        }
+    );
+
+    ($operator:ident, $func:path, $alias:ident) => (
+        define_cast_instruction!($operator, $func);
+
+        #[macro_export]
+        macro_rules! $alias {
+            ($value:expr, $dest_ty:expr, $name:expr) => {
+                $crate::ops::$operator::new($value.into(), $dest_ty.into(), $name.into())
+            }
+        }
+    )
+}
+
 define_binary_operator!(Add, LLVMBuildAdd, add);
 define_binary_operator!(NSWAdd, LLVMBuildNSWAdd);
 define_binary_operator!(NUWAdd, LLVMBuildNUWAdd);
@@ -456,6 +467,26 @@ define_unary_instruction!(NSWNeg, LLVMBuildNSWNeg);
 define_unary_instruction!(NUWNeg, LLVMBuildNUWNeg);
 define_unary_instruction!(FNeg, LLVMBuildFNeg, fneg);
 define_unary_instruction!(Not, LLVMBuildNot, not);
+
+define_cast_instruction!(Trunc, LLVMBuildTrunc, trunc_to);
+define_cast_instruction!(ZExt, LLVMBuildZExt, zext_to);
+define_cast_instruction!(SExt, LLVMBuildSExt, sext_to);
+define_cast_instruction!(FPToUI, LLVMBuildFPToUI, fp_to_ui);
+define_cast_instruction!(FPToSI, LLVMBuildFPToSI, fp_to_si);
+define_cast_instruction!(UIToFP, LLVMBuildUIToFP, ui_to_fp);
+define_cast_instruction!(SIToFP, LLVMBuildSIToFP, si_to_fp);
+define_cast_instruction!(FPTrunc, LLVMBuildFPTrunc, fp_trunc);
+define_cast_instruction!(FPExt, LLVMBuildFPExt, fp_ext);
+define_cast_instruction!(PtrToInt, LLVMBuildPtrToInt, ptr_to_int);
+define_cast_instruction!(IntToPtr, LLVMBuildIntToPtr, int_to_ptr);
+define_cast_instruction!(BitCast, LLVMBuildBitCast, bit_cast);
+define_cast_instruction!(AddrSpaceCast, LLVMBuildAddrSpaceCast, addr_space_cast);
+define_cast_instruction!(ZExtOrBitCast, LLVMBuildZExtOrBitCast, zext_or_bit_cast);
+define_cast_instruction!(SExtOrBitCast, LLVMBuildSExtOrBitCast, sext_or_bit_cast);
+define_cast_instruction!(TruncOrBitCast, LLVMBuildTruncOrBitCast, trunc_or_bit_cast);
+define_cast_instruction!(PointerCast, LLVMBuildPointerCast, ptr_cast);
+define_cast_instruction!(IntCast, LLVMBuildIntCast, int_cast);
+define_cast_instruction!(FPCast, LLVMBuildFPCast, fp_cast);
 
 impl IRBuilder {
     /// Create a new IR builder in the global context.
