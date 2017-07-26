@@ -30,10 +30,6 @@ pub trait InstructionBuilder {
 #[derive(Debug)]
 pub struct RetVoid;
 
-pub fn ret_void() -> RetVoid {
-    RetVoid
-}
-
 impl InstructionBuilder for RetVoid {
     fn build(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe { LLVMBuildRetVoid(builder.as_raw()) })
@@ -43,10 +39,6 @@ impl InstructionBuilder for RetVoid {
 /// Create a 'ret <val>' instruction.
 #[derive(Debug)]
 pub struct Ret(ValueRef);
-
-pub fn ret(ret: ValueRef) -> Ret {
-    Ret(ret)
-}
 
 impl Ret {
     pub fn new(ret: ValueRef) -> Self {
@@ -103,10 +95,6 @@ macro_rules! ret {
 #[derive(Debug)]
 pub struct Br(BasicBlock);
 
-pub fn br(dest: BasicBlock) -> Br {
-    Br(dest)
-}
-
 impl Br {
     pub fn new(dest: BasicBlock) -> Self {
         Br(dest)
@@ -127,16 +115,16 @@ pub struct CondBr {
     _else: Option<BasicBlock>,
 }
 
-pub fn cond_br(cond: ValueRef, _then: Option<BasicBlock>, _else: Option<BasicBlock>) -> CondBr {
-    CondBr {
-        cond: cond,
-        _then: _then,
-        _else: _else,
-    }
-}
-
 impl CondBr {
-    pub fn new(cond: ValueRef) -> Self {
+    pub fn new(cond: ValueRef, _then: Option<BasicBlock>, _else: Option<BasicBlock>) -> CondBr {
+        CondBr {
+            cond: cond,
+            _then: _then,
+            _else: _else,
+        }
+    }
+
+    pub fn on(cond: ValueRef) -> Self {
         CondBr {
             cond: cond,
             _then: None,
@@ -166,6 +154,19 @@ impl InstructionBuilder for CondBr {
             )
         })
     }
+}
+
+#[macro_export]
+macro_rules! br {
+    ($dest:expr) => (
+        $crate::ops::Br::new($dest.into())
+    );
+    ($cond:expr => $then:expr) => (
+        br!($cond => $then, else => None)
+    );
+    ($cond:expr => $then:expr, _ => $else:expr) => (
+        $crate::ops::CondBr::new($cond.into(), $then.into(), $else.into())
+    );
 }
 
 /// Create a switch instruction with the specified value, default dest,
@@ -455,12 +456,9 @@ mod tests {
         let builder = IRBuilder::within_context(&context);
 
         let function_type = FunctionType::new(context.void(), &[], false);
-
-        // add it to our module
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
-
         builder.position(Position::AtEnd(bb));
 
         let inst = builder.emit(ret!());
@@ -477,12 +475,9 @@ mod tests {
 
         let i64t = context.int64();
         let function_type = FunctionType::new(i64t, &[], false);
-
-        // add it to our module
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
-
         builder.position(Position::AtEnd(bb));
 
         let inst = builder.emit(ret!(i64t.uint(123)));
@@ -501,12 +496,9 @@ mod tests {
         let f64t = context.double();
         let ret = context.structure(&[i64t, f64t], false);
         let function_type = FunctionType::new(ret.into(), &[], false);
-
-        // add it to our module
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
-
         builder.position(Position::AtEnd(bb));
 
         let inst = builder.emit(ret!(i64t.uint(123), f64t.real(456f64)));
@@ -515,6 +507,34 @@ mod tests {
         assert_eq!(
             inst.to_string().trim(),
             "ret { i64, double } { i64 123, double 4.560000e+02 }"
+        );
+    }
+
+    #[test]
+    fn br() {
+        let context = Context::new();
+        let module = Module::with_name_in_context("br", &context);
+        let builder = IRBuilder::within_context(&context);
+
+        let function_type = FunctionType::new(context.void(), &[], false);
+        let function = module.add_function("test", function_type);
+
+        let bb = function.append_basic_block_in_context("entry", &context);
+        builder.position(Position::AtEnd(bb));
+
+        let next = function.append_basic_block_in_context("next", &context);
+        let inst = br!(next);
+
+        assert_eq!(builder.emit(inst).to_string().trim(), "br label %next");
+
+        let bb_then = function.append_basic_block_in_context("then", &context);
+        let bb_else = function.append_basic_block_in_context("else", &context);
+        let bool_t = context.int1();
+        let inst = br!(bool_t.uint(1) => bb_then, _ => bb_else);
+
+        assert_eq!(
+            builder.emit(inst).to_string().trim(),
+            "br i1 true, label %then, label %else"
         );
     }
 }
