@@ -182,7 +182,7 @@ impl ConstantInt {
 
 pub trait ConstantInts {
     /// Obtain a constant value for an integer type.
-    fn int(&self, n: u64, sign: bool) -> ConstantInt;
+    fn int_value(&self, n: u64, sign: bool) -> ConstantInt;
 
     /// Obtain a constant value for an integer of arbitrary precision.
     fn int_with_precision(&self, words: &[u64]) -> ConstantInt;
@@ -192,12 +192,17 @@ pub trait ConstantInts {
 
     /// Obtain a constant value for an unsigned integer type.
     fn uint(&self, n: u64) -> ConstantInt {
-        self.int(n, false)
+        self.int_value(n, false)
+    }
+
+    /// Obtain a constant value for an signed integer type.
+    fn int(&self, n: i64) -> ConstantInt {
+        self.int_value(unsafe { mem::transmute(n) }, true)
     }
 }
 
 impl ConstantInts for TypeRef {
-    fn int(&self, n: u64, sign: bool) -> ConstantInt {
+    fn int_value(&self, n: u64, sign: bool) -> ConstantInt {
         ConstantInt::from_raw(unsafe {
             LLVMConstInt(self.as_raw(), n, if sign { 1 } else { 0 })
         })
@@ -598,7 +603,7 @@ mod tests {
     #[test]
     fn int() {
         let i32t = IntegerType::int32();
-        let v = i32t.int(unsafe { mem::transmute(-123i64) }, true);
+        let v = i32t.int(-123);
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.type_of(), i32t);
@@ -678,7 +683,7 @@ mod tests {
     #[test]
     fn structure() {
         let c = Context::new();
-        let v = ConstantStruct::structure(&[c.int64().int(123, false), c.str("hello")], true);
+        let v = ConstantStruct::structure(&[c.int64().int(123), c.str("hello")], true);
 
         assert!(!v.as_raw().is_null());
         assert_eq!(
@@ -699,7 +704,7 @@ mod tests {
     fn array() {
         let c = Context::new();
         let i64t = c.int64();
-        let v = i64t.array(&[i64t.int(123, false), i64t.int(456, false)]);
+        let v = i64t.array(&[i64t.int(123), i64t.int(456)]);
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"[2 x i64] [i64 123, i64 456]"#);
@@ -717,7 +722,7 @@ mod tests {
     fn vector() {
         let c = Context::new();
         let i64t = c.int64();
-        let v = ConstantVector::vector(&[i64t.int(123, false), i64t.int(456, false)]);
+        let v = ConstantVector::vector(&[i64t.int(123), i64t.int(456)]);
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"<2 x i64> <i64 123, i64 456>"#);
@@ -730,7 +735,7 @@ mod tests {
         assert!(!v.is_undef());
         assert!(!v.is_null());
 
-        assert_eq!(v.element(0), Some(i64t.int(123, false)));
-        assert_eq!(v.element(1), Some(i64t.int(456, false)));
+        assert_eq!(v.element(0), Some(i64t.int(123)));
+        assert_eq!(v.element(1), Some(i64t.int(456)));
     }
 }
