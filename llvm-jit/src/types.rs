@@ -20,6 +20,24 @@ impl From<LLVMTypeRef> for TypeRef {
     }
 }
 
+macro_rules! inherit_type_ref {
+    ($ty:ident) => {
+        impl Deref for $ty {
+            type Target = TypeRef;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl From<$ty> for TypeRef {
+            fn from(f: $ty) -> Self {
+                f.0
+            }
+        }
+    }
+}
+
 pub type TypeKind = LLVMTypeKind;
 
 pub trait AsTypeRef {
@@ -300,13 +318,7 @@ impl OtherTypes for Context {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FunctionType(TypeRef);
 
-impl Deref for FunctionType {
-    type Target = TypeRef;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+inherit_type_ref!(FunctionType);
 
 impl FunctionType {
     /// Obtain a function type consisting of a specified signature.
@@ -370,13 +382,7 @@ impl FunctionType {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StructType(TypeRef);
 
-impl Deref for StructType {
-    type Target = TypeRef;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+inherit_type_ref!(StructType);
 
 impl StructType {
     /// Create a new structure type in the global context.
@@ -515,13 +521,7 @@ impl SeqType for VectorType {}
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ArrayType(TypeRef);
 
-impl Deref for ArrayType {
-    type Target = TypeRef;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+inherit_type_ref!(ArrayType);
 
 impl ArrayType {
     /// Create a fixed size array type that refers to a specific type.
@@ -546,13 +546,7 @@ impl ArrayType {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PointerType(TypeRef);
 
-impl Deref for PointerType {
-    type Target = TypeRef;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+inherit_type_ref!(PointerType);
 
 impl PointerType {
     /// Create a pointer type that points to a defined type.
@@ -577,13 +571,7 @@ impl PointerType {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct VectorType(TypeRef);
 
-impl Deref for VectorType {
-    type Target = TypeRef;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+inherit_type_ref!(VectorType);
 
 impl VectorType {
     /// Create a vector type that contains a defined type and has a specific number of elements.

@@ -23,6 +23,24 @@ impl From<LLVMValueRef> for ValueRef {
     }
 }
 
+macro_rules! inherit_value_ref {
+    ($ty:ident) => {
+        impl Deref for $ty {
+            type Target = ValueRef;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl From<$ty> for ValueRef {
+            fn from(f: $ty) -> Self {
+                f.0
+            }
+        }
+    }
+}
+
 pub trait AsValueRef {
     /// Extracts the raw typedef reference.
     fn as_raw(&self) -> LLVMValueRef;
@@ -378,19 +396,7 @@ impl ConstantVector {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Function(ValueRef);
 
-impl Deref for Function {
-    type Target = ValueRef;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl From<Function> for ValueRef {
-    fn from(f: Function) -> Self {
-        f.0
-    }
-}
+inherit_value_ref!(Function);
 
 impl Function {
     pub fn from_raw(v: LLVMValueRef) -> Self {
@@ -421,8 +427,27 @@ impl Function {
             .map(|entry| BasicBlock::from_raw(entry))
     }
 
+    /// Append a basic block to the end of a function using the global context.
+    pub fn append_basic_block<S: AsRef<str>>(&self, name: S) -> BasicBlock {
+        let cname = unchecked_cstring(name);
+        let block = unsafe { LLVMAppendBasicBlock(self.as_raw(), cname.as_ptr()) };
+
+        trace!(
+            "{:?} create `{}` BasicBlock({:?}) in the global context",
+            self,
+            cname.to_string_lossy(),
+            block
+        );
+
+        BasicBlock::from_raw(block)
+    }
+
     /// Append a basic block to the end of a function.
-    pub fn append_basic_block<S: AsRef<str>>(&self, context: &Context, name: S) -> BasicBlock {
+    pub fn append_basic_block_in_context<S: AsRef<str>>(
+        &self,
+        context: &Context,
+        name: S,
+    ) -> BasicBlock {
         let cname = unchecked_cstring(name);
         let block = unsafe {
             LLVMAppendBasicBlockInContext(context.as_raw(), self.as_raw(), cname.as_ptr())
@@ -490,19 +515,7 @@ impl_iter!(
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Instruction(ValueRef);
 
-impl Deref for Instruction {
-    type Target = ValueRef;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl From<Instruction> for ValueRef {
-    fn from(i: Instruction) -> Self {
-        i.0
-    }
-}
+inherit_value_ref!(Instruction);
 
 impl Instruction {
     pub fn from_raw(v: LLVMValueRef) -> Self {
