@@ -162,10 +162,10 @@ macro_rules! br {
         $crate::ops::Br::new($dest.into())
     );
     ($cond:expr => $then:expr) => (
-        br!($cond => $then, else => None)
+        $crate::ops::CondBr::on($cond.into())._then($then.into())
     );
     ($cond:expr => $then:expr, _ => $else:expr) => (
-        $crate::ops::CondBr::new($cond.into(), $then.into(), $else.into())
+        $crate::ops::CondBr::on($cond.into())._then($then.into())._else($else.into())
     );
 }
 
@@ -215,6 +215,16 @@ impl InstructionBuilder for Switch {
 
         switch
     }
+}
+
+#[macro_export]
+macro_rules! switch {
+    ($cond:expr; _ => $default:expr , $( $on:expr => $dest:expr ),*) => ({
+        $crate::ops::Switch::on($cond).default($default) $( .case($on, $dest) )*
+    });
+    ($cond:expr; $( $on:expr => $dest:expr ),*) => ({
+        $crate::ops::Switch::on($cond) $( .case($on, $dest) )*
+    });
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -542,6 +552,38 @@ mod tests {
         assert_eq!(
             builder.emit(inst).to_string().trim(),
             "br i1 true, label %then, label %else"
+        );
+    }
+
+    #[test]
+    fn switch() {
+        let context = Context::new();
+        let module = Module::with_name_in_context("br", &context);
+        let builder = IRBuilder::within_context(&context);
+
+        let function_type = FunctionType::new(context.void(), &[], false);
+        let function = module.add_function("test", function_type);
+
+        let bb = function.append_basic_block_in_context("entry", &context);
+        builder.position(Position::AtEnd(bb));
+
+        let i64t = context.int64();
+
+        let inst =
+            switch!(i64t.uint(3);
+                _ => function.append_basic_block_in_context("default", &context),
+                i64t.uint(1) => function.append_basic_block_in_context("one", &context),
+                i64t.uint(2) => function.append_basic_block_in_context("two", &context),
+                i64t.uint(3) => function.append_basic_block_in_context("three", &context)
+            );
+
+        assert_eq!(
+            builder.emit(inst).to_string().trim(),
+            r#"switch i64 3, label %default [
+    i64 1, label %one
+    i64 2, label %two
+    i64 3, label %three
+  ]"#
         );
     }
 }
