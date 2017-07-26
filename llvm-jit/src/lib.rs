@@ -26,7 +26,7 @@ mod value;
 mod engine;
 mod target;
 
-pub use builder::{IRBuilder, Inst, Position};
+pub use builder::{IRBuilder, InstructionBuilder, Position};
 pub use context::Context;
 pub use engine::{ExecutionEngine, Interpreter, MCJIT};
 pub use module::{GlobalVar, Module, ThreadLocalMode};
@@ -41,4 +41,11 @@ pub mod prelude {
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, StructTypes};
     pub use value::{ConstantArrays, ConstantFPs, ConstantInts, ConstantStrings, ConstantStructs,
                     Constants};
+}
+
+pub mod ops {
+    pub use builder::{AShr, Add, AggregateRet, And, Br, CondBr, ExactSDiv, ExactUDiv, FAdd, FDiv,
+                      FMul, FRem, FSub, LShr, Mul, NSWAdd, NSWMul, NSWSub, NUWAdd, NUWMul, NUWSub,
+                      Or, Ret, RetVoid, SDiv, SRem, Shl, Sub, Switch, UDiv, URem, Unreachable,
+                      Xor, br, cond_br, ret, ret_void};
 }

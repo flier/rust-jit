@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
+use std::ptr;
 
 use llvm::core::*;
 use llvm::prelude::*;
@@ -20,59 +21,320 @@ pub enum Position {
     AtEnd(BasicBlock),
 }
 
-pub enum Inst<'a> {
-    Add(ValueRef, ValueRef, Cow<'a, str>),
-    Sub(ValueRef, ValueRef, Cow<'a, str>),
-    Mul(ValueRef, ValueRef, Cow<'a, str>),
-    UDiv(ValueRef, ValueRef, Cow<'a, str>),
-    SDiv(ValueRef, ValueRef, Cow<'a, str>),
-    ReturnVoid,
-    Return(ValueRef),
+pub trait InstructionBuilder {
+    fn build(&self, builder: &IRBuilder) -> ValueRef;
+}
+
+/// Create a 'ret void' instruction.
+#[derive(Debug)]
+pub struct RetVoid;
+
+pub fn ret_void() -> RetVoid {
+    RetVoid
+}
+
+impl InstructionBuilder for RetVoid {
+    fn build(&self, builder: &IRBuilder) -> ValueRef {
+        ValueRef::from_raw(unsafe { LLVMBuildRetVoid(builder.as_raw()) })
+    }
+}
+
+/// Create a 'ret <val>' instruction.
+#[derive(Debug)]
+pub struct Ret(ValueRef);
+
+pub fn ret(ret: ValueRef) -> Ret {
+    Ret(ret)
+}
+
+impl Ret {
+    pub fn new(ret: ValueRef) -> Self {
+        Ret(ret)
+    }
+}
+
+impl InstructionBuilder for Ret {
+    fn build(&self, builder: &IRBuilder) -> ValueRef {
+        ValueRef::from_raw(unsafe { LLVMBuildRet(builder.as_raw(), self.0.as_raw()) })
+    }
+}
+
+/// Create a sequence of N insertvalue instructions,
+/// with one Value from the retVals array each, that build a aggregate
+/// return value one value at a time, and a ret instruction to return
+/// the resulting aggregate value.
+#[derive(Debug)]
+pub struct AggregateRet(Vec<ValueRef>);
+
+impl InstructionBuilder for AggregateRet {
+    fn build(&self, builder: &IRBuilder) -> ValueRef {
+        let mut values = self.0
+            .iter()
+            .map(|v| v.as_raw())
+            .collect::<Vec<LLVMValueRef>>();
+
+        ValueRef::from_raw(unsafe {
+            LLVMBuildAggregateRet(builder.as_raw(), values.as_mut_ptr(), values.len() as u32)
+        })
+    }
+}
+
+/// Create an unconditional 'br label X' instruction.
+#[derive(Debug)]
+pub struct Br(BasicBlock);
+
+pub fn br(dest: BasicBlock) -> Br {
+    Br(dest)
+}
+
+impl Br {
+    pub fn new(dest: BasicBlock) -> Self {
+        Br(dest)
+    }
+}
+
+impl InstructionBuilder for Br {
+    fn build(&self, builder: &IRBuilder) -> ValueRef {
+        ValueRef::from_raw(unsafe { LLVMBuildBr(builder.as_raw(), self.0.as_raw()) })
+    }
+}
+
+/// Create a conditional 'br Cond, TrueDest, FalseDest' instruction.
+#[derive(Debug)]
+pub struct CondBr {
+    cond: ValueRef,
+    _then: Option<BasicBlock>,
+    _else: Option<BasicBlock>,
+}
+
+pub fn cond_br(cond: ValueRef, _then: Option<BasicBlock>, _else: Option<BasicBlock>) -> CondBr {
+    CondBr {
+        cond: cond,
+        _then: _then,
+        _else: _else,
+    }
+}
+
+impl CondBr {
+    pub fn new(cond: ValueRef) -> Self {
+        CondBr {
+            cond: cond,
+            _then: None,
+            _else: None,
+        }
+    }
+
+    pub fn _then(mut self, dest: BasicBlock) -> Self {
+        self._then = Some(dest);
+        self
+    }
+
+    pub fn _else(mut self, dest: BasicBlock) -> Self {
+        self._else = Some(dest);
+        self
+    }
+}
+
+impl InstructionBuilder for CondBr {
+    fn build(&self, builder: &IRBuilder) -> ValueRef {
+        ValueRef::from_raw(unsafe {
+            LLVMBuildCondBr(
+                builder.as_raw(),
+                self.cond.as_raw(),
+                self._then.map_or(ptr::null_mut(), |bb| bb.as_raw()),
+                self._else.map_or(ptr::null_mut(), |bb| bb.as_raw()),
+            )
+        })
+    }
+}
+
+/// Create a switch instruction with the specified value, default dest,
+/// and with a hint for the number of cases that will be added (for efficient allocation).
+#[derive(Debug)]
+pub struct Switch {
+    v: ValueRef,
+    dest: Option<BasicBlock>,
+    cases: Vec<(ValueRef, BasicBlock)>,
+}
+
+impl Switch {
+    pub fn on(v: ValueRef) -> Self {
+        Switch {
+            v: v,
+            dest: None,
+            cases: vec![],
+        }
+    }
+
+    pub fn case(mut self, on: ValueRef, dest: BasicBlock) -> Self {
+        self.cases.push((on, dest));
+        self
+    }
+
+    pub fn default(mut self, dest: BasicBlock) -> Self {
+        self.dest = Some(dest);
+        self
+    }
+}
+
+impl InstructionBuilder for Switch {
+    fn build(&self, builder: &IRBuilder) -> ValueRef {
+        let switch = ValueRef::from_raw(unsafe {
+            LLVMBuildSwitch(
+                builder.as_raw(),
+                self.v.as_raw(),
+                self.dest.map_or(ptr::null_mut(), |bb| bb.as_raw()),
+                self.cases.len() as u32,
+            )
+        });
+
+        for &(on, dest) in &self.cases {
+            unsafe { LLVMAddCase(switch.as_raw(), on.as_raw(), dest.as_raw()) }
+        }
+
+        switch
+    }
+}
+
+#[derive(Debug)]
+pub struct Unreachable;
+
+impl InstructionBuilder for Unreachable {
+    fn build(&self, builder: &IRBuilder) -> ValueRef {
+        ValueRef::from_raw(unsafe { LLVMBuildUnreachable(builder.as_raw()) })
+    }
+}
+
+/*
+#[derive(Debug)]
+pub struct BinOp<'a> {
+    op: LLVMOpcode,
+    lhs: ValueRef,
+    rhs: ValueRef,
+    name: Cow<'a, str>,
+}
+
+impl<'a> BinOp<'a> {
+    pub fn new(op: LLVMOpcode, lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+        BinOp {
+            op: op,
+            lhs: lhs,
+            rhs: rhs,
+            name: name,
+        }
+    }
+}
+
+impl<'a> InstructionBuilder for BinOp<'a> {
+    fn build(&self, builder: &IRBuilder) -> ValueRef {
+        ValueRef::from_raw(unsafe {
+            LLVMBuildBinOp(
+                builder.as_raw(),
+                self.op,
+                self.lhs.as_raw(),
+                self.rhs.as_raw(),
+                unchecked_cstring(self.name).as_ptr(),
+            )
+        })
+    }
+}
+*/
+
+macro_rules! define_binary_operator {
+    ($name:ident, $func:path) => (
+        #[derive(Debug)]
+        pub struct $name<'a> {
+            lhs: ValueRef,
+            rhs: ValueRef,
+            name: Cow<'a, str>,
+        }
+
+        impl<'a> $name<'a> {
+            pub fn new(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+                $name {
+                    lhs: lhs,
+                    rhs: rhs,
+                    name: name,
+                }
+            }
+        }
+
+        impl<'a> $crate::builder::InstructionBuilder for $name<'a> {
+            fn build(&self, builder: &IRBuilder) -> ValueRef {
+                ValueRef::from_raw(unsafe {
+                    $func(
+                        builder.as_raw(),
+                        self.lhs.as_raw(),
+                        self.rhs.as_raw(),
+                        unchecked_cstring(self.name.clone()).as_ptr(),
+                    )
+                })
+            }
+        }
+
+        #[macro_export]
+        macro_rules! $name {
+            ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::$name::new($lhs, $rhs, $name.into()) }
+        }
+    )
+}
+
+define_binary_operator!(Add, LLVMBuildAdd);
+define_binary_operator!(NSWAdd, LLVMBuildNSWAdd);
+define_binary_operator!(NUWAdd, LLVMBuildNUWAdd);
+define_binary_operator!(FAdd, LLVMBuildFAdd);
+define_binary_operator!(Sub, LLVMBuildSub);
+define_binary_operator!(NSWSub, LLVMBuildNSWSub);
+define_binary_operator!(NUWSub, LLVMBuildNUWSub);
+define_binary_operator!(FSub, LLVMBuildFSub);
+define_binary_operator!(Mul, LLVMBuildMul);
+define_binary_operator!(NSWMul, LLVMBuildNSWMul);
+define_binary_operator!(NUWMul, LLVMBuildNUWMul);
+define_binary_operator!(FMul, LLVMBuildFMul);
+define_binary_operator!(UDiv, LLVMBuildUDiv);
+define_binary_operator!(ExactUDiv, LLVMBuildExactUDiv);
+define_binary_operator!(SDiv, LLVMBuildSDiv);
+define_binary_operator!(ExactSDiv, LLVMBuildExactSDiv);
+define_binary_operator!(FDiv, LLVMBuildFDiv);
+define_binary_operator!(URem, LLVMBuildURem);
+define_binary_operator!(SRem, LLVMBuildSRem);
+define_binary_operator!(FRem, LLVMBuildFRem);
+define_binary_operator!(Shl, LLVMBuildShl);
+define_binary_operator!(LShr, LLVMBuildLShr);
+define_binary_operator!(AShr, LLVMBuildAShr);
+define_binary_operator!(And, LLVMBuildAnd);
+define_binary_operator!(Or, LLVMBuildOr);
+define_binary_operator!(Xor, LLVMBuildXor);
+
+#[macro_export]
+macro_rules! ret {
+    () => { $crate::ops::RetVoid };
+    ($result:expr) => { $crate::ops::Ret::new($result) };
 }
 
 #[macro_export]
 macro_rules! add {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Inst::Add($lhs, $rhs, $name.into()) }
+    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::Add::new($lhs, $rhs, $name.into()) }
 }
 
 #[macro_export]
 macro_rules! sub {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Inst::Sub($lhs, $rhs, $name.into()) }
+    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::Sub::new($lhs, $rhs, $name.into()) }
 }
 
 #[macro_export]
 macro_rules! mul {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Inst::Mul($lhs, $rhs, $name.into()) }
+    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::Mul::new($lhs, $rhs, $name.into()) }
 }
 
 #[macro_export]
 macro_rules! udiv {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Inst::UDiv($lhs, $rhs, $name.into()) }
+    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::UDiv::new($lhs, $rhs, $name.into()) }
 }
 
 #[macro_export]
 macro_rules! sdiv {
-    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::Inst::SDiv($lhs, $rhs, $name.into()) }
-}
-
-#[macro_export]
-macro_rules! ret {
-    () => { $crate::Inst::ReturnVoid };
-    ($result:expr) => { $crate::Inst::Return($result) };
-}
-
-impl<'a> fmt::Display for Inst<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Inst::Add(lhs, rhs, ref name) => write!(f, "{} = add {}, {}", name, lhs, rhs),
-            Inst::Sub(lhs, rhs, ref name) => write!(f, "{} = sub {}, {}", name, lhs, rhs),
-            Inst::Mul(lhs, rhs, ref name) => write!(f, "{} = mul {}, {}", name, lhs, rhs),
-            Inst::UDiv(lhs, rhs, ref name) => write!(f, "{} = udiv {}, {}", name, lhs, rhs),
-            Inst::SDiv(lhs, rhs, ref name) => write!(f, "{} = sdiv {}, {}", name, lhs, rhs),
-            Inst::ReturnVoid => write!(f, "return void"),
-            Inst::Return(ret) => write!(f, "return {}", ret),
-        }
-    }
+    ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::SDiv::new($lhs, $rhs, $name.into()) }
 }
 
 impl IRBuilder {
@@ -94,8 +356,16 @@ impl IRBuilder {
         IRBuilder(builder)
     }
 
+    pub fn as_raw(&self) -> LLVMBuilderRef {
+        self.0
+    }
+
     pub fn insert_block(&self) -> Option<BasicBlock> {
         unsafe { LLVMGetInsertBlock(self.0).as_mut() }.map(|block| BasicBlock::from_raw(block))
+    }
+
+    pub fn clear_insertion_position(&self) {
+        unsafe { LLVMClearInsertionPosition(self.0) }
     }
 
     /// This specifies that created instructions should be inserted at the specified point.
@@ -115,57 +385,10 @@ impl IRBuilder {
         &self
     }
 
-    pub fn emit(&self, inst: Inst) -> ValueRef {
-        trace!("{:?} emit: {}", self, inst);
+    pub fn emit<I: InstructionBuilder + fmt::Debug>(&self, inst: I) -> ValueRef {
+        trace!("{:?} emit: {:?}", self, inst);
 
-        let result = unsafe {
-            match inst {
-                Inst::Add(lhs, rhs, name) => {
-                    LLVMBuildAdd(
-                        self.0,
-                        lhs.as_raw(),
-                        rhs.as_raw(),
-                        unchecked_cstring(name).as_ptr(),
-                    )
-                }
-                Inst::Sub(lhs, rhs, name) => {
-                    LLVMBuildSub(
-                        self.0,
-                        lhs.as_raw(),
-                        rhs.as_raw(),
-                        unchecked_cstring(name).as_ptr(),
-                    )
-                }
-                Inst::Mul(lhs, rhs, name) => {
-                    LLVMBuildMul(
-                        self.0,
-                        lhs.as_raw(),
-                        rhs.as_raw(),
-                        unchecked_cstring(name).as_ptr(),
-                    )
-                }
-                Inst::UDiv(lhs, rhs, name) => {
-                    LLVMBuildUDiv(
-                        self.0,
-                        lhs.as_raw(),
-                        rhs.as_raw(),
-                        unchecked_cstring(name).as_ptr(),
-                    )
-                }
-                Inst::SDiv(lhs, rhs, name) => {
-                    LLVMBuildSDiv(
-                        self.0,
-                        lhs.as_raw(),
-                        rhs.as_raw(),
-                        unchecked_cstring(name).as_ptr(),
-                    )
-                }
-                Inst::ReturnVoid => LLVMBuildRetVoid(self.0),
-                Inst::Return(ret) => LLVMBuildRet(self.0, ret.as_raw()),
-            }
-        };
-
-        ValueRef::from_raw(result)
+        inst.build(self)
     }
 }
 
