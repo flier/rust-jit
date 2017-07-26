@@ -10,7 +10,8 @@ use context::Context;
 use utils::unchecked_cstring;
 use value::{Instruction, ValueRef};
 
-/// An instruction builder represents a point within a basic block and is the exclusive means of building instructions.
+/// An instruction builder represents a point within a basic block
+/// and is the exclusive means of building instructions.
 #[derive(Debug)]
 pub struct IRBuilder(LLVMBuilderRef);
 
@@ -22,7 +23,7 @@ pub enum Position {
 }
 
 pub trait InstructionBuilder {
-    fn build(&self, builder: &IRBuilder) -> ValueRef;
+    fn build(&self, builder: &IRBuilder) -> Instruction;
 }
 
 /// Create a 'ret void' instruction.
@@ -34,8 +35,8 @@ pub fn ret_void() -> RetVoid {
 }
 
 impl InstructionBuilder for RetVoid {
-    fn build(&self, builder: &IRBuilder) -> ValueRef {
-        ValueRef::from_raw(unsafe { LLVMBuildRetVoid(builder.as_raw()) })
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe { LLVMBuildRetVoid(builder.as_raw()) })
     }
 }
 
@@ -54,15 +55,15 @@ impl Ret {
 }
 
 impl InstructionBuilder for Ret {
-    fn build(&self, builder: &IRBuilder) -> ValueRef {
-        ValueRef::from_raw(unsafe { LLVMBuildRet(builder.as_raw(), self.0.as_raw()) })
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe { LLVMBuildRet(builder.as_raw(), self.0.as_raw()) })
     }
 }
 
 #[macro_export]
 macro_rules! ret {
     () => { $crate::ops::RetVoid };
-    ($result:expr) => { $crate::ops::Ret::new($result) };
+    ($result:expr) => { $crate::ops::Ret::new($result.into()) };
 }
 
 /// Create a sequence of N insertvalue instructions,
@@ -73,13 +74,13 @@ macro_rules! ret {
 pub struct AggregateRet(Vec<ValueRef>);
 
 impl InstructionBuilder for AggregateRet {
-    fn build(&self, builder: &IRBuilder) -> ValueRef {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
         let mut values = self.0
             .iter()
             .map(|v| v.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        ValueRef::from_raw(unsafe {
+        Instruction::from_raw(unsafe {
             LLVMBuildAggregateRet(builder.as_raw(), values.as_mut_ptr(), values.len() as u32)
         })
     }
@@ -100,8 +101,8 @@ impl Br {
 }
 
 impl InstructionBuilder for Br {
-    fn build(&self, builder: &IRBuilder) -> ValueRef {
-        ValueRef::from_raw(unsafe { LLVMBuildBr(builder.as_raw(), self.0.as_raw()) })
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe { LLVMBuildBr(builder.as_raw(), self.0.as_raw()) })
     }
 }
 
@@ -142,8 +143,8 @@ impl CondBr {
 }
 
 impl InstructionBuilder for CondBr {
-    fn build(&self, builder: &IRBuilder) -> ValueRef {
-        ValueRef::from_raw(unsafe {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
             LLVMBuildCondBr(
                 builder.as_raw(),
                 self.cond.as_raw(),
@@ -184,8 +185,8 @@ impl Switch {
 }
 
 impl InstructionBuilder for Switch {
-    fn build(&self, builder: &IRBuilder) -> ValueRef {
-        let switch = ValueRef::from_raw(unsafe {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        let switch = Instruction::from_raw(unsafe {
             LLVMBuildSwitch(
                 builder.as_raw(),
                 self.v.as_raw(),
@@ -206,8 +207,8 @@ impl InstructionBuilder for Switch {
 pub struct Unreachable;
 
 impl InstructionBuilder for Unreachable {
-    fn build(&self, builder: &IRBuilder) -> ValueRef {
-        ValueRef::from_raw(unsafe { LLVMBuildUnreachable(builder.as_raw()) })
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe { LLVMBuildUnreachable(builder.as_raw()) })
     }
 }
 
@@ -232,8 +233,8 @@ impl<'a> BinOp<'a> {
 }
 
 impl<'a> InstructionBuilder for BinOp<'a> {
-    fn build(&self, builder: &IRBuilder) -> ValueRef {
-        ValueRef::from_raw(unsafe {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
             LLVMBuildBinOp(
                 builder.as_raw(),
                 self.op,
@@ -245,6 +246,46 @@ impl<'a> InstructionBuilder for BinOp<'a> {
     }
 }
 */
+
+macro_rules! define_unary_instruction {
+    ($operator:ident, $func:path) => (
+        #[derive(Debug)]
+        pub struct $operator<'a> {
+            value: ValueRef,
+            name: Cow<'a, str>,
+        }
+
+        impl<'a> $operator<'a> {
+            pub fn new(value: ValueRef, name: Cow<'a, str>) -> Self {
+                $operator {
+                    value: value,
+                    name: name,
+                }
+            }
+        }
+
+        impl<'a> $crate::builder::InstructionBuilder for $operator<'a> {
+            fn build(&self, builder: &IRBuilder) -> Instruction {
+                Instruction::from_raw(unsafe {
+                    $func(
+                        builder.as_raw(),
+                        self.value.as_raw(),
+                        unchecked_cstring(self.name.clone()).as_ptr(),
+                    )
+                })
+            }
+        }
+    );
+
+    ($operator:ident, $func:path, $alias:ident) => (
+        define_unary_instruction!($operator, $func);
+
+        #[macro_export]
+        macro_rules! $alias {
+            ($value:expr, $name:expr) => { $crate::ops::$operator::new($value.into(), $name.into()) }
+        }
+    );
+}
 
 macro_rules! define_binary_operator {
     ($operator:ident, $func:path) => (
@@ -266,8 +307,8 @@ macro_rules! define_binary_operator {
         }
 
         impl<'a> $crate::builder::InstructionBuilder for $operator<'a> {
-            fn build(&self, builder: &IRBuilder) -> ValueRef {
-                ValueRef::from_raw(unsafe {
+            fn build(&self, builder: &IRBuilder) -> Instruction {
+                Instruction::from_raw(unsafe {
                     $func(
                         builder.as_raw(),
                         self.lhs.as_raw(),
@@ -284,7 +325,9 @@ macro_rules! define_binary_operator {
 
         #[macro_export]
         macro_rules! $alias {
-            ($lhs:expr, $rhs:expr, $name:expr) => { $crate::ops::$operator::new($lhs, $rhs, $name.into()) }
+            ($lhs:expr, $rhs:expr, $name:expr) => {
+                $crate::ops::$operator::new($lhs.into(), $rhs.into(), $name.into())
+            }
         }
     )
 }
@@ -315,6 +358,12 @@ define_binary_operator!(AShr, LLVMBuildAShr, ashr);
 define_binary_operator!(And, LLVMBuildAnd, and);
 define_binary_operator!(Or, LLVMBuildOr, or);
 define_binary_operator!(Xor, LLVMBuildXor, xor);
+
+define_unary_instruction!(Neg, LLVMBuildNeg, neg);
+define_unary_instruction!(NSWNeg, LLVMBuildNSWNeg);
+define_unary_instruction!(NUWNeg, LLVMBuildNUWNeg);
+define_unary_instruction!(FNeg, LLVMBuildFNeg, fneg);
+define_unary_instruction!(Not, LLVMBuildNot, not);
 
 impl IRBuilder {
     /// Create a new IR builder in the global context.
@@ -364,7 +413,7 @@ impl IRBuilder {
         &self
     }
 
-    pub fn emit<I: InstructionBuilder + fmt::Debug>(&self, inst: I) -> ValueRef {
+    pub fn emit<I: InstructionBuilder + fmt::Debug>(&self, inst: I) -> Instruction {
         trace!("{:?} emit: {:?}", self, inst);
 
         inst.build(self)
@@ -376,5 +425,20 @@ impl Drop for IRBuilder {
         trace!("drop {:?}", self);
 
         unsafe { LLVMDisposeBuilder(self.0) }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builder() {
+        let builder = IRBuilder::new();
+
+        let inst = builder.emit(ret_void());
+
+        assert!(!inst.as_raw().is_null());
+        assert_eq!(inst.to_string(), "  ret void");
     }
 }
