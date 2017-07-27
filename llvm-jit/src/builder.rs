@@ -361,6 +361,65 @@ macro_rules! invoke {
     });
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct LandingPad<'a> {
+    result_ty: TypeRef,
+    personality_fn: Function,
+    name: Cow<'a, str>,
+    clauses: Vec<ValueRef>,
+    cleanup: bool,
+}
+
+impl<'a> LandingPad<'a> {
+    pub fn new(result_ty: TypeRef, personality_fn: Function, name: Cow<'a, str>) -> Self {
+        LandingPad {
+            result_ty: result_ty,
+            personality_fn: personality_fn,
+            name: name,
+            clauses: vec![],
+            cleanup: false,
+        }
+    }
+
+    /// Add a catch or filter clause to the landingpad instruction
+    pub fn add_clause(mut self, clause: ValueRef) -> Self {
+        self.clauses.push(clause);
+        self
+    }
+
+    pub fn set_cleanup(mut self, cleanup: bool) -> Self {
+        self.cleanup = cleanup;
+        self
+    }
+}
+
+impl<'a> InstructionBuilder for LandingPad<'a> {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        let clauses = self.clauses
+            .iter()
+            .map(|clause| clause.as_raw())
+            .collect::<Vec<LLVMValueRef>>();
+
+        let landing_pad = Instruction::from_raw(unsafe {
+            LLVMBuildLandingPad(
+                builder.as_raw(),
+                self.result_ty.as_raw(),
+                self.personality_fn.as_raw(),
+                clauses.len() as u32,
+                unchecked_cstring(self.name.clone()).as_ptr(),
+            )
+        });
+
+        for clause in &self.clauses {
+            unsafe { LLVMAddClause(landing_pad.as_raw(), clause.as_raw()) }
+        }
+
+        unsafe { LLVMSetCleanup(landing_pad.as_raw(), if self.cleanup { 1 } else { 0 }) }
+
+        landing_pad
+    }
+}
+
 /// The ‘resume‘ instruction is a terminator instruction that has no successors.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Resume(ValueRef);

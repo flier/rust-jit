@@ -46,7 +46,8 @@ pub mod prelude {
 
 pub mod ops {
     /// Terminators
-    pub use builder::{AggregateRet, Br, CondBr, IndirectBr, Invoke, Resume, Ret, RetVoid, Switch};
+    pub use builder::{AggregateRet, Br, CondBr, IndirectBr, Invoke, LandingPad, Resume, Ret,
+                      RetVoid, Switch};
 
     /// Arithmetic
     pub use builder::{AShr, Add, And, ExactSDiv, ExactUDiv, FAdd, FDiv, FMul, FNeg, FRem, FSub,
