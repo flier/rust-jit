@@ -79,6 +79,7 @@ impl InstructionBuilder for AggregateRet {
     }
 }
 
+/// The ‘ret‘ instruction is used to return control flow (and optionally a value) from a function back to the caller.
 #[macro_export]
 macro_rules! ret {
     () => {
@@ -113,15 +114,15 @@ impl InstructionBuilder for Br {
 pub struct CondBr {
     cond: ValueRef,
     then: Option<BasicBlock>,
-    _else: Option<BasicBlock>,
+    or_else: Option<BasicBlock>,
 }
 
 impl CondBr {
-    pub fn new(cond: ValueRef, then: Option<BasicBlock>, _else: Option<BasicBlock>) -> CondBr {
+    pub fn new(cond: ValueRef, then: Option<BasicBlock>, or_else: Option<BasicBlock>) -> CondBr {
         CondBr {
             cond: cond,
             then: then,
-            _else: _else,
+            or_else: or_else,
         }
     }
 
@@ -129,7 +130,7 @@ impl CondBr {
         CondBr {
             cond: cond,
             then: None,
-            _else: None,
+            or_else: None,
         }
     }
 
@@ -138,8 +139,8 @@ impl CondBr {
         self
     }
 
-    pub fn _else(mut self, dest: BasicBlock) -> Self {
-        self._else = Some(dest);
+    pub fn or_else(mut self, dest: BasicBlock) -> Self {
+        self.or_else = Some(dest);
         self
     }
 }
@@ -151,12 +152,13 @@ impl InstructionBuilder for CondBr {
                 builder.as_raw(),
                 self.cond.as_raw(),
                 self.then.map_or(ptr::null_mut(), |bb| bb.as_raw()),
-                self._else.map_or(ptr::null_mut(), |bb| bb.as_raw()),
+                self.or_else.map_or(ptr::null_mut(), |bb| bb.as_raw()),
             )
         })
     }
 }
 
+/// The ‘br‘ instruction is used to cause control flow to transfer to a different basic block in the current function.
 #[macro_export]
 macro_rules! br {
     ($dest:expr) => (
@@ -165,8 +167,8 @@ macro_rules! br {
     ($cond:expr => $then:expr) => (
         $crate::ops::CondBr::on($cond.into()).then($then.into())
     );
-    ($cond:expr => $then:expr, _ => $else:expr) => (
-        $crate::ops::CondBr::on($cond.into()).then($then.into())._else($else.into())
+    ($cond:expr => $then:expr, _ => $or_else:expr) => (
+        $crate::ops::CondBr::on($cond.into()).then($then.into()).or_else($or_else.into())
     );
 }
 
@@ -218,6 +220,7 @@ impl InstructionBuilder for Switch {
     }
 }
 
+/// The ‘switch‘ instruction is used to transfer control flow to one of several different places.
 #[macro_export]
 macro_rules! switch {
     ($cond:expr; _ => $default:expr , $( $on:expr => $dest:expr ),*) => ({
@@ -288,8 +291,10 @@ impl<'a> InstructionBuilder for Invoke<'a> {
     }
 }
 
+/// The ‘invoke‘ instruction causes control to transfer to a specified function,
+/// with the possibility of control flow transfer to either the ‘normal‘ label or the ‘exception‘ label.
 #[macro_export]
-macro_rules! call {
+macro_rules! invoke {
     ($func:expr => $name:expr; to $then:expr; unwind $unwind:expr; [ $( $arg:expr ),* ]) => ({
         $crate::ops::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into()).then($then).unwind($unwind)
     });
@@ -305,9 +310,6 @@ macro_rules! call {
 }
 
 /// The ‘resume‘ instruction is a terminator instruction that has no successors.
-///
-/// The ‘resume‘ instruction resumes propagation of an existing (in-flight) exception
-/// whose unwinding was interrupted with a landingpad instruction.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Resume(ValueRef);
 
@@ -325,6 +327,7 @@ impl InstructionBuilder for Resume {
     }
 }
 
+/// The ‘resume‘ instruction is a terminator instruction that has no successors.
 #[macro_export]
 macro_rules! resume {
     ($result:expr) => ({
@@ -686,7 +689,7 @@ mod tests {
             "br i1 true, label %then, label %else"
         );
 
-        let inst = CondBr::on(bool_t.uint(1)).then(bb_then)._else(bb_else);
+        let inst = CondBr::on(bool_t.uint(1)).then(bb_then).or_else(bb_else);
 
         assert_eq!(
             builder.emit(inst).to_string().trim(),
@@ -743,7 +746,7 @@ mod tests {
         let bb_catch = fn_test.append_basic_block_in_context("catch", &context);
 
         let inst =
-            call!(fn_hello => "ret"; to bb_normal; unwind bb_catch; [i64t.uint(123), i64t.int(456)]);
+            invoke!(fn_hello => "ret"; to bb_normal; unwind bb_catch; [i64t.uint(123), i64t.int(456)]);
 
         assert_eq!(
             builder.emit(inst).to_string().trim(),
