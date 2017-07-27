@@ -331,13 +331,13 @@ impl ConstantStruct {
     }
 }
 
-pub trait ConstantStructs {
+pub trait ToConstantStruct {
     /// Create a non-anonymous ConstantStruct from values.
-    fn structure(&self, values: &[ValueRef]) -> ConstantStruct;
+    fn struct_of(&self, values: &[ValueRef]) -> ConstantStruct;
 }
 
-impl ConstantStructs for StructType {
-    fn structure(&self, values: &[ValueRef]) -> ConstantStruct {
+impl ToConstantStruct for StructType {
+    fn struct_of(&self, values: &[ValueRef]) -> ConstantStruct {
         let mut values = values
             .iter()
             .map(|v| v.as_raw())
@@ -351,32 +351,28 @@ impl ConstantStructs for StructType {
     }
 }
 
-pub type ConstantDataSequential = Constant;
-
-impl ConstantDataSequential {
+pub trait ConstantDataSequential: AsValueRef {
     /// Get an element at specified index as a constant.
-    pub fn element(&self, index: usize) -> Option<Constant> {
+    fn element(&self, index: usize) -> Option<Constant> {
         unsafe { LLVMGetElementAsConstant(self.as_raw(), index as u32).as_mut() }
             .map(|element| Constant::from_raw(element))
     }
 }
 
-pub type ConstantArray = ConstantDataSequential;
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ConstantArray(ValueRef);
 
-impl ConstantArray {
+inherit_value_ref!(ConstantArray);
+
+impl ConstantDataSequential for ConstantArray {}
+
+pub trait ToConstantArray {
     /// Create a ConstantArray from values.
-    pub fn array(element_type: TypeRef, values: &[ValueRef]) -> Self {
-        element_type.array(values)
-    }
+    fn array_of(&self, values: &[ValueRef]) -> ConstantArray;
 }
 
-pub trait ConstantArrays {
-    /// Create a ConstantArray from values.
-    fn array(&self, values: &[ValueRef]) -> ConstantArray;
-}
-
-impl ConstantArrays for TypeRef {
-    fn array(&self, values: &[ValueRef]) -> ConstantArray {
+impl ToConstantArray for TypeRef {
+    fn array_of(&self, values: &[ValueRef]) -> ConstantArray {
         let mut values = values
             .iter()
             .map(|v| v.as_raw())
@@ -388,11 +384,16 @@ impl ConstantArrays for TypeRef {
     }
 }
 
-pub type ConstantVector = ConstantDataSequential;
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ConstantVector(ValueRef);
+
+inherit_value_ref!(ConstantVector);
+
+impl ConstantDataSequential for ConstantVector {}
 
 impl ConstantVector {
     /// Create a ConstantVector from values.
-    pub fn vector(values: &[ValueRef]) -> Self {
+    pub fn new(values: &[ValueRef]) -> ConstantVector {
         let mut values = values
             .iter()
             .map(|v| v.as_raw())
@@ -402,6 +403,24 @@ impl ConstantVector {
 
         ConstantVector::from_raw(t)
     }
+}
+
+pub trait ToConstantVector {
+    /// Create a ConstantVector from values.
+    fn vector_of(&self, values: &[ValueRef]) -> ConstantVector;
+}
+
+impl ToConstantVector for TypeRef {
+    fn vector_of(&self, values: &[ValueRef]) -> ConstantVector {
+        ConstantVector::new(values)
+    }
+}
+
+#[macro_export]
+macro_rules! vector {
+    [$( $dest:expr ),*] => (
+        $crate::ConstantVector::new(&[$( $dest.into() ),*])
+    )
 }
 
 /// Functions in this group operate on LLVMValueRef instances that correspond to llvm::Function instances.
@@ -708,7 +727,7 @@ mod tests {
     fn array() {
         let c = Context::new();
         let i64t = c.int64();
-        let v = i64t.array(&[i64t.int(123), i64t.int(456)]);
+        let v = i64t.array_of(&[i64t.int(123), i64t.int(456)]);
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"[2 x i64] [i64 123, i64 456]"#);
@@ -726,7 +745,7 @@ mod tests {
     fn vector() {
         let c = Context::new();
         let i64t = c.int64();
-        let v = ConstantVector::vector(&[i64t.int(123), i64t.int(456)]);
+        let v = vector![i64t.int(123), i64t.int(456)];
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"<2 x i64> <i64 123, i64 456>"#);

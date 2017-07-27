@@ -19,10 +19,12 @@ mod utils;
 mod context;
 mod module;
 #[macro_use]
+mod types;
+#[macro_use]
+mod value;
+#[macro_use]
 mod builder;
 mod block;
-mod types;
-mod value;
 mod engine;
 mod target;
 
@@ -38,10 +40,10 @@ pub use value::{BlockAddress, Constant, ConstantArray, ConstantFP, ConstantInt, 
                 ConstantStruct, ConstantVector, Function, Instruction, ValueKind, ValueRef};
 
 pub mod prelude {
-    pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, PointerTypes,
-                    StructTypes};
-    pub use value::{ConstantArrays, ConstantFPs, ConstantInts, ConstantStrings, ConstantStructs,
-                    Constants};
+    pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType,
+                    ToPointerType, ToStructType, ToVectorType};
+    pub use value::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray,
+                    ToConstantStruct};
 }
 
 pub mod ops {
@@ -57,4 +59,7 @@ pub mod ops {
     pub use builder::{AddrSpaceCast, BitCast, FPCast, FPExt, FPToSI, FPToUI, FPTrunc, IntCast,
                       IntToPtr, PointerCast, PtrToInt, SExt, SExtOrBitCast, SIToFP, Trunc,
                       TruncOrBitCast, UIToFP, ZExt, ZExtOrBitCast};
+
+    /// Miscellaneous
+    pub use builder::{ExtractElement, ExtractValue, InsertElement, InsertValue, ShuffleVector};
 }

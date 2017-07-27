@@ -470,7 +470,7 @@ impl StructType {
     }
 }
 
-pub trait StructTypes {
+pub trait ToStructType {
     /// Create a new structure type in a context.
     fn structure(&self, elements: &[TypeRef], packed: bool) -> StructType;
 
@@ -478,7 +478,7 @@ pub trait StructTypes {
     fn named_struct<S: AsRef<str>>(&self, name: S) -> StructType;
 }
 
-impl StructTypes for Context {
+impl ToStructType for Context {
     fn structure(&self, elements: &[TypeRef], packed: bool) -> StructType {
         let mut elements = elements
             .iter()
@@ -523,18 +523,24 @@ pub struct ArrayType(TypeRef);
 inherit_type_ref!(ArrayType);
 
 impl ArrayType {
-    /// Create a fixed size array type that refers to a specific type.
-    ///
-    /// The created type will exist in the context that its element type exists in.
-    pub fn new(element_type: TypeRef, element_count: usize) -> Self {
-        ArrayType::from_raw(unsafe {
-            LLVMArrayType(element_type.as_raw(), element_count as u32)
-        })
-    }
-
     /// Obtain the length of an array type.
     pub fn len(&self) -> usize {
         unsafe { LLVMGetArrayLength(self.as_raw()) as usize }
+    }
+}
+
+pub trait ToArrayType {
+    /// Create a fixed size array type that refers to a specific type.
+    ///
+    /// The created type will exist in the context that its element type exists in.
+    fn array(&self, element_count: usize) -> ArrayType;
+}
+
+impl ToArrayType for TypeRef {
+    fn array(&self, element_count: usize) -> ArrayType {
+        ArrayType::from_raw(unsafe {
+            LLVMArrayType(self.as_raw(), element_count as u32)
+        })
     }
 }
 
@@ -544,39 +550,29 @@ pub struct PointerType(TypeRef);
 inherit_type_ref!(PointerType);
 
 impl PointerType {
-    /// Create a pointer type that points to a defined type.
-    ///
-    /// The created type will exist in the context that its pointee type exists in.
-    pub fn new(element_type: TypeRef) -> Self {
-        Self::with_address_space(element_type, 0)
-    }
-
-    /// Create a pointer type in the address space that points to a defined type.
-    ///
-    /// The created type will exist in the context that its pointee type exists in.
-    pub fn with_address_space(element_type: TypeRef, address_space: u32) -> Self {
-        PointerType::from_raw(unsafe {
-            LLVMPointerType(element_type.as_raw(), address_space)
-        })
-    }
-
     /// Obtain the address space of a pointer type.
     pub fn address_space(&self) -> u32 {
         unsafe { LLVMGetPointerAddressSpace(self.as_raw()) }
     }
 }
 
-pub trait PointerTypes {
-    fn ptr_in_address_space(&self, address_space: u32) -> PointerType;
-
+pub trait ToPointerType {
+    /// Create a pointer type that points to a defined type.
+    ///
+    /// The created type will exist in the context that its pointee type exists in.
     fn ptr(&self) -> PointerType {
         self.ptr_in_address_space(0)
     }
+
+    /// Create a pointer type in the address space that points to a defined type.
+    ///
+    /// The created type will exist in the context that its pointee type exists in.
+    fn ptr_in_address_space(&self, address_space: u32) -> PointerType;
 }
 
-impl PointerTypes for TypeRef {
+impl ToPointerType for TypeRef {
     fn ptr_in_address_space(&self, address_space: u32) -> PointerType {
-        PointerType::with_address_space(*self, address_space)
+        PointerType::from_raw(unsafe { LLVMPointerType(self.as_raw(), address_space) })
     }
 }
 
@@ -586,18 +582,24 @@ pub struct VectorType(TypeRef);
 inherit_type_ref!(VectorType);
 
 impl VectorType {
-    /// Create a vector type that contains a defined type and has a specific number of elements.
-    ///
-    /// The created type will exist in the context thats its element type exists in.
-    pub fn new(element_type: TypeRef, element_count: usize) -> Self {
-        VectorType::from_raw(unsafe {
-            LLVMVectorType(element_type.as_raw(), element_count as u32)
-        })
-    }
-
     /// Obtain the number of elements in a vector type.
     pub fn size(&self) -> usize {
         unsafe { LLVMGetVectorSize(self.as_raw()) as usize }
+    }
+}
+
+pub trait ToVectorType {
+    /// Create a vector type that contains a defined type and has a specific number of elements.
+    ///
+    /// The created type will exist in the context thats its element type exists in.
+    fn vector(&self, element_count: usize) -> VectorType;
+}
+
+impl ToVectorType for TypeRef {
+    fn vector(&self, element_count: usize) -> VectorType {
+        VectorType::from_raw(unsafe {
+            LLVMVectorType(self.as_raw(), element_count as u32)
+        })
     }
 }
 
@@ -850,7 +852,7 @@ mod tests {
         let c = Context::new();
         let i64t = c.int64();
 
-        let t = ArrayType::new(i64t, 8);
+        let t = i64t.array(8);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMArrayTypeKind));
@@ -875,7 +877,7 @@ mod tests {
         let c = Context::new();
         let i64t = c.int64();
 
-        let t = VectorType::new(i64t, 8);
+        let t = i64t.vector(8);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMVectorTypeKind));
