@@ -552,7 +552,14 @@ impl PointerType {
     /// Create a pointer type that points to a defined type.
     ///
     /// The created type will exist in the context that its pointee type exists in.
-    pub fn new(element_type: TypeRef, address_space: u32) -> Self {
+    pub fn new(element_type: TypeRef) -> Self {
+        Self::with_address_space(element_type, 0)
+    }
+
+    /// Create a pointer type in the address space that points to a defined type.
+    ///
+    /// The created type will exist in the context that its pointee type exists in.
+    pub fn with_address_space(element_type: TypeRef, address_space: u32) -> Self {
         PointerType::from_raw(unsafe {
             LLVMPointerType(element_type.as_raw(), address_space)
         })
@@ -565,6 +572,20 @@ impl PointerType {
     /// Obtain the address space of a pointer type.
     pub fn address_space(&self) -> u32 {
         unsafe { LLVMGetPointerAddressSpace(self.as_raw()) }
+    }
+}
+
+pub trait PointerTypes {
+    fn ptr_in_address_space(&self, address_space: u32) -> PointerType;
+
+    fn ptr(&self) -> PointerType {
+        self.ptr_in_address_space(0)
+    }
+}
+
+impl PointerTypes for TypeRef {
+    fn ptr_in_address_space(&self, address_space: u32) -> PointerType {
+        PointerType::with_address_space(*self, address_space)
     }
 }
 
@@ -854,8 +875,7 @@ mod tests {
     fn pointer() {
         let c = Context::new();
         let i64t = c.int64();
-
-        let t = PointerType::new(i64t, 123);
+        let t = i64t.ptr_in_address_space(123);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMPointerTypeKind));

@@ -228,6 +228,14 @@ macro_rules! switch {
     });
 }
 
+/// This instruction is designed to operate as a standard ‘call‘ instruction in most regards.
+///
+/// The primary difference is that it establishes an association with a label,
+/// which is used by the runtime library to unwind the stack.
+///
+/// This instruction is used in languages with destructors to ensure
+/// that proper cleanup is performed in the case of either a longjmp or a thrown exception.
+/// Additionally, this is important for implementation of ‘catch‘ clauses in high-level languages that support them.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Invoke<'a> {
     func: Function,
@@ -296,6 +304,38 @@ macro_rules! call {
     });
 }
 
+/// The ‘resume‘ instruction is a terminator instruction that has no successors.
+///
+/// The ‘resume‘ instruction resumes propagation of an existing (in-flight) exception
+/// whose unwinding was interrupted with a landingpad instruction.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Resume(ValueRef);
+
+impl Resume {
+    pub fn new(result: ValueRef) -> Self {
+        Resume(result)
+    }
+}
+
+impl InstructionBuilder for Resume {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildResume(builder.as_raw(), self.0.as_raw())
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! resume {
+    ($result:expr) => ({
+        $crate::ops::Resume::new($result.into())
+    })
+}
+
+/// The ‘unreachable‘ instruction has no defined semantics.
+///
+/// This instruction is used to inform the optimizer that a particular portion of the code is not reachable.
+/// This can be used to indicate that the code after a no-return function cannot be reached, and other facts.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Unreachable;
 
@@ -436,21 +476,21 @@ macro_rules! define_cast_instruction {
 }
 
 define_binary_operator!(Add, LLVMBuildAdd, add);
-define_binary_operator!(NSWAdd, LLVMBuildNSWAdd);
-define_binary_operator!(NUWAdd, LLVMBuildNUWAdd);
+define_binary_operator!(NSWAdd, LLVMBuildNSWAdd, add_nsw);
+define_binary_operator!(NUWAdd, LLVMBuildNUWAdd, add_nuw);
 define_binary_operator!(FAdd, LLVMBuildFAdd, fadd);
 define_binary_operator!(Sub, LLVMBuildSub, sub);
-define_binary_operator!(NSWSub, LLVMBuildNSWSub);
-define_binary_operator!(NUWSub, LLVMBuildNUWSub);
+define_binary_operator!(NSWSub, LLVMBuildNSWSub, sub_nsw);
+define_binary_operator!(NUWSub, LLVMBuildNUWSub, sub_nuw);
 define_binary_operator!(FSub, LLVMBuildFSub, fsub);
 define_binary_operator!(Mul, LLVMBuildMul, mul);
-define_binary_operator!(NSWMul, LLVMBuildNSWMul);
-define_binary_operator!(NUWMul, LLVMBuildNUWMul);
+define_binary_operator!(NSWMul, LLVMBuildNSWMul, mul_nsw);
+define_binary_operator!(NUWMul, LLVMBuildNUWMul, mul_nuw);
 define_binary_operator!(FMul, LLVMBuildFMul, fmul);
 define_binary_operator!(UDiv, LLVMBuildUDiv, udiv);
-define_binary_operator!(ExactUDiv, LLVMBuildExactUDiv);
+define_binary_operator!(ExactUDiv, LLVMBuildExactUDiv, udiv_exact);
 define_binary_operator!(SDiv, LLVMBuildSDiv, sdiv);
-define_binary_operator!(ExactSDiv, LLVMBuildExactSDiv);
+define_binary_operator!(ExactSDiv, LLVMBuildExactSDiv, sdiv_exact);
 define_binary_operator!(FDiv, LLVMBuildFDiv, fdiv);
 define_binary_operator!(URem, LLVMBuildURem, urem);
 define_binary_operator!(SRem, LLVMBuildSRem, srem);
@@ -463,24 +503,24 @@ define_binary_operator!(Or, LLVMBuildOr, or);
 define_binary_operator!(Xor, LLVMBuildXor, xor);
 
 define_unary_instruction!(Neg, LLVMBuildNeg, neg);
-define_unary_instruction!(NSWNeg, LLVMBuildNSWNeg);
-define_unary_instruction!(NUWNeg, LLVMBuildNUWNeg);
+define_unary_instruction!(NSWNeg, LLVMBuildNSWNeg, neg_nsw);
+define_unary_instruction!(NUWNeg, LLVMBuildNUWNeg, neg_nuw);
 define_unary_instruction!(FNeg, LLVMBuildFNeg, fneg);
 define_unary_instruction!(Not, LLVMBuildNot, not);
 
-define_cast_instruction!(Trunc, LLVMBuildTrunc, trunc_to);
-define_cast_instruction!(ZExt, LLVMBuildZExt, zext_to);
-define_cast_instruction!(SExt, LLVMBuildSExt, sext_to);
-define_cast_instruction!(FPToUI, LLVMBuildFPToUI, fp_to_ui);
-define_cast_instruction!(FPToSI, LLVMBuildFPToSI, fp_to_si);
-define_cast_instruction!(UIToFP, LLVMBuildUIToFP, ui_to_fp);
-define_cast_instruction!(SIToFP, LLVMBuildSIToFP, si_to_fp);
-define_cast_instruction!(FPTrunc, LLVMBuildFPTrunc, fp_trunc);
-define_cast_instruction!(FPExt, LLVMBuildFPExt, fp_ext);
+define_cast_instruction!(Trunc, LLVMBuildTrunc, trunc);
+define_cast_instruction!(ZExt, LLVMBuildZExt, zext);
+define_cast_instruction!(SExt, LLVMBuildSExt, sext);
+define_cast_instruction!(FPTrunc, LLVMBuildFPTrunc, fptrunc);
+define_cast_instruction!(FPExt, LLVMBuildFPExt, fpext);
+define_cast_instruction!(FPToUI, LLVMBuildFPToUI, fptoui);
+define_cast_instruction!(FPToSI, LLVMBuildFPToSI, fptosi);
+define_cast_instruction!(UIToFP, LLVMBuildUIToFP, uitofp);
+define_cast_instruction!(SIToFP, LLVMBuildSIToFP, sitofp);
 define_cast_instruction!(PtrToInt, LLVMBuildPtrToInt, ptr_to_int);
 define_cast_instruction!(IntToPtr, LLVMBuildIntToPtr, int_to_ptr);
 define_cast_instruction!(BitCast, LLVMBuildBitCast, bit_cast);
-define_cast_instruction!(AddrSpaceCast, LLVMBuildAddrSpaceCast, addr_space_cast);
+define_cast_instruction!(AddrSpaceCast, LLVMBuildAddrSpaceCast, addrspace_cast);
 define_cast_instruction!(ZExtOrBitCast, LLVMBuildZExtOrBitCast, zext_or_bit_cast);
 define_cast_instruction!(SExtOrBitCast, LLVMBuildSExtOrBitCast, sext_or_bit_cast);
 define_cast_instruction!(TruncOrBitCast, LLVMBuildTruncOrBitCast, trunc_or_bit_cast);
@@ -709,6 +749,257 @@ mod tests {
             builder.emit(inst).to_string().trim(),
             r#"%ret = invoke i64 @hello(i64 123, i64 456)
           to label %normal unwind label %catch"#
+        );
+
+        assert_eq!(
+            builder.emit(resume!(i64t.uint(123))).to_string().trim(),
+            "resume i64 123"
+        );
+        assert_eq!(builder.emit(Unreachable).to_string().trim(), "unreachable");
+    }
+
+    macro_rules! test_instruction {
+        ($builder:ident, $name:ident !( $arg0_i64:ident ), $display:expr) => (
+            assert_eq!( $builder.emit($name !( $arg0_i64, stringify!($name) ) ).to_string().trim(), $display )
+        );
+        ($builder:ident, $name:ident !( $arg0_i64:ident, $arg1_i64:ident ), $display:expr) => (
+            assert_eq!( $builder.emit($name !( $arg0_i64, $arg1_i64, stringify!($name) ) ).to_string().trim(), $display )
+        );
+    }
+
+    #[test]
+    fn instructions() {
+        let c = Context::new();
+        let m = Module::with_name_in_context("br", &c);
+        let b = IRBuilder::within_context(&c);
+
+        let i32t = c.int32();
+        let i64t = c.int64();
+        let f32t = c.float();
+        let f64t = c.double();
+
+        let p_i64t = i64t.ptr();
+        let p_f64t = f64t.ptr();
+        let p_f64t_1 = f64t.ptr_in_address_space(1);
+
+        let f_ty = FunctionType::new(
+            c.void(),
+            &[
+                i64t,
+                i64t,
+                f64t,
+                f64t,
+                i32t,
+                f32t,
+                p_i64t.into(),
+                p_f64t.into(),
+            ],
+            false,
+        );
+        let f = m.add_function("test", f_ty);
+
+        let bb = f.append_basic_block_in_context("entry", &c);
+        b.position(Position::AtEnd(bb));
+
+        let arg0_i64 = f.get_param(0).unwrap();
+        let arg1_i64 = f.get_param(1).unwrap();
+        let arg2_f64 = f.get_param(2).unwrap();
+        let arg3_f64 = f.get_param(3).unwrap();
+        let arg4_i32 = f.get_param(4).unwrap();
+        let arg5_f32 = f.get_param(5).unwrap();
+        let arg6_p_i64 = f.get_param(6).unwrap();
+        let arg7_p_f64 = f.get_param(7).unwrap();
+
+        test_instruction!(b, add!(arg0_i64, arg1_i64), "%add = add i64 %0, %1");
+        test_instruction!(
+            b,
+            add_nsw!(arg0_i64, arg1_i64),
+            "%add_nsw = add nsw i64 %0, %1"
+        );
+        test_instruction!(
+            b,
+            add_nuw!(arg0_i64, arg1_i64),
+            "%add_nuw = add nuw i64 %0, %1"
+        );
+        test_instruction!(b, fadd!(arg2_f64, arg3_f64), "%fadd = fadd double %2, %3");
+
+        test_instruction!(b, sub!(arg0_i64, arg1_i64), "%sub = sub i64 %0, %1");
+        test_instruction!(
+            b,
+            sub_nsw!(arg0_i64, arg1_i64),
+            "%sub_nsw = sub nsw i64 %0, %1"
+        );
+        test_instruction!(
+            b,
+            sub_nuw!(arg0_i64, arg1_i64),
+            "%sub_nuw = sub nuw i64 %0, %1"
+        );
+        test_instruction!(b, fsub!(arg2_f64, arg3_f64), "%fsub = fsub double %2, %3");
+
+        test_instruction!(b, mul!(arg0_i64, arg1_i64), "%mul = mul i64 %0, %1");
+        test_instruction!(
+            b,
+            mul_nsw!(arg0_i64, arg1_i64),
+            "%mul_nsw = mul nsw i64 %0, %1"
+        );
+        test_instruction!(
+            b,
+            mul_nuw!(arg0_i64, arg1_i64),
+            "%mul_nuw = mul nuw i64 %0, %1"
+        );
+        test_instruction!(b, fmul!(arg2_f64, arg3_f64), "%fmul = fmul double %2, %3");
+
+        test_instruction!(b, udiv!(arg0_i64, arg1_i64), "%udiv = udiv i64 %0, %1");
+        test_instruction!(
+            b,
+            udiv_exact!(arg0_i64, arg1_i64),
+            "%udiv_exact = udiv exact i64 %0, %1"
+        );
+        test_instruction!(b, sdiv!(arg0_i64, arg1_i64), "%sdiv = sdiv i64 %0, %1");
+        test_instruction!(
+            b,
+            sdiv_exact!(arg0_i64, arg1_i64),
+            "%sdiv_exact = sdiv exact i64 %0, %1"
+        );
+        test_instruction!(b, fdiv!(arg2_f64, arg3_f64), "%fdiv = fdiv double %2, %3");
+
+        test_instruction!(b, urem!(arg0_i64, arg1_i64), "%urem = urem i64 %0, %1");
+        test_instruction!(b, srem!(arg0_i64, arg1_i64), "%srem = srem i64 %0, %1");
+        test_instruction!(b, frem!(arg2_f64, arg3_f64), "%frem = frem double %2, %3");
+
+        test_instruction!(b, shl!(arg0_i64, arg1_i64), "%shl = shl i64 %0, %1");
+        test_instruction!(b, ashr!(arg0_i64, arg1_i64), "%ashr = ashr i64 %0, %1");
+        test_instruction!(b, lshr!(arg0_i64, arg1_i64), "%lshr = lshr i64 %0, %1");
+
+        test_instruction!(b, and!(arg0_i64, arg1_i64), "%and = and i64 %0, %1");
+        test_instruction!(b, or!(arg0_i64, arg1_i64), "%or = or i64 %0, %1");
+        test_instruction!(b, xor!(arg0_i64, arg1_i64), "%xor = xor i64 %0, %1");
+
+        test_instruction!(b, neg!(arg0_i64), "%neg = sub i64 0, %0");
+        test_instruction!(b, neg_nsw!(arg0_i64), "%neg_nsw = sub nsw i64 0, %0");
+        test_instruction!(b, neg_nuw!(arg0_i64), "%neg_nuw = sub nuw i64 0, %0");
+        test_instruction!(b, fneg!(arg2_f64), "%fneg = fsub double -0.000000e+00, %2");
+
+        test_instruction!(b, not!(arg0_i64), "%not = xor i64 %0, -1");
+        test_instruction!(
+            b,
+            not!(arg3_f64),
+            "%not1 = xor double %3, 0xFFFFFFFFFFFFFFFF"
+        );
+
+        test_instruction!(b, trunc!(arg0_i64, i32t), "%trunc = trunc i64 %0 to i32");
+        test_instruction!(b, zext!(arg4_i32, i64t), "%zext = zext i32 %4 to i64");
+        test_instruction!(b, sext!(arg4_i32, i64t), "%sext = sext i32 %4 to i64");
+
+        test_instruction!(
+            b,
+            fptrunc!(arg2_f64, f32t),
+            "%fptrunc = fptrunc double %2 to float"
+        );
+        test_instruction!(
+            b,
+            fpext!(arg5_f32, f64t),
+            "%fpext = fpext float %5 to double"
+        );
+
+        test_instruction!(
+            b,
+            fptoui!(arg2_f64, i64t),
+            "%fptoui = fptoui double %2 to i64"
+        );
+        test_instruction!(
+            b,
+            fptosi!(arg2_f64, i64t),
+            "%fptosi = fptosi double %2 to i64"
+        );
+        test_instruction!(
+            b,
+            uitofp!(arg0_i64, f64t),
+            "%uitofp = uitofp i64 %0 to double"
+        );
+        test_instruction!(
+            b,
+            sitofp!(arg0_i64, f64t),
+            "%sitofp = sitofp i64 %0 to double"
+        );
+
+        test_instruction!(
+            b,
+            ptr_to_int!(arg6_p_i64, i64t),
+            "%ptr_to_int = ptrtoint i64* %6 to i64"
+        );
+        test_instruction!(
+            b,
+            int_to_ptr!(arg0_i64, p_i64t),
+            "%int_to_ptr = inttoptr i64 %0 to i64*"
+        );
+
+        test_instruction!(
+            b,
+            bit_cast!(arg6_p_i64, p_f64t),
+            "%bit_cast = bitcast i64* %6 to double*"
+        );
+        test_instruction!(
+            b,
+            addrspace_cast!(arg7_p_f64, p_f64t_1),
+            "%addrspace_cast = addrspacecast double* %7 to double addrspace(1)*"
+        );
+
+        test_instruction!(
+            b,
+            trunc_or_bit_cast!(arg0_i64, i32t),
+            "%trunc_or_bit_cast = trunc i64 %0 to i32"
+        );
+        test_instruction!(
+            b,
+            trunc_or_bit_cast!(arg0_i64, f64t),
+            "%trunc_or_bit_cast2 = bitcast i64 %0 to double"
+        );
+        test_instruction!(
+            b,
+            zext_or_bit_cast!(arg4_i32, i64t),
+            "%zext_or_bit_cast = zext i32 %4 to i64"
+        );
+        test_instruction!(
+            b,
+            zext_or_bit_cast!(arg4_i32, f32t),
+            "%zext_or_bit_cast3 = bitcast i32 %4 to float"
+        );
+        test_instruction!(
+            b,
+            sext_or_bit_cast!(arg4_i32, i64t),
+            "%sext_or_bit_cast = sext i32 %4 to i64"
+        );
+        test_instruction!(
+            b,
+            sext_or_bit_cast!(arg4_i32, f32t),
+            "%sext_or_bit_cast4 = bitcast i32 %4 to float"
+        );
+
+        test_instruction!(
+            b,
+            ptr_cast!(arg6_p_i64, p_f64t),
+            "%ptr_cast = bitcast i64* %6 to double*"
+        );
+        test_instruction!(
+            b,
+            int_cast!(arg0_i64, i32t),
+            "%int_cast = trunc i64 %0 to i32"
+        );
+        test_instruction!(
+            b,
+            int_cast!(arg4_i32, i64t),
+            "%int_cast5 = sext i32 %4 to i64"
+        );
+        test_instruction!(
+            b,
+            fp_cast!(arg2_f64, f32t),
+            "%fp_cast = fptrunc double %2 to float"
+        );
+        test_instruction!(
+            b,
+            fp_cast!(arg5_f32, f64t),
+            "%fp_cast6 = fpext float %5 to double"
         );
     }
 }

@@ -38,14 +38,15 @@ pub use value::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString
                 ConstantVector, Function, Instruction, ValueKind, ValueRef};
 
 pub mod prelude {
-    pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, StructTypes};
+    pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, PointerTypes,
+                    StructTypes};
     pub use value::{ConstantArrays, ConstantFPs, ConstantInts, ConstantStrings, ConstantStructs,
                     Constants};
 }
 
 pub mod ops {
     /// Terminators
-    pub use builder::{AggregateRet, Br, CondBr, Invoke, Ret, RetVoid, Switch};
+    pub use builder::{AggregateRet, Br, CondBr, Invoke, Resume, Ret, RetVoid, Switch};
 
     /// Arithmetic
     pub use builder::{AShr, Add, And, ExactSDiv, ExactUDiv, FAdd, FDiv, FMul, FNeg, FRem, FSub,
