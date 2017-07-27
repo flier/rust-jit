@@ -14,15 +14,15 @@ pub fn from_unchecked_cstr<'a>(p: *const u8, len: usize) -> Cow<'a, str> {
 macro_rules! impl_iter {
     ($name:ident, $first:path [ $list:ty ], $next:path [ $item:ty ], $type:ident :: $ctor:ident) => {
         pub struct $name {
-            l: Option<$list>,
-            i: Option<$item>,
+            list: Option<$list>,
+            item: Option<$item>,
         }
 
         impl $name {
-            pub fn new(l: $list) -> Self {
+            pub fn new(list: $list) -> Self {
                 $name {
-                    l: Some(l),
-                    i: None,
+                    list: Some(list),
+                    item: None,
                 }
             }
         }
@@ -31,28 +31,104 @@ macro_rules! impl_iter {
             type Item = $type;
 
             fn next(&mut self) -> Option<Self::Item> {
-                if let Some(l) = self.l {
+                if let Some(list) = self.list {
                     let next = unsafe {
-                        if let Some(i) = self.i {
-                            $next(i)
+                        if let Some(item) = self.item {
+                            $next(item)
                         } else {
-                            $first(l)
+                            $first(list)
                         }
                     };
 
-                    self.i = if next.is_null() {
-                        self.l = None;
+                    self.item = if next.is_null() {
+                        self.list = None;
 
                         None
                     } else {
                         Some(next)
                     };
 
-                    self.i.map(|i| $type :: $ctor(i))
+                    self.item.map(|item| $type :: $ctor(item))
                 } else {
                     None
                 }
             }
         }
-    }
+    };
+    (
+        $name:ident,
+        $first:path | $last:path [ $list:ty ],
+        $next:path | $previous:path [ $item:ty ],
+        $type:ident :: $ctor:ident
+    ) => {
+        pub struct $name {
+            list: Option<$list>,
+            next: Option<$item>,
+            back: Option<$item>,
+        }
+
+        impl $name {
+            pub fn new(list: $list) -> Self {
+                $name {
+                    list: Some(list),
+                    next: None,
+                    back: None,
+                }
+            }
+        }
+
+        impl ::std::iter::Iterator for $name {
+            type Item = $type;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                if let Some(list) = self.list {
+                    let next = unsafe {
+                        if let Some(next) = self.next {
+                            $next(next)
+                        } else {
+                            $first(list)
+                        }
+                    };
+
+                    self.next = if next.is_null() || Some(next) == self.back {
+                        self.list = None;
+
+                        None
+                    } else {
+                        Some(next)
+                    };
+
+                    self.next.map(|next| $type :: $ctor(next))
+                } else {
+                    None
+                }
+            }
+        }
+
+        impl ::std::iter::DoubleEndedIterator for $name {
+            fn next_back(&mut self) -> Option<Self::Item> {
+                if let Some(list) = self.list {
+                    let back = unsafe {
+                        if let Some(back) = self.back {
+                            $previous(back)
+                        } else {
+                            $last(list)
+                        }
+                    };
+
+                    self.back = if back.is_null() || Some(back) == self.next {
+                        self.list = None;
+
+                        None
+                    } else {
+                        Some(back)
+                    };
+
+                    self.back.map(|back| $type :: $ctor(back))
+                } else {
+                    None
+                }
+            }
+        }
+    };
 }

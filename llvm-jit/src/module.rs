@@ -249,15 +249,15 @@ impl Module {
 
 impl_iter!(
     FuncIter,
-    LLVMGetFirstFunction[LLVMModuleRef],
-    LLVMGetNextFunction[LLVMValueRef],
+    LLVMGetFirstFunction | LLVMGetLastFunction[LLVMModuleRef],
+    LLVMGetNextFunction | LLVMGetPreviousFunction[LLVMValueRef],
     Function::from_raw
 );
 
 impl_iter!(
     GlobalVarIter,
-    LLVMGetFirstGlobal[LLVMModuleRef],
-    LLVMGetNextGlobal[LLVMValueRef],
+    LLVMGetFirstGlobal | LLVMGetLastGlobal[LLVMModuleRef],
+    LLVMGetNextGlobal | LLVMGetPreviousGlobal[LLVMValueRef],
     GlobalVar::from_raw
 );
 

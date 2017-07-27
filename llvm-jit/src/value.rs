@@ -527,15 +527,15 @@ impl Function {
 
 impl_iter!(
     BasicBlockIter,
-    LLVMGetFirstBasicBlock[LLVMValueRef],
-    LLVMGetNextBasicBlock[LLVMBasicBlockRef],
+    LLVMGetFirstBasicBlock | LLVMGetLastBasicBlock[LLVMValueRef],
+    LLVMGetNextBasicBlock | LLVMGetPreviousBasicBlock[LLVMBasicBlockRef],
     BasicBlock::from_raw
 );
 
 impl_iter!(
     ParamIter,
-    LLVMGetFirstParam[LLVMValueRef],
-    LLVMGetNextParam[LLVMValueRef],
+    LLVMGetFirstParam | LLVMGetLastParam[LLVMValueRef],
+    LLVMGetNextParam | LLVMGetPreviousParam[LLVMValueRef],
     ValueRef::from_raw
 );
 
@@ -550,11 +550,77 @@ pub struct Instruction(ValueRef);
 inherit_value_ref!(Instruction);
 
 impl Instruction {
+    /// Obtain the code opcode for an individual instruction.
+    pub fn opcode(&self) -> LLVMOpcode {
+        unsafe { LLVMGetInstructionOpcode(self.as_raw()) }
+    }
+
+    /// Obtain the predicate of an instruction.
+    ///
+    /// This is only valid for instructions that correspond to llvm::ICmpInst
+    /// or llvm::ConstantExpr whose opcode is llvm::Instruction::ICmp.
+    pub fn icmp_predicate(&self) -> LLVMIntPredicate {
+        unsafe { LLVMGetICmpPredicate(self.as_raw()) }
+    }
+
+    /// Obtain the float predicate of an instruction.
+    ///
+    /// This is only valid for instructions that correspond to llvm::FCmpInst
+    /// or llvm::ConstantExpr whose opcode is llvm::Instruction::FCmp.
+    pub fn fcmp_predicate(&self) -> LLVMRealPredicate {
+        unsafe { LLVMGetFCmpPredicate(self.as_raw()) }
+    }
+
     /// Create a copy of 'this' instruction that is identical in all ways except the following:
     ///   * The instruction has no parent
     ///   * The instruction has no name
     pub fn copy(&self) -> Self {
         Instruction::from_raw(unsafe { LLVMInstructionClone(self.as_raw()) })
+    }
+
+    /// Obtain the basic block to which an instruction belongs.
+    pub fn parent(&self) -> BasicBlock {
+        BasicBlock::from_raw(unsafe { LLVMGetInstructionParent(self.as_raw()) })
+    }
+
+    /// Remove and delete an instruction.
+    ///
+    /// The instruction specified is removed from its containing building block but is kept alive.
+    pub fn remove(&self) {
+        unsafe { LLVMInstructionRemoveFromParent(self.as_raw()) }
+    }
+
+    /// Remove and delete an instruction.
+    ///
+    /// The instruction specified is removed from its containing building block and then deleted.
+    pub fn erase(self) {
+        unsafe { LLVMInstructionEraseFromParent(self.as_raw()) }
+    }
+
+    /// Determine whether an instruction has any metadata attached.
+    pub fn has_metadata(&self) -> bool {
+        unsafe { LLVMHasMetadata(self.as_raw()) != 0 }
+    }
+
+    /// Return metadata associated with an instruction value.
+    pub fn get_metadata(&self, kind_id: u32) -> ValueRef {
+        ValueRef::from_raw(unsafe { LLVMGetMetadata(self.as_raw(), kind_id) })
+    }
+
+    /// Set metadata associated with an instruction value.
+    pub fn set_metadata(&self, kind_id: u32, node: ValueRef) {
+        unsafe { LLVMSetMetadata(self.as_raw(), kind_id, node.as_raw()) }
+    }
+
+    /// Obtain the instruction that occurs after the one specified.
+    pub fn next(&self) -> Option<Instruction> {
+        unsafe { LLVMGetNextInstruction(self.as_raw()).as_mut() }.map(|v| Instruction::from_raw(v))
+    }
+
+    /// Obtain the instruction that occurred before this one.
+    pub fn previous(&self) -> Option<Instruction> {
+        unsafe { LLVMGetPreviousInstruction(self.as_raw()).as_mut() }
+            .map(|v| Instruction::from_raw(v))
     }
 }
 
