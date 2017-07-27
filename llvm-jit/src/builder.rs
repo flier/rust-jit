@@ -685,6 +685,68 @@ macro_rules! store {
     })
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct GlobalString<'a> {
+    s: Cow<'a, str>,
+    name: Cow<'a, str>,
+}
+
+impl<'a> GlobalString<'a> {
+    pub fn new(s: Cow<'a, str>, name: Cow<'a, str>) -> Self {
+        GlobalString { s: s, name: name }
+    }
+}
+
+impl<'a> InstructionBuilder for GlobalString<'a> {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildGlobalString(
+                builder.as_raw(),
+                unchecked_cstring(self.s.clone()).as_ptr(),
+                unchecked_cstring(self.name.clone()).as_ptr(),
+            )
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! global_str {
+    ($s:expr, $name:expr) => ({
+        $crate::ops::GlobalString::new($s.into(), $name.into())
+    })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct GlobalStringPtr<'a> {
+    s: Cow<'a, str>,
+    name: Cow<'a, str>,
+}
+
+impl<'a> GlobalStringPtr<'a> {
+    pub fn new(s: Cow<'a, str>, name: Cow<'a, str>) -> Self {
+        GlobalStringPtr { s: s, name: name }
+    }
+}
+
+impl<'a> InstructionBuilder for GlobalStringPtr<'a> {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildGlobalStringPtr(
+                builder.as_raw(),
+                unchecked_cstring(self.s.clone()).as_ptr(),
+                unchecked_cstring(self.name.clone()).as_ptr(),
+            )
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! global_str_ptr {
+    ($s:expr, $name:expr) => ({
+        $crate::ops::GlobalStringPtr::new($s.into(), $name.into())
+    })
+}
+
 macro_rules! define_unary_instruction {
     ($operator:ident, $func:path) => (
         #[derive(Clone, Debug, PartialEq)]
@@ -1646,6 +1708,18 @@ mod tests {
         );
     }
 
+    fn last_instructions(bb: BasicBlock, n: usize) -> Vec<String> {
+        let mut insts = bb.instructions()
+            .rev()
+            .take(n)
+            .map(|i| i.to_string().trim().to_owned())
+            .collect::<Vec<String>>();
+
+        insts.reverse();
+
+        insts
+    }
+
     #[test]
     fn memory() {
         let context = Context::new();
@@ -1666,16 +1740,8 @@ mod tests {
         let p = builder.emit(malloc!(i64t, "malloc"));
         builder.emit(free!(p));
 
-        let mut insts = bb.instructions()
-            .rev()
-            .take(4)
-            .map(|i| i.to_string().trim().to_owned())
-            .collect::<Vec<String>>();
-
-        insts.reverse();
-
         assert_eq!(
-            insts,
+            last_instructions(bb, 4),
             vec![
                 "%malloccall = tail call i8* @malloc(i32 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i32))",
                 "%malloc = bitcast i8* %malloccall to i64*",
@@ -1686,16 +1752,8 @@ mod tests {
 
         builder.emit(array_malloc!(i64t, i64t.int(123), "array_malloc"));
 
-        let mut insts = bb.instructions()
-            .rev()
-            .take(4)
-            .map(|i| i.to_string().trim().to_owned())
-            .collect::<Vec<String>>();
-
-        insts.reverse();
-
         assert_eq!(
-            insts,
+            last_instructions(bb, 4),
             vec![
                 "%2 = trunc i64 123 to i32",
                 "%mallocsize = mul i32 %2, ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i32)",
@@ -1731,5 +1789,24 @@ mod tests {
             builder.emit(store).to_string().trim(),
             "store i64 123, i64* %0"
         );
+
+        let global_str = global_str!("global_str", "global_str");
+
+        assert_eq!(
+            builder.emit(global_str).to_string().trim(),
+            "@global_str = private unnamed_addr constant [11 x i8] c\"global_str\\00\""
+        );
+
+        let global_str_ptr = global_str_ptr!("global_str_ptr", "global_str_ptr");
+
+        assert_eq!(
+            builder.emit(global_str_ptr).to_string().trim(),
+            "i8* getelementptr inbounds ([15 x i8], [15 x i8]* @global_str_ptr, i32 0, i32 0)"
+        );
+
+        assert_eq!(
+            module.global_vars().rev().next().unwrap().to_string(),
+            "@global_str_ptr = private unnamed_addr constant [15 x i8] c\"global_str_ptr\\00\""
+        )
     }
 }

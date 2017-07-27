@@ -82,16 +82,6 @@ impl BasicBlock {
     pub fn instructions(&self) -> InstrIter {
         InstrIter::new(self.0)
     }
-
-    /// Obtain the first instruction in a basic block.
-    pub fn first_instruction(&self) -> Instruction {
-        Instruction::from_raw(unsafe { LLVMGetFirstInstruction(self.as_raw()) })
-    }
-
-    /// Obtain the last instruction in a basic block.
-    pub fn last_instruction(&self) -> Instruction {
-        Instruction::from_raw(unsafe { LLVMGetLastInstruction(self.as_raw()) })
-    }
 }
 
 impl_iter!(
