@@ -35,6 +35,13 @@ macro_rules! inherit_type_ref {
                 f.0
             }
         }
+
+        impl $ty {
+            /// Wrap a raw $ty reference.
+            pub fn from_raw(t: LLVMTypeRef) -> Self {
+                $ty(TypeRef(t))
+            }
+        }
     }
 }
 
@@ -354,10 +361,6 @@ impl FunctionType {
         FunctionType::from_raw(function)
     }
 
-    fn from_raw(t: LLVMTypeRef) -> Self {
-        FunctionType(TypeRef(t))
-    }
-
     /// Returns whether a function type is variadic.
     pub fn is_var_arg(&self) -> bool {
         unsafe { LLVMIsFunctionVarArg(self.as_raw()) != 0 }
@@ -400,10 +403,6 @@ impl StructType {
             )
         };
 
-        StructType(TypeRef(t))
-    }
-
-    fn from_raw(t: LLVMTypeRef) -> Self {
         StructType(TypeRef(t))
     }
 
@@ -533,10 +532,6 @@ impl ArrayType {
         })
     }
 
-    fn from_raw(t: LLVMTypeRef) -> Self {
-        ArrayType(TypeRef(t))
-    }
-
     /// Obtain the length of an array type.
     pub fn len(&self) -> usize {
         unsafe { LLVMGetArrayLength(self.as_raw()) as usize }
@@ -563,10 +558,6 @@ impl PointerType {
         PointerType::from_raw(unsafe {
             LLVMPointerType(element_type.as_raw(), address_space)
         })
-    }
-
-    fn from_raw(t: LLVMTypeRef) -> Self {
-        PointerType(TypeRef(t))
     }
 
     /// Obtain the address space of a pointer type.
@@ -602,10 +593,6 @@ impl VectorType {
         VectorType::from_raw(unsafe {
             LLVMVectorType(element_type.as_raw(), element_count as u32)
         })
-    }
-
-    fn from_raw(t: LLVMTypeRef) -> Self {
-        VectorType(TypeRef(t))
     }
 
     /// Obtain the number of elements in a vector type.
