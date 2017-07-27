@@ -4,7 +4,7 @@ use std::ffi::CStr;
 use llvm::core::*;
 use llvm::prelude::*;
 
-use value::{Function, Instruction, ValueRef};
+use value::{BlockAddress, Function, Instruction, ValueRef};
 
 /// Basic Block
 ///
@@ -32,8 +32,15 @@ impl BasicBlock {
     }
 
     /// Obtain the function to which a basic block belongs.
-    pub fn parent(&self) -> Option<Function> {
-        unsafe { LLVMGetBasicBlockParent(self.0).as_mut() }.map(|parent| Function::from_raw(parent))
+    pub fn parent(&self) -> Function {
+        Function::from_raw(unsafe { LLVMGetBasicBlockParent(self.0) })
+    }
+
+    /// Computes the address of the specified basic block in the specified function
+    pub fn addr(&self) -> BlockAddress {
+        BlockAddress::from_raw(unsafe {
+            LLVMBlockAddress(self.parent().as_raw(), self.as_raw())
+        })
     }
 
     /// Obtain the terminator instruction for a basic block.
@@ -126,7 +133,7 @@ mod tests {
 
         assert!(!bb.as_raw().is_null());
         assert_eq!(bb.name(), "entry");
-        assert_eq!(bb.parent(), Some(function));
+        assert_eq!(bb.parent(), function);
         assert_eq!(bb.terminator(), Some(ret));
         assert_eq!(
             bb.instructions().collect::<Vec<Instruction>>(),

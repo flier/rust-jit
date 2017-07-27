@@ -38,6 +38,13 @@ macro_rules! inherit_value_ref {
                 f.0
             }
         }
+
+        impl $ty {
+            /// Wrap a raw $ty reference.
+            pub fn from_raw(v: LLVMValueRef) -> Self {
+                $ty(ValueRef(v))
+            }
+        }
     }
 }
 
@@ -404,10 +411,6 @@ pub struct Function(ValueRef);
 inherit_value_ref!(Function);
 
 impl Function {
-    pub fn from_raw(v: LLVMValueRef) -> Self {
-        Function(ValueRef(v))
-    }
-
     /// Obtain an iterator to the basic blocks in a function.
     pub fn basic_blocks(&self) -> BasicBlockIter {
         BasicBlockIter::new(self.as_raw())
@@ -518,15 +521,16 @@ impl_iter!(
 );
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BlockAddress(ValueRef);
+
+inherit_value_ref!(BlockAddress);
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Instruction(ValueRef);
 
 inherit_value_ref!(Instruction);
 
 impl Instruction {
-    pub fn from_raw(v: LLVMValueRef) -> Self {
-        Instruction(ValueRef(v))
-    }
-
     /// Create a copy of 'this' instruction that is identical in all ways except the following:
     ///   * The instruction has no parent
     ///   * The instruction has no name

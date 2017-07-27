@@ -34,8 +34,8 @@ pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos
                  AllTargets, NativeAsmParser, NativeAsmPrinter, NativeDisassembler, NativeTarget};
 pub use types::{ArrayType, FloatingPointType, FunctionType, IntegerType, OtherType, PointerType,
                 StructType, TypeKind, TypeRef, VectorType};
-pub use value::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString, ConstantStruct,
-                ConstantVector, Function, Instruction, ValueKind, ValueRef};
+pub use value::{BlockAddress, Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
+                ConstantStruct, ConstantVector, Function, Instruction, ValueKind, ValueRef};
 
 pub mod prelude {
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, PointerTypes,
@@ -46,7 +46,7 @@ pub mod prelude {
 
 pub mod ops {
     /// Terminators
-    pub use builder::{AggregateRet, Br, CondBr, Invoke, Resume, Ret, RetVoid, Switch};
+    pub use builder::{AggregateRet, Br, CondBr, IndirectBr, Invoke, Resume, Ret, RetVoid, Switch};
 
     /// Arithmetic
     pub use builder::{AShr, Add, And, ExactSDiv, ExactUDiv, FAdd, FDiv, FMul, FNeg, FRem, FSub,

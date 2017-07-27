@@ -158,11 +158,62 @@ impl InstructionBuilder for CondBr {
     }
 }
 
+/// Create an indirect branch instruction with the specified address operand,
+/// with an optional hint for the number of destinations that will be added (for efficient allocation).
+#[derive(Clone, Debug, PartialEq)]
+pub struct IndirectBr {
+    addr: ValueRef,
+    dests: Vec<BasicBlock>,
+}
+
+impl IndirectBr {
+    pub fn new(addr: ValueRef, dests: Vec<BasicBlock>) -> Self {
+        IndirectBr {
+            addr: addr,
+            dests: dests,
+        }
+    }
+
+    pub fn on(addr: ValueRef) -> Self {
+        IndirectBr {
+            addr: addr,
+            dests: vec![],
+        }
+    }
+
+    /// Add a destination to the indirectbr instruction
+    pub fn jump_to(mut self, dest: BasicBlock) -> Self {
+        self.dests.push(dest);
+        self
+    }
+}
+
+impl InstructionBuilder for IndirectBr {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        let br = Instruction::from_raw(unsafe {
+            LLVMBuildIndirectBr(
+                builder.as_raw(),
+                self.addr.as_raw(),
+                self.dests.len() as u32,
+            )
+        });
+
+        for dest in &self.dests {
+            unsafe { LLVMAddDestination(br.as_raw(), dest.as_raw()) }
+        }
+
+        br
+    }
+}
+
 /// The ‘br‘ instruction is used to cause control flow to transfer to a different basic block in the current function.
 #[macro_export]
 macro_rules! br {
     ($dest:expr) => (
         $crate::ops::Br::new($dest.into())
+    );
+    ($addr:expr => [$( $dest:expr ),*]) => (
+        $crate::ops::IndirectBr::on($addr.into()) $( .jump_to($dest.into()) )*
     );
     ($cond:expr => $then:expr) => (
         $crate::ops::CondBr::on($cond.into()).then($then.into())
@@ -190,6 +241,7 @@ impl Switch {
         }
     }
 
+    /// Add a case to the switch instruction
     pub fn case(mut self, on: ValueRef, dest: BasicBlock) -> Self {
         self.cases.push((on, dest));
         self
@@ -674,11 +726,13 @@ mod tests {
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position(Position::AtEnd(bb));
 
+        // unconditional branch
         let next = function.append_basic_block_in_context("next", &context);
         let inst = br!(next);
 
         assert_eq!(builder.emit(inst).to_string().trim(), "br label %next");
 
+        // conditional branch
         let bb_then = function.append_basic_block_in_context("then", &context);
         let bb_else = function.append_basic_block_in_context("else", &context);
         let bool_t = context.int1();
@@ -694,6 +748,14 @@ mod tests {
         assert_eq!(
             builder.emit(inst).to_string().trim(),
             "br i1 true, label %then, label %else"
+        );
+
+        // indirect branch
+        let inst = br!(bb_then.addr() => [bb_then, bb_else]);
+
+        assert_eq!(
+            builder.emit(inst).to_string().trim(),
+            "indirectbr i8* blockaddress(@test, %then), [label %then, label %else]"
         );
     }
 
