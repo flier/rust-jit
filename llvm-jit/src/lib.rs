@@ -55,6 +55,10 @@ pub mod ops {
     pub use builder::{AShr, Add, And, ExactSDiv, ExactUDiv, FAdd, FDiv, FMul, FNeg, FRem, FSub,
                       LShr, Mul, NSWAdd, NSWMul, NSWNeg, NSWSub, NUWAdd, NUWMul, NUWNeg, NUWSub,
                       Neg, Not, Or, SDiv, SRem, Shl, Sub, UDiv, URem, Unreachable, Xor};
+
+    /// Memory
+    pub use builder::{Alloca, ArrayAlloca, ArrayMalloc, Free, Load, Malloc, Store};
+
     /// Casts
     pub use builder::{AddrSpaceCast, BitCast, FPCast, FPExt, FPToSI, FPToUI, FPTrunc, IntCast,
                       IntToPtr, PointerCast, PtrToInt, SExt, SExtOrBitCast, SIToFP, Trunc,

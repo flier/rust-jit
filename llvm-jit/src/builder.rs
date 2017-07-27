@@ -459,6 +459,232 @@ impl InstructionBuilder for Unreachable {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Malloc<'a> {
+    ty: TypeRef,
+    name: Cow<'a, str>,
+}
+
+impl<'a> Malloc<'a> {
+    pub fn new(ty: TypeRef, name: Cow<'a, str>) -> Self {
+        Malloc { ty: ty, name: name }
+    }
+}
+
+impl<'a> InstructionBuilder for Malloc<'a> {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildMalloc(
+                builder.as_raw(),
+                self.ty.as_raw(),
+                unchecked_cstring(self.name.clone()).as_ptr(),
+            )
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! malloc {
+    ($ty:expr, $name:expr) => ({
+        $crate::ops::Malloc::new($ty.into(), $name.into())
+    })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ArrayMalloc<'a> {
+    ty: TypeRef,
+    size: ValueRef,
+    name: Cow<'a, str>,
+}
+
+impl<'a> ArrayMalloc<'a> {
+    pub fn new(ty: TypeRef, size: ValueRef, name: Cow<'a, str>) -> Self {
+        ArrayMalloc {
+            ty: ty,
+            size: size,
+            name: name,
+        }
+    }
+}
+
+impl<'a> InstructionBuilder for ArrayMalloc<'a> {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildArrayMalloc(
+                builder.as_raw(),
+                self.ty.as_raw(),
+                self.size.as_raw(),
+                unchecked_cstring(self.name.clone()).as_ptr(),
+            )
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! array_malloc {
+    ($ty:expr, $size:expr, $name:expr) => ({
+        $crate::ops::ArrayMalloc::new($ty.into(), $size.into(), $name.into())
+    })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Alloca<'a> {
+    ty: TypeRef,
+    name: Cow<'a, str>,
+}
+
+impl<'a> Alloca<'a> {
+    pub fn new(ty: TypeRef, name: Cow<'a, str>) -> Self {
+        Alloca { ty: ty, name: name }
+    }
+}
+
+impl<'a> InstructionBuilder for Alloca<'a> {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildAlloca(
+                builder.as_raw(),
+                self.ty.as_raw(),
+                unchecked_cstring(self.name.clone()).as_ptr(),
+            )
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! alloca {
+    ($ty:expr, $name:expr) => ({
+        $crate::ops::Alloca::new($ty.into(), $name.into())
+    })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ArrayAlloca<'a> {
+    ty: TypeRef,
+    size: ValueRef,
+    name: Cow<'a, str>,
+}
+
+impl<'a> ArrayAlloca<'a> {
+    pub fn new(ty: TypeRef, size: ValueRef, name: Cow<'a, str>) -> Self {
+        ArrayAlloca {
+            ty: ty,
+            size: size,
+            name: name,
+        }
+    }
+}
+
+impl<'a> InstructionBuilder for ArrayAlloca<'a> {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildArrayAlloca(
+                builder.as_raw(),
+                self.ty.as_raw(),
+                self.size.as_raw(),
+                unchecked_cstring(self.name.clone()).as_ptr(),
+            )
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! array_alloca {
+    ($ty:expr, $size:expr, $name:expr) => ({
+        $crate::ops::ArrayAlloca::new($ty.into(), $size.into(), $name.into())
+    })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Free {
+    ptr: ValueRef,
+}
+
+impl Free {
+    pub fn new(ptr: ValueRef) -> Self {
+        Free { ptr: ptr }
+    }
+}
+
+impl InstructionBuilder for Free {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildFree(builder.as_raw(), self.ptr.as_raw())
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! free {
+    ($ptr:expr) => ({
+        $crate::ops::Free::new($ptr.into())
+    })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Load<'a> {
+    ptr: ValueRef,
+    name: Cow<'a, str>,
+}
+
+impl<'a> Load<'a> {
+    pub fn new(ptr: ValueRef, name: Cow<'a, str>) -> Self {
+        Load {
+            ptr: ptr,
+            name: name,
+        }
+    }
+}
+
+impl<'a> InstructionBuilder for Load<'a> {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildLoad(
+                builder.as_raw(),
+                self.ptr.as_raw(),
+                unchecked_cstring(self.name.clone()).as_ptr(),
+            )
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! load {
+    ($ptr:expr, $name:expr) => ({
+        $crate::ops::Load::new($ptr.into(), $name.into())
+    })
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Store {
+    value: ValueRef,
+    ptr: ValueRef,
+}
+
+impl Store {
+    pub fn new(value: ValueRef, ptr: ValueRef) -> Self {
+        Store {
+            value: value,
+            ptr: ptr,
+        }
+    }
+}
+
+impl InstructionBuilder for Store {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildStore(builder.as_raw(), self.value.as_raw(), self.ptr.as_raw())
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! store {
+    ($value:expr, $ptr:expr) => ({
+        $crate::ops::Store::new($value.into(), $ptr.into())
+    })
+}
+
 macro_rules! define_unary_instruction {
     ($operator:ident, $func:path) => (
         #[derive(Clone, Debug, PartialEq)]
@@ -1417,6 +1643,93 @@ mod tests {
         assert_eq!(
             builder.emit(inst).to_string().trim(),
             "%insert_value2 = insertvalue { i32, i64 } %1, i64 123, 1"
+        );
+    }
+
+    #[test]
+    fn memory() {
+        let context = Context::new();
+        let module = Module::with_name_in_context("br", &context);
+        let builder = IRBuilder::within_context(&context);
+
+        let i64t = context.int64();
+        let p_i64t = i64t.ptr();
+
+        let function_type = FunctionType::new(context.void(), &[p_i64t.into()], false);
+        let function = module.add_function("test", function_type);
+
+        let bb = function.append_basic_block_in_context("entry", &context);
+        builder.position(Position::AtEnd(bb));
+
+        let arg0_p_i64 = function.get_param(0).unwrap();
+
+        let p = builder.emit(malloc!(i64t, "malloc"));
+        builder.emit(free!(p));
+
+        let mut insts = bb.instructions()
+            .rev()
+            .take(4)
+            .map(|i| i.to_string().trim().to_owned())
+            .collect::<Vec<String>>();
+
+        insts.reverse();
+
+        assert_eq!(
+            insts,
+            vec![
+                "%malloccall = tail call i8* @malloc(i32 ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i32))",
+                "%malloc = bitcast i8* %malloccall to i64*",
+                "%1 = bitcast i64* %malloc to i8*",
+                "tail call void @free(i8* %1)",
+            ]
+        );
+
+        builder.emit(array_malloc!(i64t, i64t.int(123), "array_malloc"));
+
+        let mut insts = bb.instructions()
+            .rev()
+            .take(4)
+            .map(|i| i.to_string().trim().to_owned())
+            .collect::<Vec<String>>();
+
+        insts.reverse();
+
+        assert_eq!(
+            insts,
+            vec![
+                "%2 = trunc i64 123 to i32",
+                "%mallocsize = mul i32 %2, ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i32)",
+                "%malloccall1 = tail call i8* @malloc(i32 %mallocsize)",
+                "%array_malloc = bitcast i8* %malloccall1 to i64*",
+            ]
+        );
+
+        let alloca = alloca!(i64t, "alloca");
+
+        assert_eq!(
+            builder.emit(alloca).to_string().trim(),
+            "%alloca = alloca i64"
+        );
+
+        let array_alloca = array_alloca!(i64t, i64t.int(123), "array_alloca");
+
+        assert_eq!(
+            builder.emit(array_alloca).to_string().trim(),
+            "%array_alloca = alloca i64, i64 123"
+        );
+
+        let load = load!(arg0_p_i64, "load");
+
+        assert_eq!(
+            builder.emit(load).to_string().trim(),
+            "%load = load i64, i64* %0"
+        );
+
+        let store = store!(i64t.int(123), arg0_p_i64);
+
+        assert_eq!(
+            builder.emit(store).to_string().trim(),
+            "store i64 123, i64* %0"
         );
     }
 }
