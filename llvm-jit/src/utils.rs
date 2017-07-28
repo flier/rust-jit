@@ -106,7 +106,7 @@ macro_rules! impl_iter {
                         Some(next)
                     };
 
-                    self.item.map(|item| $type :: $ctor(item))
+                    self.item.map($type :: $ctor)
                 } else {
                     None
                 }
@@ -156,7 +156,7 @@ macro_rules! impl_iter {
                         Some(next)
                     };
 
-                    self.next.map(|next| $type :: $ctor(next))
+                    self.next.map($type :: $ctor)
                 } else {
                     None
                 }
@@ -182,7 +182,7 @@ macro_rules! impl_iter {
                         Some(back)
                     };
 
-                    self.back.map(|back| $type :: $ctor(back))
+                    self.back.map($type :: $ctor)
                 } else {
                     None
                 }

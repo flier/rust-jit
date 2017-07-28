@@ -11,7 +11,7 @@ use context::Context;
 use utils::unchecked_cstring;
 use value::ValueRef;
 
-/// Each value in the LLVM IR has a type, an LLVMTypeRef.
+/// Each value in the LLVM IR has a type, an `TypeRef`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeRef(LLVMTypeRef);
 
@@ -352,7 +352,7 @@ impl FunctionType {
 
         unsafe { LLVMGetParamTypes(self.as_raw(), params.as_mut_ptr()) };
 
-        params.into_iter().map(|t| TypeRef(t)).collect()
+        params.into_iter().map(TypeRef).collect()
     }
 }
 
@@ -416,7 +416,7 @@ impl StructType {
 
         unsafe { LLVMGetStructElementTypes(self.as_raw(), elements.as_mut_ptr()) };
 
-        elements.into_iter().map(|t| TypeRef(t)).collect()
+        elements.into_iter().map(TypeRef).collect()
     }
 
     /// Get the number of elements defined inside the structure.
@@ -522,6 +522,10 @@ impl ArrayType {
     /// Obtain the length of an array type.
     pub fn len(&self) -> usize {
         unsafe { LLVMGetArrayLength(self.as_raw()) as usize }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 

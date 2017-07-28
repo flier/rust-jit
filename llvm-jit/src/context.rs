@@ -12,6 +12,12 @@ enum State {
     Borrowed(LLVMContextRef),
 }
 
+impl Default for Context {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Context {
     /// Create a new context.
     pub fn new() -> Self {

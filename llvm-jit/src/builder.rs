@@ -110,7 +110,7 @@ impl InstructionBuilder for Br {
     }
 }
 
-/// Create a conditional 'br Cond, TrueDest, FalseDest' instruction.
+/// Create a conditional 'br cond, trueDest, falseDest' instruction.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CondBr {
     cond: ValueRef,
@@ -1516,7 +1516,7 @@ macro_rules! fcmp {
     );
 }
 
-/// This instruction extracts a single (scalar) element from a VectorType value
+/// This instruction extracts a single (scalar) element from a `VectorType` value
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExtractElement<'a> {
     vector: ValueRef,
@@ -1555,7 +1555,7 @@ macro_rules! extract_element {
     })
 }
 
-/// This instruction inserts a single (scalar) element into a VectorType value
+/// This instruction inserts a single (scalar) element into a `VectorType` value
 #[derive(Clone, Debug, PartialEq)]
 pub struct InsertElement<'a> {
     vector: ValueRef,
@@ -1854,7 +1854,7 @@ impl InstructionBuilder for AtomicCmpXchg {
 }
 
 /// ‘fence‘ instructions take an ordering argument which defines what synchronizes-with edges they add.
-/// They can only be given acquire, release, acq_rel, and seq_cst orderings.
+/// They can only be given `acquire`, `release`, `acq_rel`, and `seq_cst` orderings.
 #[macro_export]
 macro_rules! fence_ordering {
     (acquire) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquire);
@@ -1865,9 +1865,6 @@ macro_rules! fence_ordering {
 }
 
 /// The ‘fence‘ instruction is used to introduce happens-before edges between operations.
-///
-/// ‘fence‘ instructions take an ordering argument which defines what synchronizes-with edges they add.
-/// They can only be given acquire, release, acq_rel, and seq_cst orderings.
 #[macro_export]
 macro_rules! fence {
     (singlethread $ordering:ident ; $name:expr) => (
@@ -2020,6 +2017,12 @@ macro_rules! atomic {
     )
 }
 
+impl Default for IRBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IRBuilder {
     /// Create a new IR builder in the global context.
     pub fn new() -> Self {
@@ -2065,7 +2068,7 @@ impl IRBuilder {
             }
         }
 
-        &self
+        self
     }
 
     pub fn emit<I: InstructionBuilder + fmt::Debug>(&self, inst: I) -> Instruction {

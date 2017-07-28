@@ -248,7 +248,7 @@ impl ConstantString {
 
         unsafe {
             LLVMGetAsString(self.as_raw(), &mut len).as_ref().map(|p| {
-                from_unchecked_cstr(mem::transmute(p), len)
+                from_unchecked_cstr(p as *const i8 as *const u8, len)
             })
         }
     }
@@ -394,7 +394,7 @@ macro_rules! vector {
     )
 }
 
-/// Functions in this group operate on LLVMValueRef instances that correspond to llvm::Function instances.
+/// Functions in this group operate on `ValueRef` instances that correspond to `Function` instances.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Function(ValueRef);
 
@@ -413,10 +413,7 @@ impl Function {
 
         unsafe { LLVMGetBasicBlocks(self.as_raw(), blocks.as_mut_ptr()) };
 
-        blocks
-            .into_iter()
-            .map(|v| BasicBlock::from_raw(v))
-            .collect()
+        blocks.into_iter().map(BasicBlock::from_raw).collect()
     }
 
     /// Obtain the basic block that corresponds to the entry point of a function.
@@ -474,7 +471,7 @@ impl Function {
 
         unsafe { LLVMGetParams(self.as_raw(), params.as_mut_ptr()) };
 
-        params.into_iter().map(|v| ValueRef(v)).collect()
+        params.into_iter().map(ValueRef).collect()
     }
 
     /// Obtain the parameter at the specified index.

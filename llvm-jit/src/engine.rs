@@ -63,14 +63,14 @@ impl ExecutionEngine {
     pub fn run_static_constructors(&self) -> &Self {
         unsafe { LLVMRunStaticConstructors(self.0) }
 
-        &self
+        self
     }
 
     /// This method is used to execute all of the static destructors for a program.
     pub fn run_static_destructors(&self) -> &Self {
         unsafe { LLVMRunStaticDestructors(self.0) }
 
-        &self
+        self
     }
 
     /// Add a Module to the list of modules that we can JIT from.
@@ -79,7 +79,7 @@ impl ExecutionEngine {
 
         unsafe { LLVMAddModule(self.0, module.as_raw()) }
 
-        &self
+        self
     }
 
     /// Remove a Module from the list of modules.
