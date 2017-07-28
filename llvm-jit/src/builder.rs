@@ -122,15 +122,15 @@ pub struct CondBr {
 impl CondBr {
     pub fn new(cond: ValueRef, then: Option<BasicBlock>, or_else: Option<BasicBlock>) -> CondBr {
         CondBr {
-            cond: cond,
-            then: then,
-            or_else: or_else,
+            cond,
+            then,
+            or_else,
         }
     }
 
     pub fn on(cond: ValueRef) -> Self {
         CondBr {
-            cond: cond,
+            cond,
             then: None,
             or_else: None,
         }
@@ -170,15 +170,12 @@ pub struct IndirectBr {
 
 impl IndirectBr {
     pub fn new(addr: ValueRef, dests: Vec<BasicBlock>) -> Self {
-        IndirectBr {
-            addr: addr,
-            dests: dests,
-        }
+        IndirectBr { addr, dests }
     }
 
     pub fn on(addr: ValueRef) -> Self {
         IndirectBr {
-            addr: addr,
+            addr,
             dests: vec![],
         }
     }
@@ -375,9 +372,9 @@ pub struct LandingPad<'a> {
 impl<'a> LandingPad<'a> {
     pub fn new(result_ty: TypeRef, personality_fn: Function, name: Cow<'a, str>) -> Self {
         LandingPad {
-            result_ty: result_ty,
-            personality_fn: personality_fn,
-            name: name,
+            result_ty,
+            personality_fn,
+            name,
             clauses: vec![],
             cleanup: false,
         }
@@ -471,16 +468,16 @@ pub struct Malloc<'a> {
 impl<'a> Malloc<'a> {
     pub fn new(ty: TypeRef, name: Cow<'a, str>) -> Self {
         Malloc {
-            ty: ty,
+            ty,
             size: None,
-            name: name,
+            name,
         }
     }
     pub fn array(ty: TypeRef, size: ValueRef, name: Cow<'a, str>) -> Self {
         Malloc {
-            ty: ty,
+            ty,
             size: Some(size),
-            name: name,
+            name,
         }
     }
 }
@@ -527,16 +524,16 @@ pub struct Alloca<'a> {
 impl<'a> Alloca<'a> {
     pub fn new(ty: TypeRef, name: Cow<'a, str>) -> Self {
         Alloca {
-            ty: ty,
+            ty,
             size: None,
-            name: name,
+            name,
         }
     }
     pub fn array(ty: TypeRef, size: ValueRef, name: Cow<'a, str>) -> Self {
         Alloca {
-            ty: ty,
+            ty,
             size: Some(size),
-            name: name,
+            name,
         }
     }
 }
@@ -577,21 +574,17 @@ macro_rules! alloca {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Free {
-    ptr: ValueRef,
-}
+pub struct Free(ValueRef);
 
 impl Free {
     pub fn new(ptr: ValueRef) -> Self {
-        Free { ptr: ptr }
+        Free(ptr)
     }
 }
 
 impl InstructionBuilder for Free {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
-            LLVMBuildFree(builder.as_raw(), self.ptr.as_raw())
-        })
+        Instruction::from_raw(unsafe { LLVMBuildFree(builder.as_raw(), self.0.as_raw()) })
     }
 }
 
@@ -611,10 +604,7 @@ pub struct Load<'a> {
 
 impl<'a> Load<'a> {
     pub fn new(ptr: ValueRef, name: Cow<'a, str>) -> Self {
-        Load {
-            ptr: ptr,
-            name: name,
-        }
+        Load { ptr, name }
     }
 }
 
@@ -646,10 +636,7 @@ pub struct Store {
 
 impl Store {
     pub fn new(value: ValueRef, ptr: ValueRef) -> Self {
-        Store {
-            value: value,
-            ptr: ptr,
-        }
+        Store { value, ptr }
     }
 }
 
@@ -687,25 +674,25 @@ enum GEP {
 impl<'a> GetElementPtr<'a> {
     pub fn new(ptr: ValueRef, indices: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
         GetElementPtr {
-            ptr: ptr,
+            ptr,
             gep: GEP::Indices(indices),
-            name: name,
+            name,
         }
     }
 
     pub fn in_bounds(ptr: ValueRef, indices: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
         GetElementPtr {
-            ptr: ptr,
+            ptr,
             gep: GEP::InBounds(indices),
-            name: name,
+            name,
         }
     }
 
     pub fn in_struct(ptr: ValueRef, index: u32, name: Cow<'a, str>) -> Self {
         GetElementPtr {
-            ptr: ptr,
+            ptr,
             gep: GEP::Struct(index),
-            name: name,
+            name,
         }
     }
 }
@@ -792,7 +779,7 @@ pub struct GlobalString<'a> {
 
 impl<'a> GlobalString<'a> {
     pub fn new(s: Cow<'a, str>, name: Cow<'a, str>) -> Self {
-        GlobalString { s: s, name: name }
+        GlobalString { s, name }
     }
 }
 
@@ -825,7 +812,7 @@ pub struct GlobalStringPtr<'a> {
 
 impl<'a> GlobalStringPtr<'a> {
     pub fn new(s: Cow<'a, str>, name: Cow<'a, str>) -> Self {
-        GlobalStringPtr { s: s, name: name }
+        GlobalStringPtr { s, name }
     }
 }
 
@@ -859,10 +846,7 @@ macro_rules! define_unary_instruction {
 
         impl<'a> $operator<'a> {
             pub fn new(value: ValueRef, name: Cow<'a, str>) -> Self {
-                $operator {
-                    value: value,
-                    name: name,
-                }
+                $operator { value, name }
             }
         }
 
@@ -910,11 +894,7 @@ macro_rules! define_binary_operator {
 
         impl<'a> $operator<'a> {
             pub fn new(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
-                $operator {
-                    lhs: lhs,
-                    rhs: rhs,
-                    name: name,
-                }
+                $operator { lhs, rhs, name }
             }
         }
 
@@ -966,11 +946,7 @@ macro_rules! define_cast_instruction {
 
         impl<'a> $operator<'a> {
             pub fn new(value: ValueRef, dest_ty: TypeRef, name: Cow<'a, str>) -> Self {
-                $operator {
-                    value: value,
-                    dest_ty: dest_ty,
-                    name: name,
-                }
+                $operator { value, dest_ty, name }
             }
         }
 
@@ -1327,9 +1303,9 @@ impl<'a> ICmp<'a> {
     pub fn new(op: LLVMIntPredicate, lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
         ICmp {
             op: op as u32,
-            lhs: lhs,
-            rhs: rhs,
-            name: name,
+            lhs,
+            rhs,
+            name,
         }
     }
 
@@ -1450,9 +1426,9 @@ impl<'a> FCmp<'a> {
     pub fn new(op: LLVMRealPredicate, lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
         FCmp {
             op: op as u32,
-            lhs: lhs,
-            rhs: rhs,
-            name: name,
+            lhs,
+            rhs,
+            name,
         }
     }
 }
@@ -1556,9 +1532,9 @@ pub struct ExtractElement<'a> {
 impl<'a> ExtractElement<'a> {
     pub fn new(vector: ValueRef, index: ValueRef, name: Cow<'a, str>) -> Self {
         ExtractElement {
-            vector: vector,
-            index: index,
-            name: name,
+            vector,
+            index,
+            name,
         }
     }
 }
@@ -1596,10 +1572,10 @@ pub struct InsertElement<'a> {
 impl<'a> InsertElement<'a> {
     pub fn new(vector: ValueRef, element: ValueRef, index: ValueRef, name: Cow<'a, str>) -> Self {
         InsertElement {
-            vector: vector,
-            element: element,
-            index: index,
-            name: name,
+            vector,
+            element,
+            index,
+            name,
         }
     }
 }
@@ -1637,12 +1613,7 @@ pub struct ShuffleVector<'a> {
 
 impl<'a> ShuffleVector<'a> {
     pub fn new(v1: ValueRef, v2: ValueRef, mask: ValueRef, name: Cow<'a, str>) -> Self {
-        ShuffleVector {
-            v1: v1,
-            v2: v2,
-            mask: mask,
-            name: name,
-        }
+        ShuffleVector { v1, v2, mask, name }
     }
 }
 
@@ -1680,9 +1651,9 @@ pub struct ExtractValue<'a> {
 impl<'a> ExtractValue<'a> {
     pub fn new(aggregate: ValueRef, index: u32, name: Cow<'a, str>) -> Self {
         ExtractValue {
-            aggregate: aggregate,
-            index: index,
-            name: name,
+            aggregate,
+            index,
+            name,
         }
     }
 }
@@ -1720,10 +1691,10 @@ pub struct InsertValue<'a> {
 impl<'a> InsertValue<'a> {
     pub fn new(aggregate: ValueRef, element: ValueRef, index: u32, name: Cow<'a, str>) -> Self {
         InsertValue {
-            aggregate: aggregate,
-            element: element,
-            index: index,
-            name: name,
+            aggregate,
+            element,
+            index,
+            name,
         }
     }
 }
@@ -1768,6 +1739,291 @@ define_binary_operator!(
     ptr_diff,
     "Return the i64 difference between two pointer values, dividing out the size of the pointed-to objects."
 );
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Fence<'a> {
+    ordering: u32, // TODO: LLVMAtomicOrdering
+    single_thread: bool,
+    name: Cow<'a, str>,
+}
+
+impl<'a> Fence<'a> {
+    pub fn new(ordering: LLVMAtomicOrdering, single_thread: bool, name: Cow<'a, str>) -> Self {
+        Fence {
+            ordering: ordering as u32,
+            single_thread,
+            name,
+        }
+    }
+}
+
+impl<'a> InstructionBuilder for Fence<'a> {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildFence(
+                builder.as_raw(),
+                mem::transmute(self.ordering),
+                if self.single_thread { 1 } else { 0 },
+                unchecked_cstring(self.name.clone()).as_ptr(),
+            )
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AtomicRMW {
+    op: u32, // TODO: LLVMAtomicRMWBinOp
+    ptr: ValueRef,
+    value: ValueRef,
+    ordering: u32, // TODO: LLVMAtomicOrdering
+    single_thread: bool,
+}
+
+impl AtomicRMW {
+    pub fn new(
+        op: LLVMAtomicRMWBinOp,
+        ptr: ValueRef,
+        value: ValueRef,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Self {
+        AtomicRMW {
+            op: op as u32,
+            ptr,
+            value,
+            ordering: ordering as u32,
+            single_thread,
+        }
+    }
+}
+
+impl InstructionBuilder for AtomicRMW {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildAtomicRMW(
+                builder.as_raw(),
+                mem::transmute(self.op),
+                self.ptr.as_raw(),
+                self.value.as_raw(),
+                mem::transmute(self.ordering),
+                if self.single_thread { 1 } else { 0 },
+            )
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AtomicCmpXchg {
+    ptr: ValueRef,
+    cmp: ValueRef,
+    new: ValueRef,
+    success_ordering: u32, // TODO: LLVMAtomicOrdering
+    failure_ordering: u32, // TODO: LLVMAtomicOrdering
+    single_thread: bool,
+}
+
+impl AtomicCmpXchg {
+    pub fn new(
+        ptr: ValueRef,
+        cmp: ValueRef,
+        new: ValueRef,
+        success_ordering: LLVMAtomicOrdering,
+        failure_ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Self {
+        AtomicCmpXchg {
+            ptr,
+            cmp,
+            new,
+            success_ordering: success_ordering as u32,
+            failure_ordering: failure_ordering as u32,
+            single_thread,
+        }
+    }
+}
+
+impl InstructionBuilder for AtomicCmpXchg {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildAtomicCmpXchg(
+                builder.as_raw(),
+                self.ptr.as_raw(),
+                self.cmp.as_raw(),
+                self.new.as_raw(),
+                mem::transmute(self.success_ordering),
+                mem::transmute(self.failure_ordering),
+                if self.single_thread { 1 } else { 0 },
+            )
+        })
+    }
+}
+
+/// ‘fence‘ instructions take an ordering argument which defines what synchronizes-with edges they add.
+/// They can only be given acquire, release, acq_rel, and seq_cst orderings.
+#[macro_export]
+macro_rules! fence_ordering {
+    (acquire) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquire);
+    (release) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingRelease);
+    (acq_rel) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquireRelease);
+    (seq_cst) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingSequentiallyConsistent);
+    ($ordering:ident) => ("`fence` instruction can only be given acquire, release, acq_rel, and seq_cst orderings.");
+}
+
+/// The ‘fence‘ instruction is used to introduce happens-before edges between operations.
+///
+/// ‘fence‘ instructions take an ordering argument which defines what synchronizes-with edges they add.
+/// They can only be given acquire, release, acq_rel, and seq_cst orderings.
+#[macro_export]
+macro_rules! fence {
+    (singlethread $ordering:ident ; $name:expr) => (
+        $crate::ops::Fence::new(
+            fence_ordering!($ordering),
+            true,
+            $name.into(),
+        )
+    );
+    ($ordering:ident ; $name:expr) => (
+        $crate::ops::Fence::new(
+            fence_ordering!($ordering),
+            false,
+            $name.into(),
+        )
+    );
+}
+
+#[macro_export]
+macro_rules! atomic_ordering {
+    (not_atomic) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingNotAtomic);
+    (unordered) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingUnordered);
+    (monotonic) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingMonotonic);
+    (acquire) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquire);
+    (release) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingRelease);
+    (acq_rel) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquireRelease);
+    (seq_cst) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingSequentiallyConsistent);
+    ($ordering:ident) => ("unknown atomic ordering");
+}
+
+#[macro_export]
+macro_rules! atomic {
+    (xchg $ptr:expr, $value:expr; $ordering:ident) => (
+        $crate::ops::AtomicRMW::new(
+            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXchg,
+            $ptr.into(),
+            $value.into(),
+            atomic_ordering!($ordering),
+            false
+        )
+    );
+    (add $ptr:expr, $value:expr; $ordering:ident) => (
+        $crate::ops::AtomicRMW::new(
+            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAdd,
+            $ptr.into(),
+            $value.into(),
+            atomic_ordering!($ordering),
+            false
+        )
+    );
+    (sub $ptr:expr, $value:expr; $ordering:ident) => (
+        $crate::ops::AtomicRMW::new(
+            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpSub,
+            $ptr.into(),
+            $value.into(),
+            atomic_ordering!($ordering),
+            false
+        )
+    );
+    (and $ptr:expr, $value:expr; $ordering:ident) => (
+        $crate::ops::AtomicRMW::new(
+            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAnd,
+            $ptr.into(),
+            $value.into(),
+            atomic_ordering!($ordering),
+            false
+        )
+    );
+    (nand $ptr:expr, $value:expr; $ordering:ident) => (
+        $crate::ops::AtomicRMW::new(
+            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpNand,
+            $ptr.into(),
+            $value.into(),
+            atomic_ordering!($ordering),
+            false
+        )
+    );
+    (or $ptr:expr, $value:expr; $ordering:ident) => (
+        $crate::ops::AtomicRMW::new(
+            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpOr,
+            $ptr.into(),
+            $value.into(),
+            atomic_ordering!($ordering),
+            false
+        )
+    );
+    (xor $ptr:expr, $value:expr; $ordering:ident) => (
+        $crate::ops::AtomicRMW::new(
+            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXor,
+            $ptr.into(),
+            $value.into(),
+            atomic_ordering!($ordering),
+            false
+        )
+    );
+    (max $ptr:expr, $value:expr; $ordering:ident) => (
+        $crate::ops::AtomicRMW::new(
+            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpMax,
+            $ptr.into(),
+            $value.into(),
+            atomic_ordering!($ordering),
+            false
+        )
+    );
+    (min $ptr:expr, $value:expr; $ordering:ident) => (
+        $crate::ops::AtomicRMW::new(
+            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpMin,
+            $ptr.into(),
+            $value.into(),
+            atomic_ordering!($ordering),
+            false
+        )
+    );
+    (xor $ptr:expr, $value:expr; $ordering:ident) => (
+        $crate::ops::AtomicRMW::new(
+            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXor,
+            $ptr.into(),
+            $value.into(),
+            atomic_ordering!($ordering),
+            false
+        )
+    );
+    (umax $ptr:expr, $value:expr; $ordering:ident) => (
+        $crate::ops::AtomicRMW::new(
+            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpUMax,
+            $ptr.into(),
+            $value.into(),
+            atomic_ordering!($ordering),
+            false
+        )
+    );
+    (umin $ptr:expr, $value:expr; $ordering:ident) => (
+        $crate::ops::AtomicRMW::new(
+            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpUMin,
+            $ptr.into(),
+            $value.into(),
+            atomic_ordering!($ordering),
+            false
+        )
+    );
+    (cmpxchg $ptr:expr, $cmp:expr, $new:expr; $success_ordering:ident $failure_ordering:ident) => (
+        $crate::ops::AtomicCmpXchg::new(
+            $ptr.into(),
+            $cmp.into(),
+            $new.into(),
+            atomic_ordering!($success_ordering),
+            atomic_ordering!($failure_ordering),
+            false
+        )
+    )
+}
 
 impl IRBuilder {
     /// Create a new IR builder in the global context.
@@ -2636,5 +2892,114 @@ mod tests {
         test_fcmp!(builder, ult!(lhs, rhs));
         test_fcmp!(builder, ule!(lhs, rhs));
         test_fcmp!(builder, une!(lhs, rhs));
+    }
+
+    macro_rules! test_atomic {
+        ($builder:expr, atomic !( $op:ident $ptr:expr, $value:expr ; $ordering:ident ), $display:expr) => (
+            assert_eq!(
+                atomic!($op $ptr, $value ; $ordering)
+                    .emit_to(& $builder)
+                    .to_string()
+                    .trim(),
+                $display
+            )
+        )
+    }
+
+    #[test]
+    fn atomic() {
+        let context = Context::new();
+        let module = Module::with_name_in_context("br", &context);
+        let builder = IRBuilder::within_context(&context);
+
+        let i64t = context.int64();
+        let p_i64t = i64t.ptr();
+
+        let function_type = FunctionType::new(context.void(), &[p_i64t.into()], false);
+        let function = module.add_function("test", function_type);
+
+        let bb = function.append_basic_block_in_context("entry", &context);
+        builder.position(Position::AtEnd(bb));
+
+        let arg0_p_i64 = function.get_param(0).unwrap();
+
+        test_atomic!(
+            builder,
+            atomic!(xchg arg0_p_i64, i64t.int(123); not_atomic),
+            "%1 = atomicrmw xchg i64* %0, i64 123"
+        );
+        test_atomic!(
+            builder,
+            atomic!(add arg0_p_i64, i64t.int(123); unordered),
+            "%2 = atomicrmw add i64* %0, i64 123 unordered"
+        );
+        test_atomic!(
+            builder,
+            atomic!(sub arg0_p_i64, i64t.int(123); monotonic),
+            "%3 = atomicrmw sub i64* %0, i64 123 monotonic"
+        );
+        test_atomic!(
+            builder,
+            atomic!(and arg0_p_i64, i64t.int(123); acquire),
+            "%4 = atomicrmw and i64* %0, i64 123 acquire"
+        );
+        test_atomic!(
+            builder,
+            atomic!(nand arg0_p_i64, i64t.int(123); release),
+            "%5 = atomicrmw nand i64* %0, i64 123 release"
+        );
+        test_atomic!(
+            builder,
+            atomic!(or arg0_p_i64, i64t.int(123); acq_rel),
+            "%6 = atomicrmw or i64* %0, i64 123 acq_rel"
+        );
+        test_atomic!(
+            builder,
+            atomic!(xor arg0_p_i64, i64t.int(123); seq_cst),
+            "%7 = atomicrmw xor i64* %0, i64 123 seq_cst"
+        );
+        test_atomic!(
+            builder,
+            atomic!(max arg0_p_i64, i64t.int(123); not_atomic),
+            "%8 = atomicrmw max i64* %0, i64 123"
+        );
+        test_atomic!(
+            builder,
+            atomic!(min arg0_p_i64, i64t.int(123); not_atomic),
+            "%9 = atomicrmw min i64* %0, i64 123"
+        );
+        test_atomic!(
+            builder,
+            atomic!(umax arg0_p_i64, i64t.int(123); not_atomic),
+            "%10 = atomicrmw umax i64* %0, i64 123"
+        );
+        test_atomic!(
+            builder,
+            atomic!(umin arg0_p_i64, i64t.int(123); not_atomic),
+            "%11 = atomicrmw umin i64* %0, i64 123"
+        );
+
+        assert_eq!(
+            fence!(acquire; "fence")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
+            "%fence = fence acquire"
+        );
+        assert_eq!(
+            fence!(singlethread acq_rel; "fence")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
+            "%fence1 = fence singlethread acq_rel"
+        );
+
+        assert_eq!(
+            atomic!(cmpxchg arg0_p_i64, i64t.int(123), i64t.int(456); unordered unordered)
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
+            "%12 = cmpxchg i64* %0, i64 123, i64 456 unordered unordered"
+        );
     }
 }

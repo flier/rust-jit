@@ -74,6 +74,6 @@ pub mod ops {
     pub use builder::{FCmp, ICmp};
 
     /// Miscellaneous
-    pub use builder::{ExtractElement, ExtractValue, InsertElement, InsertValue, IsNotNull, IsNull,
-                      PtrDiff, ShuffleVector};
+    pub use builder::{AtomicCmpXchg, AtomicRMW, ExtractElement, ExtractValue, Fence,
+                      InsertElement, InsertValue, IsNotNull, IsNull, PtrDiff, ShuffleVector};
 }
