@@ -11,7 +11,7 @@ use block::BasicBlock;
 use context::Context;
 use types::TypeRef;
 use utils::unchecked_cstring;
-use value::{Function, Instruction, ValueRef};
+use value::{AsValueRef, Function, Instruction, ValueRef};
 
 /// An instruction builder represents a point within a basic block
 /// and is the exclusive means of building instructions.
@@ -26,7 +26,9 @@ pub enum Position {
 }
 
 pub trait InstructionBuilder {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction;
+    type Target: AsValueRef;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target;
 }
 
 /// Create a 'ret void' instruction.
@@ -34,7 +36,9 @@ pub trait InstructionBuilder {
 pub struct RetVoid;
 
 impl InstructionBuilder for RetVoid {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe { LLVMBuildRetVoid(builder.as_raw()) }.into()
     }
 }
@@ -50,7 +54,9 @@ impl Ret {
 }
 
 impl InstructionBuilder for Ret {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe { LLVMBuildRet(builder.as_raw(), self.0.as_raw()) }.into()
     }
 }
@@ -69,7 +75,9 @@ impl AggregateRet {
 }
 
 impl InstructionBuilder for AggregateRet {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         let mut values = self.0
             .iter()
             .map(|v| v.as_raw())
@@ -105,7 +113,9 @@ impl Br {
 }
 
 impl InstructionBuilder for Br {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe { LLVMBuildBr(builder.as_raw(), self.0.as_raw()) }.into()
     }
 }
@@ -147,7 +157,9 @@ impl CondBr {
 }
 
 impl InstructionBuilder for CondBr {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildCondBr(
                 builder.as_raw(),
@@ -187,7 +199,9 @@ impl IndirectBr {
 }
 
 impl InstructionBuilder for IndirectBr {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         let br: Instruction = unsafe {
             LLVMBuildIndirectBr(
                 builder.as_raw(),
@@ -252,7 +266,9 @@ impl Switch {
 }
 
 impl InstructionBuilder for Switch {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         let switch: Instruction = unsafe {
             LLVMBuildSwitch(
                 builder.as_raw(),
@@ -321,7 +337,9 @@ impl<'a> Invoke<'a> {
 }
 
 impl<'a> InstructionBuilder for Invoke<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         let mut args = self.args
             .iter()
             .map(|arg| arg.as_raw())
@@ -392,7 +410,9 @@ impl<'a> LandingPad<'a> {
 }
 
 impl<'a> InstructionBuilder for LandingPad<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         let clauses = self.clauses
             .iter()
             .map(|clause| clause.as_raw())
@@ -429,7 +449,9 @@ impl Resume {
 }
 
 impl InstructionBuilder for Resume {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe { LLVMBuildResume(builder.as_raw(), self.0.as_raw()) }.into()
     }
 }
@@ -450,7 +472,9 @@ macro_rules! resume {
 pub struct Unreachable;
 
 impl InstructionBuilder for Unreachable {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe { LLVMBuildUnreachable(builder.as_raw()) }.into()
     }
 }
@@ -480,7 +504,9 @@ impl<'a> Malloc<'a> {
 }
 
 impl<'a> InstructionBuilder for Malloc<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             if let Some(size) = self.size {
                 LLVMBuildArrayMalloc(
@@ -536,7 +562,9 @@ impl<'a> Alloca<'a> {
 }
 
 impl<'a> InstructionBuilder for Alloca<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             if let Some(size) = self.size {
                 LLVMBuildArrayAlloca(
@@ -580,7 +608,9 @@ impl Free {
 }
 
 impl InstructionBuilder for Free {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe { LLVMBuildFree(builder.as_raw(), self.0.as_raw()) }.into()
     }
 }
@@ -606,7 +636,9 @@ impl<'a> Load<'a> {
 }
 
 impl<'a> InstructionBuilder for Load<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildLoad(
                 builder.as_raw(),
@@ -638,7 +670,9 @@ impl Store {
 }
 
 impl InstructionBuilder for Store {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe { LLVMBuildStore(builder.as_raw(), self.value.as_raw(), self.ptr.as_raw()) }.into()
     }
 }
@@ -693,7 +727,9 @@ impl<'a> GetElementPtr<'a> {
 }
 
 impl<'a> InstructionBuilder for GetElementPtr<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             match self.gep {
                 GEP::Indices(ref indices) |
@@ -779,7 +815,9 @@ impl<'a> GlobalString<'a> {
 }
 
 impl<'a> InstructionBuilder for GlobalString<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildGlobalString(
                 builder.as_raw(),
@@ -812,7 +850,9 @@ impl<'a> GlobalStringPtr<'a> {
 }
 
 impl<'a> InstructionBuilder for GlobalStringPtr<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildGlobalStringPtr(
                 builder.as_raw(),
@@ -846,7 +886,9 @@ macro_rules! define_unary_instruction {
         }
 
         impl<'a> $crate::builder::InstructionBuilder for $operator<'a> {
-            fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+            type Target = Instruction;
+
+            fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
                 unsafe {
                     $func(
                         builder.as_raw(),
@@ -894,7 +936,9 @@ macro_rules! define_binary_operator {
         }
 
         impl<'a> $crate::builder::InstructionBuilder for $operator<'a> {
-            fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+            type Target = Instruction;
+
+            fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
                 unsafe {
                     $func(
                         builder.as_raw(),
@@ -946,7 +990,9 @@ macro_rules! define_cast_instruction {
         }
 
         impl<'a> $crate::builder::InstructionBuilder for $operator<'a> {
-            fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+            type Target = Instruction;
+
+            fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
                 unsafe {
                     $func(
                         builder.as_raw(),
@@ -1346,7 +1392,9 @@ impl<'a> ICmp<'a> {
 }
 
 impl<'a> InstructionBuilder for ICmp<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildICmp(
                 builder.as_raw(),
@@ -1429,7 +1477,9 @@ impl<'a> FCmp<'a> {
 }
 
 impl<'a> InstructionBuilder for FCmp<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildFCmp(
                 builder.as_raw(),
@@ -1540,8 +1590,10 @@ impl<'a> Phi<'a> {
 }
 
 impl<'a> InstructionBuilder for Phi<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        let phi: Instruction = unsafe {
+    type Target = PHINode;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        let phi: PHINode = unsafe {
             LLVMBuildPhi(
                 builder.as_raw(),
                 self.ty.as_raw(),
@@ -1572,9 +1624,10 @@ impl<'a> InstructionBuilder for Phi<'a> {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PHINode(Instruction);
 
-inherit_from!(PHINode, Instruction, LLVMValueRef);
+inherit_from!(PHINode, Instruction, ValueRef, LLVMValueRef);
 
 impl PHINode {
     pub fn add_incomings(&self, incomings: &[(ValueRef, BasicBlock)]) -> &Self {
@@ -1626,7 +1679,9 @@ impl<'a> ExtractElement<'a> {
 }
 
 impl<'a> InstructionBuilder for ExtractElement<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildExtractElement(
                 builder.as_raw(),
@@ -1667,7 +1722,9 @@ impl<'a> InsertElement<'a> {
 }
 
 impl<'a> InstructionBuilder for InsertElement<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildInsertElement(
                 builder.as_raw(),
@@ -1704,7 +1761,9 @@ impl<'a> ShuffleVector<'a> {
 }
 
 impl<'a> InstructionBuilder for ShuffleVector<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildShuffleVector(
                 builder.as_raw(),
@@ -1745,7 +1804,9 @@ impl<'a> ExtractValue<'a> {
 }
 
 impl<'a> InstructionBuilder for ExtractValue<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildExtractValue(
                 builder.as_raw(),
@@ -1786,7 +1847,9 @@ impl<'a> InsertValue<'a> {
 }
 
 impl<'a> InstructionBuilder for InsertValue<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildInsertValue(
                 builder.as_raw(),
@@ -1844,7 +1907,9 @@ impl<'a> Fence<'a> {
 }
 
 impl<'a> InstructionBuilder for Fence<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildFence(
                 builder.as_raw(),
@@ -1884,7 +1949,9 @@ impl AtomicRMW {
 }
 
 impl InstructionBuilder for AtomicRMW {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildAtomicRMW(
                 builder.as_raw(),
@@ -1929,7 +1996,9 @@ impl AtomicCmpXchg {
 }
 
 impl InstructionBuilder for AtomicCmpXchg {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+    type Target = Instruction;
+
+    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
             LLVMBuildAtomicCmpXchg(
                 builder.as_raw(),
@@ -2165,7 +2234,7 @@ impl IRBuilder {
     pub fn emit<I: InstructionBuilder + fmt::Debug>(&self, inst: I) -> Instruction {
         trace!("{:?} emit: {:?}", self, inst);
 
-        inst.emit_to(self)
+        inst.emit_to(self).as_raw().into()
     }
 }
 
@@ -3114,7 +3183,7 @@ mod tests {
 
         br!(bb_loop).emit_to(&builder);
 
-        PHINode(indvar).add_incomings(&[(nextindvar.into(), bb_loop)]);
+        indvar.add_incomings(&[(nextindvar.into(), bb_loop)]);
 
         assert_eq!(
             last_instructions(bb_loop, 4),

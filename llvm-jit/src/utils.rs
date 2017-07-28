@@ -39,6 +39,41 @@ macro_rules! inherit_from {
         }
     };
 
+    ($ty:ident, $parent:ty, $ancestor:ty, $raw:ty) => {
+        impl ::std::ops::Deref for $ty {
+            type Target = $ancestor;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl ::std::convert::From<$ty> for $parent {
+            fn from(f: $ty) -> Self {
+                f.0
+            }
+        }
+
+        impl ::std::convert::From<$ty> for $ancestor {
+            fn from(f: $ty) -> Self {
+                f.0.into()
+            }
+        }
+
+        impl ::std::convert::From<$raw> for $ty {
+            fn from(f: $raw) -> Self {
+                $ty(f.into())
+            }
+        }
+
+        impl $ty {
+            /// Wrap a raw $ty reference.
+            pub fn from_raw(v: $raw) -> Self {
+                $ty(v.into())
+            }
+        }
+    };
+
     ($ty:ident, $parent:ty, $raw:ty) => {
         impl ::std::ops::Deref for $ty {
             type Target = $parent;
