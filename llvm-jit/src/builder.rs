@@ -2174,8 +2174,11 @@ mod tests {
     macro_rules! test_icmp {
         ($builder:expr, $pred:ident !( $lhs:expr, $rhs:expr)) => ({
             assert_eq!(
-                icmp!($pred $lhs, $rhs; stringify!($pred)).emit_to(& $builder).to_string().trim(),
-                format!("%{0} = icmp {0} i64* %lhs, %rhs", stringify!($pred))
+                icmp!($pred $lhs, $rhs; format!("icmp_{}", stringify!($pred)))
+                    .emit_to(& $builder)
+                    .to_string()
+                    .trim(),
+                format!("%icmp_{0} = icmp {0} i64* %lhs, %rhs", stringify!($pred))
             )
         })
     }
@@ -2183,8 +2186,11 @@ mod tests {
     macro_rules! test_fcmp {
         ($builder:expr, $pred:ident !( $lhs:expr, $rhs:expr)) => ({
             assert_eq!(
-                fcmp!($pred $lhs, $rhs; stringify!($pred)).emit_to(& $builder).to_string().trim(),
-                format!("%{0} = fcmp {0} i64* %lhs, %rhs", stringify!($pred))
+                fcmp!($pred $lhs, $rhs; format!("fcmp_{}", stringify!($pred)))
+                    .emit_to(& $builder)
+                    .to_string()
+                    .trim(),
+                format!("%fcmp_{0} = fcmp {0} i64* %lhs, %rhs", stringify!($pred))
             )
         })
     }
@@ -2214,7 +2220,7 @@ mod tests {
         test_icmp!(builder, sgt!(lhs, rhs));
         test_icmp!(builder, sge!(lhs, rhs));
         test_icmp!(builder, slt!(lhs, rhs));
-        test_icmp!(builder, sge!(lhs, rhs));
+        test_icmp!(builder, sle!(lhs, rhs));
 
         test_fcmp!(builder, oeq!(lhs, rhs));
         test_fcmp!(builder, ogt!(lhs, rhs));
