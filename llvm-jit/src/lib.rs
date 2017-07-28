@@ -1,3 +1,7 @@
+#![cfg_attr(feature="clippy", feature(plugin))]
+#![cfg_attr(feature="clippy", plugin(clippy(conf_file=".clippy.toml")))]
+#![cfg_attr(feature="clippy", allow(module_inception, block_in_if_condition_stmt))]
+
 #[macro_use]
 extern crate log;
 #[macro_use]
