@@ -65,6 +65,9 @@ pub mod ops {
                       IntToPtr, PointerCast, PtrToInt, SExt, SExtOrBitCast, SIToFP, Trunc,
                       TruncOrBitCast, UIToFP, ZExt, ZExtOrBitCast};
 
+    /// Comparisons
+    pub use builder::{FCmp, ICmp};
+
     /// Miscellaneous
     pub use builder::{ExtractElement, ExtractValue, InsertElement, InsertValue, ShuffleVector};
 }

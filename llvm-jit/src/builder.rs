@@ -1,7 +1,9 @@
 use std::borrow::Cow;
 use std::fmt;
+use std::mem;
 use std::ptr;
 
+use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
 
@@ -1030,6 +1032,192 @@ define_cast_instruction!(PointerCast, LLVMBuildPointerCast, ptr_cast);
 define_cast_instruction!(IntCast, LLVMBuildIntCast, int_cast);
 define_cast_instruction!(FPCast, LLVMBuildFPCast, fp_cast);
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct ICmp<'a> {
+    op: u32, // TODO: use LLVMIntPredicate when llvm-sys update
+    lhs: ValueRef,
+    rhs: ValueRef,
+    name: Cow<'a, str>,
+}
+
+impl<'a> ICmp<'a> {
+    pub fn new(op: LLVMIntPredicate, lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+        ICmp {
+            op: op as u32,
+            lhs: lhs,
+            rhs: rhs,
+            name: name,
+        }
+    }
+
+    pub fn equals(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+        Self::new(LLVMIntPredicate::LLVMIntEQ, lhs, rhs, name)
+    }
+
+    pub fn not_equals(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+        Self::new(LLVMIntPredicate::LLVMIntNE, lhs, rhs, name)
+    }
+
+    pub fn unsigned_greater_than(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+        Self::new(LLVMIntPredicate::LLVMIntUGT, lhs, rhs, name)
+    }
+
+    pub fn unsigned_greater_or_equal(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+        Self::new(LLVMIntPredicate::LLVMIntUGE, lhs, rhs, name)
+    }
+
+    pub fn unsigned_less_than(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+        Self::new(LLVMIntPredicate::LLVMIntULT, lhs, rhs, name)
+    }
+
+    pub fn unsigned_less_or_equal(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+        Self::new(LLVMIntPredicate::LLVMIntULE, lhs, rhs, name)
+    }
+
+    pub fn signed_greater_than(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+        Self::new(LLVMIntPredicate::LLVMIntSGT, lhs, rhs, name)
+    }
+
+    pub fn signed_greater_or_equal(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+        Self::new(LLVMIntPredicate::LLVMIntSGE, lhs, rhs, name)
+    }
+
+    pub fn signed_less_than(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+        Self::new(LLVMIntPredicate::LLVMIntSLT, lhs, rhs, name)
+    }
+
+    pub fn signed_less_or_equal(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+        Self::new(LLVMIntPredicate::LLVMIntSGE, lhs, rhs, name)
+    }
+}
+
+impl<'a> InstructionBuilder for ICmp<'a> {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildICmp(
+                builder.as_raw(),
+                mem::transmute(self.op),
+                self.lhs.as_raw(),
+                self.rhs.as_raw(),
+                unchecked_cstring(self.name.clone()).as_ptr(),
+            )
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! icmp {
+    (eq $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::ICmp::new(LLVMIntPredicate::LLVMIntEQ, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (ne $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::ICmp::new(LLVMIntPredicate::LLVMIntNE, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (ugt $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::ICmp::new(LLVMIntPredicate::LLVMIntUGT, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (uge $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::ICmp::new(LLVMIntPredicate::LLVMIntUGE, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (ult $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::ICmp::new(LLVMIntPredicate::LLVMIntULT, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (ule $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::ICmp::new(LLVMIntPredicate::LLVMIntULE, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (sgt $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::ICmp::new(LLVMIntPredicate::LLVMIntSGT, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (sge $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::ICmp::new(LLVMIntPredicate::LLVMIntSGE, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (slt $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::ICmp::new(LLVMIntPredicate::LLVMIntSLT, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (sle $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::ICmp::new(LLVMIntPredicate::LLVMIntSLE, $lhs.into(), $rhs.into(), $name.into())
+    );
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FCmp<'a> {
+    op: u32, // TODO: use LLVMRealPredicate when llvm-sys update
+    lhs: ValueRef,
+    rhs: ValueRef,
+    name: Cow<'a, str>,
+}
+
+impl<'a> FCmp<'a> {
+    pub fn new(op: LLVMRealPredicate, lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+        FCmp {
+            op: op as u32,
+            lhs: lhs,
+            rhs: rhs,
+            name: name,
+        }
+    }
+}
+
+impl<'a> InstructionBuilder for FCmp<'a> {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            LLVMBuildFCmp(
+                builder.as_raw(),
+                mem::transmute(self.op),
+                self.lhs.as_raw(),
+                self.rhs.as_raw(),
+                unchecked_cstring(self.name.clone()).as_ptr(),
+            )
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! fcmp {
+    (oeq $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealOEQ, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (ogt $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealOGT, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (oge $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealOGE, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (olt $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealOLT, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (ole $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealOLE, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (one $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealONE, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (ord $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealORD, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (uno $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealUNO, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (ueq $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealUEQ, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (ugt $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealUGT, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (uge $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealUGE, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (ult $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealULT, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (ule $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealULE, $lhs.into(), $rhs.into(), $name.into())
+    );
+    (une $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealUNE, $lhs.into(), $rhs.into(), $name.into())
+    );
+}
+
 /// This instruction extracts a single (scalar) element from a VectorType value
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExtractElement<'a> {
@@ -1981,5 +2169,66 @@ mod tests {
                 .trim(),
             "%inbounds_gep1 = getelementptr inbounds %struct, %struct* %p_struct, i32 2, i32 1"
         );
+    }
+
+    macro_rules! test_icmp {
+        ($builder:expr, $pred:ident !( $lhs:expr, $rhs:expr)) => ({
+            assert_eq!(
+                icmp!($pred $lhs, $rhs; stringify!($pred)).emit_to(& $builder).to_string().trim(),
+                format!("%{0} = icmp {0} i64* %lhs, %rhs", stringify!($pred))
+            )
+        })
+    }
+
+    macro_rules! test_fcmp {
+        ($builder:expr, $pred:ident !( $lhs:expr, $rhs:expr)) => ({
+            assert_eq!(
+                fcmp!($pred $lhs, $rhs; stringify!($pred)).emit_to(& $builder).to_string().trim(),
+                format!("%{0} = fcmp {0} i64* %lhs, %rhs", stringify!($pred))
+            )
+        })
+    }
+
+    #[test]
+    fn cmp() {
+        let context = Context::new();
+        let module = Module::with_name_in_context("br", &context);
+        let builder = IRBuilder::within_context(&context);
+
+        let function_type = FunctionType::new(context.void(), &[], false);
+        let function = module.add_function("test", function_type);
+
+        let bb = function.append_basic_block_in_context("entry", &context);
+        builder.position(Position::AtEnd(bb));
+
+        let i64t = context.int64();
+        let lhs = alloca!(i64t, "lhs").emit_to(&builder);
+        let rhs = alloca!(i64t, "rhs").emit_to(&builder);
+
+        test_icmp!(builder, eq!(lhs, rhs));
+        test_icmp!(builder, ne!(lhs, rhs));
+        test_icmp!(builder, ugt!(lhs, rhs));
+        test_icmp!(builder, uge!(lhs, rhs));
+        test_icmp!(builder, ult!(lhs, rhs));
+        test_icmp!(builder, ule!(lhs, rhs));
+        test_icmp!(builder, sgt!(lhs, rhs));
+        test_icmp!(builder, sge!(lhs, rhs));
+        test_icmp!(builder, slt!(lhs, rhs));
+        test_icmp!(builder, sge!(lhs, rhs));
+
+        test_fcmp!(builder, oeq!(lhs, rhs));
+        test_fcmp!(builder, ogt!(lhs, rhs));
+        test_fcmp!(builder, oge!(lhs, rhs));
+        test_fcmp!(builder, olt!(lhs, rhs));
+        test_fcmp!(builder, ole!(lhs, rhs));
+        test_fcmp!(builder, one!(lhs, rhs));
+        test_fcmp!(builder, ord!(lhs, rhs));
+        test_fcmp!(builder, uno!(lhs, rhs));
+        test_fcmp!(builder, ueq!(lhs, rhs));
+        test_fcmp!(builder, ugt!(lhs, rhs));
+        test_fcmp!(builder, uge!(lhs, rhs));
+        test_fcmp!(builder, ult!(lhs, rhs));
+        test_fcmp!(builder, ule!(lhs, rhs));
+        test_fcmp!(builder, une!(lhs, rhs));
     }
 }
