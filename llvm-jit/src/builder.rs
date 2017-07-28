@@ -32,7 +32,7 @@ pub trait InstructionBuilder {
 }
 
 /// Create a 'ret void' instruction.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RetVoid;
 
 impl InstructionBuilder for RetVoid {
@@ -44,7 +44,7 @@ impl InstructionBuilder for RetVoid {
 }
 
 /// Create a 'ret <val>' instruction.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Ret(ValueRef);
 
 impl Ret {
@@ -103,7 +103,7 @@ macro_rules! ret {
 }
 
 /// Create an unconditional 'br label X' instruction.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Br(BasicBlock);
 
 impl Br {
@@ -439,7 +439,7 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
 }
 
 /// The `resume` instruction is a terminator instruction that has no successors.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Resume(ValueRef);
 
 impl Resume {
@@ -468,7 +468,7 @@ macro_rules! resume {
 ///
 /// This instruction is used to inform the optimizer that a particular portion of the code is not reachable.
 /// This can be used to indicate that the code after a no-return function cannot be reached, and other facts.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Unreachable;
 
 impl InstructionBuilder for Unreachable {
@@ -598,7 +598,7 @@ macro_rules! alloca {
     });
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Free(ValueRef);
 
 impl Free {
@@ -1630,6 +1630,7 @@ pub struct PHINode(Instruction);
 inherit_from!(PHINode, Instruction, ValueRef, LLVMValueRef);
 
 impl PHINode {
+    /// Add an incoming values to the end of a PHI list.
     pub fn add_incomings(&self, incomings: &[(ValueRef, BasicBlock)]) -> &Self {
         let (mut values, mut blocks) = incomings.iter().fold(
             (Vec::new(), Vec::new()),
@@ -1650,6 +1651,20 @@ impl PHINode {
             )
         }
         self
+    }
+
+    /// Obtain incoming values to a PHI node.
+    pub fn incomings(&self) -> Vec<(ValueRef, BasicBlock)> {
+        let count = unsafe { LLVMCountIncoming(self.as_raw()) };
+
+        (0..count)
+            .map(|idx| unsafe {
+                (
+                    LLVMGetIncomingValue(self.as_raw(), idx).into(),
+                    LLVMGetIncomingBlock(self.as_raw(), idx).into(),
+                )
+            })
+            .collect()
     }
 }
 
@@ -3192,6 +3207,11 @@ mod tests {
                 "%nextindvar = add i64 %indvar, 1",
                 "br label %Loop",
             ]
+        );
+
+        assert_eq!(
+            indvar.incomings(),
+            vec![(i64t.int(0), bb_loop_header), (nextindvar.into(), bb_loop)]
         );
     }
 }
