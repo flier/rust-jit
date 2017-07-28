@@ -503,10 +503,10 @@ impl<'a> InstructionBuilder for Malloc<'a> {
 /// Invoke `malloc` function to allocates memory on the heap, need to be expicity released by its caller.
 #[macro_export]
 macro_rules! malloc {
-    ($ty:expr, $name:expr) => ({
+    ($ty:expr; $name:expr) => ({
         $crate::ops::Malloc::new($ty.into(), $name.into())
     });
-    ($array_ty:expr, $size:expr, $name:expr) => ({
+    ($array_ty:expr, $size:expr; $name:expr) => ({
         $crate::ops::Malloc::array($array_ty.into(), $size.into(), $name.into())
     });
 }
@@ -562,10 +562,10 @@ impl<'a> InstructionBuilder for Alloca<'a> {
 /// The object is always allocated in the generic address space (address space zero).
 #[macro_export]
 macro_rules! alloca {
-    ($ty:expr, $name:expr) => ({
+    ($ty:expr; $name:expr) => ({
         $crate::ops::Alloca::new($ty.into(), $name.into())
     });
-    ($array_ty:expr, $size:expr, $name:expr) => ({
+    ($array_ty:expr, $size:expr; $name:expr) => ({
         $crate::ops::Alloca::array($array_ty.into(), $size.into(), $name.into())
     });
 }
@@ -620,7 +620,7 @@ impl<'a> InstructionBuilder for Load<'a> {
 /// The `load` instruction is used to read from memory.
 #[macro_export]
 macro_rules! load {
-    ($ptr:expr, $name:expr) => ({
+    ($ptr:expr; $name:expr) => ({
         $crate::ops::Load::new($ptr.into(), $name.into())
     })
 }
@@ -751,13 +751,13 @@ impl<'a> InstructionBuilder for GetElementPtr<'a> {
 /// even if it happens to point into allocated storage.
 #[macro_export]
 macro_rules! gep {
-    ($ptr:expr, [ $( $index:expr ),* ], $name:expr) => ({
+    ($ptr:expr, [ $( $index:expr ),* ]; $name:expr) => ({
         $crate::ops::GetElementPtr::new($ptr.into(), vec![ $( $index.into() ),* ], $name.into())
     });
-    (inbounds $ptr:expr, [ $( $index:expr ),* ], $name:expr) => ({
+    (inbounds $ptr:expr, [ $( $index:expr ),* ]; $name:expr) => ({
         $crate::ops::GetElementPtr::in_bounds($ptr.into(), vec![ $( $index.into() ),* ], $name.into())
     });
-    (structure $struct_ptr:expr, $index:expr, $name:expr) => ({
+    (structure $struct_ptr:expr, $index:expr; $name:expr) => ({
         $crate::ops::GetElementPtr::in_struct($struct_ptr.into(), $index, $name.into())
     });
 }
@@ -793,7 +793,7 @@ impl<'a> InstructionBuilder for GlobalString<'a> {
 /// Make a new global variable with initializer type i8*
 #[macro_export]
 macro_rules! global_str {
-    ($s:expr, $name:expr) => ({
+    ($s:expr; $name:expr) => ({
         $crate::ops::GlobalString::new($s.into(), $name.into())
     })
 }
@@ -826,7 +826,7 @@ impl<'a> InstructionBuilder for GlobalStringPtr<'a> {
 /// Make a new global variable with initializer type i8*, return a pointer with "i8*" type instead of a pointer to array of i8.
 #[macro_export]
 macro_rules! global_str_ptr {
-    ($s:expr, $name:expr) => ({
+    ($s:expr; $name:expr) => ({
         $crate::ops::GlobalStringPtr::new($s.into(), $name.into())
     })
 }
@@ -864,7 +864,7 @@ macro_rules! define_unary_instruction {
         #[doc=$comment]
         #[macro_export]
         macro_rules! $alias {
-            ($value:expr, $name:expr) => { $crate::ops::$operator::new($value.into(), $name.into()) }
+            ($value:expr; $name:expr) => { $crate::ops::$operator::new($value.into(), $name.into()) }
         }
     );
 
@@ -873,7 +873,7 @@ macro_rules! define_unary_instruction {
 
         #[macro_export]
         macro_rules! $alias {
-            ($value:expr, $name:expr) => { $crate::ops::$operator::new($value.into(), $name.into()) }
+            ($value:expr; $name:expr) => { $crate::ops::$operator::new($value.into(), $name.into()) }
         }
     );
 }
@@ -913,7 +913,7 @@ macro_rules! define_binary_operator {
         #[doc=$comment]
         #[macro_export]
         macro_rules! $alias {
-            ($lhs:expr, $rhs:expr, $name:expr) => {
+            ($lhs:expr, $rhs:expr; $name:expr) => {
                 $crate::ops::$operator::new($lhs.into(), $rhs.into(), $name.into())
             }
         }
@@ -923,7 +923,7 @@ macro_rules! define_binary_operator {
 
         #[macro_export]
         macro_rules! $alias {
-            ($lhs:expr, $rhs:expr, $name:expr) => {
+            ($lhs:expr, $rhs:expr; $name:expr) => {
                 $crate::ops::$operator::new($lhs.into(), $rhs.into(), $name.into())
             }
         }
@@ -964,7 +964,7 @@ macro_rules! define_cast_instruction {
         #[doc=$comment]
         #[macro_export]
         macro_rules! $alias {
-            ($value:expr, $dest_ty:expr, $name:expr) => {
+            ($value:expr, $dest_ty:expr; $name:expr) => {
                 $crate::ops::$operator::new($value.into(), $dest_ty.into(), $name.into())
             }
         }
@@ -974,7 +974,7 @@ macro_rules! define_cast_instruction {
 
         #[macro_export]
         macro_rules! $alias {
-            ($value:expr, $dest_ty:expr, $name:expr) => {
+            ($value:expr, $dest_ty:expr; $name:expr) => {
                 $crate::ops::$operator::new($value.into(), $dest_ty.into(), $name.into())
             }
         }
@@ -1641,7 +1641,7 @@ impl<'a> InstructionBuilder for ExtractElement<'a> {
 /// The `extractelement` instruction extracts a single scalar element from a vector at a specified index.
 #[macro_export]
 macro_rules! extract_element {
-    ($vector:expr, $index:expr, $name:expr) => ({
+    ($vector:expr, $index:expr; $name:expr) => ({
         $crate::ops::ExtractElement::new($vector.into(), $index.into(), $name.into())
     })
 }
@@ -1683,7 +1683,7 @@ impl<'a> InstructionBuilder for InsertElement<'a> {
 /// The `insertelement` instruction inserts a scalar element into a vector at a specified index.
 #[macro_export]
 macro_rules! insert_element {
-    ($vector:expr, $element:expr, $index:expr, $name:expr) => ({
+    ($vector:expr, $element:expr, $index:expr; $name:expr) => ({
         $crate::ops::InsertElement::new($vector.into(), $element.into(), $index.into(), $name.into())
     })
 }
@@ -1721,7 +1721,7 @@ impl<'a> InstructionBuilder for ShuffleVector<'a> {
 /// returning a vector with the same element type as the input and length that is the same as the shuffle mask.
 #[macro_export]
 macro_rules! shuffle_vector {
-    ($v1:expr, $v2:expr, $mask:expr, $name:expr) => ({
+    ($v1:expr, $v2:expr, $mask:expr; $name:expr) => ({
         $crate::ops::ShuffleVector::new($v1.into(), $v2.into(), $mask.into(), $name.into())
     })
 }
@@ -1760,7 +1760,7 @@ impl<'a> InstructionBuilder for ExtractValue<'a> {
 /// The `extractvalue` instruction extracts the value of a member field from an aggregate value.
 #[macro_export]
 macro_rules! extract_value {
-    ($vector:expr, $index:expr, $name:expr) => ({
+    ($vector:expr, $index:expr; $name:expr) => ({
         $crate::ops::ExtractValue::new($vector.into(), $index, $name.into())
     })
 }
@@ -1802,7 +1802,7 @@ impl<'a> InstructionBuilder for InsertValue<'a> {
 /// The `insertvalue` instruction inserts a value into a member field in an aggregate value.
 #[macro_export]
 macro_rules! insert_value {
-    ($vector:expr, $element:expr, $index:expr, $name:expr) => ({
+    ($vector:expr, $element:expr, $index:expr; $name:expr) => ({
         $crate::ops::InsertValue::new($vector.into(), $element.into(), $index, $name.into())
     })
 }
@@ -2362,10 +2362,10 @@ mod tests {
 
     macro_rules! test_instruction {
         ($builder:ident, $name:ident !( $arg0_i64:ident ), $display:expr) => (
-            assert_eq!( $name !( $arg0_i64, stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
+            assert_eq!( $name !( $arg0_i64; stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
         );
         ($builder:ident, $name:ident !( $arg0_i64:ident, $arg1_i64:ident ), $display:expr) => (
-            assert_eq!( $name !( $arg0_i64, $arg1_i64, stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
+            assert_eq!( $name !( $arg0_i64, $arg1_i64; stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
         );
     }
 
@@ -2628,7 +2628,7 @@ mod tests {
         let idx = i64t.int(1);
 
         assert_eq!(
-            extract_element!(arg0_vector, idx, "extract_element")
+            extract_element!(arg0_vector, idx; "extract_element")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2636,7 +2636,7 @@ mod tests {
         );
 
         assert_eq!(
-            insert_element!(arg0_vector, i64t.int(10), idx, "insert_element")
+            insert_element!(arg0_vector, i64t.int(10), idx; "insert_element")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2647,7 +2647,7 @@ mod tests {
         let mask = vector![i32t.int(1), i32t.int(0), i32t.int(2)];
 
         assert_eq!(
-            shuffle_vector!(arg0_vector, arg1_vector, mask, "shuffle_vector")
+            shuffle_vector!(arg0_vector, arg1_vector, mask; "shuffle_vector")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2675,7 +2675,7 @@ mod tests {
         let arg1_struct = function.get_param(1).unwrap();
 
         assert_eq!(
-            extract_value!(arg0_array, 1, "extract_value")
+            extract_value!(arg0_array, 1; "extract_value")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2683,7 +2683,7 @@ mod tests {
         );
 
         assert_eq!(
-            extract_value!(arg1_struct, 1, "extract_value")
+            extract_value!(arg1_struct, 1; "extract_value")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2691,7 +2691,7 @@ mod tests {
         );
 
         assert_eq!(
-            insert_value!(arg0_array, i64t.int(123), 1, "insert_value")
+            insert_value!(arg0_array, i64t.int(123), 1; "insert_value")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2699,7 +2699,7 @@ mod tests {
         );
 
         assert_eq!(
-            insert_value!(arg1_struct, i64t.int(123), 1, "insert_value")
+            insert_value!(arg1_struct, i64t.int(123), 1; "insert_value")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2727,7 +2727,7 @@ mod tests {
         let arg1_p_i64 = function.get_param(1).unwrap();
 
         assert_eq!(
-            is_null!(arg0_p_i64, "is_null")
+            is_null!(arg0_p_i64; "is_null")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2735,14 +2735,14 @@ mod tests {
         );
 
         assert_eq!(
-            is_not_null!(arg0_p_i64, "is_not_null")
+            is_not_null!(arg0_p_i64; "is_not_null")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
             "%is_not_null = icmp ne i64* %0, null"
         );
 
-        ptr_diff!(arg0_p_i64, arg1_p_i64, "ptr_diff").emit_to(&builder);
+        ptr_diff!(arg0_p_i64, arg1_p_i64; "ptr_diff").emit_to(&builder);
 
         assert_eq!(
             last_instructions(bb, 4),
@@ -2784,7 +2784,7 @@ mod tests {
 
         let arg0_p_i64 = function.get_param(0).unwrap();
 
-        let p = malloc!(i64t, "malloc").emit_to(&builder);
+        let p = malloc!(i64t; "malloc").emit_to(&builder);
 
         free!(p).emit_to(&builder);
 
@@ -2798,7 +2798,7 @@ mod tests {
             ]
         );
 
-        malloc!(i64t, i64t.int(123), "array_malloc").emit_to(&builder);
+        malloc!(i64t, i64t.int(123); "array_malloc").emit_to(&builder);
 
         assert_eq!(
             last_instructions(bb, 4),
@@ -2811,12 +2811,12 @@ mod tests {
         );
 
         assert_eq!(
-            alloca!(i64t, "alloca").emit_to(&builder).to_string().trim(),
+            alloca!(i64t; "alloca").emit_to(&builder).to_string().trim(),
             "%alloca = alloca i64"
         );
 
         assert_eq!(
-            alloca!(i64t, i64t.int(123), "array_alloca")
+            alloca!(i64t, i64t.int(123); "array_alloca")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2824,7 +2824,7 @@ mod tests {
         );
 
         assert_eq!(
-            load!(arg0_p_i64, "load")
+            load!(arg0_p_i64; "load")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2840,7 +2840,7 @@ mod tests {
         );
 
         assert_eq!(
-            global_str!("global_str", "global_str")
+            global_str!("global_str"; "global_str")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2848,7 +2848,7 @@ mod tests {
         );
 
         assert_eq!(
-            global_str_ptr!("global_str_ptr", "global_str_ptr")
+            global_str_ptr!("global_str_ptr"; "global_str_ptr")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2879,12 +2879,12 @@ mod tests {
         let vector_t = i64t.vector(4);
         let struct_t = context.named_struct("struct", &[i32t, i64t, vector_t.into()], false);
 
-        let p_array = alloca!(array_t, "p_array").emit_to(&builder);
-        let p_vector = alloca!(vector_t, "p_vector").emit_to(&builder);
-        let p_struct = alloca!(struct_t, "p_struct").emit_to(&builder);
+        let p_array = alloca!(array_t; "p_array").emit_to(&builder);
+        let p_vector = alloca!(vector_t; "p_vector").emit_to(&builder);
+        let p_struct = alloca!(struct_t; "p_struct").emit_to(&builder);
 
         assert_eq!(
-            gep!(p_array, [i64t.int(1)], "gep")
+            gep!(p_array, [i64t.int(1)]; "gep")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2892,7 +2892,7 @@ mod tests {
         );
 
         assert_eq!(
-            gep!(inbounds p_vector, [i64t.int(1)], "inbounds_gep")
+            gep!(inbounds p_vector, [i64t.int(1)]; "inbounds_gep")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2900,7 +2900,7 @@ mod tests {
         );
 
         assert_eq!(
-            gep!(structure p_struct, 1, "struct_gep")
+            gep!(structure p_struct, 1; "struct_gep")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2908,7 +2908,7 @@ mod tests {
         );
 
         assert_eq!(
-            gep!(inbounds p_struct, [i32t.int(2), i32t.int(1)], "inbounds_gep")
+            gep!(inbounds p_struct, [i32t.int(2), i32t.int(1)]; "inbounds_gep")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2953,8 +2953,8 @@ mod tests {
         builder.position(Position::AtEnd(bb));
 
         let i64t = context.int64();
-        let lhs = alloca!(i64t, "lhs").emit_to(&builder);
-        let rhs = alloca!(i64t, "rhs").emit_to(&builder);
+        let lhs = alloca!(i64t; "lhs").emit_to(&builder);
+        let rhs = alloca!(i64t; "rhs").emit_to(&builder);
 
         test_icmp!(builder, eq!(lhs, rhs));
         test_icmp!(builder, ne!(lhs, rhs));
@@ -3110,7 +3110,7 @@ mod tests {
         builder.position(Position::AtEnd(bb_loop));
 
         let indvar = phi!(i64t, [i64t.int(0), bb_loop_header]; "indvar").emit_to(&builder);
-        let nextindvar = add!(indvar, i64t.int(1), "nextindvar").emit_to(&builder);
+        let nextindvar = add!(indvar, i64t.int(1); "nextindvar").emit_to(&builder);
 
         br!(bb_loop).emit_to(&builder);
 
