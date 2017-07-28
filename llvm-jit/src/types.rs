@@ -10,6 +10,7 @@ use llvm::prelude::*;
 
 use context::Context;
 use utils::unchecked_cstring;
+use value::ValueRef;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeRef(LLVMTypeRef);
@@ -89,7 +90,12 @@ impl TypeRef {
 
     /// Obtain the context to which this type instance is associated.
     pub fn context(&self) -> Context {
-        Context::from_raw(unsafe { LLVMGetTypeContext(self.0) })
+        unsafe { LLVMGetTypeContext(self.0) }.into()
+    }
+
+    /// Obtain a constant value referring to an undefined value of a type.
+    pub fn undef(&self) -> ValueRef {
+        unsafe { LLVMGetUndef(self.0) }.into()
     }
 }
 

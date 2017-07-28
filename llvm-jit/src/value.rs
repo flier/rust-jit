@@ -82,7 +82,7 @@ impl ValueRef {
 
     /// Obtain the type of a value.
     pub fn type_of(&self) -> TypeRef {
-        TypeRef::from_raw(unsafe { LLVMTypeOf(self.0) })
+        unsafe { LLVMTypeOf(self.0) }.into()
     }
 
     /// Obtain the enumerated type of a Value instance.
@@ -624,6 +624,65 @@ impl Instruction {
     }
 }
 
+pub type ThreadLocalMode = LLVMThreadLocalMode;
+
+/// Global Variables
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GlobalVar(ValueRef);
+
+inherit_value_ref!(GlobalVar);
+
+impl GlobalVar {
+    pub fn delete(&self) {
+        unsafe { LLVMDeleteGlobal(self.as_raw()) }
+    }
+
+    pub fn initializer(&self) -> Option<ValueRef> {
+        unsafe { LLVMGetInitializer(self.as_raw()).as_mut() }.map(|var| ValueRef::from_raw(var))
+    }
+
+    pub fn set_initializer(&self, initializer: Constant) {
+        unsafe { LLVMSetInitializer(self.as_raw(), initializer.as_raw()) }
+    }
+
+    pub fn is_thread_local(&self) -> bool {
+        unsafe { LLVMIsThreadLocal(self.as_raw()) != 0 }
+    }
+
+    pub fn set_thread_local(&self, is_thread_local: bool) {
+        unsafe { LLVMSetThreadLocal(self.as_raw(), if is_thread_local { 1 } else { 0 }) }
+    }
+
+    pub fn is_global_constant(&self) -> bool {
+        unsafe { LLVMIsGlobalConstant(self.as_raw()) != 0 }
+    }
+
+    pub fn set_global_constant(&self, is_global_constant: bool) {
+        unsafe { LLVMSetGlobalConstant(self.as_raw(), if is_global_constant { 1 } else { 0 }) }
+    }
+
+    pub fn thread_local_mode(&self) -> ThreadLocalMode {
+        unsafe { LLVMGetThreadLocalMode(self.as_raw()) }
+    }
+
+    pub fn set_thread_local_mode(&self, mode: ThreadLocalMode) {
+        unsafe { LLVMSetThreadLocalMode(self.as_raw(), mode) }
+    }
+
+    pub fn is_externally_initialized(&self) -> bool {
+        unsafe { LLVMIsExternallyInitialized(self.as_raw()) != 0 }
+    }
+
+    pub fn set_externally_initialized(&self, is_externally_initialized: bool) {
+        unsafe {
+            LLVMSetExternallyInitialized(
+                self.as_raw(),
+                if is_externally_initialized { 1 } else { 0 },
+            )
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::f64;
@@ -633,6 +692,7 @@ mod tests {
 
     use super::*;
     use context::Context;
+    use module::Module;
     use types::*;
 
     #[test]
@@ -826,5 +886,75 @@ mod tests {
 
         assert_eq!(v.element(0), Some(i64t.int(123)));
         assert_eq!(v.element(1), Some(i64t.int(456)));
+    }
+
+    #[test]
+    fn global_var() {
+        let c = Context::new();
+        let m = Module::with_name_in_context("test", &c);
+
+        assert_eq!(m.get_global_var("x"), None);
+
+        let i64t = c.int64();
+        let f64t = c.double();
+
+        m.add_global_var("x", i64t);
+        m.add_global_var("y", f64t);
+
+        let x = m.get_global_var("x").unwrap();
+        let y = m.get_global_var("y").unwrap();
+
+        assert_eq!(m.global_vars().collect::<Vec<GlobalVar>>(), vec![x, y]);
+
+        assert_eq!(x.name().unwrap(), "x");
+        assert_eq!(y.name().unwrap(), "y");
+
+        assert_eq!(x.to_string(), "@x = external global i64");
+
+        // set initializer
+        assert_eq!(x.initializer(), None);
+
+        let v = i64t.uint(123);
+
+        x.set_initializer(v);
+
+        assert_eq!(x.initializer(), Some(v));
+
+        assert_eq!(x.to_string(), "@x = global i64 123");
+
+        // set as global constant
+        assert!(!x.is_global_constant());
+
+        x.set_global_constant(true);
+
+        assert_eq!(x.to_string(), "@x = constant i64 123");
+
+        x.set_global_constant(false);
+
+        // set as externally initialized
+        assert!(!x.is_externally_initialized());
+
+        x.set_externally_initialized(true);
+
+        assert_eq!(x.to_string(), "@x = externally_initialized global i64 123");
+
+        x.set_externally_initialized(false);
+
+        // set as thread local
+        assert!(!x.is_thread_local());
+
+        x.set_thread_local(true);
+
+        assert!(x.is_thread_local());
+
+        assert_eq!(x.to_string(), "@x = thread_local global i64 123");
+
+        x.set_thread_local(false);
+
+        // set thread local mod
+        assert!(matches!(
+            x.thread_local_mode(),
+            llvm::LLVMThreadLocalMode::LLVMNotThreadLocal
+        ));
     }
 }

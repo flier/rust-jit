@@ -46,6 +46,12 @@ impl Context {
     }
 }
 
+impl From<LLVMContextRef> for Context {
+    fn from(context: LLVMContextRef) -> Self {
+        Self::from_raw(context)
+    }
+}
+
 impl Drop for Context {
     fn drop(&mut self) {
         if let State::Owned(context) = self.0 {

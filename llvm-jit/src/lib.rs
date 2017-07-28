@@ -35,13 +35,14 @@ mod target;
 pub use builder::{IRBuilder, InstructionBuilder, Position};
 pub use context::Context;
 pub use engine::{ExecutionEngine, Interpreter, MCJIT};
-pub use module::{GlobalVar, Module, ThreadLocalMode};
+pub use module::Module;
 pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos, AllTargetMCs,
                  AllTargets, NativeAsmParser, NativeAsmPrinter, NativeDisassembler, NativeTarget};
 pub use types::{ArrayType, FloatingPointType, FunctionType, IntegerType, OtherType, PointerType,
                 StructType, TypeKind, TypeRef, VectorType};
 pub use value::{BlockAddress, Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
-                ConstantStruct, ConstantVector, Function, Instruction, ValueKind, ValueRef};
+                ConstantStruct, ConstantVector, Function, GlobalVar, Instruction, ValueKind,
+                ValueRef};
 
 pub mod prelude {
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType,
@@ -73,5 +74,6 @@ pub mod ops {
     pub use builder::{FCmp, ICmp};
 
     /// Miscellaneous
-    pub use builder::{ExtractElement, ExtractValue, InsertElement, InsertValue, ShuffleVector};
+    pub use builder::{ExtractElement, ExtractValue, InsertElement, InsertValue, IsNotNull, IsNull,
+                      PtrDiff, ShuffleVector};
 }
