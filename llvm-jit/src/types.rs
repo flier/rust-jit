@@ -12,6 +12,7 @@ use context::Context;
 use utils::unchecked_cstring;
 use value::ValueRef;
 
+/// Each value in the LLVM IR has a type, an LLVMTypeRef.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeRef(LLVMTypeRef);
 
@@ -328,6 +329,7 @@ impl OtherTypes for Context {
     }
 }
 
+/// Structure to represent function types.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FunctionType(TypeRef);
 
@@ -388,6 +390,7 @@ impl FunctionType {
     }
 }
 
+/// Structure to represent struct types.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StructType(TypeRef);
 
@@ -534,6 +537,7 @@ impl SeqType for ArrayType {}
 impl SeqType for PointerType {}
 impl SeqType for VectorType {}
 
+/// Structure to represent array types.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ArrayType(TypeRef);
 
@@ -561,6 +565,7 @@ impl ToArrayType for TypeRef {
     }
 }
 
+/// Structure to represent pointers.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PointerType(TypeRef);
 
@@ -593,6 +598,7 @@ impl ToPointerType for TypeRef {
     }
 }
 
+/// Structure to represent vector types.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct VectorType(TypeRef);
 

@@ -14,6 +14,7 @@ use context::Context;
 use types::{StructType, TypeRef};
 use utils::{from_unchecked_cstr, unchecked_cstring};
 
+/// Represents an individual value in LLVM IR.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ValueRef(LLVMValueRef);
 
@@ -359,6 +360,7 @@ pub trait ConstantDataSequential: AsValueRef {
     }
 }
 
+/// Constant Array Declarations.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ConstantArray(ValueRef);
 
@@ -384,6 +386,7 @@ impl ToConstantArray for TypeRef {
     }
 }
 
+/// Constant Vector Declarations.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ConstantVector(ValueRef);
 
@@ -416,6 +419,7 @@ impl ToConstantVector for TypeRef {
     }
 }
 
+/// A vector type is a simple derived type that represents a vector of elements.
 #[macro_export]
 macro_rules! vector {
     [$( $dest:expr ),*] => (

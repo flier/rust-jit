@@ -81,7 +81,7 @@ impl InstructionBuilder for AggregateRet {
     }
 }
 
-/// The ‘ret‘ instruction is used to return control flow (and optionally a value) from a function back to the caller.
+/// The `ret` instruction is used to return control flow (and optionally a value) from a function back to the caller.
 #[macro_export]
 macro_rules! ret {
     () => {
@@ -208,7 +208,7 @@ impl InstructionBuilder for IndirectBr {
     }
 }
 
-/// The ‘br‘ instruction is used to cause control flow to transfer to a different basic block in the current function.
+/// The `br` instruction is used to cause control flow to transfer to a different basic block in the current function.
 #[macro_export]
 macro_rules! br {
     ($dest:expr) => (
@@ -274,7 +274,7 @@ impl InstructionBuilder for Switch {
     }
 }
 
-/// The ‘switch‘ instruction is used to transfer control flow to one of several different places.
+/// The `switch` instruction is used to transfer control flow to one of several different places.
 #[macro_export]
 macro_rules! switch {
     ($cond:expr; _ => $default:expr , $( $on:expr => $dest:expr ),*) => ({
@@ -285,14 +285,14 @@ macro_rules! switch {
     });
 }
 
-/// This instruction is designed to operate as a standard ‘call‘ instruction in most regards.
+/// This instruction is designed to operate as a standard `call` instruction in most regards.
 ///
 /// The primary difference is that it establishes an association with a label,
 /// which is used by the runtime library to unwind the stack.
 ///
 /// This instruction is used in languages with destructors to ensure
 /// that proper cleanup is performed in the case of either a longjmp or a thrown exception.
-/// Additionally, this is important for implementation of ‘catch‘ clauses in high-level languages that support them.
+/// Additionally, this is important for implementation of `catch` clauses in high-level languages that support them.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Invoke<'a> {
     func: Function,
@@ -345,8 +345,8 @@ impl<'a> InstructionBuilder for Invoke<'a> {
     }
 }
 
-/// The ‘invoke‘ instruction causes control to transfer to a specified function,
-/// with the possibility of control flow transfer to either the ‘normal‘ label or the ‘exception‘ label.
+/// The `invoke` instruction causes control to transfer to a specified function,
+/// with the possibility of control flow transfer to either the `normal` label or the `exception` label.
 #[macro_export]
 macro_rules! invoke {
     ($func:expr => $name:expr; to $then:expr; unwind $unwind:expr; [ $( $arg:expr ),* ]) => ({
@@ -422,7 +422,7 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
     }
 }
 
-/// The ‘resume‘ instruction is a terminator instruction that has no successors.
+/// The `resume` instruction is a terminator instruction that has no successors.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Resume(ValueRef);
 
@@ -440,7 +440,7 @@ impl InstructionBuilder for Resume {
     }
 }
 
-/// The ‘resume‘ instruction is a terminator instruction that has no successors.
+/// The `resume` instruction is a terminator instruction that has no successors.
 #[macro_export]
 macro_rules! resume {
     ($result:expr) => ({
@@ -448,7 +448,7 @@ macro_rules! resume {
     })
 }
 
-/// The ‘unreachable‘ instruction has no defined semantics.
+/// The `unreachable` instruction has no defined semantics.
 ///
 /// This instruction is used to inform the optimizer that a particular portion of the code is not reachable.
 /// This can be used to indicate that the code after a no-return function cannot be reached, and other facts.
@@ -464,137 +464,116 @@ impl InstructionBuilder for Unreachable {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Malloc<'a> {
     ty: TypeRef,
+    size: Option<ValueRef>,
     name: Cow<'a, str>,
 }
 
 impl<'a> Malloc<'a> {
     pub fn new(ty: TypeRef, name: Cow<'a, str>) -> Self {
-        Malloc { ty: ty, name: name }
+        Malloc {
+            ty: ty,
+            size: None,
+            name: name,
+        }
+    }
+    pub fn array(ty: TypeRef, size: ValueRef, name: Cow<'a, str>) -> Self {
+        Malloc {
+            ty: ty,
+            size: Some(size),
+            name: name,
+        }
     }
 }
 
 impl<'a> InstructionBuilder for Malloc<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
-            LLVMBuildMalloc(
-                builder.as_raw(),
-                self.ty.as_raw(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
-            )
+            if let Some(size) = self.size {
+                LLVMBuildArrayMalloc(
+                    builder.as_raw(),
+                    self.ty.as_raw(),
+                    size.as_raw(),
+                    unchecked_cstring(self.name.clone()).as_ptr(),
+                )
+            } else {
+                LLVMBuildMalloc(
+                    builder.as_raw(),
+                    self.ty.as_raw(),
+                    unchecked_cstring(self.name.clone()).as_ptr(),
+                )
+            }
         })
     }
 }
 
+/// Invoke `malloc` function to allocates memory on the heap, need to be expicity released by its caller.
 #[macro_export]
 macro_rules! malloc {
     ($ty:expr, $name:expr) => ({
         $crate::ops::Malloc::new($ty.into(), $name.into())
-    })
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ArrayMalloc<'a> {
-    ty: TypeRef,
-    size: ValueRef,
-    name: Cow<'a, str>,
-}
-
-impl<'a> ArrayMalloc<'a> {
-    pub fn new(ty: TypeRef, size: ValueRef, name: Cow<'a, str>) -> Self {
-        ArrayMalloc {
-            ty: ty,
-            size: size,
-            name: name,
-        }
-    }
-}
-
-impl<'a> InstructionBuilder for ArrayMalloc<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
-            LLVMBuildArrayMalloc(
-                builder.as_raw(),
-                self.ty.as_raw(),
-                self.size.as_raw(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
-            )
-        })
-    }
-}
-
-#[macro_export]
-macro_rules! array_malloc {
-    ($ty:expr, $size:expr, $name:expr) => ({
-        $crate::ops::ArrayMalloc::new($ty.into(), $size.into(), $name.into())
-    })
+    });
+    ($array_ty:expr, $size:expr, $name:expr) => ({
+        $crate::ops::Malloc::array($array_ty.into(), $size.into(), $name.into())
+    });
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Alloca<'a> {
     ty: TypeRef,
+    size: Option<ValueRef>,
     name: Cow<'a, str>,
 }
 
 impl<'a> Alloca<'a> {
     pub fn new(ty: TypeRef, name: Cow<'a, str>) -> Self {
-        Alloca { ty: ty, name: name }
+        Alloca {
+            ty: ty,
+            size: None,
+            name: name,
+        }
+    }
+    pub fn array(ty: TypeRef, size: ValueRef, name: Cow<'a, str>) -> Self {
+        Alloca {
+            ty: ty,
+            size: Some(size),
+            name: name,
+        }
     }
 }
 
 impl<'a> InstructionBuilder for Alloca<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
-            LLVMBuildAlloca(
-                builder.as_raw(),
-                self.ty.as_raw(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
-            )
+            if let Some(size) = self.size {
+                LLVMBuildArrayAlloca(
+                    builder.as_raw(),
+                    self.ty.as_raw(),
+                    size.as_raw(),
+                    unchecked_cstring(self.name.clone()).as_ptr(),
+                )
+            } else {
+                LLVMBuildAlloca(
+                    builder.as_raw(),
+                    self.ty.as_raw(),
+                    unchecked_cstring(self.name.clone()).as_ptr(),
+                )
+            }
         })
     }
 }
 
+/// The `alloca` instruction allocates memory on the stack frame of the currently executing function,
+/// to be automatically released when this function returns to its caller.
+///
+/// The object is always allocated in the generic address space (address space zero).
 #[macro_export]
 macro_rules! alloca {
     ($ty:expr, $name:expr) => ({
         $crate::ops::Alloca::new($ty.into(), $name.into())
-    })
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ArrayAlloca<'a> {
-    ty: TypeRef,
-    size: ValueRef,
-    name: Cow<'a, str>,
-}
-
-impl<'a> ArrayAlloca<'a> {
-    pub fn new(ty: TypeRef, size: ValueRef, name: Cow<'a, str>) -> Self {
-        ArrayAlloca {
-            ty: ty,
-            size: size,
-            name: name,
-        }
-    }
-}
-
-impl<'a> InstructionBuilder for ArrayAlloca<'a> {
-    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
-            LLVMBuildArrayAlloca(
-                builder.as_raw(),
-                self.ty.as_raw(),
-                self.size.as_raw(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
-            )
-        })
-    }
-}
-
-#[macro_export]
-macro_rules! array_alloca {
-    ($ty:expr, $size:expr, $name:expr) => ({
-        $crate::ops::ArrayAlloca::new($ty.into(), $size.into(), $name.into())
-    })
+    });
+    ($array_ty:expr, $size:expr, $name:expr) => ({
+        $crate::ops::Alloca::array($array_ty.into(), $size.into(), $name.into())
+    });
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -616,6 +595,7 @@ impl InstructionBuilder for Free {
     }
 }
 
+/// Deallocates the memory allocation pointed to by ptr.
 #[macro_export]
 macro_rules! free {
     ($ptr:expr) => ({
@@ -650,6 +630,7 @@ impl<'a> InstructionBuilder for Load<'a> {
     }
 }
 
+/// The `load` instruction is used to read from memory.
 #[macro_export]
 macro_rules! load {
     ($ptr:expr, $name:expr) => ({
@@ -680,6 +661,7 @@ impl InstructionBuilder for Store {
     }
 }
 
+/// The `store` instruction is used to write to memory.
 #[macro_export]
 macro_rules! store {
     ($value:expr, $ptr:expr) => ({
@@ -766,27 +748,42 @@ impl<'a> InstructionBuilder for GetElementPtr<'a> {
     }
 }
 
+/// The `getelementptr` instruction is used to get the address of a subelement of an aggregate data structure.
+///
+/// It performs address calculation only and does not access memory.
+/// The instruction can also be used to calculate a vector of such addresses.
+///
+/// If the `inbounds` keyword is present, the result value of the getelementptr is a poison value
+/// if the base pointer is not an in bounds address of an allocated object, or if any of the addresses
+/// that would be formed by successive addition of the offsets implied by the indices to the base address
+/// with infinitely precise signed arithmetic are not an in bounds address of that allocated object.
+/// The in bounds addresses for an allocated object are all the addresses that point into the object,
+/// plus the address one byte past the end. In cases where the base is a vector of pointers
+/// the inbounds keyword applies to each of the computations element-wise.
+///
+/// If the `inbounds` keyword is not present, the offsets are added to the base address
+/// with silently-wrapping two’s complement arithmetic. If the offsets have a different width from the pointer,
+/// they are sign-extended or truncated to the width of the pointer.
+/// The result value of the getelementptr may be outside the object pointed to by the base pointer.
+/// The result value may not necessarily be used to access memory though,
+/// even if it happens to point into allocated storage.
 #[macro_export]
 macro_rules! gep {
     ($ptr:expr, [ $( $index:expr ),* ], $name:expr) => ({
         $crate::ops::GetElementPtr::new($ptr.into(), vec![ $( $index.into() ),* ], $name.into())
-    })
-}
-
-#[macro_export]
-macro_rules! inbounds_gep {
-    ($ptr:expr, [ $( $index:expr ),* ], $name:expr) => ({
+    });
+    (inbounds $ptr:expr, [ $( $index:expr ),* ], $name:expr) => ({
         $crate::ops::GetElementPtr::in_bounds($ptr.into(), vec![ $( $index.into() ),* ], $name.into())
-    })
+    });
+    (structure $struct_ptr:expr, $index:expr, $name:expr) => ({
+        $crate::ops::GetElementPtr::in_struct($struct_ptr.into(), $index, $name.into())
+    });
 }
 
-#[macro_export]
-macro_rules! struct_gep {
-    ($ptr:expr, $index:expr, $name:expr) => ({
-        $crate::ops::GetElementPtr::in_struct($ptr.into(), $index, $name.into())
-    })
-}
-
+/// Make a new global variable with an initializer that has array of i8 type
+/// filled in with the null terminated string value specified.
+/// The new global variable will be marked mergable with any others of the same contents.
+/// If Name is specified, it is the name of the global variable created.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GlobalString<'a> {
     s: Cow<'a, str>,
@@ -811,6 +808,7 @@ impl<'a> InstructionBuilder for GlobalString<'a> {
     }
 }
 
+/// Make a new global variable with initializer type i8*
 #[macro_export]
 macro_rules! global_str {
     ($s:expr, $name:expr) => ({
@@ -818,6 +816,7 @@ macro_rules! global_str {
     })
 }
 
+/// Same as `GlobalString`, but return a pointer with "i8*" type instead of a pointer to array of i8.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GlobalStringPtr<'a> {
     s: Cow<'a, str>,
@@ -842,6 +841,7 @@ impl<'a> InstructionBuilder for GlobalStringPtr<'a> {
     }
 }
 
+/// Make a new global variable with initializer type i8*, return a pointer with "i8*" type instead of a pointer to array of i8.
 #[macro_export]
 macro_rules! global_str_ptr {
     ($s:expr, $name:expr) => ({
@@ -876,6 +876,16 @@ macro_rules! define_unary_instruction {
                     )
                 })
             }
+        }
+    );
+
+    ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
+        define_unary_instruction!($operator, $func);
+
+        #[doc=$comment]
+        #[macro_export]
+        macro_rules! $alias {
+            ($value:expr, $name:expr) => { $crate::ops::$operator::new($value.into(), $name.into()) }
         }
     );
 
@@ -922,6 +932,17 @@ macro_rules! define_binary_operator {
         }
     );
 
+    ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
+        define_binary_operator!($operator, $func);
+
+        #[doc=$comment]
+        #[macro_export]
+        macro_rules! $alias {
+            ($lhs:expr, $rhs:expr, $name:expr) => {
+                $crate::ops::$operator::new($lhs.into(), $rhs.into(), $name.into())
+            }
+        }
+    );
     ($operator:ident, $func:path, $alias:ident) => (
         define_binary_operator!($operator, $func);
 
@@ -966,7 +987,17 @@ macro_rules! define_cast_instruction {
             }
         }
     );
+    ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
+        define_cast_instruction!($operator, $func);
 
+        #[doc=$comment]
+        #[macro_export]
+        macro_rules! $alias {
+            ($value:expr, $dest_ty:expr, $name:expr) => {
+                $crate::ops::$operator::new($value.into(), $dest_ty.into(), $name.into())
+            }
+        }
+    );
     ($operator:ident, $func:path, $alias:ident) => (
         define_cast_instruction!($operator, $func);
 
@@ -979,58 +1010,310 @@ macro_rules! define_cast_instruction {
     )
 }
 
-define_binary_operator!(Add, LLVMBuildAdd, add);
-define_binary_operator!(NSWAdd, LLVMBuildNSWAdd, add_nsw);
-define_binary_operator!(NUWAdd, LLVMBuildNUWAdd, add_nuw);
-define_binary_operator!(FAdd, LLVMBuildFAdd, fadd);
-define_binary_operator!(Sub, LLVMBuildSub, sub);
-define_binary_operator!(NSWSub, LLVMBuildNSWSub, sub_nsw);
-define_binary_operator!(NUWSub, LLVMBuildNUWSub, sub_nuw);
-define_binary_operator!(FSub, LLVMBuildFSub, fsub);
-define_binary_operator!(Mul, LLVMBuildMul, mul);
-define_binary_operator!(NSWMul, LLVMBuildNSWMul, mul_nsw);
-define_binary_operator!(NUWMul, LLVMBuildNUWMul, mul_nuw);
-define_binary_operator!(FMul, LLVMBuildFMul, fmul);
-define_binary_operator!(UDiv, LLVMBuildUDiv, udiv);
-define_binary_operator!(ExactUDiv, LLVMBuildExactUDiv, udiv_exact);
-define_binary_operator!(SDiv, LLVMBuildSDiv, sdiv);
-define_binary_operator!(ExactSDiv, LLVMBuildExactSDiv, sdiv_exact);
-define_binary_operator!(FDiv, LLVMBuildFDiv, fdiv);
-define_binary_operator!(URem, LLVMBuildURem, urem);
-define_binary_operator!(SRem, LLVMBuildSRem, srem);
-define_binary_operator!(FRem, LLVMBuildFRem, frem);
-define_binary_operator!(Shl, LLVMBuildShl, shl);
-define_binary_operator!(LShr, LLVMBuildLShr, lshr);
-define_binary_operator!(AShr, LLVMBuildAShr, ashr);
-define_binary_operator!(And, LLVMBuildAnd, and);
-define_binary_operator!(Or, LLVMBuildOr, or);
-define_binary_operator!(Xor, LLVMBuildXor, xor);
+define_binary_operator!(
+    Add,
+    LLVMBuildAdd,
+    add,
+    "The `add` instruction returns the sum of its two operands."
+);
+define_binary_operator!(
+    NSWAdd,
+    LLVMBuildNSWAdd,
+    add_nsw,
+    "The `add` instruction returns the sum of its two operands, the result value of the `add` is a poison value if signed overflow occurs."
+);
+define_binary_operator!(
+    NUWAdd,
+    LLVMBuildNUWAdd,
+    add_nuw,
+    "The `add` instruction returns the sum of its two operands, the result value of the `add` is a poison value if unsigned overflow occurs."
+);
+define_binary_operator!(
+    FAdd,
+    LLVMBuildFAdd,
+    fadd,
+    "The `fadd` instruction returns the sum of its two operands."
+);
+define_binary_operator!(
+    Sub,
+    LLVMBuildSub,
+    sub,
+    "The `sub` instruction returns the difference of its two operands."
+);
+define_binary_operator!(
+    NSWSub,
+    LLVMBuildNSWSub,
+    sub_nsw,
+    "The `sub` instruction returns the difference of its two operands, the result value of the `sub` is a poison value if signed overflow occurs."
+);
+define_binary_operator!(
+    NUWSub,
+    LLVMBuildNUWSub,
+    sub_nuw,
+    "The `sub` instruction returns the difference of its two operands, the result value of the `sub` is a poison value if unsigned overflow occurs."
+);
+define_binary_operator!(
+    FSub,
+    LLVMBuildFSub,
+    fsub,
+    "The `fsub` instruction returns the difference of its two operands."
+);
+define_binary_operator!(
+    Mul,
+    LLVMBuildMul,
+    mul,
+    "The `mul` instruction returns the product of its two operands."
+);
+define_binary_operator!(
+    NSWMul,
+    LLVMBuildNSWMul,
+    mul_nsw,
+    "The `mul` instruction returns the product of its two operands, the result value of the `mul` is a poison value if signed overflow occurs."
+);
+define_binary_operator!(
+    NUWMul,
+    LLVMBuildNUWMul,
+    mul_nuw,
+    "The `mul` instruction returns the product of its two operands, the result value of the `mul` is a poison value if unsigned overflow occurs."
+);
+define_binary_operator!(
+    FMul,
+    LLVMBuildFMul,
+    fmul,
+    "The `fmul` instruction returns the product of its two operands."
+);
+define_binary_operator!(
+    UDiv,
+    LLVMBuildUDiv,
+    udiv,
+    "The `udiv` instruction returns the quotient of its two operands."
+);
+define_binary_operator!(
+    ExactUDiv,
+    LLVMBuildExactUDiv,
+    udiv_exact,
+    "The `udiv` instruction returns the quotient of its two operands, the result value of the `udiv` is a poison value if %`lhs` is not a multiple of %`rhs` (as such, “((a udiv exact b) mul b) == a”)."
+);
+define_binary_operator!(
+    SDiv,
+    LLVMBuildSDiv,
+    sdiv,
+    "The `sdiv` instruction returns the quotient of its two operands"
+);
+define_binary_operator!(
+    ExactSDiv,
+    LLVMBuildExactSDiv,
+    sdiv_exact,
+    "The `sdiv` instruction returns the quotient of its two operands, the result value of the `sdiv` is a poison value if the result would be rounded."
+);
+define_binary_operator!(
+    FDiv,
+    LLVMBuildFDiv,
+    fdiv,
+    "The `fdiv` instruction returns the quotient of its two operands."
+);
+define_binary_operator!(
+    URem,
+    LLVMBuildURem,
+    urem,
+    "The `urem` instruction returns the remainder from the unsigned division of its two arguments."
+);
+define_binary_operator!(
+    SRem,
+    LLVMBuildSRem,
+    srem,
+    "The `srem` instruction returns the remainder from the signed division of its two operands. "
+);
+define_binary_operator!(
+    FRem,
+    LLVMBuildFRem,
+    frem,
+    "The `frem` instruction returns the remainder from the division of its two operands.
+"
+);
+define_binary_operator!(
+    Shl,
+    LLVMBuildShl,
+    shl,
+    "The `shl` instruction returns the first operand shifted to the left a specified number of bits."
+);
+define_binary_operator!(
+    LShr,
+    LLVMBuildLShr,
+    lshr,
+    "The `lshr` instruction (logical shift right) returns the first operand shifted to the right a specified number of bits with zero fill."
+);
+define_binary_operator!(
+    AShr,
+    LLVMBuildAShr,
+    ashr,
+    "The `ashr` instruction (arithmetic shift right) returns the first operand shifted to the right a specified number of bits with sign extension.
+"
+);
+define_binary_operator!(
+    And,
+    LLVMBuildAnd,
+    and,
+    "The `and` instruction returns the bitwise logical and of its two operands."
+);
+define_binary_operator!(
+    Or,
+    LLVMBuildOr,
+    or,
+    "The `or` instruction returns the bitwise logical inclusive or of its two operands."
+);
+define_binary_operator!(
+    Xor,
+    LLVMBuildXor,
+    xor,
+    "The `xor` instruction returns the bitwise logical exclusive or of its two operands."
+);
 
-define_unary_instruction!(Neg, LLVMBuildNeg, neg);
-define_unary_instruction!(NSWNeg, LLVMBuildNSWNeg, neg_nsw);
-define_unary_instruction!(NUWNeg, LLVMBuildNUWNeg, neg_nuw);
-define_unary_instruction!(FNeg, LLVMBuildFNeg, fneg);
-define_unary_instruction!(Not, LLVMBuildNot, not);
+define_unary_instruction!(
+    Neg,
+    LLVMBuildNeg,
+    neg,
+    "The unary negation operator precedes its operand and negates it."
+);
+define_unary_instruction!(
+    NSWNeg,
+    LLVMBuildNSWNeg,
+    neg_nsw,
+    "The unary negation operator precedes its operand and negates it, the result value of the `neg` is a poison value if signed overflow occurs."
+);
+define_unary_instruction!(
+    NUWNeg,
+    LLVMBuildNUWNeg,
+    neg_nuw,
+    "The unary negation operator precedes its operand and negates it, the result value of the `neg` is a poison value if unsigned overflow occurs."
+);
+define_unary_instruction!(
+    FNeg,
+    LLVMBuildFNeg,
+    fneg,
+    "The unary negation operator precedes its operand and negates it."
+);
+define_unary_instruction!(
+    Not,
+    LLVMBuildNot,
+    not,
+    "The logical negation operator reverses the meaning of its operand."
+);
 
-define_cast_instruction!(Trunc, LLVMBuildTrunc, trunc);
-define_cast_instruction!(ZExt, LLVMBuildZExt, zext);
-define_cast_instruction!(SExt, LLVMBuildSExt, sext);
-define_cast_instruction!(FPTrunc, LLVMBuildFPTrunc, fptrunc);
-define_cast_instruction!(FPExt, LLVMBuildFPExt, fpext);
-define_cast_instruction!(FPToUI, LLVMBuildFPToUI, fptoui);
-define_cast_instruction!(FPToSI, LLVMBuildFPToSI, fptosi);
-define_cast_instruction!(UIToFP, LLVMBuildUIToFP, uitofp);
-define_cast_instruction!(SIToFP, LLVMBuildSIToFP, sitofp);
-define_cast_instruction!(PtrToInt, LLVMBuildPtrToInt, ptr_to_int);
-define_cast_instruction!(IntToPtr, LLVMBuildIntToPtr, int_to_ptr);
-define_cast_instruction!(BitCast, LLVMBuildBitCast, bit_cast);
-define_cast_instruction!(AddrSpaceCast, LLVMBuildAddrSpaceCast, addrspace_cast);
-define_cast_instruction!(ZExtOrBitCast, LLVMBuildZExtOrBitCast, zext_or_bit_cast);
-define_cast_instruction!(SExtOrBitCast, LLVMBuildSExtOrBitCast, sext_or_bit_cast);
-define_cast_instruction!(TruncOrBitCast, LLVMBuildTruncOrBitCast, trunc_or_bit_cast);
-define_cast_instruction!(PointerCast, LLVMBuildPointerCast, ptr_cast);
-define_cast_instruction!(IntCast, LLVMBuildIntCast, int_cast);
-define_cast_instruction!(FPCast, LLVMBuildFPCast, fp_cast);
+define_cast_instruction!(
+    Trunc,
+    LLVMBuildTrunc,
+    trunc,
+    "The `trunc` instruction truncates its operand to the type."
+);
+define_cast_instruction!(
+    ZExt,
+    LLVMBuildZExt,
+    zext,
+    "The `zext` instruction zero extends its operand to type."
+);
+define_cast_instruction!(
+    SExt,
+    LLVMBuildSExt,
+    sext,
+    "The `sext` instruction takes a value to cast, and a type to cast it to. Both types must be of integer types, or vectors of the same number of integers. The bit size of the value must be smaller than the bit size of the destination type."
+);
+define_cast_instruction!(
+    FPTrunc,
+    LLVMBuildFPTrunc,
+    fptrunc,
+    "The `fptrunc` instruction truncates value to type."
+);
+define_cast_instruction!(
+    FPExt,
+    LLVMBuildFPExt,
+    fpext,
+    "The `fpext` extends a floating point value to a larger floating point value."
+);
+define_cast_instruction!(
+    FPToUI,
+    LLVMBuildFPToUI,
+    fptoui,
+    "The `fptoui` converts a floating point value to its unsigned integer equivalent of type."
+);
+define_cast_instruction!(
+    FPToSI,
+    LLVMBuildFPToSI,
+    fptosi,
+    "The `fptosi` instruction converts floating point value to type."
+);
+define_cast_instruction!(
+    UIToFP,
+    LLVMBuildUIToFP,
+    uitofp,
+    "The `uitofp` instruction regards value as an unsigned integer and converts that value to the type."
+);
+define_cast_instruction!(
+    SIToFP,
+    LLVMBuildSIToFP,
+    sitofp,
+    "The `sitofp` instruction regards value as a signed integer and converts that value to the type."
+);
+define_cast_instruction!(
+    PtrToInt,
+    LLVMBuildPtrToInt,
+    ptr_to_int,
+    "The `ptrtoint` instruction converts the pointer or a vector of pointers value to the integer (or vector of integers) type."
+);
+define_cast_instruction!(
+    IntToPtr,
+    LLVMBuildIntToPtr,
+    int_to_ptr,
+    "The `inttoptr` instruction converts an integer value to a pointer type."
+);
+define_cast_instruction!(
+    BitCast,
+    LLVMBuildBitCast,
+    bit_cast,
+    "The `bitcast` instruction converts value to type ty2 without changing any bits."
+);
+define_cast_instruction!(
+    AddrSpaceCast,
+    LLVMBuildAddrSpaceCast,
+    addrspace_cast,
+    "The `addrspacecast` instruction converts ptrval from pty in address space n to type pty2 in address space m."
+);
+define_cast_instruction!(
+    ZExtOrBitCast,
+    LLVMBuildZExtOrBitCast,
+    zext_or_bit_cast,
+    "Create a `zext` or `bitcast` cast instruction."
+);
+define_cast_instruction!(
+    SExtOrBitCast,
+    LLVMBuildSExtOrBitCast,
+    sext_or_bit_cast,
+    "Create a `sext` or `bitcast` cast instruction."
+);
+define_cast_instruction!(
+    TruncOrBitCast,
+    LLVMBuildTruncOrBitCast,
+    trunc_or_bit_cast,
+    "Create a `trunc` or `bitcast` cast instruction."
+);
+define_cast_instruction!(
+    PointerCast,
+    LLVMBuildPointerCast,
+    ptr_cast,
+    "Create a `bitcast`, `addrspacecast`, or `ptrtoint` cast instruction."
+);
+define_cast_instruction!(
+    IntCast,
+    LLVMBuildIntCast,
+    int_cast,
+    "Create a `zext`, `bitcast`, or `trunc` instruction for int -> int casts."
+);
+define_cast_instruction!(
+    FPCast,
+    LLVMBuildFPCast,
+    fp_cast,
+    "Create an `fpext`, `bitcast`, or `fptrunc` instruction for fp -> fp casts."
+);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ICmp<'a> {
@@ -1105,6 +1388,22 @@ impl<'a> InstructionBuilder for ICmp<'a> {
     }
 }
 
+/// The `icmp` instruction returns a boolean value or a vector of boolean values
+/// based on comparison of its two integer, integer vector, pointer, or pointer vector operands.
+///
+/// The `icmp` compares `lhs` and `rhs` according to the condition code given as cond.
+/// The comparison performed always yields either an `i1` or `vector` of `i1` result, as follows:
+///
+/// - eq: yields true if the operands are equal, false otherwise. No sign interpretation is necessary or performed.
+/// - ne: yields true if the operands are unequal, false otherwise. No sign interpretation is necessary or performed.
+/// - ugt: interprets the operands as unsigned values and yields true if `lhs` is greater than `rhs`.
+/// - uge: interprets the operands as unsigned values and yields true if `lhs` is greater than or equal to `rhs`.
+/// - ult: interprets the operands as unsigned values and yields true if `lhs` is less than `rhs`.
+/// - ule: interprets the operands as unsigned values and yields true if `lhs` is less than or equal to `rhs`.
+/// - sgt: interprets the operands as signed values and yields true if `lhs` is greater than `rhs`.
+/// - sge: interprets the operands as signed values and yields true if `lhs` is greater than or equal to `rhs`.
+/// - slt: interprets the operands as signed values and yields true if `lhs` is less than `rhs`.
+/// - sle: interprets the operands as signed values and yields true if `lhs` is less than or equal to `rhs`.
 #[macro_export]
 macro_rules! icmp {
     (eq $lhs:expr, $rhs:expr ; $name:expr) => (
@@ -1172,8 +1471,33 @@ impl<'a> InstructionBuilder for FCmp<'a> {
     }
 }
 
+/// The `fcmp` instruction returns a boolean value or vector of boolean values based on comparison of its operands.
+///
+/// The `fcmp` instruction compares `lhs` and `rhs` according to the condition code given as cond.
+/// If the operands are vectors, then the vectors are compared element by element.
+/// Each comparison performed always yields an i1 result, as follows:
+///
+///  - false: always yields false, regardless of operands.
+///  - oeq: yields true if both operands are not a QNAN and `lhs` is equal to `rhs`.
+///  - ogt: yields true if both operands are not a QNAN and `lhs` is greater than `rhs`.
+///  - oge: yields true if both operands are not a QNAN and `lhs` is greater than or equal to `rhs`.
+///  - olt: yields true if both operands are not a QNAN and `lhs` is less than `rhs`.
+///  - ole: yields true if both operands are not a QNAN and `lhs` is less than or equal to `rhs`.
+///  - one: yields true if both operands are not a QNAN and `lhs` is not equal to `rhs`.
+///  - ord: yields true if both operands are not a QNAN.
+///  - ueq: yields true if either operand is a QNAN or `lhs` is equal to `rhs`.
+///  - ugt: yields true if either operand is a QNAN or `lhs` is greater than `rhs`.
+///  - uge: yields true if either operand is a QNAN or `lhs` is greater than or equal to `rhs`.
+///  - ult: yields true if either operand is a QNAN or `lhs` is less than `rhs`.
+///  - ule: yields true if either operand is a QNAN or `lhs` is less than or equal to `rhs`.
+///  - une: yields true if either operand is a QNAN or `lhs` is not equal to `rhs`.
+///  - uno: yields true if either operand is a QNAN.
+///  - true: always yields true, regardless of operands.
 #[macro_export]
 macro_rules! fcmp {
+    (false $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealPredicateFalse, $lhs.into(), $rhs.into(), $name.into())
+    );
     (oeq $lhs:expr, $rhs:expr ; $name:expr) => (
         $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealOEQ, $lhs.into(), $rhs.into(), $name.into())
     );
@@ -1216,6 +1540,9 @@ macro_rules! fcmp {
     (une $lhs:expr, $rhs:expr ; $name:expr) => (
         $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealUNE, $lhs.into(), $rhs.into(), $name.into())
     );
+    (true $lhs:expr, $rhs:expr ; $name:expr) => (
+        $crate::ops::FCmp::new(LLVMRealPredicate::LLVMRealPredicateTrue, $lhs.into(), $rhs.into(), $name.into())
+    );
 }
 
 /// This instruction extracts a single (scalar) element from a VectorType value
@@ -1249,6 +1576,7 @@ impl<'a> InstructionBuilder for ExtractElement<'a> {
     }
 }
 
+/// The `extractelement` instruction extracts a single scalar element from a vector at a specified index.
 #[macro_export]
 macro_rules! extract_element {
     ($vector:expr, $index:expr, $name:expr) => ({
@@ -1290,6 +1618,7 @@ impl<'a> InstructionBuilder for InsertElement<'a> {
     }
 }
 
+/// The `insertelement` instruction inserts a scalar element into a vector at a specified index.
 #[macro_export]
 macro_rules! insert_element {
     ($vector:expr, $element:expr, $index:expr, $name:expr) => ({
@@ -1331,6 +1660,8 @@ impl<'a> InstructionBuilder for ShuffleVector<'a> {
     }
 }
 
+/// The `shufflevector` instruction constructs a permutation of elements from two input vectors,
+/// returning a vector with the same element type as the input and length that is the same as the shuffle mask.
 #[macro_export]
 macro_rules! shuffle_vector {
     ($v1:expr, $v2:expr, $mask:expr, $name:expr) => ({
@@ -1369,6 +1700,7 @@ impl<'a> InstructionBuilder for ExtractValue<'a> {
     }
 }
 
+/// The `extractvalue` instruction extracts the value of a member field from an aggregate value.
 #[macro_export]
 macro_rules! extract_value {
     ($vector:expr, $index:expr, $name:expr) => ({
@@ -1410,12 +1742,32 @@ impl<'a> InstructionBuilder for InsertValue<'a> {
     }
 }
 
+/// The `insertvalue` instruction inserts a value into a member field in an aggregate value.
 #[macro_export]
 macro_rules! insert_value {
     ($vector:expr, $element:expr, $index:expr, $name:expr) => ({
         $crate::ops::InsertValue::new($vector.into(), $element.into(), $index, $name.into())
     })
 }
+
+define_unary_instruction!(
+    IsNull,
+    LLVMBuildIsNull,
+    is_null,
+    "Determine whether a value instance is null."
+);
+define_unary_instruction!(
+    IsNotNull,
+    LLVMBuildIsNotNull,
+    is_not_null,
+    "Determine whether a value instance is not null."
+);
+define_binary_operator!(
+    PtrDiff,
+    LLVMBuildPtrDiff,
+    ptr_diff,
+    "Return the i64 difference between two pointer values, dividing out the size of the pointed-to objects."
+);
 
 impl IRBuilder {
     /// Create a new IR builder in the global context.
@@ -2010,6 +2362,54 @@ mod tests {
         );
     }
 
+    #[test]
+    fn misc() {
+        let context = Context::new();
+        let module = Module::with_name_in_context("br", &context);
+        let builder = IRBuilder::within_context(&context);
+
+        let i64t = context.int64();
+        let p_i64t = i64t.ptr();
+
+        let function_type =
+            FunctionType::new(context.void(), &[p_i64t.into(), p_i64t.into()], false);
+        let function = module.add_function("test", function_type);
+
+        let bb = function.append_basic_block_in_context("entry", &context);
+        builder.position(Position::AtEnd(bb));
+
+        let arg0_p_i64 = function.get_param(0).unwrap();
+        let arg1_p_i64 = function.get_param(1).unwrap();
+
+        assert_eq!(
+            is_null!(arg0_p_i64, "is_null")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
+            "%is_null = icmp eq i64* %0, null"
+        );
+
+        assert_eq!(
+            is_not_null!(arg0_p_i64, "is_not_null")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
+            "%is_not_null = icmp ne i64* %0, null"
+        );
+
+        ptr_diff!(arg0_p_i64, arg1_p_i64, "ptr_diff").emit_to(&builder);
+
+        assert_eq!(
+            last_instructions(bb, 4),
+            vec![
+                "%2 = ptrtoint i64* %0 to i64",
+                "%3 = ptrtoint i64* %1 to i64",
+                "%4 = sub i64 %2, %3",
+                "%ptr_diff = sdiv exact i64 %4, ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64)",
+            ]
+        );
+    }
+
     fn last_instructions(bb: BasicBlock, n: usize) -> Vec<String> {
         let mut insts = bb.instructions()
             .rev()
@@ -2053,7 +2453,7 @@ mod tests {
             ]
         );
 
-        array_malloc!(i64t, i64t.int(123), "array_malloc").emit_to(&builder);
+        malloc!(i64t, i64t.int(123), "array_malloc").emit_to(&builder);
 
         assert_eq!(
             last_instructions(bb, 4),
@@ -2071,7 +2471,7 @@ mod tests {
         );
 
         assert_eq!(
-            array_alloca!(i64t, i64t.int(123), "array_alloca")
+            alloca!(i64t, i64t.int(123), "array_alloca")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2147,7 +2547,7 @@ mod tests {
         );
 
         assert_eq!(
-            inbounds_gep!(p_vector, [i64t.int(1)], "inbounds_gep")
+            gep!(inbounds p_vector, [i64t.int(1)], "inbounds_gep")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2155,7 +2555,7 @@ mod tests {
         );
 
         assert_eq!(
-            struct_gep!(p_struct, 1, "struct_gep")
+            gep!(structure p_struct, 1, "struct_gep")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -2163,7 +2563,7 @@ mod tests {
         );
 
         assert_eq!(
-            inbounds_gep!(p_struct, [i32t.int(2), i32t.int(1)], "inbounds_gep")
+            gep!(inbounds p_struct, [i32t.int(2), i32t.int(1)], "inbounds_gep")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),

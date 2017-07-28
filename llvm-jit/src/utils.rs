@@ -10,7 +10,6 @@ pub fn from_unchecked_cstr<'a>(p: *const u8, len: usize) -> Cow<'a, str> {
     unsafe { CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(p, len)).to_string_lossy() }
 }
 
-#[macro_export]
 macro_rules! impl_iter {
     ($name:ident, $first:path [ $list:ty ], $next:path [ $item:ty ], $type:ident :: $ctor:ident) => {
         pub struct $name {
