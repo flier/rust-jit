@@ -106,7 +106,7 @@ impl ExecutionEngine {
         let mut func = ptr::null_mut();
 
         if unsafe { LLVMFindFunction(self.0, cname.as_ptr(), &mut func) } == 0 {
-            let f = Function::from_raw(func);
+            let f = func.into();
 
             trace!(
                 "found `{}` function in {:?}: {:?}",

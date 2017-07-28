@@ -39,10 +39,16 @@ macro_rules! inherit_value_ref {
             }
         }
 
+        impl ::std::convert::From<LLVMValueRef> for $ty {
+            fn from(f: LLVMValueRef) -> Self {
+                $ty(f.into())
+            }
+        }
+
         impl $ty {
             /// Wrap a raw $ty reference.
             pub fn from_raw(v: LLVMValueRef) -> Self {
-                $ty(ValueRef(v))
+                $ty(v.into())
             }
         }
     }
@@ -161,15 +167,15 @@ pub trait Constants {
 
 impl Constants for TypeRef {
     fn null(&self) -> Constant {
-        Constant::from_raw(unsafe { LLVMConstNull(self.as_raw()) })
+        unsafe { LLVMConstNull(self.as_raw()) }.into()
     }
 
     fn undef(&self) -> Constant {
-        Constant::from_raw(unsafe { LLVMGetUndef(self.as_raw()) })
+        unsafe { LLVMGetUndef(self.as_raw()) }.into()
     }
 
     fn null_ptr(&self) -> Constant {
-        Constant::from_raw(unsafe { LLVMConstPointerNull(self.as_raw()) })
+        unsafe { LLVMConstPointerNull(self.as_raw()) }.into()
     }
 }
 
@@ -210,24 +216,20 @@ pub trait ConstantInts {
 
 impl ConstantInts for TypeRef {
     fn int_value(&self, n: u64, sign: bool) -> ConstantInt {
-        ConstantInt::from_raw(unsafe {
-            LLVMConstInt(self.as_raw(), n, if sign { 1 } else { 0 })
-        })
+        unsafe { LLVMConstInt(self.as_raw(), n, if sign { 1 } else { 0 }) }.into()
     }
 
     fn int_with_precision(&self, words: &[u64]) -> ConstantInt {
-        ConstantInt::from_raw(unsafe {
+        unsafe {
             LLVMConstIntOfArbitraryPrecision(self.as_raw(), words.len() as u32, words.as_ptr())
-        })
+        }.into()
     }
 
     fn int_of_string<S: AsRef<str>>(&self, s: S, radix: u8) -> ConstantInt {
         let len = s.as_ref().len();
         let s = unchecked_cstring(s);
 
-        ConstantInt::from_raw(unsafe {
-            LLVMConstIntOfStringAndSize(self.as_raw(), s.as_ptr(), len as u32, radix)
-        })
+        unsafe { LLVMConstIntOfStringAndSize(self.as_raw(), s.as_ptr(), len as u32, radix) }.into()
     }
 }
 
@@ -252,16 +254,14 @@ pub trait ConstantFPs {
 
 impl ConstantFPs for TypeRef {
     fn real(&self, n: f64) -> ConstantFP {
-        Constant::from_raw(unsafe { LLVMConstReal(self.as_raw(), n) })
+        unsafe { LLVMConstReal(self.as_raw(), n) }.into()
     }
 
     fn real_of_string<S: AsRef<str>>(&self, s: S) -> ConstantFP {
         let len = s.as_ref().len();
         let s = unchecked_cstring(s);
 
-        Constant::from_raw(unsafe {
-            LLVMConstRealOfStringAndSize(self.as_raw(), s.as_ptr(), len as u32)
-        })
+        unsafe { LLVMConstRealOfStringAndSize(self.as_raw(), s.as_ptr(), len as u32) }.into()
     }
 }
 
@@ -273,7 +273,7 @@ impl ConstantString {
         let len = s.as_ref().len();
         let buf = unchecked_cstring(s);
 
-        ConstantString::from_raw(unsafe { LLVMConstString(buf.as_ptr(), len as u32, 0) })
+        unsafe { LLVMConstString(buf.as_ptr(), len as u32, 0) }.into()
     }
 
     /// Returns true if the specified constant is an array of i8.
@@ -303,9 +303,7 @@ impl ConstantStrings for Context {
         let len = s.as_ref().len();
         let buf = unchecked_cstring(s);
 
-        ConstantString::from_raw(unsafe {
-            LLVMConstStringInContext(self.as_raw(), buf.as_ptr(), len as u32, 0)
-        })
+        unsafe { LLVMConstStringInContext(self.as_raw(), buf.as_ptr(), len as u32, 0) }.into()
     }
 }
 
@@ -319,15 +317,17 @@ impl ConstantStruct {
             .map(|v| v.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        let t = unsafe {
+        let ty = unsafe {
             LLVMConstStruct(
                 values.as_mut_ptr(),
                 values.len() as u32,
                 if packed { 1 } else { 0 },
             )
-        };
+        }.into();
 
-        ConstantStruct::from_raw(t)
+        trace!("create constant struct: {:?}", ty);
+
+        ty
     }
 }
 
@@ -343,11 +343,13 @@ impl ToConstantStruct for StructType {
             .map(|v| v.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        let t = unsafe {
+        let ty = unsafe {
             LLVMConstNamedStruct(self.as_raw(), values.as_mut_ptr(), values.len() as u32)
-        };
+        }.into();
 
-        ConstantStruct::from_raw(t)
+        trace!("create constant struct: {:?}", ty);
+
+        ty
     }
 }
 
@@ -379,9 +381,12 @@ impl ToConstantArray for TypeRef {
             .map(|v| v.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        let t = unsafe { LLVMConstArray(self.as_raw(), values.as_mut_ptr(), values.len() as u32) };
+        let ty = unsafe { LLVMConstArray(self.as_raw(), values.as_mut_ptr(), values.len() as u32) }
+            .into();
 
-        ConstantArray::from_raw(t)
+        trace!("create constant array: {:?}", ty);
+
+        ty
     }
 }
 
@@ -401,9 +406,11 @@ impl ConstantVector {
             .map(|v| v.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        let t = unsafe { LLVMConstVector(values.as_mut_ptr(), values.len() as u32) };
+        let ty = unsafe { LLVMConstVector(values.as_mut_ptr(), values.len() as u32) }.into();
 
-        ConstantVector::from_raw(t)
+        trace!("create constant vector: {:?}", ty);
+
+        ty
     }
 }
 
@@ -460,16 +467,16 @@ impl Function {
     /// Append a basic block to the end of a function using the global context.
     pub fn append_basic_block<S: AsRef<str>>(&self, name: S) -> BasicBlock {
         let cname = unchecked_cstring(name);
-        let block = unsafe { LLVMAppendBasicBlock(self.as_raw(), cname.as_ptr()) };
+        let block = unsafe { LLVMAppendBasicBlock(self.as_raw(), cname.as_ptr()) }.into();
 
         trace!(
-            "{:?} create `{}` BasicBlock({:?}) in the global context",
+            "{:?} create `{}` {:?} in the global context",
             self,
             cname.to_string_lossy(),
             block
         );
 
-        BasicBlock::from_raw(block)
+        block
     }
 
     /// Append a basic block to the end of a function.
@@ -481,17 +488,17 @@ impl Function {
         let cname = unchecked_cstring(name);
         let block = unsafe {
             LLVMAppendBasicBlockInContext(context.as_raw(), self.as_raw(), cname.as_ptr())
-        };
+        }.into();
 
         trace!(
-            "{:?} create `{}` BasicBlock({:?}) in {:?}",
+            "{:?} create `{}` {:?} in {:?}",
             self,
             cname.to_string_lossy(),
             block,
             context
         );
 
-        BasicBlock::from_raw(block)
+        block
     }
 
     /// Obtain an iterator to the parameters in a function.
@@ -578,12 +585,12 @@ impl Instruction {
     ///   * The instruction has no parent
     ///   * The instruction has no name
     pub fn copy(&self) -> Self {
-        Instruction::from_raw(unsafe { LLVMInstructionClone(self.as_raw()) })
+        unsafe { LLVMInstructionClone(self.as_raw()) }.into()
     }
 
     /// Obtain the basic block to which an instruction belongs.
     pub fn parent(&self) -> BasicBlock {
-        BasicBlock::from_raw(unsafe { LLVMGetInstructionParent(self.as_raw()) })
+        unsafe { LLVMGetInstructionParent(self.as_raw()) }.into()
     }
 
     /// Remove and delete an instruction.
@@ -607,7 +614,7 @@ impl Instruction {
 
     /// Return metadata associated with an instruction value.
     pub fn get_metadata(&self, kind_id: u32) -> ValueRef {
-        ValueRef::from_raw(unsafe { LLVMGetMetadata(self.as_raw(), kind_id) })
+        unsafe { LLVMGetMetadata(self.as_raw(), kind_id) }.into()
     }
 
     /// Set metadata associated with an instruction value.

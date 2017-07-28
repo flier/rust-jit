@@ -59,7 +59,7 @@ impl Module {
 
     /// Obtain the context to which this module is associated.
     pub fn context(&self) -> Context {
-        Context::from_raw(unsafe { LLVMGetModuleContext(self.0) })
+        unsafe { LLVMGetModuleContext(self.0) }.into()
     }
 
     /// Obtain the identifier of a module.
@@ -158,7 +158,7 @@ impl Module {
             func,
         );
 
-        Function::from_raw(func)
+        func.into()
     }
 
     /// Obtain a Function value from a Module by its name.
@@ -204,7 +204,7 @@ impl Module {
             var,
         );
 
-        GlobalVar::from_raw(var)
+        var.into()
     }
 
     /// Add a global variable to a module under a specified name.
@@ -228,7 +228,7 @@ impl Module {
             var,
         );
 
-        GlobalVar::from_raw(var)
+        var.into()
     }
 
     /// Obtain a global variable value from a Module by its name.

@@ -35,7 +35,7 @@ pub struct RetVoid;
 
 impl InstructionBuilder for RetVoid {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe { LLVMBuildRetVoid(builder.as_raw()) })
+        unsafe { LLVMBuildRetVoid(builder.as_raw()) }.into()
     }
 }
 
@@ -51,7 +51,7 @@ impl Ret {
 
 impl InstructionBuilder for Ret {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe { LLVMBuildRet(builder.as_raw(), self.0.as_raw()) })
+        unsafe { LLVMBuildRet(builder.as_raw(), self.0.as_raw()) }.into()
     }
 }
 
@@ -75,9 +75,8 @@ impl InstructionBuilder for AggregateRet {
             .map(|v| v.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        Instruction::from_raw(unsafe {
-            LLVMBuildAggregateRet(builder.as_raw(), values.as_mut_ptr(), values.len() as u32)
-        })
+        unsafe { LLVMBuildAggregateRet(builder.as_raw(), values.as_mut_ptr(), values.len() as u32) }
+            .into()
     }
 }
 
@@ -107,7 +106,7 @@ impl Br {
 
 impl InstructionBuilder for Br {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe { LLVMBuildBr(builder.as_raw(), self.0.as_raw()) })
+        unsafe { LLVMBuildBr(builder.as_raw(), self.0.as_raw()) }.into()
     }
 }
 
@@ -149,14 +148,14 @@ impl CondBr {
 
 impl InstructionBuilder for CondBr {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildCondBr(
                 builder.as_raw(),
                 self.cond.as_raw(),
                 self.then.map_or(ptr::null_mut(), |bb| bb.as_raw()),
                 self.or_else.map_or(ptr::null_mut(), |bb| bb.as_raw()),
             )
-        })
+        }.into()
     }
 }
 
@@ -189,13 +188,13 @@ impl IndirectBr {
 
 impl InstructionBuilder for IndirectBr {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        let br = Instruction::from_raw(unsafe {
+        let br: Instruction = unsafe {
             LLVMBuildIndirectBr(
                 builder.as_raw(),
                 self.addr.as_raw(),
                 self.dests.len() as u32,
             )
-        });
+        }.into();
 
         for dest in &self.dests {
             unsafe { LLVMAddDestination(br.as_raw(), dest.as_raw()) }
@@ -254,14 +253,14 @@ impl Switch {
 
 impl InstructionBuilder for Switch {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        let switch = Instruction::from_raw(unsafe {
+        let switch: Instruction = unsafe {
             LLVMBuildSwitch(
                 builder.as_raw(),
                 self.v.as_raw(),
                 self.dest.map_or(ptr::null_mut(), |bb| bb.as_raw()),
                 self.cases.len() as u32,
             )
-        });
+        }.into();
 
         for &(on, dest) in &self.cases {
             unsafe { LLVMAddCase(switch.as_raw(), on.as_raw(), dest.as_raw()) }
@@ -328,7 +327,7 @@ impl<'a> InstructionBuilder for Invoke<'a> {
             .map(|arg| arg.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildInvoke(
                 builder.as_raw(),
                 self.func.as_raw(),
@@ -338,7 +337,7 @@ impl<'a> InstructionBuilder for Invoke<'a> {
                 self.unwind.map_or(ptr::null_mut(), |bb| bb.as_raw()),
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        })
+        }.into()
     }
 }
 
@@ -399,7 +398,7 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
             .map(|clause| clause.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        let landing_pad = Instruction::from_raw(unsafe {
+        let landing_pad: Instruction = unsafe {
             LLVMBuildLandingPad(
                 builder.as_raw(),
                 self.result_ty.as_raw(),
@@ -407,7 +406,7 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
                 clauses.len() as u32,
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        });
+        }.into();
 
         for clause in &self.clauses {
             unsafe { LLVMAddClause(landing_pad.as_raw(), clause.as_raw()) }
@@ -431,9 +430,7 @@ impl Resume {
 
 impl InstructionBuilder for Resume {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
-            LLVMBuildResume(builder.as_raw(), self.0.as_raw())
-        })
+        unsafe { LLVMBuildResume(builder.as_raw(), self.0.as_raw()) }.into()
     }
 }
 
@@ -454,7 +451,7 @@ pub struct Unreachable;
 
 impl InstructionBuilder for Unreachable {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe { LLVMBuildUnreachable(builder.as_raw()) })
+        unsafe { LLVMBuildUnreachable(builder.as_raw()) }.into()
     }
 }
 
@@ -484,7 +481,7 @@ impl<'a> Malloc<'a> {
 
 impl<'a> InstructionBuilder for Malloc<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             if let Some(size) = self.size {
                 LLVMBuildArrayMalloc(
                     builder.as_raw(),
@@ -499,7 +496,7 @@ impl<'a> InstructionBuilder for Malloc<'a> {
                     unchecked_cstring(self.name.clone()).as_ptr(),
                 )
             }
-        })
+        }.into()
     }
 }
 
@@ -540,7 +537,7 @@ impl<'a> Alloca<'a> {
 
 impl<'a> InstructionBuilder for Alloca<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             if let Some(size) = self.size {
                 LLVMBuildArrayAlloca(
                     builder.as_raw(),
@@ -555,7 +552,7 @@ impl<'a> InstructionBuilder for Alloca<'a> {
                     unchecked_cstring(self.name.clone()).as_ptr(),
                 )
             }
-        })
+        }.into()
     }
 }
 
@@ -584,7 +581,7 @@ impl Free {
 
 impl InstructionBuilder for Free {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe { LLVMBuildFree(builder.as_raw(), self.0.as_raw()) })
+        unsafe { LLVMBuildFree(builder.as_raw(), self.0.as_raw()) }.into()
     }
 }
 
@@ -610,13 +607,13 @@ impl<'a> Load<'a> {
 
 impl<'a> InstructionBuilder for Load<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildLoad(
                 builder.as_raw(),
                 self.ptr.as_raw(),
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        })
+        }.into()
     }
 }
 
@@ -642,9 +639,7 @@ impl Store {
 
 impl InstructionBuilder for Store {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
-            LLVMBuildStore(builder.as_raw(), self.value.as_raw(), self.ptr.as_raw())
-        })
+        unsafe { LLVMBuildStore(builder.as_raw(), self.value.as_raw(), self.ptr.as_raw()) }.into()
     }
 }
 
@@ -699,7 +694,7 @@ impl<'a> GetElementPtr<'a> {
 
 impl<'a> InstructionBuilder for GetElementPtr<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             match self.gep {
                 GEP::Indices(ref indices) |
                 GEP::InBounds(ref indices) => {
@@ -731,7 +726,7 @@ impl<'a> InstructionBuilder for GetElementPtr<'a> {
                     )
                 }
             }
-        })
+        }.into()
     }
 }
 
@@ -785,13 +780,13 @@ impl<'a> GlobalString<'a> {
 
 impl<'a> InstructionBuilder for GlobalString<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildGlobalString(
                 builder.as_raw(),
                 unchecked_cstring(self.s.clone()).as_ptr(),
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        })
+        }.into()
     }
 }
 
@@ -818,13 +813,13 @@ impl<'a> GlobalStringPtr<'a> {
 
 impl<'a> InstructionBuilder for GlobalStringPtr<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildGlobalStringPtr(
                 builder.as_raw(),
                 unchecked_cstring(self.s.clone()).as_ptr(),
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        })
+        }.into()
     }
 }
 
@@ -852,13 +847,13 @@ macro_rules! define_unary_instruction {
 
         impl<'a> $crate::builder::InstructionBuilder for $operator<'a> {
             fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-                Instruction::from_raw(unsafe {
+                unsafe {
                     $func(
                         builder.as_raw(),
                         self.value.as_raw(),
                         unchecked_cstring(self.name.clone()).as_ptr(),
                     )
-                })
+                }.into()
             }
         }
     );
@@ -900,14 +895,14 @@ macro_rules! define_binary_operator {
 
         impl<'a> $crate::builder::InstructionBuilder for $operator<'a> {
             fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-                Instruction::from_raw(unsafe {
+                unsafe {
                     $func(
                         builder.as_raw(),
                         self.lhs.as_raw(),
                         self.rhs.as_raw(),
                         unchecked_cstring(self.name.clone()).as_ptr(),
                     )
-                })
+                }.into()
             }
         }
     );
@@ -952,14 +947,14 @@ macro_rules! define_cast_instruction {
 
         impl<'a> $crate::builder::InstructionBuilder for $operator<'a> {
             fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-                Instruction::from_raw(unsafe {
+                unsafe {
                     $func(
                         builder.as_raw(),
                         self.value.as_raw(),
                         self.dest_ty.as_raw(),
                         unchecked_cstring(self.name.clone()).as_ptr(),
                     )
-                })
+                }.into()
             }
         }
     );
@@ -1352,7 +1347,7 @@ impl<'a> ICmp<'a> {
 
 impl<'a> InstructionBuilder for ICmp<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildICmp(
                 builder.as_raw(),
                 mem::transmute(self.op),
@@ -1360,7 +1355,7 @@ impl<'a> InstructionBuilder for ICmp<'a> {
                 self.rhs.as_raw(),
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        })
+        }.into()
     }
 }
 
@@ -1435,7 +1430,7 @@ impl<'a> FCmp<'a> {
 
 impl<'a> InstructionBuilder for FCmp<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildFCmp(
                 builder.as_raw(),
                 mem::transmute(self.op),
@@ -1443,7 +1438,7 @@ impl<'a> InstructionBuilder for FCmp<'a> {
                 self.rhs.as_raw(),
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        })
+        }.into()
     }
 }
 
@@ -1541,14 +1536,14 @@ impl<'a> ExtractElement<'a> {
 
 impl<'a> InstructionBuilder for ExtractElement<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildExtractElement(
                 builder.as_raw(),
                 self.vector.as_raw(),
                 self.index.as_raw(),
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        })
+        }.into()
     }
 }
 
@@ -1582,7 +1577,7 @@ impl<'a> InsertElement<'a> {
 
 impl<'a> InstructionBuilder for InsertElement<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildInsertElement(
                 builder.as_raw(),
                 self.vector.as_raw(),
@@ -1590,7 +1585,7 @@ impl<'a> InstructionBuilder for InsertElement<'a> {
                 self.index.as_raw(),
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        })
+        }.into()
     }
 }
 
@@ -1619,7 +1614,7 @@ impl<'a> ShuffleVector<'a> {
 
 impl<'a> InstructionBuilder for ShuffleVector<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildShuffleVector(
                 builder.as_raw(),
                 self.v1.as_raw(),
@@ -1627,7 +1622,7 @@ impl<'a> InstructionBuilder for ShuffleVector<'a> {
                 self.mask.as_raw(),
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        })
+        }.into()
     }
 }
 
@@ -1660,14 +1655,14 @@ impl<'a> ExtractValue<'a> {
 
 impl<'a> InstructionBuilder for ExtractValue<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildExtractValue(
                 builder.as_raw(),
                 self.aggregate.as_raw(),
                 self.index,
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        })
+        }.into()
     }
 }
 
@@ -1701,7 +1696,7 @@ impl<'a> InsertValue<'a> {
 
 impl<'a> InstructionBuilder for InsertValue<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildInsertValue(
                 builder.as_raw(),
                 self.aggregate.as_raw(),
@@ -1709,7 +1704,7 @@ impl<'a> InstructionBuilder for InsertValue<'a> {
                 self.index,
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        })
+        }.into()
     }
 }
 
@@ -1759,14 +1754,14 @@ impl<'a> Fence<'a> {
 
 impl<'a> InstructionBuilder for Fence<'a> {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildFence(
                 builder.as_raw(),
                 mem::transmute(self.ordering),
                 if self.single_thread { 1 } else { 0 },
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        })
+        }.into()
     }
 }
 
@@ -1799,7 +1794,7 @@ impl AtomicRMW {
 
 impl InstructionBuilder for AtomicRMW {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildAtomicRMW(
                 builder.as_raw(),
                 mem::transmute(self.op),
@@ -1808,7 +1803,7 @@ impl InstructionBuilder for AtomicRMW {
                 mem::transmute(self.ordering),
                 if self.single_thread { 1 } else { 0 },
             )
-        })
+        }.into()
     }
 }
 
@@ -1844,7 +1839,7 @@ impl AtomicCmpXchg {
 
 impl InstructionBuilder for AtomicCmpXchg {
     fn emit_to(&self, builder: &IRBuilder) -> Instruction {
-        Instruction::from_raw(unsafe {
+        unsafe {
             LLVMBuildAtomicCmpXchg(
                 builder.as_raw(),
                 self.ptr.as_raw(),
@@ -1854,7 +1849,7 @@ impl InstructionBuilder for AtomicCmpXchg {
                 mem::transmute(self.failure_ordering),
                 if self.single_thread { 1 } else { 0 },
             )
-        })
+        }.into()
     }
 }
 

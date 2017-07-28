@@ -37,10 +37,16 @@ macro_rules! inherit_type_ref {
             }
         }
 
+        impl ::std::convert::From<LLVMTypeRef> for $ty {
+            fn from(f: LLVMTypeRef) -> Self {
+                $ty(f.into())
+            }
+        }
+
         impl $ty {
             /// Wrap a raw $ty reference.
             pub fn from_raw(t: LLVMTypeRef) -> Self {
-                $ty(TypeRef(t))
+                $ty(t.into())
             }
         }
     }
@@ -365,7 +371,7 @@ impl FunctionType {
             return_type,
         );
 
-        FunctionType::from_raw(function)
+        function.into()
     }
 
     /// Returns whether a function type is variadic.
@@ -504,24 +510,33 @@ impl ToStructType for Context {
             .map(|t| t.as_raw())
             .collect::<Vec<LLVMTypeRef>>();
 
-        let t = unsafe {
+        let ty = unsafe {
             LLVMStructTypeInContext(
                 self.as_raw(),
                 elements.as_mut_ptr(),
                 elements.len() as u32,
                 if packed { 1 } else { 0 },
             )
-        };
+        }.into();
 
-        StructType::from_raw(t)
+        trace!("created annonymous structure in {:?}: {:?}", self, ty);
+
+        ty
     }
 
     fn named_empty_struct<S: AsRef<str>>(&self, name: S) -> StructType {
         let cname = unchecked_cstring(name);
 
-        StructType::from_raw(unsafe {
-            LLVMStructCreateNamed(self.as_raw(), cname.as_ptr())
-        })
+        let ty = unsafe { LLVMStructCreateNamed(self.as_raw(), cname.as_ptr()) }.into();
+
+        trace!(
+            "created `{}` structure in {:?}: {:?}",
+            cname.to_string_lossy(),
+            self,
+            ty
+        );
+
+        ty
     }
 }
 
@@ -558,9 +573,7 @@ pub trait ToArrayType {
 
 impl ToArrayType for TypeRef {
     fn array(&self, element_count: usize) -> ArrayType {
-        ArrayType::from_raw(unsafe {
-            LLVMArrayType(self.as_raw(), element_count as u32)
-        })
+        unsafe { LLVMArrayType(self.as_raw(), element_count as u32) }.into()
     }
 }
 
@@ -593,7 +606,7 @@ pub trait ToPointerType {
 
 impl ToPointerType for TypeRef {
     fn ptr_in_address_space(&self, address_space: u32) -> PointerType {
-        PointerType::from_raw(unsafe { LLVMPointerType(self.as_raw(), address_space) })
+        unsafe { LLVMPointerType(self.as_raw(), address_space) }.into()
     }
 }
 
@@ -619,9 +632,7 @@ pub trait ToVectorType {
 
 impl ToVectorType for TypeRef {
     fn vector(&self, element_count: usize) -> VectorType {
-        VectorType::from_raw(unsafe {
-            LLVMVectorType(self.as_raw(), element_count as u32)
-        })
+        unsafe { LLVMVectorType(self.as_raw(), element_count as u32) }.into()
     }
 }
 

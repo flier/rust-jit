@@ -15,6 +15,12 @@ use value::{BlockAddress, Function, Instruction, ValueRef};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BasicBlock(LLVMBasicBlockRef);
 
+impl From<LLVMBasicBlockRef> for BasicBlock {
+    fn from(bb: LLVMBasicBlockRef) -> Self {
+        BasicBlock(bb)
+    }
+}
+
 impl BasicBlock {
     /// Wrap a raw basic block reference.
     pub fn from_raw(block: LLVMBasicBlockRef) -> Self {
@@ -33,25 +39,22 @@ impl BasicBlock {
 
     /// Obtain the function to which a basic block belongs.
     pub fn parent(&self) -> Function {
-        Function::from_raw(unsafe { LLVMGetBasicBlockParent(self.0) })
+        unsafe { LLVMGetBasicBlockParent(self.0) }.into()
     }
 
     /// Computes the address of the specified basic block in the specified function
     pub fn addr(&self) -> BlockAddress {
-        BlockAddress::from_raw(unsafe {
-            LLVMBlockAddress(self.parent().as_raw(), self.as_raw())
-        })
+        unsafe { LLVMBlockAddress(self.parent().as_raw(), self.as_raw()) }.into()
     }
 
     /// Obtain the terminator instruction for a basic block.
     pub fn terminator(&self) -> Option<Instruction> {
-        unsafe { LLVMGetBasicBlockTerminator(self.0).as_mut() }
-            .map(|terminator| Instruction::from_raw(terminator))
+        unsafe { LLVMGetBasicBlockTerminator(self.0).as_mut() }.map(|v| Instruction::from_raw(v))
     }
 
     /// Convert a basic block instance to a value type.
     pub fn as_value(&self) -> ValueRef {
-        ValueRef::from_raw(unsafe { LLVMBasicBlockAsValue(self.0) })
+        unsafe { LLVMBasicBlockAsValue(self.0) }.into()
     }
 
     /// Remove a basic block from a function and delete it.
