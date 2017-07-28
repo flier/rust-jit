@@ -17,40 +17,11 @@ use utils::{from_unchecked_cstr, unchecked_cstring};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ValueRef(LLVMValueRef);
 
-impl From<LLVMValueRef> for ValueRef {
-    fn from(v: LLVMValueRef) -> Self {
-        ValueRef(v)
-    }
-}
+inherit_from!(ValueRef, LLVMValueRef);
 
 macro_rules! inherit_value_ref {
     ($ty:ident) => {
-        impl ::std::ops::Deref for $ty {
-            type Target = ValueRef;
-
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-
-        impl ::std::convert::From<$ty> for ValueRef {
-            fn from(f: $ty) -> Self {
-                f.0
-            }
-        }
-
-        impl ::std::convert::From<LLVMValueRef> for $ty {
-            fn from(f: LLVMValueRef) -> Self {
-                $ty(f.into())
-            }
-        }
-
-        impl $ty {
-            /// Wrap a raw $ty reference.
-            pub fn from_raw(v: LLVMValueRef) -> Self {
-                $ty(v.into())
-            }
-        }
+        inherit_from!($ty, ValueRef, LLVMValueRef);
     }
 }
 
@@ -71,16 +42,6 @@ where
 pub type ValueKind = LLVMValueKind;
 
 impl ValueRef {
-    /// Wrap a raw value reference.
-    pub fn from_raw(v: LLVMValueRef) -> Self {
-        ValueRef(v)
-    }
-
-    /// Extracts the raw value reference.
-    pub fn as_raw(&self) -> LLVMValueRef {
-        self.0
-    }
-
     /// Dump a representation of a value to stderr.
     pub fn dump(&self) {
         unsafe { LLVMDumpValue(self.0) }

@@ -15,40 +15,11 @@ use value::ValueRef;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeRef(LLVMTypeRef);
 
-impl From<LLVMTypeRef> for TypeRef {
-    fn from(v: LLVMTypeRef) -> Self {
-        TypeRef(v)
-    }
-}
+inherit_from!(TypeRef, LLVMTypeRef);
 
 macro_rules! inherit_type_ref {
     ($ty:ident) => {
-        impl ::std::ops::Deref for $ty {
-            type Target = TypeRef;
-
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-
-        impl ::std::convert::From<$ty> for TypeRef {
-            fn from(f: $ty) -> Self {
-                f.0
-            }
-        }
-
-        impl ::std::convert::From<LLVMTypeRef> for $ty {
-            fn from(f: LLVMTypeRef) -> Self {
-                $ty(f.into())
-            }
-        }
-
-        impl $ty {
-            /// Wrap a raw $ty reference.
-            pub fn from_raw(t: LLVMTypeRef) -> Self {
-                $ty(t.into())
-            }
-        }
+        inherit_from!($ty, TypeRef, LLVMTypeRef);
     }
 }
 
@@ -69,16 +40,6 @@ where
 }
 
 impl TypeRef {
-    /// Wrap a raw typedef reference.
-    pub fn from_raw(t: LLVMTypeRef) -> Self {
-        TypeRef(t)
-    }
-
-    /// Extracts the raw typedef reference.
-    pub fn as_raw(&self) -> LLVMTypeRef {
-        self.0
-    }
-
     /// Dump a representation of a type to stderr.
     pub fn dump(&self) {
         unsafe { LLVMDumpType(self.0) }

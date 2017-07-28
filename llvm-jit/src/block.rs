@@ -15,23 +15,9 @@ use value::{BlockAddress, Function, Instruction, ValueRef};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BasicBlock(LLVMBasicBlockRef);
 
-impl From<LLVMBasicBlockRef> for BasicBlock {
-    fn from(bb: LLVMBasicBlockRef) -> Self {
-        BasicBlock(bb)
-    }
-}
+inherit_from!(BasicBlock, LLVMBasicBlockRef);
 
 impl BasicBlock {
-    /// Wrap a raw basic block reference.
-    pub fn from_raw(block: LLVMBasicBlockRef) -> Self {
-        BasicBlock(block)
-    }
-
-    /// Extracts the raw basic block reference.
-    pub fn as_raw(&self) -> LLVMBasicBlockRef {
-        self.0
-    }
-
     /// Obtain the string name of a basic block.
     pub fn name(&self) -> Cow<str> {
         unsafe { CStr::from_ptr(LLVMGetBasicBlockName(self.0)).to_string_lossy() }

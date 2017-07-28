@@ -10,6 +10,65 @@ pub fn from_unchecked_cstr<'a>(p: *const u8, len: usize) -> Cow<'a, str> {
     unsafe { CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(p, len)).to_string_lossy() }
 }
 
+macro_rules! inherit_from {
+    ($ty:ident, $raw:ty) => {
+        impl ::std::ops::Deref for $ty {
+            type Target = $raw;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl ::std::convert::From<$raw> for $ty {
+            fn from(f: $raw) -> Self {
+                $ty(f.into())
+            }
+        }
+
+        impl $ty {
+            /// Wrap a raw reference.
+            pub fn from_raw(v: $raw) -> Self {
+                $ty(v.into())
+            }
+
+            /// Extracts the raw reference.
+            pub fn as_raw(&self) -> $raw {
+                self.0
+            }
+        }
+    };
+
+    ($ty:ident, $parent:ty, $raw:ty) => {
+        impl ::std::ops::Deref for $ty {
+            type Target = $parent;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl ::std::convert::From<$ty> for $parent {
+            fn from(f: $ty) -> Self {
+                f.0
+            }
+        }
+
+        impl ::std::convert::From<$raw> for $ty {
+            fn from(f: $raw) -> Self {
+                $ty(f.into())
+            }
+        }
+
+        impl $ty {
+            /// Wrap a raw $ty reference.
+            pub fn from_raw(v: $raw) -> Self {
+                $ty(v.into())
+            }
+        }
+    }
+}
+
 macro_rules! impl_iter {
     ($name:ident, $first:path [ $list:ty ], $next:path [ $item:ty ], $type:ident :: $ctor:ident) => {
         pub struct $name {
