@@ -4,6 +4,7 @@ use std::ffi::CStr;
 use llvm::core::*;
 use llvm::prelude::*;
 
+use builder::TerminatorInst;
 use value::{BlockAddress, Function, Instruction, ValueRef};
 
 /// Basic Block
@@ -34,8 +35,8 @@ impl BasicBlock {
     }
 
     /// Obtain the terminator instruction for a basic block.
-    pub fn terminator(&self) -> Option<Instruction> {
-        unsafe { LLVMGetBasicBlockTerminator(self.0).as_mut() }.map(|v| Instruction::from_raw(v))
+    pub fn terminator(&self) -> Option<TerminatorInst> {
+        unsafe { LLVMGetBasicBlockTerminator(self.0).as_mut() }.map(|v| TerminatorInst::from_raw(v))
     }
 
     /// Convert a basic block instance to a value type.
@@ -126,7 +127,7 @@ mod tests {
         assert_eq!(bb.terminator(), Some(ret));
         assert_eq!(
             bb.instructions().collect::<Vec<Instruction>>(),
-            vec![sum1, sum2, ret]
+            vec![sum1, sum2, ret.into()]
         );
     }
 }

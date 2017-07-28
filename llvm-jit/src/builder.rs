@@ -54,7 +54,7 @@ impl Ret {
 }
 
 impl InstructionBuilder for Ret {
-    type Target = Instruction;
+    type Target = TerminatorInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe { LLVMBuildRet(builder.as_raw(), self.0.as_raw()) }.into()
@@ -75,7 +75,7 @@ impl AggregateRet {
 }
 
 impl InstructionBuilder for AggregateRet {
-    type Target = Instruction;
+    type Target = TerminatorInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         let mut values = self.0
@@ -85,6 +85,27 @@ impl InstructionBuilder for AggregateRet {
 
         unsafe { LLVMBuildAggregateRet(builder.as_raw(), values.as_mut_ptr(), values.len() as u32) }
             .into()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TerminatorInst(Instruction);
+
+inherit_from!(TerminatorInst, Instruction, ValueRef, LLVMValueRef);
+
+impl TerminatorInst {
+    /// Return the successors that this terminator has.
+    pub fn successors(&self) -> Vec<BasicBlock> {
+        let count = unsafe { LLVMGetNumSuccessors(self.as_raw()) };
+
+        (0..count)
+            .map(|idx| unsafe { LLVMGetSuccessor(self.as_raw(), idx).into() })
+            .collect()
+    }
+
+    /// Update the specified successor to point at the provided block.
+    pub fn set_successor(&self, idx: u32, block: BasicBlock) {
+        unsafe { LLVMSetSuccessor(self.as_raw(), idx, block.as_raw()) }
     }
 }
 
@@ -266,10 +287,10 @@ impl Switch {
 }
 
 impl InstructionBuilder for Switch {
-    type Target = Instruction;
+    type Target = SwitchInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
-        let switch: Instruction = unsafe {
+        let switch: SwitchInst = unsafe {
             LLVMBuildSwitch(
                 builder.as_raw(),
                 self.v.as_raw(),
@@ -283,6 +304,18 @@ impl InstructionBuilder for Switch {
         }
 
         switch
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SwitchInst(Instruction);
+
+inherit_from!(SwitchInst, Instruction, ValueRef, LLVMValueRef);
+
+impl SwitchInst {
+    /// Obtain the default destination basic block of a switch instruction.
+    pub fn default_dest(&self) -> BasicBlock {
+        unsafe { LLVMGetSwitchDefaultDest(self.as_raw()) }.into()
     }
 }
 
@@ -562,7 +595,7 @@ impl<'a> Alloca<'a> {
 }
 
 impl<'a> InstructionBuilder for Alloca<'a> {
-    type Target = Instruction;
+    type Target = AllocaInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
@@ -581,6 +614,18 @@ impl<'a> InstructionBuilder for Alloca<'a> {
                 )
             }
         }.into()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AllocaInst(Instruction);
+
+inherit_from!(AllocaInst, Instruction, ValueRef, LLVMValueRef);
+
+impl AllocaInst {
+    /// Obtain the type that is being allocated by the alloca instruction.
+    pub fn allocated_type(&self) -> TypeRef {
+        unsafe { LLVMGetAllocatedType(self.as_raw()) }.into()
     }
 }
 
@@ -1392,7 +1437,7 @@ impl<'a> ICmp<'a> {
 }
 
 impl<'a> InstructionBuilder for ICmp<'a> {
-    type Target = Instruction;
+    type Target = ICmpInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
@@ -1404,6 +1449,21 @@ impl<'a> InstructionBuilder for ICmp<'a> {
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
         }.into()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ICmpInst(Instruction);
+
+inherit_from!(ICmpInst, Instruction, ValueRef, LLVMValueRef);
+
+impl ICmpInst {
+    /// Obtain the predicate of an instruction.
+    ///
+    /// This is only valid for instructions that correspond to llvm::ICmpInst
+    /// or llvm::ConstantExpr whose opcode is llvm::Instruction::ICmp.
+    pub fn predicate(&self) -> LLVMIntPredicate {
+        unsafe { LLVMGetICmpPredicate(self.as_raw()) }
     }
 }
 
@@ -1477,7 +1537,7 @@ impl<'a> FCmp<'a> {
 }
 
 impl<'a> InstructionBuilder for FCmp<'a> {
-    type Target = Instruction;
+    type Target = FCmpInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
@@ -1489,6 +1549,21 @@ impl<'a> InstructionBuilder for FCmp<'a> {
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
         }.into()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FCmpInst(Instruction);
+
+inherit_from!(FCmpInst, Instruction, ValueRef, LLVMValueRef);
+
+impl FCmpInst {
+    /// Obtain the float predicate of an instruction.
+    ///
+    /// This is only valid for instructions that correspond to llvm::FCmpInst
+    /// or llvm::ConstantExpr whose opcode is llvm::Instruction::FCmp.
+    pub fn predicate(&self) -> LLVMRealPredicate {
+        unsafe { LLVMGetFCmpPredicate(self.as_raw()) }
     }
 }
 
@@ -2246,10 +2321,10 @@ impl IRBuilder {
         self
     }
 
-    pub fn emit<I: InstructionBuilder + fmt::Debug>(&self, inst: I) -> Instruction {
+    pub fn emit<I: InstructionBuilder + fmt::Debug>(&self, inst: I) -> I::Target {
         trace!("{:?} emit: {:?}", self, inst);
 
-        inst.emit_to(self).as_raw().into()
+        inst.emit_to(self)
     }
 }
 
@@ -2393,23 +2468,24 @@ mod tests {
         builder.position(Position::AtEnd(bb));
 
         let i64t = context.int64();
+        let bb_default = function.append_basic_block_in_context("default", &context);
 
-        let switch =
-            switch!(i64t.uint(3);
-                _ => function.append_basic_block_in_context("default", &context),
+        let switch = switch!(i64t.uint(3);
+                _ => bb_default,
                 i64t.uint(1) => function.append_basic_block_in_context("one", &context),
                 i64t.uint(2) => function.append_basic_block_in_context("two", &context),
                 i64t.uint(3) => function.append_basic_block_in_context("three", &context)
-            );
+            ).emit_to(&builder);
 
         assert_eq!(
-            switch.emit_to(&builder).to_string().trim(),
+            switch.to_string().trim(),
             r#"switch i64 3, label %default [
     i64 1, label %one
     i64 2, label %two
     i64 3, label %three
   ]"#
         );
+        assert_eq!(switch.default_dest(), bb_default);
     }
 
     #[test]
@@ -2894,10 +2970,10 @@ mod tests {
             ]
         );
 
-        assert_eq!(
-            alloca!(i64t; "alloca").emit_to(&builder).to_string().trim(),
-            "%alloca = alloca i64"
-        );
+        let alloca = alloca!(i64t; "alloca").emit_to(&builder);
+
+        assert_eq!(alloca.to_string().trim(), "%alloca = alloca i64");
+        assert_eq!(alloca.allocated_type(), i64t);
 
         assert_eq!(
             alloca!(i64t, i64t.int(123); "array_alloca")

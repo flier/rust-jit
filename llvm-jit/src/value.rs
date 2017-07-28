@@ -523,22 +523,6 @@ impl Instruction {
         unsafe { LLVMGetInstructionOpcode(self.as_raw()) }
     }
 
-    /// Obtain the predicate of an instruction.
-    ///
-    /// This is only valid for instructions that correspond to llvm::ICmpInst
-    /// or llvm::ConstantExpr whose opcode is llvm::Instruction::ICmp.
-    pub fn icmp_predicate(&self) -> LLVMIntPredicate {
-        unsafe { LLVMGetICmpPredicate(self.as_raw()) }
-    }
-
-    /// Obtain the float predicate of an instruction.
-    ///
-    /// This is only valid for instructions that correspond to llvm::FCmpInst
-    /// or llvm::ConstantExpr whose opcode is llvm::Instruction::FCmp.
-    pub fn fcmp_predicate(&self) -> LLVMRealPredicate {
-        unsafe { LLVMGetFCmpPredicate(self.as_raw()) }
-    }
-
     /// Create a copy of 'this' instruction that is identical in all ways except the following:
     ///   * The instruction has no parent
     ///   * The instruction has no name
