@@ -2,7 +2,6 @@ use std::borrow::Cow;
 use std::ffi::CStr;
 use std::fmt;
 use std::mem;
-use std::ops::Deref;
 use std::ptr;
 
 use llvm::*;
@@ -26,7 +25,7 @@ impl From<LLVMValueRef> for ValueRef {
 
 macro_rules! inherit_value_ref {
     ($ty:ident) => {
-        impl Deref for $ty {
+        impl ::std::ops::Deref for $ty {
             type Target = ValueRef;
 
             fn deref(&self) -> &Self::Target {
@@ -34,7 +33,7 @@ macro_rules! inherit_value_ref {
             }
         }
 
-        impl From<$ty> for ValueRef {
+        impl ::std::convert::From<$ty> for ValueRef {
             fn from(f: $ty) -> Self {
                 f.0
             }
@@ -56,7 +55,7 @@ pub trait AsValueRef {
 
 impl<T> AsValueRef for T
 where
-    T: Deref<Target = ValueRef>,
+    T: ::std::ops::Deref<Target = ValueRef>,
 {
     fn as_raw(&self) -> LLVMValueRef {
         self.deref().as_raw()
