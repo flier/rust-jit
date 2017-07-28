@@ -24,7 +24,7 @@ pub enum Position {
 }
 
 pub trait InstructionBuilder {
-    fn build(&self, builder: &IRBuilder) -> Instruction;
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction;
 }
 
 /// Create a 'ret void' instruction.
@@ -32,7 +32,7 @@ pub trait InstructionBuilder {
 pub struct RetVoid;
 
 impl InstructionBuilder for RetVoid {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe { LLVMBuildRetVoid(builder.as_raw()) })
     }
 }
@@ -48,7 +48,7 @@ impl Ret {
 }
 
 impl InstructionBuilder for Ret {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe { LLVMBuildRet(builder.as_raw(), self.0.as_raw()) })
     }
 }
@@ -67,7 +67,7 @@ impl AggregateRet {
 }
 
 impl InstructionBuilder for AggregateRet {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         let mut values = self.0
             .iter()
             .map(|v| v.as_raw())
@@ -104,7 +104,7 @@ impl Br {
 }
 
 impl InstructionBuilder for Br {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe { LLVMBuildBr(builder.as_raw(), self.0.as_raw()) })
     }
 }
@@ -146,7 +146,7 @@ impl CondBr {
 }
 
 impl InstructionBuilder for CondBr {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildCondBr(
                 builder.as_raw(),
@@ -189,7 +189,7 @@ impl IndirectBr {
 }
 
 impl InstructionBuilder for IndirectBr {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         let br = Instruction::from_raw(unsafe {
             LLVMBuildIndirectBr(
                 builder.as_raw(),
@@ -254,7 +254,7 @@ impl Switch {
 }
 
 impl InstructionBuilder for Switch {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         let switch = Instruction::from_raw(unsafe {
             LLVMBuildSwitch(
                 builder.as_raw(),
@@ -323,7 +323,7 @@ impl<'a> Invoke<'a> {
 }
 
 impl<'a> InstructionBuilder for Invoke<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         let mut args = self.args
             .iter()
             .map(|arg| arg.as_raw())
@@ -394,7 +394,7 @@ impl<'a> LandingPad<'a> {
 }
 
 impl<'a> InstructionBuilder for LandingPad<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         let clauses = self.clauses
             .iter()
             .map(|clause| clause.as_raw())
@@ -431,7 +431,7 @@ impl Resume {
 }
 
 impl InstructionBuilder for Resume {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildResume(builder.as_raw(), self.0.as_raw())
         })
@@ -454,7 +454,7 @@ macro_rules! resume {
 pub struct Unreachable;
 
 impl InstructionBuilder for Unreachable {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe { LLVMBuildUnreachable(builder.as_raw()) })
     }
 }
@@ -472,7 +472,7 @@ impl<'a> Malloc<'a> {
 }
 
 impl<'a> InstructionBuilder for Malloc<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildMalloc(
                 builder.as_raw(),
@@ -508,7 +508,7 @@ impl<'a> ArrayMalloc<'a> {
 }
 
 impl<'a> InstructionBuilder for ArrayMalloc<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildArrayMalloc(
                 builder.as_raw(),
@@ -540,7 +540,7 @@ impl<'a> Alloca<'a> {
 }
 
 impl<'a> InstructionBuilder for Alloca<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildAlloca(
                 builder.as_raw(),
@@ -576,7 +576,7 @@ impl<'a> ArrayAlloca<'a> {
 }
 
 impl<'a> InstructionBuilder for ArrayAlloca<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildArrayAlloca(
                 builder.as_raw(),
@@ -607,7 +607,7 @@ impl Free {
 }
 
 impl InstructionBuilder for Free {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildFree(builder.as_raw(), self.ptr.as_raw())
         })
@@ -637,7 +637,7 @@ impl<'a> Load<'a> {
 }
 
 impl<'a> InstructionBuilder for Load<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildLoad(
                 builder.as_raw(),
@@ -671,7 +671,7 @@ impl Store {
 }
 
 impl InstructionBuilder for Store {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildStore(builder.as_raw(), self.value.as_raw(), self.ptr.as_raw())
         })
@@ -727,7 +727,7 @@ impl<'a> GetElementPtr<'a> {
 }
 
 impl<'a> InstructionBuilder for GetElementPtr<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             match self.gep {
                 GEP::Indices(ref indices) |
@@ -798,7 +798,7 @@ impl<'a> GlobalString<'a> {
 }
 
 impl<'a> InstructionBuilder for GlobalString<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildGlobalString(
                 builder.as_raw(),
@@ -829,7 +829,7 @@ impl<'a> GlobalStringPtr<'a> {
 }
 
 impl<'a> InstructionBuilder for GlobalStringPtr<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildGlobalStringPtr(
                 builder.as_raw(),
@@ -865,7 +865,7 @@ macro_rules! define_unary_instruction {
         }
 
         impl<'a> $crate::builder::InstructionBuilder for $operator<'a> {
-            fn build(&self, builder: &IRBuilder) -> Instruction {
+            fn emit_to(&self, builder: &IRBuilder) -> Instruction {
                 Instruction::from_raw(unsafe {
                     $func(
                         builder.as_raw(),
@@ -907,7 +907,7 @@ macro_rules! define_binary_operator {
         }
 
         impl<'a> $crate::builder::InstructionBuilder for $operator<'a> {
-            fn build(&self, builder: &IRBuilder) -> Instruction {
+            fn emit_to(&self, builder: &IRBuilder) -> Instruction {
                 Instruction::from_raw(unsafe {
                     $func(
                         builder.as_raw(),
@@ -952,7 +952,7 @@ macro_rules! define_cast_instruction {
         }
 
         impl<'a> $crate::builder::InstructionBuilder for $operator<'a> {
-            fn build(&self, builder: &IRBuilder) -> Instruction {
+            fn emit_to(&self, builder: &IRBuilder) -> Instruction {
                 Instruction::from_raw(unsafe {
                     $func(
                         builder.as_raw(),
@@ -1049,7 +1049,7 @@ impl<'a> ExtractElement<'a> {
 }
 
 impl<'a> InstructionBuilder for ExtractElement<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildExtractElement(
                 builder.as_raw(),
@@ -1089,7 +1089,7 @@ impl<'a> InsertElement<'a> {
 }
 
 impl<'a> InstructionBuilder for InsertElement<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildInsertElement(
                 builder.as_raw(),
@@ -1130,7 +1130,7 @@ impl<'a> ShuffleVector<'a> {
 }
 
 impl<'a> InstructionBuilder for ShuffleVector<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildShuffleVector(
                 builder.as_raw(),
@@ -1169,7 +1169,7 @@ impl<'a> ExtractValue<'a> {
 }
 
 impl<'a> InstructionBuilder for ExtractValue<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildExtractValue(
                 builder.as_raw(),
@@ -1209,7 +1209,7 @@ impl<'a> InsertValue<'a> {
 }
 
 impl<'a> InstructionBuilder for InsertValue<'a> {
-    fn build(&self, builder: &IRBuilder) -> Instruction {
+    fn emit_to(&self, builder: &IRBuilder) -> Instruction {
         Instruction::from_raw(unsafe {
             LLVMBuildInsertValue(
                 builder.as_raw(),
@@ -1280,7 +1280,7 @@ impl IRBuilder {
     pub fn emit<I: InstructionBuilder + fmt::Debug>(&self, inst: I) -> Instruction {
         trace!("{:?} emit: {:?}", self, inst);
 
-        inst.build(self)
+        inst.emit_to(self)
     }
 }
 
@@ -1311,10 +1311,7 @@ mod tests {
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position(Position::AtEnd(bb));
 
-        let inst = builder.emit(ret!());
-
-        assert!(!inst.as_raw().is_null());
-        assert_eq!(inst.to_string().trim(), "ret void");
+        assert_eq!(ret!().emit_to(&builder).to_string().trim(), "ret void");
     }
 
     #[test]
@@ -1330,10 +1327,10 @@ mod tests {
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position(Position::AtEnd(bb));
 
-        let inst = builder.emit(ret!(i64t.uint(123)));
-
-        assert!(!inst.as_raw().is_null());
-        assert_eq!(inst.to_string().trim(), "ret i64 123");
+        assert_eq!(
+            ret!(i64t.uint(123)).emit_to(&builder).to_string().trim(),
+            "ret i64 123"
+        );
     }
 
     #[test]
@@ -1351,11 +1348,11 @@ mod tests {
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position(Position::AtEnd(bb));
 
-        let inst = builder.emit(ret!(i64t.uint(123), f64t.real(456f64)));
-
-        assert!(!inst.as_raw().is_null());
         assert_eq!(
-            inst.to_string().trim(),
+            ret!(i64t.uint(123), f64t.real(456f64))
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "ret { i64, double } { i64 123, double 4.560000e+02 }"
         );
     }
@@ -1374,33 +1371,42 @@ mod tests {
 
         // unconditional branch
         let next = function.append_basic_block_in_context("next", &context);
-        let inst = br!(next);
 
-        assert_eq!(builder.emit(inst).to_string().trim(), "br label %next");
+        assert_eq!(
+            br!(next).emit_to(&builder).to_string().trim(),
+            "br label %next"
+        );
 
         // conditional branch
         let bb_then = function.append_basic_block_in_context("then", &context);
         let bb_else = function.append_basic_block_in_context("else", &context);
         let bool_t = context.int1();
-        let inst = br!(bool_t.uint(1) => bb_then, _ => bb_else);
 
         assert_eq!(
-            builder.emit(inst).to_string().trim(),
+            br!(bool_t.uint(1) => bb_then, _ => bb_else)
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "br i1 true, label %then, label %else"
         );
 
-        let inst = CondBr::on(bool_t.uint(1)).then(bb_then).or_else(bb_else);
-
         assert_eq!(
-            builder.emit(inst).to_string().trim(),
+            CondBr::on(bool_t.uint(1))
+                .then(bb_then)
+                .or_else(bb_else)
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "br i1 true, label %then, label %else"
         );
 
         // indirect branch
-        let inst = br!(bb_then.addr() => [bb_then, bb_else]);
 
         assert_eq!(
-            builder.emit(inst).to_string().trim(),
+            br!(bb_then.addr() => [bb_then, bb_else])
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "indirectbr i8* blockaddress(@test, %then), [label %then, label %else]"
         );
     }
@@ -1419,7 +1425,7 @@ mod tests {
 
         let i64t = context.int64();
 
-        let inst =
+        let switch =
             switch!(i64t.uint(3);
                 _ => function.append_basic_block_in_context("default", &context),
                 i64t.uint(1) => function.append_basic_block_in_context("one", &context),
@@ -1428,7 +1434,7 @@ mod tests {
             );
 
         assert_eq!(
-            builder.emit(inst).to_string().trim(),
+            switch.emit_to(&builder).to_string().trim(),
             r#"switch i64 3, label %default [
     i64 1, label %one
     i64 2, label %two
@@ -1453,28 +1459,28 @@ mod tests {
         let bb_normal = fn_test.append_basic_block_in_context("normal", &context);
         let bb_catch = fn_test.append_basic_block_in_context("catch", &context);
 
-        let inst =
-            invoke!(fn_hello => "ret"; to bb_normal; unwind bb_catch; [i64t.uint(123), i64t.int(456)]);
-
         assert_eq!(
-            builder.emit(inst).to_string().trim(),
+            invoke!(fn_hello => "ret"; to bb_normal; unwind bb_catch; [i64t.uint(123), i64t.int(456)]).emit_to(&builder).to_string().trim(),
             r#"%ret = invoke i64 @hello(i64 123, i64 456)
           to label %normal unwind label %catch"#
         );
 
         assert_eq!(
-            builder.emit(resume!(i64t.uint(123))).to_string().trim(),
+            resume!(i64t.uint(123)).emit_to(&builder).to_string().trim(),
             "resume i64 123"
         );
-        assert_eq!(builder.emit(Unreachable).to_string().trim(), "unreachable");
+        assert_eq!(
+            Unreachable.emit_to(&builder).to_string().trim(),
+            "unreachable"
+        );
     }
 
     macro_rules! test_instruction {
         ($builder:ident, $name:ident !( $arg0_i64:ident ), $display:expr) => (
-            assert_eq!( $builder.emit($name !( $arg0_i64, stringify!($name) ) ).to_string().trim(), $display )
+            assert_eq!( $name !( $arg0_i64, stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
         );
         ($builder:ident, $name:ident !( $arg0_i64:ident, $arg1_i64:ident ), $display:expr) => (
-            assert_eq!( $builder.emit($name !( $arg0_i64, $arg1_i64, stringify!($name) ) ).to_string().trim(), $display )
+            assert_eq!( $name !( $arg0_i64, $arg1_i64, stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
         );
     }
 
@@ -1735,27 +1741,31 @@ mod tests {
         let arg1_vector = function.get_param(1).unwrap();
 
         let idx = i64t.int(1);
-        let inst = extract_element!(arg0_vector, idx, "extract_element");
 
         assert_eq!(
-            builder.emit(inst).to_string().trim(),
+            extract_element!(arg0_vector, idx, "extract_element")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "%extract_element = extractelement <3 x i64> %0, i64 1"
         );
 
-        let inst = insert_element!(arg0_vector, i64t.int(10), idx, "insert_element");
-
         assert_eq!(
-            builder.emit(inst).to_string().trim(),
+            insert_element!(arg0_vector, i64t.int(10), idx, "insert_element")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "%insert_element = insertelement <3 x i64> %0, i64 10, i64 1"
         );
 
         let i32t = context.int32();
         let mask = vector![i32t.int(1), i32t.int(0), i32t.int(2)];
 
-        let inst = shuffle_vector!(arg0_vector, arg1_vector, mask, "shuffle_vector");
-
         assert_eq!(
-            builder.emit(inst).to_string().trim(),
+            shuffle_vector!(arg0_vector, arg1_vector, mask, "shuffle_vector")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "%shuffle_vector = shufflevector <3 x i64> %0, <3 x i64> %1, <3 x i32> <i32 1, i32 0, i32 2>"
         );
     }
@@ -1779,31 +1789,35 @@ mod tests {
         let arg0_array = function.get_param(0).unwrap();
         let arg1_struct = function.get_param(1).unwrap();
 
-        let inst = extract_value!(arg0_array, 1, "extract_value");
-
         assert_eq!(
-            builder.emit(inst).to_string().trim(),
+            extract_value!(arg0_array, 1, "extract_value")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "%extract_value = extractvalue [4 x i64] %0, 1"
         );
 
-        let inst = extract_value!(arg1_struct, 1, "extract_value");
-
         assert_eq!(
-            builder.emit(inst).to_string().trim(),
+            extract_value!(arg1_struct, 1, "extract_value")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "%extract_value1 = extractvalue { i32, i64 } %1, 1"
         );
 
-        let inst = insert_value!(arg0_array, i64t.int(123), 1, "insert_value");
-
         assert_eq!(
-            builder.emit(inst).to_string().trim(),
+            insert_value!(arg0_array, i64t.int(123), 1, "insert_value")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "%insert_value = insertvalue [4 x i64] %0, i64 123, 1"
         );
 
-        let inst = insert_value!(arg1_struct, i64t.int(123), 1, "insert_value");
-
         assert_eq!(
-            builder.emit(inst).to_string().trim(),
+            insert_value!(arg1_struct, i64t.int(123), 1, "insert_value")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "%insert_value2 = insertvalue { i32, i64 } %1, i64 123, 1"
         );
     }
@@ -1837,8 +1851,9 @@ mod tests {
 
         let arg0_p_i64 = function.get_param(0).unwrap();
 
-        let p = builder.emit(malloc!(i64t, "malloc"));
-        builder.emit(free!(p));
+        let p = malloc!(i64t, "malloc").emit_to(&builder);
+
+        free!(p).emit_to(&builder);
 
         assert_eq!(
             last_instructions(bb, 4),
@@ -1850,7 +1865,7 @@ mod tests {
             ]
         );
 
-        builder.emit(array_malloc!(i64t, i64t.int(123), "array_malloc"));
+        array_malloc!(i64t, i64t.int(123), "array_malloc").emit_to(&builder);
 
         assert_eq!(
             last_instructions(bb, 4),
@@ -1862,45 +1877,48 @@ mod tests {
             ]
         );
 
-        let alloca = alloca!(i64t, "alloca");
-
         assert_eq!(
-            builder.emit(alloca).to_string().trim(),
+            alloca!(i64t, "alloca").emit_to(&builder).to_string().trim(),
             "%alloca = alloca i64"
         );
 
-        let array_alloca = array_alloca!(i64t, i64t.int(123), "array_alloca");
-
         assert_eq!(
-            builder.emit(array_alloca).to_string().trim(),
+            array_alloca!(i64t, i64t.int(123), "array_alloca")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "%array_alloca = alloca i64, i64 123"
         );
 
-        let load = load!(arg0_p_i64, "load");
-
         assert_eq!(
-            builder.emit(load).to_string().trim(),
+            load!(arg0_p_i64, "load")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "%load = load i64, i64* %0"
         );
 
-        let store = store!(i64t.int(123), arg0_p_i64);
-
         assert_eq!(
-            builder.emit(store).to_string().trim(),
+            store!(i64t.int(123), arg0_p_i64)
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "store i64 123, i64* %0"
         );
 
-        let global_str = global_str!("global_str", "global_str");
-
         assert_eq!(
-            builder.emit(global_str).to_string().trim(),
+            global_str!("global_str", "global_str")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "@global_str = private unnamed_addr constant [11 x i8] c\"global_str\\00\""
         );
 
-        let global_str_ptr = global_str_ptr!("global_str_ptr", "global_str_ptr");
-
         assert_eq!(
-            builder.emit(global_str_ptr).to_string().trim(),
+            global_str_ptr!("global_str_ptr", "global_str_ptr")
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "i8* getelementptr inbounds ([15 x i8], [15 x i8]* @global_str_ptr, i32 0, i32 0)"
         );
 
@@ -1928,13 +1946,13 @@ mod tests {
         let vector_t = i64t.vector(4);
         let struct_t = context.named_struct("struct", &[i32t, i64t, vector_t.into()], false);
 
-        let p_array = alloca!(array_t, "p_array").build(&builder);
-        let p_vector = alloca!(vector_t, "p_vector").build(&builder);
-        let p_struct = alloca!(struct_t, "p_struct").build(&builder);
+        let p_array = alloca!(array_t, "p_array").emit_to(&builder);
+        let p_vector = alloca!(vector_t, "p_vector").emit_to(&builder);
+        let p_struct = alloca!(struct_t, "p_struct").emit_to(&builder);
 
         assert_eq!(
             gep!(p_array, [i64t.int(1)], "gep")
-                .build(&builder)
+                .emit_to(&builder)
                 .to_string()
                 .trim(),
             "%gep = getelementptr [4 x i64], [4 x i64]* %p_array, i64 1"
@@ -1942,7 +1960,7 @@ mod tests {
 
         assert_eq!(
             inbounds_gep!(p_vector, [i64t.int(1)], "inbounds_gep")
-                .build(&builder)
+                .emit_to(&builder)
                 .to_string()
                 .trim(),
             "%inbounds_gep = getelementptr inbounds <4 x i64>, <4 x i64>* %p_vector, i64 1"
@@ -1950,7 +1968,7 @@ mod tests {
 
         assert_eq!(
             struct_gep!(p_struct, 1, "struct_gep")
-                .build(&builder)
+                .emit_to(&builder)
                 .to_string()
                 .trim(),
             "%struct_gep = getelementptr inbounds %struct, %struct* %p_struct, i32 0, i32 1"
@@ -1958,7 +1976,7 @@ mod tests {
 
         assert_eq!(
             inbounds_gep!(p_struct, [i32t.int(2), i32t.int(1)], "inbounds_gep")
-                .build(&builder)
+                .emit_to(&builder)
                 .to_string()
                 .trim(),
             "%inbounds_gep1 = getelementptr inbounds %struct, %struct* %p_struct, i32 2, i32 1"
