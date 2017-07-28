@@ -57,8 +57,8 @@ pub mod ops {
                       Neg, Not, Or, SDiv, SRem, Shl, Sub, UDiv, URem, Unreachable, Xor};
 
     /// Memory
-    pub use builder::{Alloca, ArrayAlloca, ArrayMalloc, Free, GlobalString, GlobalStringPtr, Load,
-                      Malloc, Store};
+    pub use builder::{Alloca, ArrayAlloca, ArrayMalloc, Free, GetElementPtr, GlobalString,
+                      GlobalStringPtr, Load, Malloc, Store};
 
     /// Casts
     pub use builder::{AddrSpaceCast, BitCast, FPCast, FPExt, FPToSI, FPToUI, FPTrunc, IntCast,

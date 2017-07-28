@@ -685,6 +685,106 @@ macro_rules! store {
     })
 }
 
+/// an instruction for type-safe pointer arithmetic to access elements of arrays and structs
+#[derive(Clone, Debug, PartialEq)]
+pub struct GetElementPtr<'a> {
+    ptr: ValueRef,
+    gep: GEP,
+    name: Cow<'a, str>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+enum GEP {
+    Indices(Vec<ValueRef>),
+    InBounds(Vec<ValueRef>),
+    Struct(u32),
+}
+
+impl<'a> GetElementPtr<'a> {
+    pub fn new(ptr: ValueRef, indices: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
+        GetElementPtr {
+            ptr: ptr,
+            gep: GEP::Indices(indices),
+            name: name,
+        }
+    }
+
+    pub fn in_bounds(ptr: ValueRef, indices: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
+        GetElementPtr {
+            ptr: ptr,
+            gep: GEP::InBounds(indices),
+            name: name,
+        }
+    }
+
+    pub fn in_struct(ptr: ValueRef, index: u32, name: Cow<'a, str>) -> Self {
+        GetElementPtr {
+            ptr: ptr,
+            gep: GEP::Struct(index),
+            name: name,
+        }
+    }
+}
+
+impl<'a> InstructionBuilder for GetElementPtr<'a> {
+    fn build(&self, builder: &IRBuilder) -> Instruction {
+        Instruction::from_raw(unsafe {
+            match self.gep {
+                GEP::Indices(ref indices) |
+                GEP::InBounds(ref indices) => {
+                    let mut indices = indices
+                        .iter()
+                        .map(|v| v.as_raw())
+                        .collect::<Vec<LLVMValueRef>>();
+
+                    let gep = if let GEP::Indices(_) = self.gep {
+                        LLVMBuildGEP
+                    } else {
+                        LLVMBuildInBoundsGEP
+                    };
+
+                    gep(
+                        builder.as_raw(),
+                        self.ptr.as_raw(),
+                        indices.as_mut_ptr(),
+                        indices.len() as u32,
+                        unchecked_cstring(self.name.clone()).as_ptr(),
+                    )
+                }
+                GEP::Struct(index) => {
+                    LLVMBuildStructGEP(
+                        builder.as_raw(),
+                        self.ptr.as_raw(),
+                        index,
+                        unchecked_cstring(self.name.clone()).as_ptr(),
+                    )
+                }
+            }
+        })
+    }
+}
+
+#[macro_export]
+macro_rules! gep {
+    ($ptr:expr, [ $( $index:expr ),* ], $name:expr) => ({
+        $crate::ops::GetElementPtr::new($ptr.into(), vec![ $( $index.into() ),* ], $name.into())
+    })
+}
+
+#[macro_export]
+macro_rules! inbounds_gep {
+    ($ptr:expr, [ $( $index:expr ),* ], $name:expr) => ({
+        $crate::ops::GetElementPtr::in_bounds($ptr.into(), vec![ $( $index.into() ),* ], $name.into())
+    })
+}
+
+#[macro_export]
+macro_rules! struct_gep {
+    ($ptr:expr, $index:expr, $name:expr) => ({
+        $crate::ops::GetElementPtr::in_struct($ptr.into(), $index, $name.into())
+    })
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct GlobalString<'a> {
     s: Cow<'a, str>,
@@ -1244,7 +1344,7 @@ mod tests {
 
         let i64t = context.int64();
         let f64t = context.double();
-        let ret = context.structure(&[i64t, f64t], false);
+        let ret = context.annonymous_struct(&[i64t, f64t], false);
         let function_type = FunctionType::new(ret.into(), &[], false);
         let function = module.add_function("test", function_type);
 
@@ -1669,7 +1769,7 @@ mod tests {
         let i32t = context.int32();
         let i64t = context.int64();
         let array_t = i64t.array(4).into();
-        let struct_t = context.structure(&[i32t, i64t], false);
+        let struct_t = context.annonymous_struct(&[i32t, i64t], false);
         let function_type = FunctionType::new(context.void(), &[array_t, struct_t.into()], false);
         let function = module.add_function("test", function_type);
 
@@ -1808,5 +1908,60 @@ mod tests {
             module.global_vars().rev().next().unwrap().to_string(),
             "@global_str_ptr = private unnamed_addr constant [15 x i8] c\"global_str_ptr\\00\""
         )
+    }
+
+    #[test]
+    fn gep() {
+        let context = Context::new();
+        let module = Module::with_name_in_context("br", &context);
+        let builder = IRBuilder::within_context(&context);
+
+        let function_type = FunctionType::new(context.void(), &[], false);
+        let function = module.add_function("test", function_type);
+
+        let bb = function.append_basic_block_in_context("entry", &context);
+        builder.position(Position::AtEnd(bb));
+
+        let i32t = context.int32();
+        let i64t = context.int64();
+        let array_t = i64t.array(4);
+        let vector_t = i64t.vector(4);
+        let struct_t = context.named_struct("struct", &[i32t, i64t, vector_t.into()], false);
+
+        let p_array = alloca!(array_t, "p_array").build(&builder);
+        let p_vector = alloca!(vector_t, "p_vector").build(&builder);
+        let p_struct = alloca!(struct_t, "p_struct").build(&builder);
+
+        assert_eq!(
+            gep!(p_array, [i64t.int(1)], "gep")
+                .build(&builder)
+                .to_string()
+                .trim(),
+            "%gep = getelementptr [4 x i64], [4 x i64]* %p_array, i64 1"
+        );
+
+        assert_eq!(
+            inbounds_gep!(p_vector, [i64t.int(1)], "inbounds_gep")
+                .build(&builder)
+                .to_string()
+                .trim(),
+            "%inbounds_gep = getelementptr inbounds <4 x i64>, <4 x i64>* %p_vector, i64 1"
+        );
+
+        assert_eq!(
+            struct_gep!(p_struct, 1, "struct_gep")
+                .build(&builder)
+                .to_string()
+                .trim(),
+            "%struct_gep = getelementptr inbounds %struct, %struct* %p_struct, i32 0, i32 1"
+        );
+
+        assert_eq!(
+            inbounds_gep!(p_struct, [i32t.int(2), i32t.int(1)], "inbounds_gep")
+                .build(&builder)
+                .to_string()
+                .trim(),
+            "%inbounds_gep1 = getelementptr inbounds %struct, %struct* %p_struct, i32 2, i32 1"
+        );
     }
 }

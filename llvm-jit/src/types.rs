@@ -416,7 +416,7 @@ impl StructType {
     }
 
     /// Set the contents of a structure type.
-    pub fn set_body(&self, elements: &[TypeRef], packed: bool) -> &Self {
+    pub fn set_body(self, elements: &[TypeRef], packed: bool) -> Self {
         let mut elements = elements
             .iter()
             .map(|t| t.as_raw())
@@ -431,7 +431,7 @@ impl StructType {
             )
         }
 
-        &self
+        self
     }
 
     /// Get the elements within a structure.
@@ -472,14 +472,25 @@ impl StructType {
 
 pub trait ToStructType {
     /// Create a new structure type in a context.
-    fn structure(&self, elements: &[TypeRef], packed: bool) -> StructType;
+    fn annonymous_struct(&self, elements: &[TypeRef], packed: bool) -> StructType;
 
     /// Create an empty structure in a context having a specified name.
-    fn named_struct<S: AsRef<str>>(&self, name: S) -> StructType;
+    fn named_empty_struct<S: AsRef<str>>(&self, name: S) -> StructType;
+
+    fn named_struct<S: AsRef<str>>(
+        &self,
+        name: S,
+        elements: &[TypeRef],
+        packed: bool,
+    ) -> StructType {
+        let ty = self.named_empty_struct(name);
+
+        ty.set_body(elements, packed)
+    }
 }
 
 impl ToStructType for Context {
-    fn structure(&self, elements: &[TypeRef], packed: bool) -> StructType {
+    fn annonymous_struct(&self, elements: &[TypeRef], packed: bool) -> StructType {
         let mut elements = elements
             .iter()
             .map(|t| t.as_raw())
@@ -497,7 +508,7 @@ impl ToStructType for Context {
         StructType::from_raw(t)
     }
 
-    fn named_struct<S: AsRef<str>>(&self, name: S) -> StructType {
+    fn named_empty_struct<S: AsRef<str>>(&self, name: S) -> StructType {
         let cname = unchecked_cstring(name);
 
         StructType::from_raw(unsafe {
@@ -809,7 +820,7 @@ mod tests {
         let i32t = c.int32();
         let i64t = c.int64();
         let argts = [i16t, i32t, i64t];
-        let t = c.structure(&argts, true);
+        let t = c.annonymous_struct(&argts, true);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMStructTypeKind));
@@ -826,7 +837,7 @@ mod tests {
     fn named_struct_in_context() {
         let c = Context::new();
 
-        let t = c.named_struct("test");
+        let t = c.named_empty_struct("test");
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMStructTypeKind));
