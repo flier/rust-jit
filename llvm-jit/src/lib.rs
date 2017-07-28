@@ -75,5 +75,5 @@ pub mod ops {
 
     /// Miscellaneous
     pub use builder::{AtomicCmpXchg, AtomicRMW, ExtractElement, ExtractValue, Fence,
-                      InsertElement, InsertValue, IsNotNull, IsNull, PtrDiff, ShuffleVector};
+                      InsertElement, InsertValue, IsNotNull, IsNull, Phi, PtrDiff, ShuffleVector};
 }
