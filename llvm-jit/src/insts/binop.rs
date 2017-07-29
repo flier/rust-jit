@@ -1,7 +1,8 @@
 use llvm::core::*;
 
 macro_rules! define_binary_operator {
-    ($operator:ident, $func:path) => (
+    ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
+        #[doc=$comment]
         #[derive(Clone, Debug, PartialEq)]
         pub struct $operator<'a> {
             lhs: $crate::ValueRef,
@@ -29,24 +30,8 @@ macro_rules! define_binary_operator {
                 }.into()
             }
         }
-    );
-
-    ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
-        define_binary_operator!($operator, $func);
 
         #[doc=$comment]
-        pub fn $alias<'a, LHS, RHS, N>(lhs: LHS, rhs: RHS, name: N) -> $operator<'a>
-        where
-            LHS: Into<$crate::ValueRef>,
-            RHS: Into<$crate::ValueRef>,
-            N: Into<::std::borrow::Cow<'a, str>>
-        {
-            $crate::insts::$operator::new(lhs.into(), rhs.into(), name.into())
-        }
-    );
-    ($operator:ident, $func:path, $alias:ident) => (
-        define_binary_operator!($operator, $func);
-
         pub fn $alias<'a, LHS, RHS, N>(lhs: LHS, rhs: RHS, name: N) -> $operator<'a>
         where
             LHS: Into<$crate::ValueRef>,

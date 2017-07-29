@@ -62,6 +62,11 @@ impl InstructionBuilder for AggregateRet {
     }
 }
 
+/// Every basic block in a program ends with a “Terminator” instruction,
+/// which indicates which block should be executed after the current block is finished.
+///
+/// These terminator instructions typically yield a ‘void‘ value: they produce control flow,
+/// not values (the one exception being the ‘invoke‘ instruction).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TerminatorInst(Instruction);
 

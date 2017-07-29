@@ -1,7 +1,8 @@
 use llvm::core::*;
 
 macro_rules! define_cast_instruction {
-    ($operator:ident, $func:path) => (
+    ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
+        #[doc=$comment]
         #[derive(Clone, Debug, PartialEq)]
         pub struct $operator<'a> {
             value: $crate::ValueRef,
@@ -29,23 +30,8 @@ macro_rules! define_cast_instruction {
                 }.into()
             }
         }
-    );
-    ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
-        define_cast_instruction!($operator, $func);
 
         #[doc=$comment]
-        pub fn $alias<'a, V, T, N>(value: V, ty: T, name: N) -> $operator<'a>
-        where
-            V: Into<$crate::ValueRef>,
-            T: Into<$crate::TypeRef>,
-            N: Into<::std::borrow::Cow<'a, str>>
-        {
-            $crate::insts::$operator::new(value.into(), ty.into(), name.into())
-        }
-    );
-    ($operator:ident, $func:path, $alias:ident) => (
-        define_cast_instruction!($operator, $func);
-
         pub fn $alias<'a, V, T, N>(value: V, ty: T, name: N) -> $operator<'a>
         where
             V: Into<$crate::ValueRef>,

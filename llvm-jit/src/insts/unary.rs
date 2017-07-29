@@ -1,7 +1,8 @@
 use llvm::core::*;
 
 macro_rules! define_unary_instruction {
-    ($operator:ident, $func:path) => (
+    ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
+        #[doc=$comment]
         #[derive(Clone, Debug, PartialEq)]
         pub struct $operator<'a> {
             value: $crate::ValueRef,
@@ -27,10 +28,6 @@ macro_rules! define_unary_instruction {
                 }.into()
             }
         }
-    );
-
-    ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
-        define_unary_instruction!($operator, $func);
 
         #[doc=$comment]
         pub fn $alias<'a, V, N>(value: V, name: N) -> $operator<'a>
@@ -40,19 +37,7 @@ macro_rules! define_unary_instruction {
         {
             $crate::insts::$operator::new(value.into(), name.into())
         }
-    );
-
-    ($operator:ident, $func:path, $alias:ident) => (
-        define_unary_instruction!($operator, $func);
-
-        pub fn $alias<'a, V, N>(value: V, name: N) -> $operator<'a>
-        where
-            V: Into<$crate::ValueRef>,
-            N: Into<::std::borrow::Cow<'a, str>>
-        {
-            $crate::insts::$operator::new(value.into(), name.into())
-        }
-    );
+    )
 }
 
 define_unary_instruction!(

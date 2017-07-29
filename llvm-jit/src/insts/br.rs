@@ -8,7 +8,7 @@ use insts::{IRBuilder, InstructionBuilder};
 use utils::AsBool;
 use value::{AsValueRef, Instruction, ValueRef};
 
-/// Create an unconditional 'br label X' instruction.
+/// Create an unconditional `br label X` instruction.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Br(BasicBlock);
 
@@ -26,7 +26,7 @@ impl InstructionBuilder for Br {
     }
 }
 
-/// Create a conditional 'br cond, trueDest, falseDest' instruction.
+/// Create a conditional `br cond, trueDest, falseDest` instruction.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CondBr {
     cond: ValueRef,
