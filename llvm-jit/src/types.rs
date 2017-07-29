@@ -547,25 +547,29 @@ mod tests {
 
     #[test]
     fn typeref() {
-        let t = GlobalContext::void_t();
+        let void_t = GlobalContext::void_t();
 
-        assert!(!t.as_raw().is_null());
-        assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMVoidTypeKind));
-        assert!(!t.is_sized());
-        assert!(!t.context().as_raw().is_null());
+        assert!(!void_t.as_raw().is_null());
+        assert!(matches!(
+            void_t.kind(),
+            llvm::LLVMTypeKind::LLVMVoidTypeKind
+        ));
+        assert!(!void_t.is_sized());
+        assert!(!void_t.context().as_raw().is_null());
 
-        assert_eq!(t.to_string(), "void");
+        assert_eq!(void_t.to_string(), "void");
 
-        drop(t);
+        let i64_t = GlobalContext::int64_t();
 
-        let i = GlobalContext::int64_t();
+        assert!(!i64_t.as_raw().is_null());
+        assert!(matches!(
+            i64_t.kind(),
+            llvm::LLVMTypeKind::LLVMIntegerTypeKind
+        ));
+        assert!(i64_t.is_sized());
+        assert!(!i64_t.context().as_raw().is_null());
 
-        assert!(!i.as_raw().is_null());
-        assert!(matches!(i.kind(), llvm::LLVMTypeKind::LLVMIntegerTypeKind));
-        assert!(i.is_sized());
-        assert!(!i.context().as_raw().is_null());
-
-        assert_eq!(i.to_string(), "i64");
+        assert_eq!(i64_t.to_string(), "i64");
     }
 
     #[test]

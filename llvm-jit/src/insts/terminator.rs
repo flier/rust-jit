@@ -3,10 +3,11 @@ use std::borrow::Cow;
 use llvm::core::*;
 use llvm::prelude::*;
 
+use function::Function;
 use insts::{IRBuilder, InstructionBuilder};
 use types::TypeRef;
 use utils::{AsLLVMBool, unchecked_cstring};
-use value::{AsValueRef, Function, Instruction, ValueRef};
+use value::{AsValueRef, Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LandingPad<'a> {

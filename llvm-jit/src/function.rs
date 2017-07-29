@@ -3,8 +3,11 @@ use std::ptr;
 use llvm::core::*;
 use llvm::prelude::*;
 
+use block::BasicBlock;
+use context::Context;
 use types::TypeRef;
-use utils::AsBool;
+use utils::{AsBool, unchecked_cstring};
+use value::ValueRef;
 
 /// Structure to represent function types.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -67,12 +70,125 @@ impl FunctionType {
     }
 }
 
+/// Functions in this group operate on `ValueRef` instances that correspond to `Function` instances.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Function(ValueRef);
+
+inherit_value_ref!(Function);
+
+impl Function {
+    /// Obtain an iterator to the basic blocks in a function.
+    pub fn basic_blocks(&self) -> BasicBlockIter {
+        BasicBlockIter::new(self.as_raw())
+    }
+
+    /// Obtain all of the basic blocks in a function.
+    pub fn get_basic_blocks(&self) -> Vec<BasicBlock> {
+        let count = unsafe { LLVMCountBasicBlocks(self.as_raw()) };
+        let mut blocks: Vec<LLVMBasicBlockRef> = vec![ptr::null_mut(); count as usize];
+
+        unsafe { LLVMGetBasicBlocks(self.as_raw(), blocks.as_mut_ptr()) };
+
+        blocks.into_iter().map(BasicBlock::from_raw).collect()
+    }
+
+    /// Obtain the basic block that corresponds to the entry point of a function.
+    pub fn entry(&self) -> Option<BasicBlock> {
+        unsafe { LLVMGetEntryBasicBlock(self.as_raw()).as_mut() }
+            .map(|entry| BasicBlock::from_raw(entry))
+    }
+
+    /// Append a basic block to the end of a function using the global context.
+    pub fn append_basic_block<S: AsRef<str>>(&self, name: S) -> BasicBlock {
+        let cname = unchecked_cstring(name);
+        let block = unsafe { LLVMAppendBasicBlock(self.as_raw(), cname.as_ptr()) }.into();
+
+        trace!(
+            "{:?} create `{}` {:?} in the global context",
+            self,
+            cname.to_string_lossy(),
+            block
+        );
+
+        block
+    }
+
+    /// Append a basic block to the end of a function.
+    pub fn append_basic_block_in_context<S: AsRef<str>>(
+        &self,
+        name: S,
+        context: &Context,
+    ) -> BasicBlock {
+        let cname = unchecked_cstring(name);
+        let block = unsafe {
+            LLVMAppendBasicBlockInContext(context.as_raw(), self.as_raw(), cname.as_ptr())
+        }.into();
+
+        trace!(
+            "{:?} create `{}` {:?} in {:?}",
+            self,
+            cname.to_string_lossy(),
+            block,
+            context
+        );
+
+        block
+    }
+
+    /// Obtain an iterator to the parameters in a function.
+    pub fn params(&self) -> ParamIter {
+        ParamIter::new(self.as_raw())
+    }
+
+    /// Obtain the parameters in a function.
+    pub fn get_params(&self) -> Vec<ValueRef> {
+        let count = unsafe { LLVMCountParams(self.as_raw()) };
+        let mut params: Vec<LLVMValueRef> = vec![ptr::null_mut(); count as usize];
+
+        unsafe { LLVMGetParams(self.as_raw(), params.as_mut_ptr()) };
+
+        params.into_iter().map(ValueRef::from_raw).collect()
+    }
+
+    /// Obtain the parameter at the specified index.
+    pub fn get_param(&self, index: u32) -> Option<ValueRef> {
+        let count = unsafe { LLVMCountParams(self.as_raw()) };
+
+        if index >= count {
+            None
+        } else {
+            unsafe { LLVMGetParam(self.as_raw(), index).as_mut() }.map(
+                |param| ValueRef::from_raw(param),
+            )
+        }
+    }
+
+    /// Remove a function from its containing module and deletes it.
+    pub fn delete(self) {
+        unsafe { LLVMDeleteFunction(self.as_raw()) }
+    }
+}
+
+impl_iter!(
+    BasicBlockIter,
+    LLVMGetFirstBasicBlock | LLVMGetLastBasicBlock[LLVMValueRef],
+    LLVMGetNextBasicBlock | LLVMGetPreviousBasicBlock[LLVMBasicBlockRef],
+    BasicBlock::from_raw
+);
+
+impl_iter!(
+    ParamIter,
+    LLVMGetFirstParam | LLVMGetLastParam[LLVMValueRef],
+    LLVMGetNextParam | LLVMGetPreviousParam[LLVMValueRef],
+    ValueRef::from_raw
+);
+
 #[cfg(test)]
 mod tests {
     use llvm;
 
     use super::*;
-    use context::{Context, GlobalContext};
+    use context::GlobalContext;
 
     #[test]
     fn function() {

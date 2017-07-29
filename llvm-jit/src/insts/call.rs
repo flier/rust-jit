@@ -5,9 +5,10 @@ use llvm::LLVMCallConv;
 use llvm::core::*;
 use llvm::prelude::*;
 
+use function::Function;
 use insts::{IRBuilder, InstructionBuilder};
 use utils::{AsBool, AsLLVMBool, unchecked_cstring};
-use value::{AsValueRef, Function, Instruction, ValueRef};
+use value::{AsValueRef, Instruction, ValueRef};
 
 /// This instruction is designed to operate as a standard `call` instruction in most regards.
 ///

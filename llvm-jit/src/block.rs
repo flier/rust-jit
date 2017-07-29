@@ -4,8 +4,9 @@ use std::ffi::CStr;
 use llvm::core::*;
 use llvm::prelude::*;
 
+use function::Function;
 use insts::TerminatorInst;
-use value::{BlockAddress, Function, Instruction, ValueRef};
+use value::{BlockAddress, Instruction, ValueRef};
 
 /// Basic Block
 ///

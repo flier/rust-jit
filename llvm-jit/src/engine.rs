@@ -5,9 +5,9 @@ use std::ptr;
 use llvm::execution_engine::*;
 
 use errors::Result;
+use function::Function;
 use module::Module;
 use utils::{AsBool, AsResult, unchecked_cstring};
-use value::Function;
 
 pub struct MCJIT;
 

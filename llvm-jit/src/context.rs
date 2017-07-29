@@ -91,7 +91,7 @@ mod tests {
         let ctxt = Context::new();
 
         assert!(!ctxt.as_raw().is_null());
-        assert!(ctxt != Context::new());
+        assert_ne!(ctxt, Context::new());
     }
 
     #[test]

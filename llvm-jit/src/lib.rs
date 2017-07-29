@@ -35,7 +35,7 @@ mod target;
 
 pub use context::{Context, GlobalContext};
 pub use engine::{ExecutionEngine, Interpreter, MCJIT};
-pub use function::FunctionType;
+pub use function::{Function, FunctionType};
 pub use insts::{IRBuilder, Position};
 pub use module::Module;
 pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos, AllTargetMCs,
@@ -44,8 +44,7 @@ pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerTyp
                 TypeKind, TypeRef, VectorType};
 pub use utils::{AsBool, AsLLVMBool, AsResult, Boolinator};
 pub use value::{BlockAddress, Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
-                ConstantStruct, ConstantVector, Function, GlobalVar, Instruction, ValueKind,
-                ValueRef};
+                ConstantStruct, ConstantVector, GlobalVar, Instruction, ValueKind, ValueRef};
 
 pub mod prelude {
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType,
