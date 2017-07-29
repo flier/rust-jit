@@ -11,10 +11,10 @@ use value::{AsValueRef, ValueRef};
 
 macro_rules! impl_constant {
     ($ty:ident) => (
-        inherit_from!($ty, ValueRef, LLVMValueRef);
+        inherit_value_ref!($ty);
     );
     ($ty:ident, $parent:ty) => (
-        inherit_from!($ty, $parent, ValueRef, LLVMValueRef);
+        inherit_value_ref!($ty, $parent);
     );
 }
 

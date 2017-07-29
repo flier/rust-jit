@@ -6,7 +6,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use insts::{IRBuilder, InstructionBuilder};
 use utils::AsBool;
-use value::{AsValueRef, Instruction, ValueRef};
+use value::{AsValueRef, Instruction, ToValueRef, ValueRef};
 
 /// Create an unconditional 'br label X' instruction.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -35,17 +35,21 @@ pub struct CondBr {
 }
 
 impl CondBr {
-    pub fn new(cond: ValueRef, then: Option<BasicBlock>, or_else: Option<BasicBlock>) -> CondBr {
+    pub fn new<V: ToValueRef>(
+        cond: V,
+        then: Option<BasicBlock>,
+        or_else: Option<BasicBlock>,
+    ) -> CondBr {
         CondBr {
-            cond,
+            cond: cond.to_value_ref(),
             then,
             or_else,
         }
     }
 
-    pub fn on(cond: ValueRef) -> Self {
+    pub fn on<V: ToValueRef>(cond: V) -> Self {
         CondBr {
-            cond,
+            cond: cond.to_value_ref(),
             then: None,
             or_else: None,
         }
@@ -86,13 +90,16 @@ pub struct IndirectBr {
 }
 
 impl IndirectBr {
-    pub fn new(addr: ValueRef, dests: Vec<BasicBlock>) -> Self {
-        IndirectBr { addr, dests }
+    pub fn new<V: ToValueRef>(addr: V, dests: Vec<BasicBlock>) -> Self {
+        IndirectBr {
+            addr: addr.to_value_ref(),
+            dests,
+        }
     }
 
-    pub fn on(addr: ValueRef) -> Self {
+    pub fn on<V: ToValueRef>(addr: V) -> Self {
         IndirectBr {
-            addr,
+            addr: addr.to_value_ref(),
             dests: vec![],
         }
     }
@@ -154,13 +161,13 @@ macro_rules! br {
         $crate::insts::Br::new($dest.into())
     );
     ($addr:expr => [$( $dest:expr ),*]) => (
-        $crate::insts::IndirectBr::on($addr.into()) $( .jump_to($dest.into()) )*
+        $crate::insts::IndirectBr::on($addr) $( .jump_to($dest.into()) )*
     );
     ($cond:expr => $then:expr) => (
-        $crate::insts::CondBr::on($cond.into()).then($then.into())
+        $crate::insts::CondBr::on($cond).then($then.into())
     );
     ($cond:expr => $then:expr, _ => $or_else:expr) => (
-        $crate::insts::CondBr::on($cond.into()).then($then.into()).or_else($or_else.into())
+        $crate::insts::CondBr::on($cond).then($then.into()).or_else($or_else.into())
     );
 }
 
@@ -220,7 +227,7 @@ mod tests {
         );
 
         assert_eq!(
-            CondBr::on(bool_t.uint(1).into())
+            CondBr::on(bool_t.uint(1))
                 .then(bb_then)
                 .or_else(bb_else)
                 .emit_to(&builder)
