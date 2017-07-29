@@ -40,10 +40,10 @@ impl<'a> InstructionBuilder for ExtractValue<'a> {
 }
 
 /// The `extractvalue` instruction extracts the value of a member field from an aggregate value.
-pub fn extract_value<'a, T0: Into<ValueRef>, T2: Into<Cow<'a, str>>>(
-    aggregate: T0,
+pub fn extract_value<'a, V: Into<ValueRef>, N: Into<Cow<'a, str>>>(
+    aggregate: V,
     index: u32,
-    name: T2,
+    name: N,
 ) -> ExtractValue<'a> {
     ExtractValue::new(aggregate.into(), index, name.into())
 }
@@ -85,11 +85,11 @@ impl<'a> InstructionBuilder for InsertValue<'a> {
 }
 
 /// The `insertvalue` instruction inserts a value into a member field in an aggregate value.
-pub fn insert_value<'a, T0: Into<ValueRef>, T1: Into<ValueRef>, T3: Into<Cow<'a, str>>>(
-    aggregate: T0,
-    element: T1,
+pub fn insert_value<'a, V: Into<ValueRef>, T: Into<ValueRef>, N: Into<Cow<'a, str>>>(
+    aggregate: V,
+    element: T,
     index: u32,
-    name: T3,
+    name: N,
 ) -> InsertValue<'a> {
     InsertValue::new(aggregate.into(), element.into(), index, name.into())
 }

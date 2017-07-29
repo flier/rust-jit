@@ -35,21 +35,25 @@ macro_rules! define_binary_operator {
         define_binary_operator!($operator, $func);
 
         #[doc=$comment]
-        #[macro_export]
-        macro_rules! $alias {
-            ($lhs:expr, $rhs:expr; $name:expr) => {
-                $crate::insts::$operator::new($lhs.into(), $rhs.into(), $name.into())
-            }
+        pub fn $alias<'a, LHS, RHS, N>(lhs: LHS, rhs: RHS, name: N) -> $operator<'a>
+        where
+            LHS: Into<$crate::ValueRef>,
+            RHS: Into<$crate::ValueRef>,
+            N: Into<::std::borrow::Cow<'a, str>>
+        {
+            $crate::insts::$operator::new(lhs.into(), rhs.into(), name.into())
         }
     );
     ($operator:ident, $func:path, $alias:ident) => (
         define_binary_operator!($operator, $func);
 
-        #[macro_export]
-        macro_rules! $alias {
-            ($lhs:expr, $rhs:expr; $name:expr) => {
-                $crate::insts::$operator::new($lhs.into(), $rhs.into(), $name.into())
-            }
+        pub fn $alias<'a, LHS, RHS, N>(lhs: LHS, rhs: RHS, name: N) -> $operator<'a>
+        where
+            LHS: Into<$crate::ValueRef>,
+            RHS: Into<$crate::ValueRef>,
+            N: Into<::std::borrow::Cow<'a, str>>
+        {
+            $crate::insts::$operator::new(lhs.into(), rhs.into(), name.into())
         }
     )
 }
@@ -215,12 +219,13 @@ define_binary_operator!(
 define_binary_operator!(
     PtrDiff,
     LLVMBuildPtrDiff,
-    ptr_diff,
+    ptrdiff,
     "Return the i64 difference between two pointer values, dividing out the size of the pointed-to objects."
 );
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use context::Context;
     use function::FunctionType;
     use insts::*;
@@ -228,9 +233,9 @@ mod tests {
     use types::*;
 
     macro_rules! test_bin_op {
-        ($builder:ident, $name:ident !( $arg0_i64:ident, $arg1_i64:ident ), $display:expr) => (
+        ($builder:ident, $name:ident ( $arg0_i64:ident, $arg1_i64:ident ), $display:expr) => (
             assert_eq!(
-                $name !( $arg0_i64, $arg1_i64; stringify!($name) ).emit_to(& $builder).to_string().trim(),
+                $name ( $arg0_i64, $arg1_i64, stringify!($name) ).emit_to(& $builder).to_string().trim(),
                 $display
             )
         );
@@ -256,70 +261,70 @@ mod tests {
         let arg2_f64 = f.get_param(2).unwrap();
         let arg3_f64 = f.get_param(3).unwrap();
 
-        test_bin_op!(b, add!(arg0_i64, arg1_i64), "%add = add i64 %0, %1");
+        test_bin_op!(b, add(arg0_i64, arg1_i64), "%add = add i64 %0, %1");
         test_bin_op!(
             b,
-            add_nsw!(arg0_i64, arg1_i64),
+            add_nsw(arg0_i64, arg1_i64),
             "%add_nsw = add nsw i64 %0, %1"
         );
         test_bin_op!(
             b,
-            add_nuw!(arg0_i64, arg1_i64),
+            add_nuw(arg0_i64, arg1_i64),
             "%add_nuw = add nuw i64 %0, %1"
         );
-        test_bin_op!(b, fadd!(arg2_f64, arg3_f64), "%fadd = fadd double %2, %3");
+        test_bin_op!(b, fadd(arg2_f64, arg3_f64), "%fadd = fadd double %2, %3");
 
-        test_bin_op!(b, sub!(arg0_i64, arg1_i64), "%sub = sub i64 %0, %1");
+        test_bin_op!(b, sub(arg0_i64, arg1_i64), "%sub = sub i64 %0, %1");
         test_bin_op!(
             b,
-            sub_nsw!(arg0_i64, arg1_i64),
+            sub_nsw(arg0_i64, arg1_i64),
             "%sub_nsw = sub nsw i64 %0, %1"
         );
         test_bin_op!(
             b,
-            sub_nuw!(arg0_i64, arg1_i64),
+            sub_nuw(arg0_i64, arg1_i64),
             "%sub_nuw = sub nuw i64 %0, %1"
         );
-        test_bin_op!(b, fsub!(arg2_f64, arg3_f64), "%fsub = fsub double %2, %3");
+        test_bin_op!(b, fsub(arg2_f64, arg3_f64), "%fsub = fsub double %2, %3");
 
-        test_bin_op!(b, mul!(arg0_i64, arg1_i64), "%mul = mul i64 %0, %1");
+        test_bin_op!(b, mul(arg0_i64, arg1_i64), "%mul = mul i64 %0, %1");
         test_bin_op!(
             b,
-            mul_nsw!(arg0_i64, arg1_i64),
+            mul_nsw(arg0_i64, arg1_i64),
             "%mul_nsw = mul nsw i64 %0, %1"
         );
         test_bin_op!(
             b,
-            mul_nuw!(arg0_i64, arg1_i64),
+            mul_nuw(arg0_i64, arg1_i64),
             "%mul_nuw = mul nuw i64 %0, %1"
         );
-        test_bin_op!(b, fmul!(arg2_f64, arg3_f64), "%fmul = fmul double %2, %3");
+        test_bin_op!(b, fmul(arg2_f64, arg3_f64), "%fmul = fmul double %2, %3");
 
-        test_bin_op!(b, udiv!(arg0_i64, arg1_i64), "%udiv = udiv i64 %0, %1");
+        test_bin_op!(b, udiv(arg0_i64, arg1_i64), "%udiv = udiv i64 %0, %1");
         test_bin_op!(
             b,
-            udiv_exact!(arg0_i64, arg1_i64),
+            udiv_exact(arg0_i64, arg1_i64),
             "%udiv_exact = udiv exact i64 %0, %1"
         );
-        test_bin_op!(b, sdiv!(arg0_i64, arg1_i64), "%sdiv = sdiv i64 %0, %1");
+        test_bin_op!(b, sdiv(arg0_i64, arg1_i64), "%sdiv = sdiv i64 %0, %1");
         test_bin_op!(
             b,
-            sdiv_exact!(arg0_i64, arg1_i64),
+            sdiv_exact(arg0_i64, arg1_i64),
             "%sdiv_exact = sdiv exact i64 %0, %1"
         );
-        test_bin_op!(b, fdiv!(arg2_f64, arg3_f64), "%fdiv = fdiv double %2, %3");
+        test_bin_op!(b, fdiv(arg2_f64, arg3_f64), "%fdiv = fdiv double %2, %3");
 
-        test_bin_op!(b, urem!(arg0_i64, arg1_i64), "%urem = urem i64 %0, %1");
-        test_bin_op!(b, srem!(arg0_i64, arg1_i64), "%srem = srem i64 %0, %1");
-        test_bin_op!(b, frem!(arg2_f64, arg3_f64), "%frem = frem double %2, %3");
+        test_bin_op!(b, urem(arg0_i64, arg1_i64), "%urem = urem i64 %0, %1");
+        test_bin_op!(b, srem(arg0_i64, arg1_i64), "%srem = srem i64 %0, %1");
+        test_bin_op!(b, frem(arg2_f64, arg3_f64), "%frem = frem double %2, %3");
 
-        test_bin_op!(b, shl!(arg0_i64, arg1_i64), "%shl = shl i64 %0, %1");
-        test_bin_op!(b, ashr!(arg0_i64, arg1_i64), "%ashr = ashr i64 %0, %1");
-        test_bin_op!(b, lshr!(arg0_i64, arg1_i64), "%lshr = lshr i64 %0, %1");
+        test_bin_op!(b, shl(arg0_i64, arg1_i64), "%shl = shl i64 %0, %1");
+        test_bin_op!(b, ashr(arg0_i64, arg1_i64), "%ashr = ashr i64 %0, %1");
+        test_bin_op!(b, lshr(arg0_i64, arg1_i64), "%lshr = lshr i64 %0, %1");
 
-        test_bin_op!(b, and!(arg0_i64, arg1_i64), "%and = and i64 %0, %1");
-        test_bin_op!(b, or!(arg0_i64, arg1_i64), "%or = or i64 %0, %1");
-        test_bin_op!(b, xor!(arg0_i64, arg1_i64), "%xor = xor i64 %0, %1");
+        test_bin_op!(b, and(arg0_i64, arg1_i64), "%and = and i64 %0, %1");
+        test_bin_op!(b, or(arg0_i64, arg1_i64), "%or = or i64 %0, %1");
+        test_bin_op!(b, xor(arg0_i64, arg1_i64), "%xor = xor i64 %0, %1");
     }
 
     #[test]
@@ -340,7 +345,7 @@ mod tests {
         let arg0_p_i64 = f.get_param(0).unwrap();
         let arg1_p_i64 = f.get_param(1).unwrap();
 
-        ptr_diff!(arg0_p_i64, arg1_p_i64; "ptr_diff").emit_to(&b);
+        ptrdiff(arg0_p_i64, arg1_p_i64, "ptrdiff").emit_to(&b);
 
         assert_eq!(
             bb.last_instructions(4),
@@ -348,7 +353,7 @@ mod tests {
                 "%2 = ptrtoint i64* %0 to i64",
                 "%3 = ptrtoint i64* %1 to i64",
                 "%4 = sub i64 %2, %3",
-                "%ptr_diff = sdiv exact i64 %4, ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64)",
+                "%ptrdiff = sdiv exact i64 %4, ptrtoint (i64* getelementptr (i64, i64* null, i32 1) to i64)",
             ]
         );
     }

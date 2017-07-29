@@ -100,7 +100,7 @@ mod tests {
     use super::*;
     use context::Context;
     use function::FunctionType;
-    use insts::{IRBuilder, Position};
+    use insts::{IRBuilder, Position, add};
     use module::Module;
     use prelude::*;
 
@@ -129,8 +129,8 @@ mod tests {
         let y = function.get_param(1).unwrap();
         let z = function.get_param(2).unwrap();
 
-        let sum1 = builder.emit(add!(x, y; "sum.1"));
-        let sum2 = builder.emit(add!(sum1, z; "sum.2"));
+        let sum1 = builder.emit(add(x, y, "sum.1"));
+        let sum2 = builder.emit(add(sum1, z, "sum.2"));
 
         // Emit a `ret` into the function
         let ret = builder.emit(ret!(sum2));

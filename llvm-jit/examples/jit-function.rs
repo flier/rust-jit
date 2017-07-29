@@ -4,6 +4,7 @@ extern crate llvm_jit as jit;
 
 use std::mem;
 
+use jit::insts::add;
 use jit::prelude::*;
 
 fn main() {
@@ -32,8 +33,8 @@ fn main() {
     let y = function.get_param(1).unwrap();
     let z = function.get_param(2).unwrap();
 
-    let sum = builder.emit(add!(x, y; "sum.1"));
-    let sum = builder.emit(add!(sum, z; "sum.2"));
+    let sum = builder.emit(add(x, y, "sum.1"));
+    let sum = builder.emit(add(sum, z, "sum.2"));
 
     // Emit a `ret` into the function
     builder.emit(ret!(sum));

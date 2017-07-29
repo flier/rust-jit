@@ -34,21 +34,25 @@ macro_rules! define_cast_instruction {
         define_cast_instruction!($operator, $func);
 
         #[doc=$comment]
-        #[macro_export]
-        macro_rules! $alias {
-            ($value:expr, $dest_ty:expr; $name:expr) => {
-                $crate::insts::$operator::new($value.into(), $dest_ty.into(), $name.into())
-            }
+        pub fn $alias<'a, V, T, N>(value: V, ty: T, name: N) -> $operator<'a>
+        where
+            V: Into<$crate::ValueRef>,
+            T: Into<$crate::TypeRef>,
+            N: Into<::std::borrow::Cow<'a, str>>
+        {
+            $crate::insts::$operator::new(value.into(), ty.into(), name.into())
         }
     );
     ($operator:ident, $func:path, $alias:ident) => (
         define_cast_instruction!($operator, $func);
 
-        #[macro_export]
-        macro_rules! $alias {
-            ($value:expr, $dest_ty:expr; $name:expr) => {
-                $crate::insts::$operator::new($value.into(), $dest_ty.into(), $name.into())
-            }
+        pub fn $alias<'a, V, T, N>(value: V, ty: T, name: N) -> $operator<'a>
+        where
+            V: Into<$crate::ValueRef>,
+            T: Into<$crate::TypeRef>,
+            N: Into<::std::borrow::Cow<'a, str>>
+        {
+            $crate::insts::$operator::new(value.into(), ty.into(), name.into())
         }
     )
 }
@@ -178,7 +182,7 @@ mod tests {
 
     macro_rules! test_instruction {
         ($builder:ident, $name:ident !( $arg0_i64:ident, $arg1_i64:ident ), $display:expr) => (
-            assert_eq!( $name !( $arg0_i64, $arg1_i64; stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
+            assert_eq!( $name ( $arg0_i64, $arg1_i64, stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
         );
     }
 

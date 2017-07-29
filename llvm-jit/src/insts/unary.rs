@@ -33,18 +33,24 @@ macro_rules! define_unary_instruction {
         define_unary_instruction!($operator, $func);
 
         #[doc=$comment]
-        #[macro_export]
-        macro_rules! $alias {
-            ($value:expr; $name:expr) => { $crate::insts::$operator::new($value.into(), $name.into()) }
+        pub fn $alias<'a, V, N>(value: V, name: N) -> $operator<'a>
+        where
+            V: Into<$crate::ValueRef>,
+            N: Into<::std::borrow::Cow<'a, str>>
+        {
+            $crate::insts::$operator::new(value.into(), name.into())
         }
     );
 
     ($operator:ident, $func:path, $alias:ident) => (
         define_unary_instruction!($operator, $func);
 
-        #[macro_export]
-        macro_rules! $alias {
-            ($value:expr; $name:expr) => { $crate::insts::$operator::new($value.into(), $name.into()) }
+        pub fn $alias<'a, V, N>(value: V, name: N) -> $operator<'a>
+        where
+            V: Into<$crate::ValueRef>,
+            N: Into<::std::borrow::Cow<'a, str>>
+        {
+            $crate::insts::$operator::new(value.into(), name.into())
         }
     );
 }
@@ -101,8 +107,8 @@ mod tests {
     use types::*;
 
     macro_rules! test_unary_inst {
-        ($builder:ident, $name:ident !( $arg0_i64:ident ), $display:expr) => (
-            assert_eq!( $name !( $arg0_i64; stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
+        ($builder:ident, $name:ident ( $arg0_i64:ident ), $display:expr) => (
+            assert_eq!( $name ( $arg0_i64, stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
         )
     }
 
@@ -127,22 +133,22 @@ mod tests {
         let arg2_f64 = f.get_param(2).unwrap();
         let arg3_f64 = f.get_param(3).unwrap();
 
-        test_unary_inst!(b, neg!(arg0_i64), "%neg = sub i64 0, %0");
-        test_unary_inst!(b, neg_nsw!(arg0_i64), "%neg_nsw = sub nsw i64 0, %0");
-        test_unary_inst!(b, neg_nuw!(arg0_i64), "%neg_nuw = sub nuw i64 0, %0");
-        test_unary_inst!(b, fneg!(arg2_f64), "%fneg = fsub double -0.000000e+00, %2");
+        test_unary_inst!(b, neg(arg0_i64), "%neg = sub i64 0, %0");
+        test_unary_inst!(b, neg_nsw(arg0_i64), "%neg_nsw = sub nsw i64 0, %0");
+        test_unary_inst!(b, neg_nuw(arg0_i64), "%neg_nuw = sub nuw i64 0, %0");
+        test_unary_inst!(b, fneg(arg2_f64), "%fneg = fsub double -0.000000e+00, %2");
 
-        test_unary_inst!(b, not!(arg0_i64), "%not = xor i64 %0, -1");
+        test_unary_inst!(b, not(arg0_i64), "%not = xor i64 %0, -1");
         test_unary_inst!(
             b,
-            not!(arg3_f64),
+            not(arg3_f64),
             "%not1 = xor double %3, 0xFFFFFFFFFFFFFFFF"
         );
 
-        test_unary_inst!(b, is_null!(arg1_p_i64), "%is_null = icmp eq i64* %1, null");
+        test_unary_inst!(b, is_null(arg1_p_i64), "%is_null = icmp eq i64* %1, null");
         test_unary_inst!(
             b,
-            is_not_null!(arg1_p_i64),
+            is_not_null(arg1_p_i64),
             "%is_not_null = icmp ne i64* %1, null"
         );
     }

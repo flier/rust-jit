@@ -145,7 +145,7 @@ mod tests {
         builder.position(Position::AtEnd(bb_loop));
 
         let indvar = phi!(i64_t, [i64_t.int(0), bb_loop_header]; "indvar").emit_to(&builder);
-        let nextindvar = add!(indvar, i64_t.int(1); "nextindvar").emit_to(&builder);
+        let nextindvar = add(indvar, i64_t.int(1), "nextindvar").emit_to(&builder);
 
         br!(bb_loop).emit_to(&builder);
 

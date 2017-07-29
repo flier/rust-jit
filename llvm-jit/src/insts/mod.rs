@@ -55,6 +55,7 @@ pub use self::ret::{AggregateRet, Ret, RetVoid, TerminatorInst};
 pub use self::select::Select;
 pub use self::switch::{Switch, SwitchInst};
 pub use self::terminator::{LandingPad, Resume, Unreachable};
-pub use self::unary::{FNeg, IsNotNull, IsNull, NSWNeg, NUWNeg, Neg, Not};
+pub use self::unary::*;
 pub use self::vaarg::VaArg;
-pub use self::vector::{ExtractElement, InsertElement, ShuffleVector};
+pub use self::vector::{ExtractElement, InsertElement, ShuffleVector, extract_element,
+                       insert_element, shuffle_vector};

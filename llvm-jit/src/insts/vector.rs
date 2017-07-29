@@ -40,11 +40,13 @@ impl<'a> InstructionBuilder for ExtractElement<'a> {
 }
 
 /// The `extractelement` instruction extracts a single scalar element from a vector at a specified index.
-#[macro_export]
-macro_rules! extract_element {
-    ($vector:expr, $index:expr; $name:expr) => ({
-        $crate::insts::ExtractElement::new($vector.into(), $index.into(), $name.into())
-    })
+pub fn extract_element<'a, V, I, N>(vector: V, index: I, name: N) -> ExtractElement<'a>
+where
+    V: Into<ValueRef>,
+    I: Into<ValueRef>,
+    N: Into<Cow<'a, str>>,
+{
+    ExtractElement::new(vector.into(), index.into(), name.into())
 }
 
 /// This instruction inserts a single (scalar) element into a `VectorType` value
@@ -84,11 +86,14 @@ impl<'a> InstructionBuilder for InsertElement<'a> {
 }
 
 /// The `insertelement` instruction inserts a scalar element into a vector at a specified index.
-#[macro_export]
-macro_rules! insert_element {
-    ($vector:expr, $element:expr, $index:expr; $name:expr) => ({
-        $crate::insts::InsertElement::new($vector.into(), $element.into(), $index.into(), $name.into())
-    })
+pub fn insert_element<'a, V, T, I, N>(vector: V, element: T, index: I, name: N) -> InsertElement<'a>
+where
+    V: Into<ValueRef>,
+    T: Into<ValueRef>,
+    I: Into<ValueRef>,
+    N: Into<Cow<'a, str>>,
+{
+    InsertElement::new(vector.into(), element.into(), index.into(), name.into())
 }
 
 /// This instruction constructs a fixed permutation of two input vectors.
@@ -124,11 +129,14 @@ impl<'a> InstructionBuilder for ShuffleVector<'a> {
 
 /// The `shufflevector` instruction constructs a permutation of elements from two input vectors,
 /// returning a vector with the same element type as the input and length that is the same as the shuffle mask.
-#[macro_export]
-macro_rules! shuffle_vector {
-    ($v1:expr, $v2:expr, $mask:expr; $name:expr) => ({
-        $crate::insts::ShuffleVector::new($v1.into(), $v2.into(), $mask.into(), $name.into())
-    })
+pub fn shuffle_vector<'a, V1, V2, M, N>(v1: V1, v2: V2, mask: M, name: N) -> ShuffleVector<'a>
+where
+    V1: Into<ValueRef>,
+    V2: Into<ValueRef>,
+    M: Into<ValueRef>,
+    N: Into<Cow<'a, str>>,
+{
+    ShuffleVector::new(v1.into(), v2.into(), mask.into(), name.into())
 }
 
 #[cfg(test)]
@@ -163,7 +171,7 @@ mod tests {
         let idx = i64_t.int(1);
 
         assert_eq!(
-            extract_element!(arg0_vector, idx; "extract_element")
+            extract_element(arg0_vector, idx, "extract_element")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -171,7 +179,7 @@ mod tests {
         );
 
         assert_eq!(
-            insert_element!(arg0_vector, i64_t.int(10), idx; "insert_element")
+            insert_element(arg0_vector, i64_t.int(10), idx, "insert_element")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -182,7 +190,7 @@ mod tests {
         let mask = vector![i32_t.int(1), i32_t.int(0), i32_t.int(2)];
 
         assert_eq!(
-            shuffle_vector!(arg0_vector, arg1_vector, mask; "shuffle_vector")
+            shuffle_vector(arg0_vector, arg1_vector, mask, "shuffle_vector")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
