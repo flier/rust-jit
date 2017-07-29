@@ -302,8 +302,8 @@ mod tests {
     use function::FunctionType;
     use insts::*;
     use module::Module;
+    use prelude::*;
     use types::*;
-    use value::*;
 
     macro_rules! test_atomic {
         ($builder:expr, atomic !( $op:ident $ptr:expr, $value:expr ; $ordering:ident ), $display:expr) => (

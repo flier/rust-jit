@@ -26,6 +26,8 @@ mod module;
 mod types;
 #[macro_use]
 mod value;
+#[macro_use]
+mod constant;
 mod function;
 #[macro_use]
 pub mod insts;
@@ -33,6 +35,8 @@ mod block;
 mod engine;
 mod target;
 
+pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
+                   ConstantStruct, ConstantVector};
 pub use context::{Context, GlobalContext};
 pub use engine::{ExecutionEngine, Interpreter, MCJIT};
 pub use function::{Function, FunctionType};
@@ -43,12 +47,11 @@ pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
                 TypeKind, TypeRef, VectorType};
 pub use utils::{AsBool, AsLLVMBool, AsResult, Boolinator};
-pub use value::{BlockAddress, Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
-                ConstantStruct, ConstantVector, GlobalVar, Instruction, ValueKind, ValueRef};
+pub use value::{BlockAddress, GlobalVar, Instruction, ValueKind, ValueRef};
 
 pub mod prelude {
+    pub use constant::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray,
+                       ToConstantStruct};
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType,
                     ToPointerType, ToStructType, ToVectorType};
-    pub use value::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray,
-                    ToConstantStruct};
 }

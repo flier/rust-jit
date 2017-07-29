@@ -299,7 +299,6 @@ mod tests {
 
     use super::*;
     use types::*;
-    use value::*;
 
     #[test]
     fn create() {

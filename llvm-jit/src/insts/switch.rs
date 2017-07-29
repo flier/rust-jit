@@ -87,8 +87,8 @@ mod tests {
     use function::FunctionType;
     use insts::*;
     use module::Module;
+    use prelude::*;
     use types::*;
-    use value::*;
 
     #[test]
     fn switch() {
