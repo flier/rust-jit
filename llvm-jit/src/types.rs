@@ -9,7 +9,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use context::{Context, GlobalContext};
-use utils::{AsLLVMBool, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, unchecked_cstring};
 use value::ValueRef;
 
 /// Each value in the LLVM IR has a type, an `TypeRef`.
@@ -53,7 +53,7 @@ impl TypeRef {
 
     /// Whether the type has a known size.
     pub fn is_sized(&self) -> bool {
-        unsafe { LLVMTypeIsSized(self.0) != 0 }
+        unsafe { LLVMTypeIsSized(self.0) }.as_bool()
     }
 
     /// Obtain the context to which this type instance is associated.
@@ -340,7 +340,7 @@ impl FunctionType {
 
     /// Returns whether a function type is variadic.
     pub fn is_var_arg(&self) -> bool {
-        unsafe { LLVMIsFunctionVarArg(self.as_raw()) != 0 }
+        unsafe { LLVMIsFunctionVarArg(self.as_raw()) }.as_bool()
     }
 
     /// Obtain the Type this function Type returns.
@@ -439,12 +439,12 @@ impl StructType {
 
     /// Determine whether a structure is packed.
     pub fn is_packed(&self) -> bool {
-        unsafe { LLVMIsPackedStruct(self.as_raw()) != 0 }
+        unsafe { LLVMIsPackedStruct(self.as_raw()) }.as_bool()
     }
 
     /// Determine whether a structure is opaque.
     pub fn is_opaque(&self) -> bool {
-        unsafe { LLVMIsOpaqueStruct(self.as_raw()) != 0 }
+        unsafe { LLVMIsOpaqueStruct(self.as_raw()) }.as_bool()
     }
 }
 

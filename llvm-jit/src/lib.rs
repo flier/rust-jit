@@ -40,7 +40,7 @@ pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos
                  AllTargets, NativeAsmParser, NativeAsmPrinter, NativeDisassembler, NativeTarget};
 pub use types::{ArrayType, FloatingPointType, FunctionType, IntegerType, OtherType, PointerType,
                 StructType, TypeKind, TypeRef, VectorType};
-pub use utils::{AsBool, AsLLVMBool, Boolinator};
+pub use utils::{AsBool, AsLLVMBool, AsResult, Boolinator};
 pub use value::{BlockAddress, Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
                 ConstantStruct, ConstantVector, Function, GlobalVar, Instruction, ValueKind,
                 ValueRef};

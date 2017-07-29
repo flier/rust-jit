@@ -6,7 +6,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsLLVMBool, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, unchecked_cstring};
 use value::{AsValueRef, Function, Instruction, ValueRef};
 
 /// This instruction is designed to operate as a standard `call` instruction in most regards.
@@ -89,7 +89,7 @@ impl CallSite for CallInst {}
 impl CallInst {
     /// Obtain whether a call instruction is a tail call.
     pub fn is_tail_call(&self) -> bool {
-        unsafe { LLVMIsTailCall(self.as_raw()) != 0 }
+        unsafe { LLVMIsTailCall(self.as_raw()) }.as_bool()
     }
 
     /// Set whether a call instruction is a tail call.

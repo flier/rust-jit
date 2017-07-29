@@ -12,7 +12,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use context::Context;
 use types::{StructType, TypeRef};
-use utils::{AsLLVMBool, from_unchecked_cstr, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, from_unchecked_cstr, unchecked_cstring};
 
 /// Represents an individual value in LLVM IR.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -76,22 +76,22 @@ impl ValueRef {
 
     /// Determine whether the specified value instance is constant.
     pub fn is_constant(&self) -> bool {
-        unsafe { LLVMIsConstant(self.0) != 0 }
+        unsafe { LLVMIsConstant(self.0) }.as_bool()
     }
 
     /// Determine whether a value instance is undefined.
     pub fn is_undef(&self) -> bool {
-        unsafe { LLVMIsUndef(self.0) != 0 }
+        unsafe { LLVMIsUndef(self.0) }.as_bool()
     }
 
     /// Determine whether a value instance is null.
     pub fn is_null(&self) -> bool {
-        unsafe { LLVMIsNull(self.0) != 0 }
+        unsafe { LLVMIsNull(self.0) }.as_bool()
     }
 
     /// Determine whether an LLVMValueRef is itself a basic block.
     pub fn is_basic_block(&self) -> bool {
-        unsafe { LLVMValueIsBasicBlock(self.0) != 0 }
+        unsafe { LLVMValueIsBasicBlock(self.0) }.as_bool()
     }
 
     /// Convert an LLVMValueRef to an LLVMBasicBlockRef instance.
@@ -240,7 +240,7 @@ impl ConstantString {
 
     /// Returns true if the specified constant is an array of i8.
     pub fn is_const_str(&self) -> bool {
-        unsafe { LLVMIsConstantString(self.as_raw()) != 0 }
+        unsafe { LLVMIsConstantString(self.as_raw()) }.as_bool()
     }
 
     /// Get the given constant data sequential as a string.
@@ -548,7 +548,7 @@ impl Instruction {
 
     /// Determine whether an instruction has any metadata attached.
     pub fn has_metadata(&self) -> bool {
-        unsafe { LLVMHasMetadata(self.as_raw()) != 0 }
+        unsafe { LLVMHasMetadata(self.as_raw()) }.as_bool()
     }
 
     /// Return metadata associated with an instruction value.
@@ -595,7 +595,7 @@ impl GlobalVar {
     }
 
     pub fn is_thread_local(&self) -> bool {
-        unsafe { LLVMIsThreadLocal(self.as_raw()) != 0 }
+        unsafe { LLVMIsThreadLocal(self.as_raw()) }.as_bool()
     }
 
     pub fn set_thread_local(&self, is_thread_local: bool) {
@@ -603,7 +603,7 @@ impl GlobalVar {
     }
 
     pub fn is_global_constant(&self) -> bool {
-        unsafe { LLVMIsGlobalConstant(self.as_raw()) != 0 }
+        unsafe { LLVMIsGlobalConstant(self.as_raw()) }.as_bool()
     }
 
     pub fn set_global_constant(&self, is_global_constant: bool) {
@@ -619,7 +619,7 @@ impl GlobalVar {
     }
 
     pub fn is_externally_initialized(&self) -> bool {
-        unsafe { LLVMIsExternallyInitialized(self.as_raw()) != 0 }
+        unsafe { LLVMIsExternallyInitialized(self.as_raw()) }.as_bool()
     }
 
     pub fn set_externally_initialized(&self, is_externally_initialized: bool) {

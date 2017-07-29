@@ -10,7 +10,7 @@ use llvm::prelude::*;
 use context::Context;
 use errors::Result;
 use types::{AsTypeRef, FunctionType, TypeRef};
-use utils::{from_unchecked_cstr, unchecked_cstring};
+use utils::{AsResult, from_unchecked_cstr, unchecked_cstring};
 use value::{Function, GlobalVar};
 
 /// Modules represent the top-level structure in an LLVM program.
@@ -112,7 +112,7 @@ impl Module {
         let mut err = ptr::null_mut();
 
         unsafe {
-            if LLVMPrintModuleToFile(self.0, cfilename.as_ptr(), &mut err) == 0 {
+            if LLVMPrintModuleToFile(self.0, cfilename.as_ptr(), &mut err).is_ok() {
                 Ok(())
             } else {
                 bail!(format!(

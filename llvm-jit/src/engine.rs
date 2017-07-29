@@ -6,7 +6,7 @@ use llvm::execution_engine::*;
 
 use errors::Result;
 use module::Module;
-use utils::unchecked_cstring;
+use utils::{AsBool, AsResult, unchecked_cstring};
 use value::Function;
 
 pub struct MCJIT;
@@ -35,7 +35,7 @@ impl ExecutionEngine {
             let mut engine = mem::uninitialized();
             let mut err = mem::zeroed();
 
-            if LLVMCreateExecutionEngineForModule(&mut engine, module.as_raw(), &mut err) == 0 {
+            if LLVMCreateExecutionEngineForModule(&mut engine, module.as_raw(), &mut err).is_ok() {
                 trace!("create ExecutionEngine({:?}) for {:?}", engine, module);
 
                 Ok(ExecutionEngine(engine))
@@ -87,7 +87,7 @@ impl ExecutionEngine {
         let mut out = ptr::null_mut();
         let mut err = ptr::null_mut();
 
-        if unsafe { LLVMRemoveModule(self.0, module.as_raw(), &mut out, &mut err) } == 0 {
+        if unsafe { LLVMRemoveModule(self.0, module.as_raw(), &mut out, &mut err) }.is_ok() {
             trace!("remove {:?} from {:?}", module, self);
 
             Ok(Module::from_raw(out))
@@ -105,7 +105,7 @@ impl ExecutionEngine {
         let cname = unchecked_cstring(name);
         let mut func = ptr::null_mut();
 
-        if unsafe { LLVMFindFunction(self.0, cname.as_ptr(), &mut func) } == 0 {
+        if unsafe { LLVMFindFunction(self.0, cname.as_ptr(), &mut func) }.as_bool() {
             let f = func.into();
 
             trace!(

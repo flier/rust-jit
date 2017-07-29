@@ -17,6 +17,16 @@ impl AsBool for LLVMBool {
     }
 }
 
+pub trait AsResult {
+    fn is_ok(self) -> bool;
+}
+
+impl AsResult for LLVMBool {
+    fn is_ok(self) -> bool {
+        self == FALSE
+    }
+}
+
 pub trait AsLLVMBool {
     fn as_bool(self) -> LLVMBool;
 }
