@@ -26,6 +26,8 @@ mod cmp;
 #[macro_use]
 mod phi;
 #[macro_use]
+mod select;
+#[macro_use]
 mod vector;
 #[macro_use]
 mod aggregate;
@@ -49,3 +51,4 @@ pub use self::switch::{Switch, SwitchInst};
 pub use self::terminator::{LandingPad, Resume, Unreachable};
 pub use self::unary::{FNeg, IsNotNull, IsNull, NSWNeg, NUWNeg, Neg, Not};
 pub use self::vector::{ExtractElement, InsertElement, ShuffleVector};
+pub use self::select::Select;
