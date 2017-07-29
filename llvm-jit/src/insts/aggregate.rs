@@ -40,11 +40,12 @@ impl<'a> InstructionBuilder for ExtractValue<'a> {
 }
 
 /// The `extractvalue` instruction extracts the value of a member field from an aggregate value.
-#[macro_export]
-macro_rules! extract_value {
-    ($vector:expr, $index:expr; $name:expr) => ({
-        $crate::insts::ExtractValue::new($vector.into(), $index, $name.into())
-    })
+pub fn extract_value<'a, T0: Into<ValueRef>, T2: Into<Cow<'a, str>>>(
+    aggregate: T0,
+    index: u32,
+    name: T2,
+) -> ExtractValue<'a> {
+    ExtractValue::new(aggregate.into(), index, name.into())
 }
 
 /// This instruction inserts a struct field of array element value into an aggregate value.
@@ -84,15 +85,18 @@ impl<'a> InstructionBuilder for InsertValue<'a> {
 }
 
 /// The `insertvalue` instruction inserts a value into a member field in an aggregate value.
-#[macro_export]
-macro_rules! insert_value {
-    ($vector:expr, $element:expr, $index:expr; $name:expr) => ({
-        $crate::insts::InsertValue::new($vector.into(), $element.into(), $index, $name.into())
-    })
+pub fn insert_value<'a, T0: Into<ValueRef>, T1: Into<ValueRef>, T3: Into<Cow<'a, str>>>(
+    aggregate: T0,
+    element: T1,
+    index: u32,
+    name: T3,
+) -> InsertValue<'a> {
+    InsertValue::new(aggregate.into(), element.into(), index, name.into())
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use context::Context;
     use function::FunctionType;
     use insts::*;
@@ -120,7 +124,7 @@ mod tests {
         let arg1_struct = function.get_param(1).unwrap();
 
         assert_eq!(
-            extract_value!(arg0_array, 1; "extract_value")
+            extract_value(arg0_array, 1, "extract_value")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -128,7 +132,7 @@ mod tests {
         );
 
         assert_eq!(
-            extract_value!(arg1_struct, 1; "extract_value")
+            extract_value(arg1_struct, 1, "extract_value")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -136,7 +140,7 @@ mod tests {
         );
 
         assert_eq!(
-            insert_value!(arg0_array, i64_t.int(123), 1; "insert_value")
+            insert_value(arg0_array, i64_t.int(123), 1, "insert_value")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -144,7 +148,7 @@ mod tests {
         );
 
         assert_eq!(
-            insert_value!(arg1_struct, i64_t.int(123), 1; "insert_value")
+            insert_value(arg1_struct, i64_t.int(123), 1, "insert_value")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),

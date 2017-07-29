@@ -20,21 +20,9 @@ inherit_from!(ValueRef, LLVMValueRef);
 macro_rules! inherit_value_ref {
     ($ty:ident) => {
         inherit_from!($ty, ValueRef, LLVMValueRef);
-
-        impl $crate::value::ToValueRef for $ty {
-            fn to_value_ref(self) -> ValueRef {
-                self.0
-            }
-        }
     };
     ($ty:ident, $parent:ty) => (
         inherit_from!($ty, $parent, ValueRef, LLVMValueRef);
-
-        impl $crate::value::ToValueRef for $ty {
-            fn to_value_ref(self) -> ValueRef {
-                self.0.to_value_ref()
-            }
-        }
     );
 }
 
@@ -49,16 +37,6 @@ where
 {
     fn as_raw(&self) -> LLVMValueRef {
         self.deref().as_raw()
-    }
-}
-
-pub trait ToValueRef {
-    fn to_value_ref(self) -> ValueRef;
-}
-
-impl ToValueRef for ValueRef {
-    fn to_value_ref(self) -> ValueRef {
-        self
     }
 }
 

@@ -51,6 +51,8 @@ pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerTyp
 pub use utils::{AsBool, AsLLVMBool, AsResult, Boolinator};
 pub use value::{BlockAddress, Instruction, ValueKind, ValueRef};
 
+pub use insts::{extract_value, insert_value};
+
 pub mod prelude {
     pub use constant::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray,
                        ToConstantStruct};

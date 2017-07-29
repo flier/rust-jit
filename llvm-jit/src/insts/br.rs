@@ -6,7 +6,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use insts::{IRBuilder, InstructionBuilder};
 use utils::AsBool;
-use value::{AsValueRef, Instruction, ToValueRef, ValueRef};
+use value::{AsValueRef, Instruction, ValueRef};
 
 /// Create an unconditional 'br label X' instruction.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -35,21 +35,17 @@ pub struct CondBr {
 }
 
 impl CondBr {
-    pub fn new<V: ToValueRef>(
-        cond: V,
-        then: Option<BasicBlock>,
-        or_else: Option<BasicBlock>,
-    ) -> CondBr {
+    pub fn new(cond: ValueRef, then: Option<BasicBlock>, or_else: Option<BasicBlock>) -> CondBr {
         CondBr {
-            cond: cond.to_value_ref(),
+            cond,
             then,
             or_else,
         }
     }
 
-    pub fn on<V: ToValueRef>(cond: V) -> Self {
+    pub fn on<V: Into<ValueRef>>(cond: V) -> Self {
         CondBr {
-            cond: cond.to_value_ref(),
+            cond: cond.into(),
             then: None,
             or_else: None,
         }
@@ -90,16 +86,13 @@ pub struct IndirectBr {
 }
 
 impl IndirectBr {
-    pub fn new<V: ToValueRef>(addr: V, dests: Vec<BasicBlock>) -> Self {
-        IndirectBr {
-            addr: addr.to_value_ref(),
-            dests,
-        }
+    pub fn new(addr: ValueRef, dests: Vec<BasicBlock>) -> Self {
+        IndirectBr { addr, dests }
     }
 
-    pub fn on<V: ToValueRef>(addr: V) -> Self {
+    pub fn on<V: Into<ValueRef>>(addr: V) -> Self {
         IndirectBr {
-            addr: addr.to_value_ref(),
+            addr: addr.into(),
             dests: vec![],
         }
     }
@@ -149,7 +142,7 @@ impl BranchInst {
     }
 
     /// Set the condition of a branch instruction.
-    pub fn set_cond(&self, cond: ValueRef) {
+    pub fn set_cond<V: AsValueRef>(&self, cond: V) {
         unsafe { LLVMSetCondition(self.as_raw(), cond.as_raw()) }
     }
 }
@@ -164,10 +157,10 @@ macro_rules! br {
         $crate::insts::IndirectBr::on($addr) $( .jump_to($dest.into()) )*
     );
     ($cond:expr => $then:expr) => (
-        $crate::insts::CondBr::on($cond).then($then.into())
+         $crate::insts::CondBr::new($cond.into(), Some($then.into()), None)
     );
     ($cond:expr => $then:expr, _ => $or_else:expr) => (
-        $crate::insts::CondBr::on($cond).then($then.into()).or_else($or_else.into())
+        $crate::insts::CondBr::new($cond.into(), Some($then.into()), Some($or_else.into()))
     );
 }
 

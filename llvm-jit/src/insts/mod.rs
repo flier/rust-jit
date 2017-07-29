@@ -38,7 +38,7 @@ mod aggregate;
 #[macro_use]
 mod atomic;
 
-pub use self::aggregate::{ExtractValue, InsertValue};
+pub use self::aggregate::{ExtractValue, InsertValue, extract_value, insert_value};
 pub use self::atomic::{AtomicCmpXchg, AtomicRMW, Fence};
 pub use self::binop::*;
 pub use self::br::{Br, CondBr, IndirectBr};
