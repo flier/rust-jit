@@ -1,9 +1,11 @@
 use std::ptr;
 
 use llvm::core::*;
+use llvm::prelude::*;
 
 use block::BasicBlock;
 use insts::{IRBuilder, InstructionBuilder};
+use utils::AsBool;
 use value::{AsValueRef, Instruction, ValueRef};
 
 /// Create an unconditional 'br label X' instruction.
@@ -17,7 +19,7 @@ impl Br {
 }
 
 impl InstructionBuilder for Br {
-    type Target = Instruction;
+    type Target = BranchInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe { LLVMBuildBr(builder.as_raw(), self.0.as_raw()) }.into()
@@ -61,7 +63,7 @@ impl CondBr {
 }
 
 impl InstructionBuilder for CondBr {
-    type Target = Instruction;
+    type Target = BranchInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
@@ -103,10 +105,10 @@ impl IndirectBr {
 }
 
 impl InstructionBuilder for IndirectBr {
-    type Target = Instruction;
+    type Target = BranchInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
-        let br: Instruction = unsafe {
+        let br: BranchInst = unsafe {
             LLVMBuildIndirectBr(
                 builder.as_raw(),
                 self.addr.as_raw(),
@@ -119,6 +121,29 @@ impl InstructionBuilder for IndirectBr {
         }
 
         br
+    }
+}
+
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BranchInst(Instruction);
+
+inherit_from!(BranchInst, Instruction, ValueRef, LLVMValueRef);
+
+impl BranchInst {
+    /// Return if a branch is conditional.
+    pub fn is_cond(&self) -> bool {
+        unsafe { LLVMIsConditional(self.as_raw()) }.as_bool()
+    }
+
+    /// Return the condition of a branch instruction.
+    pub fn get_cond(&self) -> Option<ValueRef> {
+        unsafe { LLVMGetCondition(self.as_raw()).as_mut() }.map(|v| ValueRef::from_raw(v))
+    }
+
+    /// Set the condition of a branch instruction.
+    pub fn set_cond(&self, cond: ValueRef) {
+        unsafe { LLVMSetCondition(self.as_raw(), cond.as_raw()) }
     }
 }
 
