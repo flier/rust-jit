@@ -27,14 +27,14 @@ mod types;
 #[macro_use]
 mod value;
 #[macro_use]
-mod builder;
+pub mod insts;
 mod block;
 mod engine;
 mod target;
 
-pub use builder::{IRBuilder, InstructionBuilder, Position};
 pub use context::Context;
 pub use engine::{ExecutionEngine, Interpreter, MCJIT};
+pub use insts::{IRBuilder, Position};
 pub use module::Module;
 pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos, AllTargetMCs,
                  AllTargets, NativeAsmParser, NativeAsmPrinter, NativeDisassembler, NativeTarget};
@@ -49,31 +49,4 @@ pub mod prelude {
                     ToPointerType, ToStructType, ToVectorType};
     pub use value::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray,
                     ToConstantStruct};
-}
-
-pub mod ops {
-    /// Terminators
-    pub use builder::{AggregateRet, Br, CondBr, IndirectBr, Invoke, LandingPad, Resume, Ret,
-                      RetVoid, Switch};
-
-    /// Arithmetic
-    pub use builder::{AShr, Add, And, ExactSDiv, ExactUDiv, FAdd, FDiv, FMul, FNeg, FRem, FSub,
-                      LShr, Mul, NSWAdd, NSWMul, NSWNeg, NSWSub, NUWAdd, NUWMul, NUWNeg, NUWSub,
-                      Neg, Not, Or, SDiv, SRem, Shl, Sub, UDiv, URem, Unreachable, Xor};
-
-    /// Memory
-    pub use builder::{Alloca, Free, GetElementPtr, GlobalString, GlobalStringPtr, Load, Malloc,
-                      Store};
-
-    /// Casts
-    pub use builder::{AddrSpaceCast, BitCast, FPCast, FPExt, FPToSI, FPToUI, FPTrunc, IntCast,
-                      IntToPtr, PointerCast, PtrToInt, SExt, SExtOrBitCast, SIToFP, Trunc,
-                      TruncOrBitCast, UIToFP, ZExt, ZExtOrBitCast};
-
-    /// Comparisons
-    pub use builder::{FCmp, ICmp};
-
-    /// Miscellaneous
-    pub use builder::{AtomicCmpXchg, AtomicRMW, ExtractElement, ExtractValue, Fence,
-                      InsertElement, InsertValue, IsNotNull, IsNull, Phi, PtrDiff, ShuffleVector};
 }

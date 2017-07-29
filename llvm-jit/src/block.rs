@@ -4,7 +4,7 @@ use std::ffi::CStr;
 use llvm::core::*;
 use llvm::prelude::*;
 
-use builder::TerminatorInst;
+use insts::TerminatorInst;
 use value::{BlockAddress, Function, Instruction, ValueRef};
 
 /// Basic Block
@@ -72,6 +72,19 @@ impl BasicBlock {
     pub fn instructions(&self) -> InstrIter {
         InstrIter::new(self.0)
     }
+
+    #[cfg(test)]
+    pub fn last_instructions(&self, n: usize) -> Vec<String> {
+        let mut insts = self.instructions()
+            .rev()
+            .take(n)
+            .map(|i| i.to_string().trim().to_owned())
+            .collect::<Vec<String>>();
+
+        insts.reverse();
+
+        insts
+    }
 }
 
 impl_iter!(
@@ -84,8 +97,8 @@ impl_iter!(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use builder::{IRBuilder, Position};
     use context::Context;
+    use insts::{IRBuilder, Position};
     use module::Module;
     use prelude::*;
     use types::FunctionType;
