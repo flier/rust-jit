@@ -107,7 +107,7 @@ mod tests {
 
         let i32t = context.int32_t();
         let i64t = context.int64_t();
-        let array_t = i64t.array(4).into();
+        let array_t = i64t.array_t(4).into();
         let struct_t = context.anonymous_struct_t(&[i32t, i64t], false);
         let function_type = FunctionType::new(context.void_t(), &[array_t, struct_t.into()], false);
         let function = module.add_function("test", function_type);

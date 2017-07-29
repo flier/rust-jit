@@ -328,7 +328,7 @@ mod tests {
         let b = IRBuilder::within_context(&c);
 
         let i64t = c.int64_t();
-        let p_i64t = i64t.ptr();
+        let p_i64t = i64t.ptr_t();
 
         let f_ty = FunctionType::new(c.void_t(), &[p_i64t.into(), p_i64t.into()], false);
         let f = m.add_function("test", f_ty);

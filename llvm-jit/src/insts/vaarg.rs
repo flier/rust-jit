@@ -61,7 +61,7 @@ mod tests {
         builder.position(Position::AtEnd(bb));
 
         let i8t = context.int8_t();
-        let p_i8t = i8t.ptr();
+        let p_i8t = i8t.ptr_t();
         let va_list = context.anonymous_struct_t(&[p_i8t.into()], false);
 
         let ap = alloca!(va_list; "ap").emit_to(&builder);

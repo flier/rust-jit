@@ -531,11 +531,11 @@ pub trait ToArrayType {
     /// Create a fixed size array type that refers to a specific type.
     ///
     /// The created type will exist in the context that its element type exists in.
-    fn array(&self, element_count: usize) -> ArrayType;
+    fn array_t(&self, element_count: usize) -> ArrayType;
 }
 
 impl ToArrayType for TypeRef {
-    fn array(&self, element_count: usize) -> ArrayType {
+    fn array_t(&self, element_count: usize) -> ArrayType {
         unsafe { LLVMArrayType(self.as_raw(), element_count as u32) }.into()
     }
 }
@@ -557,18 +557,18 @@ pub trait ToPointerType {
     /// Create a pointer type that points to a defined type.
     ///
     /// The created type will exist in the context that its pointee type exists in.
-    fn ptr(&self) -> PointerType {
-        self.ptr_in_address_space(0)
+    fn ptr_t(&self) -> PointerType {
+        self.ptr_t_in_address_space(0)
     }
 
     /// Create a pointer type in the address space that points to a defined type.
     ///
     /// The created type will exist in the context that its pointee type exists in.
-    fn ptr_in_address_space(&self, address_space: u32) -> PointerType;
+    fn ptr_t_in_address_space(&self, address_space: u32) -> PointerType;
 }
 
 impl ToPointerType for TypeRef {
-    fn ptr_in_address_space(&self, address_space: u32) -> PointerType {
+    fn ptr_t_in_address_space(&self, address_space: u32) -> PointerType {
         unsafe { LLVMPointerType(self.as_raw(), address_space) }.into()
     }
 }
@@ -590,11 +590,11 @@ pub trait ToVectorType {
     /// Create a vector type that contains a defined type and has a specific number of elements.
     ///
     /// The created type will exist in the context thats its element type exists in.
-    fn vector(&self, element_count: usize) -> VectorType;
+    fn vector_t(&self, element_count: usize) -> VectorType;
 }
 
 impl ToVectorType for TypeRef {
-    fn vector(&self, element_count: usize) -> VectorType {
+    fn vector_t(&self, element_count: usize) -> VectorType {
         unsafe { LLVMVectorType(self.as_raw(), element_count as u32) }.into()
     }
 }
@@ -848,7 +848,7 @@ mod tests {
         let c = Context::new();
         let i64t = c.int64_t();
 
-        let t = i64t.array(8);
+        let t = i64t.array_t(8);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMArrayTypeKind));
@@ -860,7 +860,7 @@ mod tests {
     fn pointer() {
         let c = Context::new();
         let i64t = c.int64_t();
-        let t = i64t.ptr_in_address_space(123);
+        let t = i64t.ptr_t_in_address_space(123);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMPointerTypeKind));
@@ -873,7 +873,7 @@ mod tests {
         let c = Context::new();
         let i64t = c.int64_t();
 
-        let t = i64t.vector(8);
+        let t = i64t.vector_t(8);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMVectorTypeKind));

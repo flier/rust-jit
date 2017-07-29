@@ -192,9 +192,9 @@ mod tests {
         let f32t = c.float_t();
         let f64t = c.double_t();
 
-        let p_i64t = i64t.ptr();
-        let p_f64t = f64t.ptr();
-        let p_f64t_1 = f64t.ptr_in_address_space(1);
+        let p_i64t = i64t.ptr_t();
+        let p_f64t = f64t.ptr_t();
+        let p_f64t_1 = f64t.ptr_t_in_address_space(1);
 
         let f_ty = FunctionType::new(
             c.void_t(),
