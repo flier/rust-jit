@@ -157,11 +157,8 @@ impl InstructionBuilder for Free {
 }
 
 /// Deallocates the memory allocation pointed to by ptr.
-#[macro_export]
-macro_rules! free {
-    ($ptr:expr) => ({
-        $crate::insts::Free::new($ptr.into())
-    })
+pub fn free<P: Into<ValueRef>>(ptr: P) -> Free {
+    Free::new(ptr.into())
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -191,11 +188,12 @@ impl<'a> InstructionBuilder for Load<'a> {
 }
 
 /// The `load` instruction is used to read from memory.
-#[macro_export]
-macro_rules! load {
-    ($ptr:expr; $name:expr) => ({
-        $crate::insts::Load::new($ptr.into(), $name.into())
-    })
+pub fn load<'a, P, N>(ptr: P, name: N) -> Load<'a>
+where
+    P: Into<ValueRef>,
+    N: Into<Cow<'a, str>>,
+{
+    Load::new(ptr.into(), name.into())
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -219,11 +217,12 @@ impl InstructionBuilder for Store {
 }
 
 /// The `store` instruction is used to write to memory.
-#[macro_export]
-macro_rules! store {
-    ($value:expr, $ptr:expr) => ({
-        $crate::insts::Store::new($value.into(), $ptr.into())
-    })
+pub fn store<V, P>(value: V, ptr: P) -> Store
+where
+    V: Into<ValueRef>,
+    P: Into<ValueRef>,
+{
+    Store::new(value.into(), ptr.into())
 }
 
 #[cfg(test)]
@@ -254,7 +253,7 @@ mod tests {
 
         let p = malloc!(i64_t; "malloc").emit_to(&builder);
 
-        free!(p).emit_to(&builder);
+        free(p).emit_to(&builder);
 
         assert_eq!(
             bb.last_instructions(4),
@@ -292,7 +291,7 @@ mod tests {
         );
 
         assert_eq!(
-            load!(arg0_p_i64; "load")
+            load(arg0_p_i64, "load")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -300,7 +299,7 @@ mod tests {
         );
 
         assert_eq!(
-            store!(i64_t.int(123), arg0_p_i64)
+            store(i64_t.int(123), arg0_p_i64)
                 .emit_to(&builder)
                 .to_string()
                 .trim(),

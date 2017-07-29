@@ -89,16 +89,15 @@ impl InstructionBuilder for Resume {
 }
 
 /// The `resume` instruction is a terminator instruction that has no successors.
-#[macro_export]
-macro_rules! resume {
-    ($result:expr) => ({
-        $crate::insts::Resume::new($result.into())
-    })
+pub fn resume<R>(result: R) -> Resume
+where
+    R: Into<ValueRef>,
+{
+    Resume::new(result.into())
 }
 
-/// The `unreachable` instruction has no defined semantics.
+/// The `unreachable` instruction is used to inform the optimizer that a particular portion of the code is not reachable.
 ///
-/// This instruction is used to inform the optimizer that a particular portion of the code is not reachable.
 /// This can be used to indicate that the code after a no-return function cannot be reached, and other facts.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Unreachable;
@@ -109,6 +108,11 @@ impl InstructionBuilder for Unreachable {
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe { LLVMBuildUnreachable(builder.as_raw()) }.into()
     }
+}
+
+/// The `unreachable` instruction is used to inform the optimizer that a particular portion of the code is not reachable.
+pub fn unreachable() -> Unreachable {
+    Unreachable
 }
 
 #[cfg(test)]
@@ -134,14 +138,11 @@ mod tests {
         let i64_t = context.int64_t();
 
         assert_eq!(
-            resume!(i64_t.uint(123))
-                .emit_to(&builder)
-                .to_string()
-                .trim(),
+            resume(i64_t.uint(123)).emit_to(&builder).to_string().trim(),
             "resume i64 123"
         );
         assert_eq!(
-            Unreachable.emit_to(&builder).to_string().trim(),
+            unreachable().emit_to(&builder).to_string().trim(),
             "unreachable"
         );
     }

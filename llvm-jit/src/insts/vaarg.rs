@@ -7,6 +7,7 @@ use types::TypeRef;
 use utils::unchecked_cstring;
 use value::{Instruction, ValueRef};
 
+/// The ‘va_arg‘ instruction is used to access arguments passed through the “variable argument” area of a function call. It is used to implement the va_arg macro in C.
 #[derive(Clone, Debug, PartialEq)]
 pub struct VaArg<'a> {
     args: ValueRef,
@@ -35,11 +36,14 @@ impl<'a> InstructionBuilder for VaArg<'a> {
     }
 }
 
-#[macro_export]
-macro_rules! va_arg {
-    ($args:expr, $ty:expr; $name:expr) => ({
-        $crate::insts::VaArg::new($args.into(), $ty.into(), $name.into())
-    });
+/// The ‘va_arg‘ instruction is used to access arguments passed through the “variable argument” area of a function call. It is used to implement the va_arg macro in C.
+pub fn va_arg<'a, A, T, N>(args: A, ty: T, name: N) -> VaArg<'a>
+where
+    A: Into<ValueRef>,
+    T: Into<TypeRef>,
+    N: Into<Cow<'a, str>>,
+{
+    VaArg::new(args.into(), ty.into(), name.into())
 }
 
 #[cfg(test)]
@@ -51,7 +55,7 @@ mod tests {
     use types::*;
 
     #[test]
-    fn va_arg() {
+    fn va_arg_inst() {
         let context = Context::new();
         let module = Module::with_name_in_context("invoke", &context);
         let builder = IRBuilder::within_context(&context);
@@ -66,7 +70,7 @@ mod tests {
         let va_list = context.anonymous_struct_t(&[p_i8_t.into()], false);
 
         let ap = alloca!(va_list; "ap").emit_to(&builder);
-        va_arg!(ap, context.int32_t(); "va_arg").emit_to(&builder);
+        va_arg(ap, context.int32_t(), "va_arg").emit_to(&builder);
 
         assert_eq!(
             bb.last_instructions(4),

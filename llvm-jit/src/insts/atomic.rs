@@ -132,7 +132,7 @@ impl InstructionBuilder for AtomicCmpXchg {
     }
 }
 
-/// ‘fence‘ instructions take an ordering argument which defines what synchronizes-with edges they add.
+/// `fence` instructions take an ordering argument which defines what synchronizes-with edges they add.
 /// They can only be given `acquire`, `release`, `acq_rel`, and `seq_cst` orderings.
 #[macro_export]
 macro_rules! fence_ordering {
@@ -143,7 +143,7 @@ macro_rules! fence_ordering {
     ($ordering:ident) => ("`fence` instruction can only be given acquire, release, acq_rel, and seq_cst orderings.");
 }
 
-/// The ‘fence‘ instruction is used to introduce happens-before edges between operations.
+/// The `fence` instruction is used to introduce happens-before edges between operations.
 #[macro_export]
 macro_rules! fence {
     (singlethread $ordering:ident ; $name:expr) => (

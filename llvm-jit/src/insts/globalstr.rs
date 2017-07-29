@@ -37,11 +37,12 @@ impl<'a> InstructionBuilder for GlobalString<'a> {
 }
 
 /// Make a new global variable with initializer type i8*
-#[macro_export]
-macro_rules! global_str {
-    ($s:expr; $name:expr) => ({
-        $crate::insts::GlobalString::new($s.into(), $name.into())
-    })
+pub fn global_str<'a, S, N>(s: S, name: N) -> GlobalString<'a>
+where
+    S: Into<Cow<'a, str>>,
+    N: Into<Cow<'a, str>>,
+{
+    GlobalString::new(s.into(), name.into())
 }
 
 /// Same as `GlobalString`, but return a pointer with "i8*" type instead of a pointer to array of i8.
@@ -72,11 +73,12 @@ impl<'a> InstructionBuilder for GlobalStringPtr<'a> {
 }
 
 /// Make a new global variable with initializer type i8*, return a pointer with "i8*" type instead of a pointer to array of i8.
-#[macro_export]
-macro_rules! global_str_ptr {
-    ($s:expr; $name:expr) => ({
-        $crate::insts::GlobalStringPtr::new($s.into(), $name.into())
-    })
+pub fn global_str_ptr<'a, S, N>(s: S, name: N) -> GlobalStringPtr<'a>
+where
+    S: Into<Cow<'a, str>>,
+    N: Into<Cow<'a, str>>,
+{
+    GlobalStringPtr::new(s.into(), name.into())
 }
 
 #[cfg(test)]
@@ -88,7 +90,7 @@ mod tests {
     use types::*;
 
     #[test]
-    fn global_str() {
+    fn globalstr() {
         let context = Context::new();
         let module = Module::with_name_in_context("memory", &context);
         let builder = IRBuilder::within_context(&context);
@@ -100,7 +102,7 @@ mod tests {
         builder.position(Position::AtEnd(bb));
 
         assert_eq!(
-            global_str!("global_str"; "global_str")
+            global_str("global_str", "global_str")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -108,7 +110,7 @@ mod tests {
         );
 
         assert_eq!(
-            global_str_ptr!("global_str_ptr"; "global_str_ptr")
+            global_str_ptr("global_str_ptr", "global_str_ptr")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
