@@ -28,6 +28,8 @@ mod phi;
 #[macro_use]
 mod select;
 #[macro_use]
+mod call;
+#[macro_use]
 mod vector;
 #[macro_use]
 mod aggregate;
@@ -39,16 +41,17 @@ pub use self::atomic::{AtomicCmpXchg, AtomicRMW, Fence};
 pub use self::binop::*;
 pub use self::br::{Br, CondBr, IndirectBr};
 pub use self::builder::{IRBuilder, InstructionBuilder, Position};
+pub use self::call::{Call, CallConv, CallInst, CallSite};
 pub use self::cast::*;
 pub use self::cmp::{FCmp, FCmpInst, ICmp, ICmpInst};
 pub use self::gep::GetElementPtr;
 pub use self::globalstr::{GlobalString, GlobalStringPtr};
-pub use self::invoke::Invoke;
+pub use self::invoke::{Invoke, InvokeInst};
 pub use self::memory::{Alloca, AllocaInst, Free, Load, Malloc, Store};
 pub use self::phi::{Phi, PhiNode};
 pub use self::ret::{AggregateRet, Ret, RetVoid, TerminatorInst};
+pub use self::select::Select;
 pub use self::switch::{Switch, SwitchInst};
 pub use self::terminator::{LandingPad, Resume, Unreachable};
 pub use self::unary::{FNeg, IsNotNull, IsNull, NSWNeg, NUWNeg, Neg, Not};
 pub use self::vector::{ExtractElement, InsertElement, ShuffleVector};
-pub use self::select::Select;

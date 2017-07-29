@@ -5,7 +5,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use block::BasicBlock;
-use insts::{IRBuilder, InstructionBuilder};
+use insts::{CallSite, IRBuilder, InstructionBuilder};
 use utils::unchecked_cstring;
 use value::{AsValueRef, Function, Instruction, ValueRef};
 
@@ -49,7 +49,7 @@ impl<'a> Invoke<'a> {
 }
 
 impl<'a> InstructionBuilder for Invoke<'a> {
-    type Target = Instruction;
+    type Target = InvokeInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         let mut args = self.args
@@ -71,26 +71,58 @@ impl<'a> InstructionBuilder for Invoke<'a> {
     }
 }
 
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InvokeInst(Instruction);
+
+inherit_from!(InvokeInst, Instruction, ValueRef, LLVMValueRef);
+
+impl CallSite for InvokeInst {}
+
+impl InvokeInst {
+    /// Return the normal destination basic block.
+    pub fn normal_dest(&self) -> BasicBlock {
+        unsafe { LLVMGetNormalDest(self.as_raw()) }.into()
+    }
+
+    /// Set the normal destination basic block.
+    pub fn set_normal_dest(&self, dest: BasicBlock) {
+        unsafe { LLVMSetNormalDest(self.as_raw(), dest.as_raw()) }
+    }
+
+    /// Return the unwind destination basic block.
+    pub fn unwind_dest(&self) -> BasicBlock {
+        unsafe { LLVMGetUnwindDest(self.as_raw()) }.into()
+    }
+
+    /// Set the unwind destination basic block.
+    pub fn set_unwind_dest(&self, dest: BasicBlock) {
+        unsafe { LLVMSetUnwindDest(self.as_raw(), dest.as_raw()) }
+    }
+}
+
 /// The `invoke` instruction causes control to transfer to a specified function,
 /// with the possibility of control flow transfer to either the `normal` label or the `exception` label.
 #[macro_export]
 macro_rules! invoke {
-    ($func:expr => $name:expr; to $then:expr; unwind $unwind:expr; [ $( $arg:expr ),* ]) => ({
+    ($func:expr, $( $arg:expr ),* ; to $then:expr ; unwind $unwind:expr ; $name:expr) => ({
         $crate::insts::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into()).then($then).unwind($unwind)
     });
-    ($func:expr => $name:expr; to $then:expr; [ $( $arg:expr ),* ]) => ({
+    ($func:expr, $( $arg:expr ),* ; to $then:expr ; $name:expr) => ({
         $crate::insts::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into()).then($then)
     });
-    ($func:expr => $name:expr; unwind $unwind:expr; [ $( $arg:expr ),* ]) => ({
+    ($func:expr, $( $arg:expr ),* ; unwind $unwind:expr ; $name:expr) => ({
         $crate::insts::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into()).unwind($unwind)
     });
-    ($func:expr => $name:expr; [ $( $arg:expr ),* ]) => ({
+    ($func:expr, $( $arg:expr ),* ; $name:expr) => ({
         $crate::insts::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into())
     });
 }
 
 #[cfg(test)]
 mod tests {
+    use llvm::LLVMCallConv;
+
     use context::Context;
     use insts::*;
     use module::Module;
@@ -111,12 +143,22 @@ mod tests {
         builder.position(Position::AtEnd(bb));
 
         let bb_normal = fn_test.append_basic_block_in_context("normal", &context);
-        let bb_catch = fn_test.append_basic_block_in_context("catch", &context);
+        let bb_unwind = fn_test.append_basic_block_in_context("catch", &context);
+
+        let invoke =
+            invoke!(fn_hello, i64t.uint(123), i64t.int(456); to bb_normal; unwind bb_unwind; "ret")
+                .emit_to(&builder);
 
         assert_eq!(
-            invoke!(fn_hello => "ret"; to bb_normal; unwind bb_catch; [i64t.uint(123), i64t.int(456)]).emit_to(&builder).to_string().trim(),
+            invoke.to_string().trim(),
             r#"%ret = invoke i64 @hello(i64 123, i64 456)
           to label %normal unwind label %catch"#
         );
+
+        assert_eq!(invoke.argn(), 2);
+        assert!(matches!(invoke.call_conv(), LLVMCallConv::LLVMCCallConv));
+        assert_eq!(invoke.called(), fn_hello);
+        assert_eq!(invoke.normal_dest(), bb_normal);
+        assert_eq!(invoke.unwind_dest(), bb_unwind);
     }
 }
