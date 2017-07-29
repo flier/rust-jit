@@ -9,11 +9,26 @@ use types::{StructType, TypeRef};
 use utils::{AsBool, AsLLVMBool, from_unchecked_cstr, unchecked_cstring};
 use value::{AsValueRef, ValueRef};
 
-pub type Constant = ValueRef;
+macro_rules! impl_constant {
+    ($ty:ident) => (
+        inherit_from!($ty, ValueRef, LLVMValueRef);
+    );
+    ($ty:ident, $parent:ty) => (
+        inherit_from!($ty, $parent, ValueRef, LLVMValueRef);
+    );
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Constant(ValueRef);
+
+impl_constant!(Constant);
 
 pub trait Constants {
     /// Obtain a constant value referring to the null instance of a type.
     fn null(&self) -> Constant;
+
+    /// Obtain a constant value referring to the instance of a type consisting of all ones.
+    fn all_ones(&self) -> Constant;
 
     /// Obtain a constant value referring to an undefined value of a type.
     fn undef(&self) -> Constant;
@@ -27,6 +42,10 @@ impl Constants for TypeRef {
         unsafe { LLVMConstNull(self.as_raw()) }.into()
     }
 
+    fn all_ones(&self) -> Constant {
+        unsafe { LLVMConstAllOnes(self.as_raw()) }.into()
+    }
+
     fn undef(&self) -> Constant {
         unsafe { LLVMGetUndef(self.as_raw()) }.into()
     }
@@ -36,7 +55,10 @@ impl Constants for TypeRef {
     }
 }
 
-pub type ConstantInt = Constant;
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ConstantInt(Constant);
+
+impl_constant!(ConstantInt, Constant);
 
 impl ConstantInt {
     /// Obtain the zero extended value for an integer constant value.
@@ -90,7 +112,10 @@ impl ConstantInts for TypeRef {
     }
 }
 
-pub type ConstantFP = Constant;
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ConstantFP(Constant);
+
+impl_constant!(ConstantFP, Constant);
 
 impl ConstantFP {
     /// Obtain the double value for an floating point constant value.
@@ -122,7 +147,10 @@ impl ConstantFPs for TypeRef {
     }
 }
 
-pub type ConstantString = Constant;
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ConstantString(Constant);
+
+impl_constant!(ConstantString, Constant);
 
 impl ConstantString {
     /// Create a ConstantString with string content in the global context.
@@ -434,7 +462,8 @@ mod tests {
     #[test]
     fn structure() {
         let c = Context::new();
-        let v = ConstantStruct::structure(&[c.int64_t().int(123), c.str("hello")], true);
+        let v =
+            ConstantStruct::structure(&[c.int64_t().int(123).into(), c.str("hello").into()], true);
 
         assert!(!v.as_raw().is_null());
         assert_eq!(
@@ -455,7 +484,7 @@ mod tests {
     fn array() {
         let c = Context::new();
         let i64_t = c.int64_t();
-        let v = i64_t.array_of(&[i64_t.int(123), i64_t.int(456)]);
+        let v = i64_t.array_of(&[i64_t.int(123).into(), i64_t.int(456).into()]);
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"[2 x i64] [i64 123, i64 456]"#);
@@ -486,7 +515,7 @@ mod tests {
         assert!(!v.is_undef());
         assert!(!v.is_null());
 
-        assert_eq!(v.element(0), Some(i64_t.int(123)));
-        assert_eq!(v.element(1), Some(i64_t.int(456)));
+        assert_eq!(v.element(0), Some(i64_t.int(123).into()));
+        assert_eq!(v.element(1), Some(i64_t.int(456).into()));
     }
 }

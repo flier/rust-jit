@@ -220,7 +220,7 @@ mod tests {
         );
 
         assert_eq!(
-            CondBr::on(bool_t.uint(1))
+            CondBr::on(bool_t.uint(1).into())
                 .then(bb_then)
                 .or_else(bb_else)
                 .emit_to(&builder)

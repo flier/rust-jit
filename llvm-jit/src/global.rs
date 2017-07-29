@@ -19,8 +19,8 @@ impl GlobalVar {
         unsafe { LLVMDeleteGlobal(self.as_raw()) }
     }
 
-    pub fn initializer(&self) -> Option<ValueRef> {
-        unsafe { LLVMGetInitializer(self.as_raw()).as_mut() }.map(|var| ValueRef::from_raw(var))
+    pub fn initializer(&self) -> Option<Constant> {
+        unsafe { LLVMGetInitializer(self.as_raw()).as_mut() }.map(|var| Constant::from_raw(var))
     }
 
     pub fn set_initializer(&self, initializer: Constant) {
@@ -96,7 +96,7 @@ mod tests {
         // set initializer
         assert_eq!(x.initializer(), None);
 
-        let v = i64_t.uint(123);
+        let v = i64_t.uint(123).into();
 
         x.set_initializer(v);
 

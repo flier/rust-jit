@@ -162,7 +162,10 @@ mod tests {
 
         assert_eq!(
             indvar.incomings(),
-            vec![(i64_t.int(0), bb_loop_header), (nextindvar.into(), bb_loop)]
+            vec![
+                (i64_t.int(0).into(), bb_loop_header),
+                (nextindvar.into(), bb_loop),
+            ]
         );
     }
 }

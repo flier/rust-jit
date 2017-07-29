@@ -74,10 +74,10 @@ impl SwitchInst {
 #[macro_export]
 macro_rules! switch {
     ($cond:expr; _ => $default:expr , $( $on:expr => $dest:expr ),*) => ({
-        $crate::insts::Switch::on($cond).default($default) $( .case($on, $dest) )*
+        $crate::insts::Switch::on($cond.into()).default($default) $( .case($on.into(), $dest) )*
     });
     ($cond:expr; $( $on:expr => $dest:expr ),*) => ({
-        $crate::insts::Switch::on($cond) $( .case($on, $dest) )*
+        $crate::insts::Switch::on($cond.into()) $( .case($on.into(), $dest) )*
     });
 }
 
