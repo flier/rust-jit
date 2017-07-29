@@ -50,8 +50,8 @@ fn main() {
     // see also: https://bitbucket.org/tari/llvm-sys.rs/issues/12/
 
     jit::MCJIT::init();
-    jit::NativeTarget::init().unwrap();
-    jit::NativeAsmPrinter::init().unwrap();
+    jit::target::NativeTarget::init().unwrap();
+    jit::target::NativeAsmPrinter::init().unwrap();
 
     // build an execution engine
     let engine = jit::ExecutionEngine::for_module(&module).unwrap();
