@@ -309,8 +309,8 @@ impl ToConstantVector for TypeRef {
 /// A vector type is a simple derived type that represents a vector of elements.
 #[macro_export]
 macro_rules! vector {
-    [$( $dest:expr ),*] => (
-        $crate::ConstantVector::new(&[$( $dest.into() ),*])
+    [$( $value:expr ),*] => (
+        $crate::ConstantVector::new(&[$( $value.into() ),*])
     )
 }
 
