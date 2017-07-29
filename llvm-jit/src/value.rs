@@ -12,7 +12,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use context::Context;
 use types::{StructType, TypeRef};
-use utils::{from_unchecked_cstr, unchecked_cstring};
+use utils::{AsLLVMBool, from_unchecked_cstr, unchecked_cstring};
 
 /// Represents an individual value in LLVM IR.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -178,7 +178,7 @@ pub trait ConstantInts {
 
 impl ConstantInts for TypeRef {
     fn int_value(&self, n: u64, sign: bool) -> ConstantInt {
-        unsafe { LLVMConstInt(self.as_raw(), n, if sign { 1 } else { 0 }) }.into()
+        unsafe { LLVMConstInt(self.as_raw(), n, sign.as_bool()) }.into()
     }
 
     fn int_with_precision(&self, words: &[u64]) -> ConstantInt {
@@ -280,11 +280,7 @@ impl ConstantStruct {
             .collect::<Vec<LLVMValueRef>>();
 
         let ty = unsafe {
-            LLVMConstStruct(
-                values.as_mut_ptr(),
-                values.len() as u32,
-                if packed { 1 } else { 0 },
-            )
+            LLVMConstStruct(values.as_mut_ptr(), values.len() as u32, packed.as_bool())
         }.into();
 
         trace!("create constant struct: {:?}", ty);
@@ -603,7 +599,7 @@ impl GlobalVar {
     }
 
     pub fn set_thread_local(&self, is_thread_local: bool) {
-        unsafe { LLVMSetThreadLocal(self.as_raw(), if is_thread_local { 1 } else { 0 }) }
+        unsafe { LLVMSetThreadLocal(self.as_raw(), is_thread_local.as_bool()) }
     }
 
     pub fn is_global_constant(&self) -> bool {
@@ -611,7 +607,7 @@ impl GlobalVar {
     }
 
     pub fn set_global_constant(&self, is_global_constant: bool) {
-        unsafe { LLVMSetGlobalConstant(self.as_raw(), if is_global_constant { 1 } else { 0 }) }
+        unsafe { LLVMSetGlobalConstant(self.as_raw(), is_global_constant.as_bool()) }
     }
 
     pub fn thread_local_mode(&self) -> ThreadLocalMode {
@@ -627,12 +623,7 @@ impl GlobalVar {
     }
 
     pub fn set_externally_initialized(&self, is_externally_initialized: bool) {
-        unsafe {
-            LLVMSetExternallyInitialized(
-                self.as_raw(),
-                if is_externally_initialized { 1 } else { 0 },
-            )
-        }
+        unsafe { LLVMSetExternallyInitialized(self.as_raw(), is_externally_initialized.as_bool()) }
     }
 }
 

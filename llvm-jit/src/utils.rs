@@ -2,6 +2,132 @@ use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::slice;
 
+use llvm::prelude::*;
+
+pub const TRUE: LLVMBool = 1;
+pub const FALSE: LLVMBool = 0;
+
+pub trait AsBool {
+    fn as_bool(self) -> bool;
+}
+
+impl AsBool for LLVMBool {
+    fn as_bool(self) -> bool {
+        self != FALSE
+    }
+}
+
+pub trait AsLLVMBool {
+    fn as_bool(self) -> LLVMBool;
+}
+
+impl AsLLVMBool for bool {
+    fn as_bool(self) -> LLVMBool {
+        if self { TRUE } else { FALSE }
+    }
+}
+
+/// This trait defines a number of combinator-style methods for use with `bool` values.
+///
+/// In general, `true`/`false` map to `Some(_)`/`None` and `Ok(_)`/`Err(_)` respectively.
+pub trait Boolinator: AsBool + Sized {
+    /// If this value is `true`, returns `Some(())`; `None` otherwise.
+    fn as_option(self) -> Option<()>;
+
+    /// If this value is `true`, returns `Some(some)`; `None` otherwise.
+    fn as_some<T>(self, some: T) -> Option<T>;
+
+    /// If this value is `true`, returns `Some(some())`; `None` otherwise.
+    fn as_some_from<T, F>(self, some: F) -> Option<T>
+    where
+        F: FnOnce() -> T;
+
+    /// If this value is `true`, returns `opt`; `None` otherwise.
+    fn and_option<T>(self, opt: Option<T>) -> Option<T>;
+
+    /// If this value is `true`, returns `opt()`; `None` otherwise.
+    fn and_option_from<T, F>(self, opt: F) -> Option<T>
+    where
+        F: FnOnce() -> Option<T>;
+
+    /// If this value is `true`, returns `Ok(ok)`; `Err(err)` otherwise.
+    fn as_result<T, E>(self, ok: T, err: E) -> Result<T, E>;
+
+    /// If this value is `true`, returns `Ok(ok())`; `Err(err())` otherwise.
+    fn as_result_from<T, E, F, G>(self, ok: F, err: G) -> Result<T, E>
+    where
+        F: FnOnce() -> T,
+        G: FnOnce() -> E;
+
+    /// If this value is `true`, returns `Ok(())`; `Err(err)` otherwise.
+    fn ok_or<E>(self, err: E) -> Result<(), E>;
+
+    /// If this value is `true`, returns `Ok(())`; `Err(err())` otherwise.
+    fn ok_or_else<E, G>(self, err: G) -> Result<(), E>
+    where
+        G: FnOnce() -> E;
+
+    /// If this value is `true`, panics with `msg`; does nothing otherwise.
+    fn expect(self, msg: &str);
+}
+
+impl Boolinator for LLVMBool {
+    fn as_option(self) -> Option<()> {
+        if self.as_bool() { Some(()) } else { None }
+    }
+
+    fn as_some<T>(self, some: T) -> Option<T> {
+        if self.as_bool() { Some(some) } else { None }
+    }
+
+    fn as_some_from<T, F>(self, some: F) -> Option<T>
+    where
+        F: FnOnce() -> T,
+    {
+        if self.as_bool() { Some(some()) } else { None }
+    }
+
+    fn and_option<T>(self, opt: Option<T>) -> Option<T> {
+        self.as_option().and(opt)
+    }
+
+    fn and_option_from<T, F>(self, opt: F) -> Option<T>
+    where
+        F: FnOnce() -> Option<T>,
+    {
+        self.as_option().and(opt())
+    }
+
+    fn as_result<T, E>(self, ok: T, err: E) -> Result<T, E> {
+        if self.as_bool() { Ok(ok) } else { Err(err) }
+    }
+
+    fn as_result_from<T, E, F, G>(self, ok: F, err: G) -> Result<T, E>
+    where
+        F: FnOnce() -> T,
+        G: FnOnce() -> E,
+    {
+        if self.as_bool() { Ok(ok()) } else { Err(err()) }
+    }
+
+    fn ok_or<E>(self, err: E) -> Result<(), E> {
+        if self.as_bool() { Ok(()) } else { Err(err) }
+    }
+
+    fn ok_or_else<E, G>(self, err: G) -> Result<(), E>
+    where
+        G: FnOnce() -> E,
+    {
+        if self.as_bool() { Ok(()) } else { Err(err()) }
+    }
+
+    fn expect(self, msg: &str) {
+        if self.as_bool() {
+            panic!("{}", msg)
+        }
+    }
+}
+
 pub fn unchecked_cstring<S: AsRef<str>>(s: S) -> CString {
     unsafe { CString::from_vec_unchecked(s.as_ref().as_bytes().to_vec()) }
 }

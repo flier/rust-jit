@@ -5,7 +5,7 @@ use llvm::prelude::*;
 
 use insts::{IRBuilder, InstructionBuilder};
 use types::TypeRef;
-use utils::unchecked_cstring;
+use utils::{AsLLVMBool, unchecked_cstring};
 use value::{AsValueRef, Function, Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -63,7 +63,7 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
             unsafe { LLVMAddClause(landing_pad.as_raw(), clause.as_raw()) }
         }
 
-        unsafe { LLVMSetCleanup(landing_pad.as_raw(), if self.cleanup { 1 } else { 0 }) }
+        unsafe { LLVMSetCleanup(landing_pad.as_raw(), self.cleanup.as_bool()) }
 
         landing_pad
     }

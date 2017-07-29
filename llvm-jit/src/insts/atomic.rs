@@ -5,7 +5,7 @@ use llvm::{LLVMAtomicOrdering, LLVMAtomicRMWBinOp};
 use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::unchecked_cstring;
+use utils::{AsLLVMBool, unchecked_cstring};
 use value::{Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -33,7 +33,7 @@ impl<'a> InstructionBuilder for Fence<'a> {
             LLVMBuildFence(
                 builder.as_raw(),
                 mem::transmute(self.ordering),
-                if self.single_thread { 1 } else { 0 },
+                self.single_thread.as_bool(),
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
         }.into()
@@ -78,7 +78,7 @@ impl InstructionBuilder for AtomicRMW {
                 self.ptr.as_raw(),
                 self.value.as_raw(),
                 mem::transmute(self.ordering),
-                if self.single_thread { 1 } else { 0 },
+                self.single_thread.as_bool(),
             )
         }.into()
     }
@@ -126,7 +126,7 @@ impl InstructionBuilder for AtomicCmpXchg {
                 self.new.as_raw(),
                 mem::transmute(self.success_ordering),
                 mem::transmute(self.failure_ordering),
-                if self.single_thread { 1 } else { 0 },
+                self.single_thread.as_bool(),
             )
         }.into()
     }

@@ -9,7 +9,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use context::{Context, GlobalContext};
-use utils::unchecked_cstring;
+use utils::{AsLLVMBool, unchecked_cstring};
 use value::ValueRef;
 
 /// Each value in the LLVM IR has a type, an `TypeRef`.
@@ -377,7 +377,7 @@ impl StructType {
             LLVMStructType(
                 elements.as_mut_ptr(),
                 elements.len() as u32,
-                if packed { 1 } else { 0 },
+                packed.as_bool(),
             )
         };
 
@@ -405,7 +405,7 @@ impl StructType {
                 self.as_raw(),
                 elements.as_mut_ptr(),
                 elements.len() as u32,
-                if packed { 1 } else { 0 },
+                packed.as_bool(),
             )
         }
 
@@ -479,7 +479,7 @@ impl ToStructType for Context {
                 self.as_raw(),
                 elements.as_mut_ptr(),
                 elements.len() as u32,
-                if packed { 1 } else { 0 },
+                packed.as_bool(),
             )
         }.into();
 
