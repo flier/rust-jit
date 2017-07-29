@@ -450,25 +450,20 @@ impl StructType {
 
 pub trait ToStructType {
     /// Create a new structure type in a context.
-    fn annonymous_struct(&self, elements: &[TypeRef], packed: bool) -> StructType;
+    fn anonymous_struct_t(&self, elements: &[TypeRef], packed: bool) -> StructType;
 
     /// Create an empty structure in a context having a specified name.
-    fn named_empty_struct<S: AsRef<str>>(&self, name: S) -> StructType;
+    fn empty_struct_t<S: AsRef<str>>(&self, name: S) -> StructType;
 
-    fn named_struct<S: AsRef<str>>(
-        &self,
-        name: S,
-        elements: &[TypeRef],
-        packed: bool,
-    ) -> StructType {
-        let ty = self.named_empty_struct(name);
+    fn struct_t<S: AsRef<str>>(&self, name: S, elements: &[TypeRef], packed: bool) -> StructType {
+        let ty = self.empty_struct_t(name);
 
         ty.set_body(elements, packed)
     }
 }
 
 impl ToStructType for Context {
-    fn annonymous_struct(&self, elements: &[TypeRef], packed: bool) -> StructType {
+    fn anonymous_struct_t(&self, elements: &[TypeRef], packed: bool) -> StructType {
         let mut elements = elements
             .iter()
             .map(|t| t.as_raw())
@@ -488,7 +483,7 @@ impl ToStructType for Context {
         ty
     }
 
-    fn named_empty_struct<S: AsRef<str>>(&self, name: S) -> StructType {
+    fn empty_struct_t<S: AsRef<str>>(&self, name: S) -> StructType {
         let cname = unchecked_cstring(name);
 
         let ty = unsafe { LLVMStructCreateNamed(self.as_raw(), cname.as_ptr()) }.into();
@@ -810,7 +805,7 @@ mod tests {
         let i32t = c.int32_t();
         let i64t = c.int64_t();
         let argts = [i16t, i32t, i64t];
-        let t = c.annonymous_struct(&argts, true);
+        let t = c.anonymous_struct_t(&argts, true);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMStructTypeKind));
@@ -827,7 +822,7 @@ mod tests {
     fn named_struct_in_context() {
         let c = Context::new();
 
-        let t = c.named_empty_struct("test");
+        let t = c.empty_struct_t("test");
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMStructTypeKind));

@@ -147,7 +147,7 @@ mod tests {
 
         let i64t = context.int64_t();
         let f64t = context.double_t();
-        let ret = context.annonymous_struct(&[i64t, f64t], false);
+        let ret = context.anonymous_struct_t(&[i64t, f64t], false);
         let function_type = FunctionType::new(ret.into(), &[], false);
         let function = module.add_function("test", function_type);
 

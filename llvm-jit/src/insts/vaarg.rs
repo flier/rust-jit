@@ -48,7 +48,6 @@ mod tests {
     use insts::*;
     use module::Module;
     use types::*;
-    use value::*;
 
     #[test]
     fn va_arg() {
@@ -63,10 +62,10 @@ mod tests {
 
         let i8t = context.int8_t();
         let p_i8t = i8t.ptr();
-        let va_list = context.annonymous_struct(&[p_i8t.into()], false);
+        let va_list = context.anonymous_struct_t(&[p_i8t.into()], false);
 
         let ap = alloca!(va_list; "ap").emit_to(&builder);
-        let va_arg = va_arg!(ap, context.int32_t(); "va_arg").emit_to(&builder);
+        va_arg!(ap, context.int32_t(); "va_arg").emit_to(&builder);
 
         assert_eq!(
             bb.last_instructions(4),

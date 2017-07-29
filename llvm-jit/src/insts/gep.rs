@@ -144,7 +144,7 @@ mod tests {
         let i64t = context.int64_t();
         let array_t = i64t.array(4);
         let vector_t = i64t.vector(4);
-        let struct_t = context.named_struct("struct", &[i32t, i64t, vector_t.into()], false);
+        let struct_t = context.struct_t("struct", &[i32t, i64t, vector_t.into()], false);
 
         let p_array = alloca!(array_t; "p_array").emit_to(&builder);
         let p_vector = alloca!(vector_t; "p_vector").emit_to(&builder);
