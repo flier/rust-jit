@@ -14,7 +14,7 @@ fn main() {
 
     // Get the type signature for void nop(void);
     // Then create it in our module.
-    let void = context.void();
+    let void = context.void_t();
     let function_type = jit::FunctionType::new(void, &[], false);
     let function = module.add_function("nop", function_type);
 

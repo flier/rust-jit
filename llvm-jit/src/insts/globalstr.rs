@@ -92,7 +92,7 @@ mod tests {
         let module = Module::with_name_in_context("memory", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let function_type = FunctionType::new(context.void(), &[], false);
+        let function_type = FunctionType::new(context.void_t(), &[], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);

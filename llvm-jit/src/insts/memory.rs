@@ -240,10 +240,10 @@ mod tests {
         let module = Module::with_name_in_context("memory", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let i64t = context.int64();
+        let i64t = context.int64_t();
         let p_i64t = i64t.ptr();
 
-        let function_type = FunctionType::new(context.void(), &[p_i64t.into()], false);
+        let function_type = FunctionType::new(context.void_t(), &[p_i64t.into()], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);

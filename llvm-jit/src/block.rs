@@ -111,7 +111,7 @@ mod tests {
         let builder = IRBuilder::within_context(&context);
 
         // get a type for sum function
-        let i64t = context.int64();
+        let i64t = context.int64_t();
         let argts = [i64t, i64t, i64t];
         let function_type = FunctionType::new(i64t, &argts, false);
 

@@ -145,9 +145,9 @@ mod tests {
         let module = Module::with_name_in_context("vector", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let i64t = context.int64();
+        let i64t = context.int64_t();
         let function_type = FunctionType::new(
-            context.void(),
+            context.void_t(),
             &[i64t.vector(3).into(), i64t.vector(3).into()],
             false,
         );
@@ -177,7 +177,7 @@ mod tests {
             "%insert_element = insertelement <3 x i64> %0, i64 10, i64 1"
         );
 
-        let i32t = context.int32();
+        let i32t = context.int32_t();
         let mask = vector![i32t.int(1), i32t.int(0), i32t.int(2)];
 
         assert_eq!(

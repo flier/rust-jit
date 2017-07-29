@@ -134,14 +134,14 @@ mod tests {
         let module = Module::with_name_in_context("gep", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let function_type = FunctionType::new(context.void(), &[], false);
+        let function_type = FunctionType::new(context.void_t(), &[], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position(Position::AtEnd(bb));
 
-        let i32t = context.int32();
-        let i64t = context.int64();
+        let i32t = context.int32_t();
+        let i64t = context.int64_t();
         let array_t = i64t.array(4);
         let vector_t = i64t.vector(4);
         let struct_t = context.named_struct("struct", &[i32t, i64t, vector_t.into()], false);

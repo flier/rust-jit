@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::ffi::CStr;
 use std::fmt;
 use std::mem;
+use std::ops::Deref;
 use std::ptr;
 
 use llvm::*;
@@ -32,7 +33,7 @@ pub trait AsValueRef {
 
 impl<T> AsValueRef for T
 where
-    T: ::std::ops::Deref<Target = ValueRef>,
+    T: Deref<Target = ValueRef>,
 {
     fn as_raw(&self) -> LLVMValueRef {
         self.deref().as_raw()
@@ -643,13 +644,13 @@ mod tests {
     use llvm;
 
     use super::*;
-    use context::Context;
+    use context::{Context, GlobalContext};
     use module::Module;
     use types::*;
 
     #[test]
     fn null() {
-        let i64t = IntegerType::int64();
+        let i64t = GlobalContext::int64_t();
         let v = i64t.null();
 
         assert!(!v.as_raw().is_null());
@@ -667,7 +668,7 @@ mod tests {
 
     #[test]
     fn undef() {
-        let i64t = IntegerType::int64();
+        let i64t = GlobalContext::int64_t();
         let v = i64t.undef();
 
         assert!(!v.as_raw().is_null());
@@ -685,7 +686,7 @@ mod tests {
 
     #[test]
     fn null_ptr() {
-        let i64t = IntegerType::int64();
+        let i64t = GlobalContext::int64_t();
         let v = i64t.null_ptr();
 
         assert!(!v.as_raw().is_null());
@@ -703,7 +704,7 @@ mod tests {
 
     #[test]
     fn int() {
-        let i32t = IntegerType::int32();
+        let i32t = GlobalContext::int32_t();
         let v = i32t.int(-123);
 
         assert!(!v.as_raw().is_null());
@@ -724,7 +725,7 @@ mod tests {
 
     #[test]
     fn floating_point() {
-        let f32t = FloatingPointType::float();
+        let f32t = GlobalContext::float_t();
         let v = f32t.real(unsafe { mem::transmute(-123f64) });
 
         assert!(!v.as_raw().is_null());
@@ -784,7 +785,7 @@ mod tests {
     #[test]
     fn structure() {
         let c = Context::new();
-        let v = ConstantStruct::structure(&[c.int64().int(123), c.str("hello")], true);
+        let v = ConstantStruct::structure(&[c.int64_t().int(123), c.str("hello")], true);
 
         assert!(!v.as_raw().is_null());
         assert_eq!(
@@ -804,7 +805,7 @@ mod tests {
     #[test]
     fn array() {
         let c = Context::new();
-        let i64t = c.int64();
+        let i64t = c.int64_t();
         let v = i64t.array_of(&[i64t.int(123), i64t.int(456)]);
 
         assert!(!v.as_raw().is_null());
@@ -822,7 +823,7 @@ mod tests {
     #[test]
     fn vector() {
         let c = Context::new();
-        let i64t = c.int64();
+        let i64t = c.int64_t();
         let v = vector![i64t.int(123), i64t.int(456)];
 
         assert!(!v.as_raw().is_null());
@@ -847,8 +848,8 @@ mod tests {
 
         assert_eq!(m.get_global_var("x"), None);
 
-        let i64t = c.int64();
-        let f64t = c.double();
+        let i64t = c.int64_t();
+        let f64t = c.double_t();
 
         m.add_global_var("x", i64t);
         m.add_global_var("y", f64t);

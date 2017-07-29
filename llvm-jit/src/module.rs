@@ -345,7 +345,7 @@ target triple = "x86_64-apple-darwin"
 
         assert_eq!(m.get_function("nop"), None);
 
-        let f = m.add_function("nop", FunctionType::new(context.void(), &[], false));
+        let f = m.add_function("nop", FunctionType::new(context.void_t(), &[], false));
 
         assert!(!f.as_raw().is_null());
         assert_eq!(f.to_string(), "\ndeclare void @nop()\n");
@@ -353,7 +353,7 @@ target triple = "x86_64-apple-darwin"
         assert_eq!(m.get_function("nop"), Some(f));
         assert_eq!(m.get_function("sum"), None);
 
-        let i64t = context.int64();
+        let i64t = context.int64_t();
         let argts = [i64t, i64t, i64t];
         let sum = m.add_function("sum", FunctionType::new(i64t, &argts, false));
 

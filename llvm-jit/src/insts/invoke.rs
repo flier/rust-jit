@@ -103,8 +103,8 @@ mod tests {
         let module = Module::with_name_in_context("invoke", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let i64t = context.int64();
-        let fn_test = module.add_function("test", FunctionType::new(context.void(), &[], false));
+        let i64t = context.int64_t();
+        let fn_test = module.add_function("test", FunctionType::new(context.void_t(), &[], false));
         let fn_hello = module.add_function("hello", FunctionType::new(i64t, &[i64t, i64t], false));
 
         let bb = fn_test.append_basic_block_in_context("entry", &context);

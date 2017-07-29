@@ -187,17 +187,17 @@ mod tests {
         let m = Module::with_name_in_context("instructions", &c);
         let b = IRBuilder::within_context(&c);
 
-        let i32t = c.int32();
-        let i64t = c.int64();
-        let f32t = c.float();
-        let f64t = c.double();
+        let i32t = c.int32_t();
+        let i64t = c.int64_t();
+        let f32t = c.float_t();
+        let f64t = c.double_t();
 
         let p_i64t = i64t.ptr();
         let p_f64t = f64t.ptr();
         let p_f64t_1 = f64t.ptr_in_address_space(1);
 
         let f_ty = FunctionType::new(
-            c.void(),
+            c.void_t(),
             &[
                 i64t,
                 i64t,

@@ -1,13 +1,14 @@
 use std::borrow::Cow;
 use std::ffi::CStr;
 use std::fmt;
+use std::ops::Deref;
 use std::ptr;
 
 use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
 
-use context::Context;
+use context::{Context, GlobalContext};
 use utils::unchecked_cstring;
 use value::ValueRef;
 
@@ -32,7 +33,7 @@ pub trait AsTypeRef {
 
 impl<T> AsTypeRef for T
 where
-    T: ::std::ops::Deref<Target = TypeRef>,
+    T: Deref<Target = TypeRef>,
 {
     fn as_raw(&self) -> LLVMTypeRef {
         self.deref().as_raw()
@@ -83,84 +84,86 @@ impl fmt::Display for TypeRef {
 pub type IntegerType = TypeRef;
 
 impl IntegerType {
-    pub fn int1() -> IntegerType {
+    pub fn width(&self) -> u32 {
+        unsafe { LLVMGetIntTypeWidth(self.0) }
+    }
+}
+
+impl GlobalContext {
+    pub fn int1_t() -> IntegerType {
         TypeRef(unsafe { LLVMInt1Type() })
     }
 
-    pub fn int8() -> IntegerType {
+    pub fn int8_t() -> IntegerType {
         TypeRef(unsafe { LLVMInt8Type() })
     }
 
-    pub fn int16() -> IntegerType {
+    pub fn int16_t() -> IntegerType {
         TypeRef(unsafe { LLVMInt16Type() })
     }
 
-    pub fn int32() -> IntegerType {
+    pub fn int32_t() -> IntegerType {
         TypeRef(unsafe { LLVMInt32Type() })
     }
 
-    pub fn int64() -> IntegerType {
+    pub fn int64_t() -> IntegerType {
         TypeRef(unsafe { LLVMInt64Type() })
     }
 
-    pub fn int128() -> IntegerType {
+    pub fn int128_t() -> IntegerType {
         TypeRef(unsafe { LLVMInt128Type() })
     }
 
     pub fn int_type(bits: u32) -> IntegerType {
         TypeRef(unsafe { LLVMIntType(bits) })
     }
-
-    pub fn width(&self) -> u32 {
-        unsafe { LLVMGetIntTypeWidth(self.0) }
-    }
 }
 
 /// Obtain an integer type from a context with specified bit width.
 pub trait IntegerTypes {
     /// a single-bit integer.
-    fn int1(&self) -> IntegerType;
+    fn int1_t(&self) -> IntegerType;
 
     /// a 8-bit integer.
-    fn int8(&self) -> IntegerType;
+    fn int8_t(&self) -> IntegerType;
 
     /// a 16-bit integer.
-    fn int16(&self) -> IntegerType;
+    fn int16_t(&self) -> IntegerType;
 
     /// a 32-bit integer.
-    fn int32(&self) -> IntegerType;
+    fn int32_t(&self) -> IntegerType;
 
     /// a 64-bit integer.
-    fn int64(&self) -> IntegerType;
+    fn int64_t(&self) -> IntegerType;
 
     /// a 64-bit integer.
-    fn int128(&self) -> IntegerType;
+    fn int128_t(&self) -> IntegerType;
 
     fn int_type(&self, bits: u32) -> IntegerType;
 }
 
 impl IntegerTypes for Context {
-    fn int1(&self) -> IntegerType {
+    fn int1_t(&self) -> IntegerType {
         TypeRef(unsafe { LLVMInt1TypeInContext(self.as_raw()) })
     }
 
-    fn int8(&self) -> IntegerType {
+    fn int8_t(&self) -> IntegerType {
         TypeRef(unsafe { LLVMInt8TypeInContext(self.as_raw()) })
     }
 
-    fn int16(&self) -> IntegerType {
+    fn int16_t(&self) -> IntegerType {
         TypeRef(unsafe { LLVMInt16TypeInContext(self.as_raw()) })
     }
 
-    fn int32(&self) -> IntegerType {
+    fn int32_t(&self) -> IntegerType {
         TypeRef(unsafe { LLVMInt32TypeInContext(self.as_raw()) })
     }
 
-    fn int64(&self) -> IntegerType {
+    fn int64_t(&self) -> IntegerType {
         TypeRef(unsafe { LLVMInt64TypeInContext(self.as_raw()) })
     }
 
-    fn int128(&self) -> IntegerType {
+    fn int128_t(&self) -> IntegerType {
         TypeRef(unsafe { LLVMInt128TypeInContext(self.as_raw()) })
     }
 
@@ -172,80 +175,80 @@ impl IntegerTypes for Context {
 // Floating Point Types
 pub type FloatingPointType = TypeRef;
 
-impl FloatingPointType {
+impl GlobalContext {
     /// Obtain a 16-bit floating point type from the global context.
-    pub fn half() -> FloatingPointType {
+    pub fn half_t() -> FloatingPointType {
         TypeRef(unsafe { LLVMHalfType() })
     }
 
     /// Obtain a 32-bit floating point type from the global context.
-    pub fn float() -> FloatingPointType {
+    pub fn float_t() -> FloatingPointType {
         TypeRef(unsafe { LLVMFloatType() })
     }
 
     /// Obtain a 64-bit floating point type from the global context.
-    pub fn double() -> FloatingPointType {
+    pub fn double_t() -> FloatingPointType {
         TypeRef(unsafe { LLVMDoubleType() })
     }
 
     /// Obtain a 80-bit floating point type (X87) from the global context.
-    pub fn x86_fp80() -> FloatingPointType {
+    pub fn x86_fp80_t() -> FloatingPointType {
         TypeRef(unsafe { LLVMX86FP80Type() })
     }
 
     /// Obtain a 128-bit floating point type (112-bit mantissa) from the global context.
-    pub fn fp128() -> FloatingPointType {
+    pub fn fp128_t() -> FloatingPointType {
         TypeRef(unsafe { LLVMFP128Type() })
     }
 
     /// Obtain a 128-bit floating point type (two 64-bits) from the global context.
-    pub fn ppc_fp128() -> FloatingPointType {
+    pub fn ppc_fp128_t() -> FloatingPointType {
         TypeRef(unsafe { LLVMPPCFP128Type() })
     }
 }
 
 pub trait FloatingPointTypes {
     /// Obtain a 16-bit floating point type from a context.
-    fn half(&self) -> FloatingPointType;
+    fn half_t(&self) -> FloatingPointType;
 
     /// Obtain a 32-bit floating point type from a context.
-    fn float(&self) -> FloatingPointType;
+    fn float_t(&self) -> FloatingPointType;
 
     /// Obtain a 64-bit floating point type from a context.
-    fn double(&self) -> FloatingPointType;
+    fn double_t(&self) -> FloatingPointType;
 
     /// Obtain a 80-bit floating point type (X87) from a context.
-    fn x86_fp80(&self) -> FloatingPointType;
+    fn x86_fp80_t(&self) -> FloatingPointType;
 
     /// Obtain a 128-bit floating point type (112-bit mantissa) from a context.
-    fn fp128(&self) -> FloatingPointType;
+    fn fp128_t(&self) -> FloatingPointType;
 
     /// Obtain a 128-bit floating point type (two 64-bits) from a context.
-    fn ppc_fp128(&self) -> FloatingPointType;
+    fn ppc_fp128_t(&self) -> FloatingPointType;
 }
 
 impl FloatingPointTypes for Context {
-    fn half(&self) -> FloatingPointType {
+    fn half_t(&self) -> FloatingPointType {
         TypeRef(unsafe { LLVMHalfTypeInContext(self.as_raw()) })
     }
 
-    fn float(&self) -> FloatingPointType {
+    fn float_t(&self) -> FloatingPointType {
         TypeRef(unsafe { LLVMFloatTypeInContext(self.as_raw()) })
     }
 
-    fn double(&self) -> FloatingPointType {
+    fn double_t(&self) -> FloatingPointType {
         TypeRef(unsafe { LLVMDoubleTypeInContext(self.as_raw()) })
     }
 
-    fn x86_fp80(&self) -> FloatingPointType {
+    fn x86_fp80_t(&self) -> FloatingPointType {
         TypeRef(unsafe { LLVMX86FP80TypeInContext(self.as_raw()) })
     }
 
-    fn fp128(&self) -> FloatingPointType {
+    fn fp128_t(&self) -> FloatingPointType {
         TypeRef(unsafe { LLVMFP128TypeInContext(self.as_raw()) })
     }
 
-    fn ppc_fp128(&self) -> FloatingPointType {
+    fn ppc_fp128_t(&self) -> FloatingPointType {
         TypeRef(unsafe { LLVMPPCFP128TypeInContext(self.as_raw()) })
     }
 }
@@ -253,44 +256,44 @@ impl FloatingPointTypes for Context {
 // Other Types
 pub type OtherType = TypeRef;
 
-impl OtherType {
+impl GlobalContext {
     /// Create a void type in the global context.
-    pub fn void() -> OtherType {
+    pub fn void_t() -> OtherType {
         TypeRef(unsafe { LLVMVoidType() })
     }
 
     /// Create a label type in the global context.
-    pub fn label() -> OtherType {
+    pub fn label_t() -> OtherType {
         TypeRef(unsafe { LLVMLabelType() })
     }
 
     /// Create a X86 MMX type in the global context.
-    pub fn x86_mmx() -> OtherType {
+    pub fn x86_mmx_t() -> OtherType {
         TypeRef(unsafe { LLVMX86MMXType() })
     }
 }
 
 pub trait OtherTypes {
     /// Create a void type in a context.
-    fn void(&self) -> OtherType;
+    fn void_t(&self) -> OtherType;
 
     /// Create a label type in a context.
-    fn label(&self) -> OtherType;
+    fn label_t(&self) -> OtherType;
 
     /// Create a X86 MMX type in a context.
-    fn x86_mmx(&self) -> OtherType;
+    fn x86_mmx_t(&self) -> OtherType;
 }
 
 impl OtherTypes for Context {
-    fn void(&self) -> OtherType {
+    fn void_t(&self) -> OtherType {
         TypeRef(unsafe { LLVMVoidTypeInContext(self.as_raw()) })
     }
 
-    fn label(&self) -> OtherType {
+    fn label_t(&self) -> OtherType {
         TypeRef(unsafe { LLVMLabelTypeInContext(self.as_raw()) })
     }
 
-    fn x86_mmx(&self) -> OtherType {
+    fn x86_mmx_t(&self) -> OtherType {
         TypeRef(unsafe { LLVMX86MMXTypeInContext(self.as_raw()) })
     }
 }
@@ -610,7 +613,7 @@ mod tests {
 
     #[test]
     fn typeref() {
-        let t = OtherType::void();
+        let t = GlobalContext::void_t();
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMVoidTypeKind));
@@ -621,7 +624,7 @@ mod tests {
 
         drop(t);
 
-        let i = IntegerType::int64();
+        let i = GlobalContext::int64_t();
 
         assert!(!i.as_raw().is_null());
         assert!(matches!(i.kind(), llvm::LLVMTypeKind::LLVMIntegerTypeKind));
@@ -633,62 +636,62 @@ mod tests {
 
     #[test]
     fn integer() {
-        assert_eq!(IntegerType::int1().to_string(), "i1");
-        assert_eq!(IntegerType::int8().to_string(), "i8");
-        assert_eq!(IntegerType::int16().to_string(), "i16");
-        assert_eq!(IntegerType::int32().to_string(), "i32");
-        assert_eq!(IntegerType::int64().to_string(), "i64");
-        assert_eq!(IntegerType::int128().to_string(), "i128");
-        assert_eq!(IntegerType::int_type(512).to_string(), "i512");
+        assert_eq!(GlobalContext::int1_t().to_string(), "i1");
+        assert_eq!(GlobalContext::int8_t().to_string(), "i8");
+        assert_eq!(GlobalContext::int16_t().to_string(), "i16");
+        assert_eq!(GlobalContext::int32_t().to_string(), "i32");
+        assert_eq!(GlobalContext::int64_t().to_string(), "i64");
+        assert_eq!(GlobalContext::int128_t().to_string(), "i128");
+        assert_eq!(GlobalContext::int_type(512).to_string(), "i512");
 
-        assert_eq!(IntegerType::int1().width(), 1);
-        assert_eq!(IntegerType::int8().width(), 8);
-        assert_eq!(IntegerType::int16().width(), 16);
-        assert_eq!(IntegerType::int32().width(), 32);
-        assert_eq!(IntegerType::int64().width(), 64);
-        assert_eq!(IntegerType::int128().width(), 128);
-        assert_eq!(IntegerType::int_type(512).width(), 512);
+        assert_eq!(GlobalContext::int1_t().width(), 1);
+        assert_eq!(GlobalContext::int8_t().width(), 8);
+        assert_eq!(GlobalContext::int16_t().width(), 16);
+        assert_eq!(GlobalContext::int32_t().width(), 32);
+        assert_eq!(GlobalContext::int64_t().width(), 64);
+        assert_eq!(GlobalContext::int128_t().width(), 128);
+        assert_eq!(GlobalContext::int_type(512).width(), 512);
 
         let c = Context::new();
 
-        assert_eq!(c.int1().to_string(), "i1");
-        assert_eq!(c.int8().to_string(), "i8");
-        assert_eq!(c.int16().to_string(), "i16");
-        assert_eq!(c.int32().to_string(), "i32");
-        assert_eq!(c.int64().to_string(), "i64");
-        assert_eq!(c.int128().to_string(), "i128");
+        assert_eq!(c.int1_t().to_string(), "i1");
+        assert_eq!(c.int8_t().to_string(), "i8");
+        assert_eq!(c.int16_t().to_string(), "i16");
+        assert_eq!(c.int32_t().to_string(), "i32");
+        assert_eq!(c.int64_t().to_string(), "i64");
+        assert_eq!(c.int128_t().to_string(), "i128");
         assert_eq!(c.int_type(512).to_string(), "i512");
 
-        assert_eq!(c.int1().width(), 1);
-        assert_eq!(c.int8().width(), 8);
-        assert_eq!(c.int16().width(), 16);
-        assert_eq!(c.int32().width(), 32);
-        assert_eq!(c.int64().width(), 64);
-        assert_eq!(c.int128().width(), 128);
+        assert_eq!(c.int1_t().width(), 1);
+        assert_eq!(c.int8_t().width(), 8);
+        assert_eq!(c.int16_t().width(), 16);
+        assert_eq!(c.int32_t().width(), 32);
+        assert_eq!(c.int64_t().width(), 64);
+        assert_eq!(c.int128_t().width(), 128);
         assert_eq!(c.int_type(512).width(), 512);
 
         assert!(matches!(
-            c.int1().kind(),
+            c.int1_t().kind(),
             llvm::LLVMTypeKind::LLVMIntegerTypeKind
         ));
         assert!(matches!(
-            c.int8().kind(),
+            c.int8_t().kind(),
             llvm::LLVMTypeKind::LLVMIntegerTypeKind
         ));
         assert!(matches!(
-            c.int16().kind(),
+            c.int16_t().kind(),
             llvm::LLVMTypeKind::LLVMIntegerTypeKind
         ));
         assert!(matches!(
-            c.int32().kind(),
+            c.int32_t().kind(),
             llvm::LLVMTypeKind::LLVMIntegerTypeKind
         ));
         assert!(matches!(
-            c.int64().kind(),
+            c.int64_t().kind(),
             llvm::LLVMTypeKind::LLVMIntegerTypeKind
         ));
         assert!(matches!(
-            c.int128().kind(),
+            c.int128_t().kind(),
             llvm::LLVMTypeKind::LLVMIntegerTypeKind
         ));
         assert!(matches!(
@@ -699,77 +702,77 @@ mod tests {
 
     #[test]
     fn floating_point() {
-        assert_eq!(FloatingPointType::half().to_string(), "half");
-        assert_eq!(FloatingPointType::float().to_string(), "float");
-        assert_eq!(FloatingPointType::double().to_string(), "double");
-        assert_eq!(FloatingPointType::x86_fp80().to_string(), "x86_fp80");
-        assert_eq!(FloatingPointType::fp128().to_string(), "fp128");
-        assert_eq!(FloatingPointType::ppc_fp128().to_string(), "ppc_fp128");
+        assert_eq!(GlobalContext::half_t().to_string(), "half");
+        assert_eq!(GlobalContext::float_t().to_string(), "float");
+        assert_eq!(GlobalContext::double_t().to_string(), "double");
+        assert_eq!(GlobalContext::x86_fp80_t().to_string(), "x86_fp80");
+        assert_eq!(GlobalContext::fp128_t().to_string(), "fp128");
+        assert_eq!(GlobalContext::ppc_fp128_t().to_string(), "ppc_fp128");
 
         let c = Context::new();
 
-        assert_eq!(c.half().to_string(), "half");
-        assert_eq!(c.float().to_string(), "float");
-        assert_eq!(c.double().to_string(), "double");
-        assert_eq!(c.x86_fp80().to_string(), "x86_fp80");
-        assert_eq!(c.fp128().to_string(), "fp128");
-        assert_eq!(c.ppc_fp128().to_string(), "ppc_fp128");
+        assert_eq!(c.half_t().to_string(), "half");
+        assert_eq!(c.float_t().to_string(), "float");
+        assert_eq!(c.double_t().to_string(), "double");
+        assert_eq!(c.x86_fp80_t().to_string(), "x86_fp80");
+        assert_eq!(c.fp128_t().to_string(), "fp128");
+        assert_eq!(c.ppc_fp128_t().to_string(), "ppc_fp128");
 
         assert!(matches!(
-            c.half().kind(),
+            c.half_t().kind(),
             llvm::LLVMTypeKind::LLVMHalfTypeKind
         ));
         assert!(matches!(
-            c.float().kind(),
+            c.float_t().kind(),
             llvm::LLVMTypeKind::LLVMFloatTypeKind
         ));
         assert!(matches!(
-            c.double().kind(),
+            c.double_t().kind(),
             llvm::LLVMTypeKind::LLVMDoubleTypeKind
         ));
         assert!(matches!(
-            c.x86_fp80().kind(),
+            c.x86_fp80_t().kind(),
             llvm::LLVMTypeKind::LLVMX86_FP80TypeKind
         ));
         assert!(matches!(
-            c.fp128().kind(),
+            c.fp128_t().kind(),
             llvm::LLVMTypeKind::LLVMFP128TypeKind
         ));
         assert!(matches!(
-            c.ppc_fp128().kind(),
+            c.ppc_fp128_t().kind(),
             llvm::LLVMTypeKind::LLVMPPC_FP128TypeKind
         ));
     }
 
     #[test]
     fn other() {
-        assert_eq!(OtherType::void().to_string(), "void");
-        assert_eq!(OtherType::label().to_string(), "label");
-        assert_eq!(OtherType::x86_mmx().to_string(), "x86_mmx");
+        assert_eq!(GlobalContext::void_t().to_string(), "void");
+        assert_eq!(GlobalContext::label_t().to_string(), "label");
+        assert_eq!(GlobalContext::x86_mmx_t().to_string(), "x86_mmx");
 
         let c = Context::new();
 
-        assert_eq!(c.void().to_string(), "void");
-        assert_eq!(c.label().to_string(), "label");
-        assert_eq!(c.x86_mmx().to_string(), "x86_mmx");
+        assert_eq!(c.void_t().to_string(), "void");
+        assert_eq!(c.label_t().to_string(), "label");
+        assert_eq!(c.x86_mmx_t().to_string(), "x86_mmx");
 
         assert!(matches!(
-            c.void().kind(),
+            c.void_t().kind(),
             llvm::LLVMTypeKind::LLVMVoidTypeKind
         ));
         assert!(matches!(
-            c.label().kind(),
+            c.label_t().kind(),
             llvm::LLVMTypeKind::LLVMLabelTypeKind
         ));
         assert!(matches!(
-            c.x86_mmx().kind(),
+            c.x86_mmx_t().kind(),
             llvm::LLVMTypeKind::LLVMX86_MMXTypeKind
         ));
     }
 
     #[test]
     fn function() {
-        let i64t = IntegerType::int64();
+        let i64t = GlobalContext::int64_t();
         let argts = [i64t, i64t, i64t];
         let t = FunctionType::new(i64t, &argts, false);
 
@@ -782,9 +785,9 @@ mod tests {
 
     #[test]
     fn struct_in_global_context() {
-        let i16t = IntegerType::int16();
-        let i32t = IntegerType::int32();
-        let i64t = IntegerType::int64();
+        let i16t = GlobalContext::int16_t();
+        let i32t = GlobalContext::int32_t();
+        let i64t = GlobalContext::int64_t();
         let argts = [i16t, i32t, i64t];
         let t = StructType::new(&argts, true);
 
@@ -803,9 +806,9 @@ mod tests {
     fn struct_in_context() {
         let c = Context::new();
 
-        let i16t = c.int16();
-        let i32t = c.int32();
-        let i64t = c.int64();
+        let i16t = c.int16_t();
+        let i32t = c.int32_t();
+        let i64t = c.int64_t();
         let argts = [i16t, i32t, i64t];
         let t = c.annonymous_struct(&argts, true);
 
@@ -831,9 +834,9 @@ mod tests {
         assert_eq!(t.name(), Some("test".into()));
         assert_eq!(t.element_count(), 0);
 
-        let i16t = c.int16();
-        let i32t = c.int32();
-        let i64t = c.int64();
+        let i16t = c.int16_t();
+        let i32t = c.int32_t();
+        let i64t = c.int64_t();
         let argts = [i16t, i32t, i64t];
         t.set_body(&argts, true);
 
@@ -848,7 +851,7 @@ mod tests {
     #[test]
     fn array() {
         let c = Context::new();
-        let i64t = c.int64();
+        let i64t = c.int64_t();
 
         let t = i64t.array(8);
 
@@ -861,7 +864,7 @@ mod tests {
     #[test]
     fn pointer() {
         let c = Context::new();
-        let i64t = c.int64();
+        let i64t = c.int64_t();
         let t = i64t.ptr_in_address_space(123);
 
         assert!(!t.as_raw().is_null());
@@ -873,7 +876,7 @@ mod tests {
     #[test]
     fn vector() {
         let c = Context::new();
-        let i64t = c.int64();
+        let i64t = c.int64_t();
 
         let t = i64t.vector(8);
 

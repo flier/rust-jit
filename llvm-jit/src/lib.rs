@@ -32,7 +32,7 @@ mod block;
 mod engine;
 mod target;
 
-pub use context::Context;
+pub use context::{Context, GlobalContext};
 pub use engine::{ExecutionEngine, Interpreter, MCJIT};
 pub use insts::{IRBuilder, Position};
 pub use module::Module;

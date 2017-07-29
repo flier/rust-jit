@@ -1,9 +1,12 @@
+use std::ops::Deref;
+
 use llvm::core::*;
 use llvm::prelude::*;
 
 /// Contexts are execution states for the core LLVM IR system.
 #[derive(Debug, PartialEq)]
 pub struct Context(State);
+
 
 #[derive(Debug, PartialEq)]
 enum State {
@@ -18,6 +21,22 @@ impl Default for Context {
     }
 }
 
+impl From<LLVMContextRef> for Context {
+    fn from(context: LLVMContextRef) -> Self {
+        Self::from_raw(context)
+    }
+}
+
+impl Drop for Context {
+    fn drop(&mut self) {
+        if let State::Owned(context) = self.0 {
+            trace!("drop {:?}", self);
+
+            unsafe { LLVMContextDispose(context) }
+        }
+    }
+}
+
 impl Context {
     /// Create a new context.
     pub fn new() -> Self {
@@ -29,12 +48,12 @@ impl Context {
     }
 
     /// Obtain the global context instance.
-    pub fn global() -> Self {
+    pub fn global() -> GlobalContext {
         let context = unsafe { LLVMGetGlobalContext() };
 
         trace!("obtain global Context({:?})", context);
 
-        Context(State::Global(context))
+        GlobalContext(Context(State::Global(context)))
     }
 
     /// Wrap a raw context reference.
@@ -52,19 +71,14 @@ impl Context {
     }
 }
 
-impl From<LLVMContextRef> for Context {
-    fn from(context: LLVMContextRef) -> Self {
-        Self::from_raw(context)
-    }
-}
+#[derive(Debug, PartialEq)]
+pub struct GlobalContext(Context);
 
-impl Drop for Context {
-    fn drop(&mut self) {
-        if let State::Owned(context) = self.0 {
-            trace!("drop {:?}", self);
+impl Deref for GlobalContext {
+    type Target = Context;
 
-            unsafe { LLVMContextDispose(context) }
-        }
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

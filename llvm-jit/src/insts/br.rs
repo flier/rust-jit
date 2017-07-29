@@ -153,7 +153,7 @@ mod tests {
         let module = Module::with_name_in_context("br", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let function_type = FunctionType::new(context.void(), &[], false);
+        let function_type = FunctionType::new(context.void_t(), &[], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
@@ -174,7 +174,7 @@ mod tests {
         let module = Module::with_name_in_context("br", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let function_type = FunctionType::new(context.void(), &[], false);
+        let function_type = FunctionType::new(context.void_t(), &[], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
@@ -183,7 +183,7 @@ mod tests {
         // conditional branch
         let bb_then = function.append_basic_block_in_context("then", &context);
         let bb_else = function.append_basic_block_in_context("else", &context);
-        let bool_t = context.int1();
+        let bool_t = context.int1_t();
 
         assert_eq!(
             br!(bool_t.uint(1) => bb_then, _ => bb_else)
@@ -210,7 +210,7 @@ mod tests {
         let module = Module::with_name_in_context("br", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let function_type = FunctionType::new(context.void(), &[], false);
+        let function_type = FunctionType::new(context.void_t(), &[], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);

@@ -310,9 +310,9 @@ mod tests {
         let module = Module::with_name_in_context("cmp", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let i64t = context.int64();
+        let i64t = context.int64_t();
 
-        let function_type = FunctionType::new(context.void(), &[i64t, i64t], false);
+        let function_type = FunctionType::new(context.void_t(), &[i64t, i64t], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
@@ -339,9 +339,9 @@ mod tests {
         let module = Module::with_name_in_context("cmp", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let f64t = context.double();
+        let f64t = context.double_t();
 
-        let function_type = FunctionType::new(context.void(), &[f64t, f64t], false);
+        let function_type = FunctionType::new(context.void_t(), &[f64t, f64t], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);

@@ -241,10 +241,10 @@ mod tests {
         let m = Module::with_name_in_context("instructions", &c);
         let b = IRBuilder::within_context(&c);
 
-        let i64t = c.int64();
-        let f64t = c.double();
+        let i64t = c.int64_t();
+        let f64t = c.double_t();
 
-        let f_ty = FunctionType::new(c.void(), &[i64t, i64t, f64t, f64t], false);
+        let f_ty = FunctionType::new(c.void_t(), &[i64t, i64t, f64t, f64t], false);
         let f = m.add_function("test", f_ty);
 
         let bb = f.append_basic_block_in_context("entry", &c);
@@ -327,10 +327,10 @@ mod tests {
         let m = Module::with_name_in_context("instructions", &c);
         let b = IRBuilder::within_context(&c);
 
-        let i64t = c.int64();
+        let i64t = c.int64_t();
         let p_i64t = i64t.ptr();
 
-        let f_ty = FunctionType::new(c.void(), &[p_i64t.into(), p_i64t.into()], false);
+        let f_ty = FunctionType::new(c.void_t(), &[p_i64t.into(), p_i64t.into()], false);
         let f = m.add_function("test", f_ty);
 
         let bb = f.append_basic_block_in_context("entry", &c);
