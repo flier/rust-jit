@@ -222,6 +222,7 @@ define_binary_operator!(
 #[cfg(test)]
 mod tests {
     use context::Context;
+    use function::FunctionType;
     use insts::*;
     use module::Module;
     use types::*;

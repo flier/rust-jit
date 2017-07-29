@@ -26,6 +26,7 @@ mod module;
 mod types;
 #[macro_use]
 mod value;
+mod function;
 #[macro_use]
 pub mod insts;
 mod block;
@@ -34,12 +35,13 @@ mod target;
 
 pub use context::{Context, GlobalContext};
 pub use engine::{ExecutionEngine, Interpreter, MCJIT};
+pub use function::FunctionType;
 pub use insts::{IRBuilder, Position};
 pub use module::Module;
 pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos, AllTargetMCs,
                  AllTargets, NativeAsmParser, NativeAsmPrinter, NativeDisassembler, NativeTarget};
-pub use types::{ArrayType, FloatingPointType, FunctionType, IntegerType, OtherType, PointerType,
-                StructType, TypeKind, TypeRef, VectorType};
+pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
+                TypeKind, TypeRef, VectorType};
 pub use utils::{AsBool, AsLLVMBool, AsResult, Boolinator};
 pub use value::{BlockAddress, Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
                 ConstantStruct, ConstantVector, Function, GlobalVar, Instruction, ValueKind,

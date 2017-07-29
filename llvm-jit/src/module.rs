@@ -9,7 +9,8 @@ use llvm::prelude::*;
 
 use context::Context;
 use errors::Result;
-use types::{AsTypeRef, FunctionType, TypeRef};
+use function::FunctionType;
+use types::{AsTypeRef, TypeRef};
 use utils::{AsResult, from_unchecked_cstr, unchecked_cstring};
 use value::{Function, GlobalVar};
 

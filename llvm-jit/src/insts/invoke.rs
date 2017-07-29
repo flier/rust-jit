@@ -124,6 +124,7 @@ mod tests {
     use llvm::LLVMCallConv;
 
     use context::Context;
+    use function::FunctionType;
     use insts::*;
     use module::Module;
     use types::*;

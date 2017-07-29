@@ -98,10 +98,10 @@ impl_iter!(
 mod tests {
     use super::*;
     use context::Context;
+    use function::FunctionType;
     use insts::{IRBuilder, Position};
     use module::Module;
     use prelude::*;
-    use types::FunctionType;
 
     #[test]
     fn basic_block() {

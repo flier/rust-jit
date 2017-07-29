@@ -45,6 +45,7 @@ macro_rules! va_arg {
 #[cfg(test)]
 mod tests {
     use context::Context;
+    use function::FunctionType;
     use insts::*;
     use module::Module;
     use types::*;
