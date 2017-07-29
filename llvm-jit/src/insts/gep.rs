@@ -140,18 +140,18 @@ mod tests {
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position(Position::AtEnd(bb));
 
-        let i32t = context.int32_t();
-        let i64t = context.int64_t();
-        let array_t = i64t.array_t(4);
-        let vector_t = i64t.vector_t(4);
-        let struct_t = context.struct_t("struct", &[i32t, i64t, vector_t.into()], false);
+        let i32_t = context.int32_t();
+        let i64_t = context.int64_t();
+        let array_t = i64_t.array_t(4);
+        let vector_t = i64_t.vector_t(4);
+        let struct_t = context.struct_t("struct", &[i32_t, i64_t, vector_t.into()], false);
 
         let p_array = alloca!(array_t; "p_array").emit_to(&builder);
         let p_vector = alloca!(vector_t; "p_vector").emit_to(&builder);
         let p_struct = alloca!(struct_t; "p_struct").emit_to(&builder);
 
         assert_eq!(
-            gep!(p_array, [i64t.int(1)]; "gep")
+            gep!(p_array, [i64_t.int(1)]; "gep")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -159,7 +159,7 @@ mod tests {
         );
 
         assert_eq!(
-            gep!(inbounds p_vector, [i64t.int(1)]; "inbounds_gep")
+            gep!(inbounds p_vector, [i64_t.int(1)]; "inbounds_gep")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -175,7 +175,7 @@ mod tests {
         );
 
         assert_eq!(
-            gep!(inbounds p_struct, [i32t.int(2), i32t.int(1)]; "inbounds_gep")
+            gep!(inbounds p_struct, [i32_t.int(2), i32_t.int(1)]; "inbounds_gep")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),

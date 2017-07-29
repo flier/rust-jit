@@ -111,11 +111,11 @@ mod tests {
         let m = Module::with_name_in_context("instructions", &c);
         let b = IRBuilder::within_context(&c);
 
-        let i64t = c.int64_t();
-        let p_i64t = i64t.ptr_t();
-        let f64t = c.double_t();
+        let i64_t = c.int64_t();
+        let p_i64_t = i64_t.ptr_t();
+        let f64_t = c.double_t();
 
-        let f_ty = FunctionType::new(c.void_t(), &[i64t, p_i64t.into(), f64t, f64t], false);
+        let f_ty = FunctionType::new(c.void_t(), &[i64_t, p_i64_t.into(), f64_t, f64_t], false);
         let f = m.add_function("test", f_ty);
 
         let bb = f.append_basic_block_in_context("entry", &c);

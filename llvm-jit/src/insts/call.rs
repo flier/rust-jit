@@ -121,14 +121,15 @@ mod tests {
         let module = Module::with_name_in_context("invoke", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let i64t = context.int64_t();
+        let i64_t = context.int64_t();
         let fn_test = module.add_function("test", FunctionType::new(context.void_t(), &[], false));
-        let fn_hello = module.add_function("hello", FunctionType::new(i64t, &[i64t, i64t], false));
+        let fn_hello =
+            module.add_function("hello", FunctionType::new(i64_t, &[i64_t, i64_t], false));
 
         let bb = fn_test.append_basic_block_in_context("entry", &context);
         builder.position(Position::AtEnd(bb));
 
-        let call = call!(fn_hello, i64t.uint(123), i64t.int(456); "call").emit_to(&builder);
+        let call = call!(fn_hello, i64_t.uint(123), i64_t.int(456); "call").emit_to(&builder);
 
         assert_eq!(
             call.to_string().trim(),

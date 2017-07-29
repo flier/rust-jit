@@ -132,10 +132,10 @@ mod tests {
         let module = Module::with_name_in_context("phi", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let i64t = context.int64_t();
-        let p_i64t = i64t.ptr_t();
+        let i64_t = context.int64_t();
+        let p_i64_t = i64_t.ptr_t();
 
-        let function_type = FunctionType::new(context.void_t(), &[p_i64t.into()], false);
+        let function_type = FunctionType::new(context.void_t(), &[p_i64_t.into()], false);
         let function = module.add_function("test", function_type);
 
         let bb_loop_header = function.append_basic_block_in_context("LoopHeader", &context);
@@ -143,8 +143,8 @@ mod tests {
         let bb_loop = function.append_basic_block_in_context("Loop", &context);
         builder.position(Position::AtEnd(bb_loop));
 
-        let indvar = phi!(i64t, [i64t.int(0), bb_loop_header]; "indvar").emit_to(&builder);
-        let nextindvar = add!(indvar, i64t.int(1); "nextindvar").emit_to(&builder);
+        let indvar = phi!(i64_t, [i64_t.int(0), bb_loop_header]; "indvar").emit_to(&builder);
+        let nextindvar = add!(indvar, i64_t.int(1); "nextindvar").emit_to(&builder);
 
         br!(bb_loop).emit_to(&builder);
 
@@ -161,7 +161,7 @@ mod tests {
 
         assert_eq!(
             indvar.incomings(),
-            vec![(i64t.int(0), bb_loop_header), (nextindvar.into(), bb_loop)]
+            vec![(i64_t.int(0), bb_loop_header), (nextindvar.into(), bb_loop)]
         );
     }
 }

@@ -641,11 +641,11 @@ mod tests {
 
     #[test]
     fn null() {
-        let i64t = GlobalContext::int64_t();
-        let v = i64t.null();
+        let i64_t = GlobalContext::int64_t();
+        let v = i64_t.null();
 
         assert!(!v.as_raw().is_null());
-        assert_eq!(v.type_of(), i64t);
+        assert_eq!(v.type_of(), i64_t);
         assert_eq!(v.to_string(), "i64 0");
         assert!(matches!(
             v.kind(),
@@ -659,11 +659,11 @@ mod tests {
 
     #[test]
     fn undef() {
-        let i64t = GlobalContext::int64_t();
-        let v = i64t.undef();
+        let i64_t = GlobalContext::int64_t();
+        let v = i64_t.undef();
 
         assert!(!v.as_raw().is_null());
-        assert_eq!(v.type_of(), i64t);
+        assert_eq!(v.type_of(), i64_t);
         assert_eq!(v.to_string(), "i64 undef");
         assert!(matches!(
             v.kind(),
@@ -677,11 +677,11 @@ mod tests {
 
     #[test]
     fn null_ptr() {
-        let i64t = GlobalContext::int64_t();
-        let v = i64t.null_ptr();
+        let i64_t = GlobalContext::int64_t();
+        let v = i64_t.null_ptr();
 
         assert!(!v.as_raw().is_null());
-        assert_eq!(v.type_of(), i64t);
+        assert_eq!(v.type_of(), i64_t);
         assert_eq!(v.to_string(), "i64 null");
         assert!(matches!(
             v.kind(),
@@ -695,11 +695,11 @@ mod tests {
 
     #[test]
     fn int() {
-        let i32t = GlobalContext::int32_t();
-        let v = i32t.int(-123);
+        let i32_t = GlobalContext::int32_t();
+        let v = i32_t.int(-123);
 
         assert!(!v.as_raw().is_null());
-        assert_eq!(v.type_of(), i32t);
+        assert_eq!(v.type_of(), i32_t);
         assert_eq!(v.to_string(), "i32 -123");
         assert!(matches!(
             v.kind(),
@@ -716,11 +716,11 @@ mod tests {
 
     #[test]
     fn floating_point() {
-        let f32t = GlobalContext::float_t();
-        let v = f32t.real(unsafe { mem::transmute(-123f64) });
+        let f32_t = GlobalContext::float_t();
+        let v = f32_t.real(unsafe { mem::transmute(-123f64) });
 
         assert!(!v.as_raw().is_null());
-        assert_eq!(v.type_of(), f32t);
+        assert_eq!(v.type_of(), f32_t);
         assert_eq!(v.to_string(), "float -1.230000e+02");
         assert!(matches!(
             v.kind(),
@@ -796,8 +796,8 @@ mod tests {
     #[test]
     fn array() {
         let c = Context::new();
-        let i64t = c.int64_t();
-        let v = i64t.array_of(&[i64t.int(123), i64t.int(456)]);
+        let i64_t = c.int64_t();
+        let v = i64_t.array_of(&[i64_t.int(123), i64_t.int(456)]);
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"[2 x i64] [i64 123, i64 456]"#);
@@ -814,8 +814,8 @@ mod tests {
     #[test]
     fn vector() {
         let c = Context::new();
-        let i64t = c.int64_t();
-        let v = vector![i64t.int(123), i64t.int(456)];
+        let i64_t = c.int64_t();
+        let v = vector![i64_t.int(123), i64_t.int(456)];
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"<2 x i64> <i64 123, i64 456>"#);
@@ -828,8 +828,8 @@ mod tests {
         assert!(!v.is_undef());
         assert!(!v.is_null());
 
-        assert_eq!(v.element(0), Some(i64t.int(123)));
-        assert_eq!(v.element(1), Some(i64t.int(456)));
+        assert_eq!(v.element(0), Some(i64_t.int(123)));
+        assert_eq!(v.element(1), Some(i64_t.int(456)));
     }
 
     #[test]
@@ -839,11 +839,11 @@ mod tests {
 
         assert_eq!(m.get_global_var("x"), None);
 
-        let i64t = c.int64_t();
-        let f64t = c.double_t();
+        let i64_t = c.int64_t();
+        let f64_t = c.double_t();
 
-        m.add_global_var("x", i64t);
-        m.add_global_var("y", f64t);
+        m.add_global_var("x", i64_t);
+        m.add_global_var("y", f64_t);
 
         let x = m.get_global_var("x").unwrap();
         let y = m.get_global_var("y").unwrap();
@@ -858,7 +858,7 @@ mod tests {
         // set initializer
         assert_eq!(x.initializer(), None);
 
-        let v = i64t.uint(123);
+        let v = i64_t.uint(123);
 
         x.set_initializer(v);
 

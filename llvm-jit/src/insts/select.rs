@@ -72,10 +72,10 @@ mod tests {
 
         let arg0_bool = function.get_param(0).unwrap();
 
-        let int64t = context.int64_t();
+        let i64_t = context.int64_t();
 
         assert_eq!(
-            select!(arg0_bool => int64t.int(123), _ => int64t.int(456); "select")
+            select!(arg0_bool => i64_t.int(123), _ => i64_t.int(456); "select")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),

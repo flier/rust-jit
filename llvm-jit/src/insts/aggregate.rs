@@ -105,10 +105,10 @@ mod tests {
         let module = Module::with_name_in_context("aggregate", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let i32t = context.int32_t();
-        let i64t = context.int64_t();
-        let array_t = i64t.array_t(4).into();
-        let struct_t = context.anonymous_struct_t(&[i32t, i64t], false);
+        let i32_t = context.int32_t();
+        let i64_t = context.int64_t();
+        let array_t = i64_t.array_t(4).into();
+        let struct_t = context.anonymous_struct_t(&[i32_t, i64_t], false);
         let function_type = FunctionType::new(context.void_t(), &[array_t, struct_t.into()], false);
         let function = module.add_function("test", function_type);
 
@@ -135,7 +135,7 @@ mod tests {
         );
 
         assert_eq!(
-            insert_value!(arg0_array, i64t.int(123), 1; "insert_value")
+            insert_value!(arg0_array, i64_t.int(123), 1; "insert_value")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -143,7 +143,7 @@ mod tests {
         );
 
         assert_eq!(
-            insert_value!(arg1_struct, i64t.int(123), 1; "insert_value")
+            insert_value!(arg1_struct, i64_t.int(123), 1; "insert_value")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),

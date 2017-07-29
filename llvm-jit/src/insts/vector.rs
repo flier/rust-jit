@@ -145,10 +145,10 @@ mod tests {
         let module = Module::with_name_in_context("vector", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let i64t = context.int64_t();
+        let i64_t = context.int64_t();
         let function_type = FunctionType::new(
             context.void_t(),
-            &[i64t.vector_t(3).into(), i64t.vector_t(3).into()],
+            &[i64_t.vector_t(3).into(), i64_t.vector_t(3).into()],
             false,
         );
         let function = module.add_function("test", function_type);
@@ -159,7 +159,7 @@ mod tests {
         let arg0_vector = function.get_param(0).unwrap();
         let arg1_vector = function.get_param(1).unwrap();
 
-        let idx = i64t.int(1);
+        let idx = i64_t.int(1);
 
         assert_eq!(
             extract_element!(arg0_vector, idx; "extract_element")
@@ -170,15 +170,15 @@ mod tests {
         );
 
         assert_eq!(
-            insert_element!(arg0_vector, i64t.int(10), idx; "insert_element")
+            insert_element!(arg0_vector, i64_t.int(10), idx; "insert_element")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
             "%insert_element = insertelement <3 x i64> %0, i64 10, i64 1"
         );
 
-        let i32t = context.int32_t();
-        let mask = vector![i32t.int(1), i32t.int(0), i32t.int(2)];
+        let i32_t = context.int32_t();
+        let mask = vector![i32_t.int(1), i32_t.int(0), i32_t.int(2)];
 
         assert_eq!(
             shuffle_vector!(arg0_vector, arg1_vector, mask; "shuffle_vector")

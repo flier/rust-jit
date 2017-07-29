@@ -126,15 +126,15 @@ mod tests {
         let module = Module::with_name_in_context("ret", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let i64t = context.int64_t();
-        let function_type = FunctionType::new(i64t, &[], false);
+        let i64_t = context.int64_t();
+        let function_type = FunctionType::new(i64_t, &[], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position(Position::AtEnd(bb));
 
         assert_eq!(
-            ret!(i64t.uint(123)).emit_to(&builder).to_string().trim(),
+            ret!(i64_t.uint(123)).emit_to(&builder).to_string().trim(),
             "ret i64 123"
         );
     }
@@ -145,9 +145,9 @@ mod tests {
         let module = Module::with_name_in_context("aggregate_ret", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let i64t = context.int64_t();
-        let f64t = context.double_t();
-        let ret = context.anonymous_struct_t(&[i64t, f64t], false);
+        let i64_t = context.int64_t();
+        let f64_t = context.double_t();
+        let ret = context.anonymous_struct_t(&[i64_t, f64_t], false);
         let function_type = FunctionType::new(ret.into(), &[], false);
         let function = module.add_function("test", function_type);
 
@@ -155,7 +155,7 @@ mod tests {
         builder.position(Position::AtEnd(bb));
 
         assert_eq!(
-            ret!(i64t.uint(123), f64t.real(456f64))
+            ret!(i64_t.uint(123), f64_t.real(456f64))
                 .emit_to(&builder)
                 .to_string()
                 .trim(),

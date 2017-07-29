@@ -353,9 +353,9 @@ target triple = "x86_64-apple-darwin"
         assert_eq!(m.get_function("nop"), Some(f));
         assert_eq!(m.get_function("sum"), None);
 
-        let i64t = context.int64_t();
-        let argts = [i64t, i64t, i64t];
-        let sum = m.add_function("sum", FunctionType::new(i64t, &argts, false));
+        let i64_t = context.int64_t();
+        let argts = [i64_t, i64_t, i64_t];
+        let sum = m.add_function("sum", FunctionType::new(i64_t, &argts, false));
 
         assert_eq!(sum.name(), Some("sum".into()));
         assert_eq!(m.get_function("sum"), Some(sum));

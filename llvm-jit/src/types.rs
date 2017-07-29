@@ -767,30 +767,30 @@ mod tests {
 
     #[test]
     fn function() {
-        let i64t = GlobalContext::int64_t();
-        let argts = [i64t, i64t, i64t];
-        let t = FunctionType::new(i64t, &argts, false);
+        let i64_t = GlobalContext::int64_t();
+        let argts = [i64_t, i64_t, i64_t];
+        let t = FunctionType::new(i64_t, &argts, false);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMFunctionTypeKind));
         assert!(!t.is_var_arg());
-        assert_eq!(t.return_type(), i64t);
+        assert_eq!(t.return_type(), i64_t);
         assert_eq!(t.param_types(), argts);
     }
 
     #[test]
     fn struct_in_global_context() {
-        let i16t = GlobalContext::int16_t();
-        let i32t = GlobalContext::int32_t();
-        let i64t = GlobalContext::int64_t();
-        let argts = [i16t, i32t, i64t];
+        let i16_t = GlobalContext::int16_t();
+        let i32_t = GlobalContext::int32_t();
+        let i64_t = GlobalContext::int64_t();
+        let argts = [i16_t, i32_t, i64_t];
         let t = StructType::new(&argts, true);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMStructTypeKind));
         assert_eq!(t.name(), None);
         assert_eq!(t.element_count(), 3);
-        assert_eq!(t.element_type(1), Some(i32t));
+        assert_eq!(t.element_type(1), Some(i32_t));
         assert_eq!(t.element_type(4), None);
         assert_eq!(t.element_types(), argts);
         assert!(t.is_packed());
@@ -801,17 +801,17 @@ mod tests {
     fn struct_in_context() {
         let c = Context::new();
 
-        let i16t = c.int16_t();
-        let i32t = c.int32_t();
-        let i64t = c.int64_t();
-        let argts = [i16t, i32t, i64t];
+        let i16_t = c.int16_t();
+        let i32_t = c.int32_t();
+        let i64_t = c.int64_t();
+        let argts = [i16_t, i32_t, i64_t];
         let t = c.anonymous_struct_t(&argts, true);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMStructTypeKind));
         assert_eq!(t.name(), None);
         assert_eq!(t.element_count(), 3);
-        assert_eq!(t.element_type(1), Some(i32t));
+        assert_eq!(t.element_type(1), Some(i32_t));
         assert_eq!(t.element_type(4), None);
         assert_eq!(t.element_types(), argts);
         assert!(t.is_packed());
@@ -829,14 +829,14 @@ mod tests {
         assert_eq!(t.name(), Some("test".into()));
         assert_eq!(t.element_count(), 0);
 
-        let i16t = c.int16_t();
-        let i32t = c.int32_t();
-        let i64t = c.int64_t();
-        let argts = [i16t, i32t, i64t];
+        let i16_t = c.int16_t();
+        let i32_t = c.int32_t();
+        let i64_t = c.int64_t();
+        let argts = [i16_t, i32_t, i64_t];
         t.set_body(&argts, true);
 
         assert_eq!(t.element_count(), 3);
-        assert_eq!(t.element_type(1), Some(i32t));
+        assert_eq!(t.element_type(1), Some(i32_t));
         assert_eq!(t.element_type(4), None);
         assert_eq!(t.element_types(), argts);
         assert!(t.is_packed());
@@ -846,38 +846,38 @@ mod tests {
     #[test]
     fn array() {
         let c = Context::new();
-        let i64t = c.int64_t();
+        let i64_t = c.int64_t();
 
-        let t = i64t.array_t(8);
+        let t = i64_t.array_t(8);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMArrayTypeKind));
-        assert_eq!(t.element_type(), i64t);
+        assert_eq!(t.element_type(), i64_t);
         assert_eq!(t.len(), 8);
     }
 
     #[test]
     fn pointer() {
         let c = Context::new();
-        let i64t = c.int64_t();
-        let t = i64t.ptr_t_in_address_space(123);
+        let i64_t = c.int64_t();
+        let t = i64_t.ptr_t_in_address_space(123);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMPointerTypeKind));
-        assert_eq!(t.element_type(), i64t);
+        assert_eq!(t.element_type(), i64_t);
         assert_eq!(t.address_space(), 123);
     }
 
     #[test]
     fn vector() {
         let c = Context::new();
-        let i64t = c.int64_t();
+        let i64_t = c.int64_t();
 
-        let t = i64t.vector_t(8);
+        let t = i64_t.vector_t(8);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMVectorTypeKind));
-        assert_eq!(t.element_type(), i64t);
+        assert_eq!(t.element_type(), i64_t);
         assert_eq!(t.size(), 8);
     }
 }

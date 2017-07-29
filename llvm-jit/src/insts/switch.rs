@@ -101,14 +101,14 @@ mod tests {
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position(Position::AtEnd(bb));
 
-        let i64t = context.int64_t();
+        let i64_t = context.int64_t();
         let bb_default = function.append_basic_block_in_context("default", &context);
 
-        let switch = switch!(i64t.uint(3);
+        let switch = switch!(i64_t.uint(3);
                 _ => bb_default,
-                i64t.uint(1) => function.append_basic_block_in_context("one", &context),
-                i64t.uint(2) => function.append_basic_block_in_context("two", &context),
-                i64t.uint(3) => function.append_basic_block_in_context("three", &context)
+                i64_t.uint(1) => function.append_basic_block_in_context("one", &context),
+                i64_t.uint(2) => function.append_basic_block_in_context("two", &context),
+                i64_t.uint(3) => function.append_basic_block_in_context("three", &context)
             ).emit_to(&builder);
 
         assert_eq!(

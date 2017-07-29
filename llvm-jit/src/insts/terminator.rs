@@ -129,10 +129,13 @@ mod tests {
         let bb = fn_test.append_basic_block_in_context("entry", &context);
         builder.position(Position::AtEnd(bb));
 
-        let i64t = context.int64_t();
+        let i64_t = context.int64_t();
 
         assert_eq!(
-            resume!(i64t.uint(123)).emit_to(&builder).to_string().trim(),
+            resume!(i64_t.uint(123))
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "resume i64 123"
         );
         assert_eq!(

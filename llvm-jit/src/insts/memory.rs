@@ -240,10 +240,10 @@ mod tests {
         let module = Module::with_name_in_context("memory", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let i64t = context.int64_t();
-        let p_i64t = i64t.ptr_t();
+        let i64_t = context.int64_t();
+        let p_i64_t = i64_t.ptr_t();
 
-        let function_type = FunctionType::new(context.void_t(), &[p_i64t.into()], false);
+        let function_type = FunctionType::new(context.void_t(), &[p_i64_t.into()], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
@@ -251,7 +251,7 @@ mod tests {
 
         let arg0_p_i64 = function.get_param(0).unwrap();
 
-        let p = malloc!(i64t; "malloc").emit_to(&builder);
+        let p = malloc!(i64_t; "malloc").emit_to(&builder);
 
         free!(p).emit_to(&builder);
 
@@ -265,7 +265,7 @@ mod tests {
             ]
         );
 
-        malloc!(i64t, i64t.int(123); "array_malloc").emit_to(&builder);
+        malloc!(i64_t, i64_t.int(123); "array_malloc").emit_to(&builder);
 
         assert_eq!(
             bb.last_instructions(4),
@@ -277,13 +277,13 @@ mod tests {
             ]
         );
 
-        let alloca = alloca!(i64t; "alloca").emit_to(&builder);
+        let alloca = alloca!(i64_t; "alloca").emit_to(&builder);
 
         assert_eq!(alloca.to_string().trim(), "%alloca = alloca i64");
-        assert_eq!(alloca.allocated_type(), i64t);
+        assert_eq!(alloca.allocated_type(), i64_t);
 
         assert_eq!(
-            alloca!(i64t, i64t.int(123); "array_alloca")
+            alloca!(i64_t, i64_t.int(123); "array_alloca")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -299,7 +299,7 @@ mod tests {
         );
 
         assert_eq!(
-            store!(i64t.int(123), arg0_p_i64)
+            store!(i64_t.int(123), arg0_p_i64)
                 .emit_to(&builder)
                 .to_string()
                 .trim(),

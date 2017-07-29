@@ -187,26 +187,26 @@ mod tests {
         let m = Module::with_name_in_context("instructions", &c);
         let b = IRBuilder::within_context(&c);
 
-        let i32t = c.int32_t();
-        let i64t = c.int64_t();
-        let f32t = c.float_t();
-        let f64t = c.double_t();
+        let i32_t = c.int32_t();
+        let i64_t = c.int64_t();
+        let f32_t = c.float_t();
+        let f64_t = c.double_t();
 
-        let p_i64t = i64t.ptr_t();
-        let p_f64t = f64t.ptr_t();
-        let p_f64t_1 = f64t.ptr_t_in_address_space(1);
+        let p_i64_t = i64_t.ptr_t();
+        let p_f64_t = f64_t.ptr_t();
+        let p_f64_t_1 = f64_t.ptr_t_in_address_space(1);
 
         let f_ty = FunctionType::new(
             c.void_t(),
             &[
-                i64t,
-                i64t,
-                f64t,
-                f64t,
-                i32t,
-                f32t,
-                p_i64t.into(),
-                p_f64t.into(),
+                i64_t,
+                i64_t,
+                f64_t,
+                f64_t,
+                i32_t,
+                f32_t,
+                p_i64_t.into(),
+                p_f64_t.into(),
             ],
             false,
         );
@@ -224,118 +224,118 @@ mod tests {
         let arg6_p_i64 = f.get_param(6).unwrap();
         let arg7_p_f64 = f.get_param(7).unwrap();
 
-        test_instruction!(b, trunc!(arg0_i64, i32t), "%trunc = trunc i64 %0 to i32");
-        test_instruction!(b, zext!(arg4_i32, i64t), "%zext = zext i32 %4 to i64");
-        test_instruction!(b, sext!(arg4_i32, i64t), "%sext = sext i32 %4 to i64");
+        test_instruction!(b, trunc!(arg0_i64, i32_t), "%trunc = trunc i64 %0 to i32");
+        test_instruction!(b, zext!(arg4_i32, i64_t), "%zext = zext i32 %4 to i64");
+        test_instruction!(b, sext!(arg4_i32, i64_t), "%sext = sext i32 %4 to i64");
 
         test_instruction!(
             b,
-            fptrunc!(arg2_f64, f32t),
+            fptrunc!(arg2_f64, f32_t),
             "%fptrunc = fptrunc double %2 to float"
         );
         test_instruction!(
             b,
-            fpext!(arg5_f32, f64t),
+            fpext!(arg5_f32, f64_t),
             "%fpext = fpext float %5 to double"
         );
 
         test_instruction!(
             b,
-            fptoui!(arg2_f64, i64t),
+            fptoui!(arg2_f64, i64_t),
             "%fptoui = fptoui double %2 to i64"
         );
         test_instruction!(
             b,
-            fptosi!(arg2_f64, i64t),
+            fptosi!(arg2_f64, i64_t),
             "%fptosi = fptosi double %2 to i64"
         );
         test_instruction!(
             b,
-            uitofp!(arg0_i64, f64t),
+            uitofp!(arg0_i64, f64_t),
             "%uitofp = uitofp i64 %0 to double"
         );
         test_instruction!(
             b,
-            sitofp!(arg0_i64, f64t),
+            sitofp!(arg0_i64, f64_t),
             "%sitofp = sitofp i64 %0 to double"
         );
 
         test_instruction!(
             b,
-            ptr_to_int!(arg6_p_i64, i64t),
+            ptr_to_int!(arg6_p_i64, i64_t),
             "%ptr_to_int = ptrtoint i64* %6 to i64"
         );
         test_instruction!(
             b,
-            int_to_ptr!(arg0_i64, p_i64t),
+            int_to_ptr!(arg0_i64, p_i64_t),
             "%int_to_ptr = inttoptr i64 %0 to i64*"
         );
 
         test_instruction!(
             b,
-            bitcast!(arg6_p_i64, p_f64t),
+            bitcast!(arg6_p_i64, p_f64_t),
             "%bitcast = bitcast i64* %6 to double*"
         );
         test_instruction!(
             b,
-            addrspace_cast!(arg7_p_f64, p_f64t_1),
+            addrspace_cast!(arg7_p_f64, p_f64_t_1),
             "%addrspace_cast = addrspacecast double* %7 to double addrspace(1)*"
         );
 
         test_instruction!(
             b,
-            trunc_or_bit_cast!(arg0_i64, i32t),
+            trunc_or_bit_cast!(arg0_i64, i32_t),
             "%trunc_or_bit_cast = trunc i64 %0 to i32"
         );
         test_instruction!(
             b,
-            trunc_or_bit_cast!(arg0_i64, f64t),
+            trunc_or_bit_cast!(arg0_i64, f64_t),
             "%trunc_or_bit_cast1 = bitcast i64 %0 to double"
         );
         test_instruction!(
             b,
-            zext_or_bit_cast!(arg4_i32, i64t),
+            zext_or_bit_cast!(arg4_i32, i64_t),
             "%zext_or_bit_cast = zext i32 %4 to i64"
         );
         test_instruction!(
             b,
-            zext_or_bit_cast!(arg4_i32, f32t),
+            zext_or_bit_cast!(arg4_i32, f32_t),
             "%zext_or_bit_cast2 = bitcast i32 %4 to float"
         );
         test_instruction!(
             b,
-            sext_or_bit_cast!(arg4_i32, i64t),
+            sext_or_bit_cast!(arg4_i32, i64_t),
             "%sext_or_bit_cast = sext i32 %4 to i64"
         );
         test_instruction!(
             b,
-            sext_or_bit_cast!(arg4_i32, f32t),
+            sext_or_bit_cast!(arg4_i32, f32_t),
             "%sext_or_bit_cast3 = bitcast i32 %4 to float"
         );
 
         test_instruction!(
             b,
-            ptr_cast!(arg6_p_i64, p_f64t),
+            ptr_cast!(arg6_p_i64, p_f64_t),
             "%ptr_cast = bitcast i64* %6 to double*"
         );
         test_instruction!(
             b,
-            int_cast!(arg0_i64, i32t),
+            int_cast!(arg0_i64, i32_t),
             "%int_cast = trunc i64 %0 to i32"
         );
         test_instruction!(
             b,
-            int_cast!(arg4_i32, i64t),
+            int_cast!(arg4_i32, i64_t),
             "%int_cast4 = sext i32 %4 to i64"
         );
         test_instruction!(
             b,
-            fp_cast!(arg2_f64, f32t),
+            fp_cast!(arg2_f64, f32_t),
             "%fp_cast = fptrunc double %2 to float"
         );
         test_instruction!(
             b,
-            fp_cast!(arg5_f32, f64t),
+            fp_cast!(arg5_f32, f64_t),
             "%fp_cast5 = fpext float %5 to double"
         );
     }

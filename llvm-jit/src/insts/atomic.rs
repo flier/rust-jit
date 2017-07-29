@@ -322,10 +322,10 @@ mod tests {
         let module = Module::with_name_in_context("atomi", &context);
         let builder = IRBuilder::within_context(&context);
 
-        let i64t = context.int64_t();
-        let p_i64t = i64t.ptr_t();
+        let i64_t = context.int64_t();
+        let p_i64_t = i64_t.ptr_t();
 
-        let function_type = FunctionType::new(context.void_t(), &[p_i64t.into()], false);
+        let function_type = FunctionType::new(context.void_t(), &[p_i64_t.into()], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
@@ -335,57 +335,57 @@ mod tests {
 
         test_atomic!(
             builder,
-            atomic!(xchg arg0_p_i64, i64t.int(123); not_atomic),
+            atomic!(xchg arg0_p_i64, i64_t.int(123); not_atomic),
             "%1 = atomicrmw xchg i64* %0, i64 123"
         );
         test_atomic!(
             builder,
-            atomic!(add arg0_p_i64, i64t.int(123); unordered),
+            atomic!(add arg0_p_i64, i64_t.int(123); unordered),
             "%2 = atomicrmw add i64* %0, i64 123 unordered"
         );
         test_atomic!(
             builder,
-            atomic!(sub arg0_p_i64, i64t.int(123); monotonic),
+            atomic!(sub arg0_p_i64, i64_t.int(123); monotonic),
             "%3 = atomicrmw sub i64* %0, i64 123 monotonic"
         );
         test_atomic!(
             builder,
-            atomic!(and arg0_p_i64, i64t.int(123); acquire),
+            atomic!(and arg0_p_i64, i64_t.int(123); acquire),
             "%4 = atomicrmw and i64* %0, i64 123 acquire"
         );
         test_atomic!(
             builder,
-            atomic!(nand arg0_p_i64, i64t.int(123); release),
+            atomic!(nand arg0_p_i64, i64_t.int(123); release),
             "%5 = atomicrmw nand i64* %0, i64 123 release"
         );
         test_atomic!(
             builder,
-            atomic!(or arg0_p_i64, i64t.int(123); acq_rel),
+            atomic!(or arg0_p_i64, i64_t.int(123); acq_rel),
             "%6 = atomicrmw or i64* %0, i64 123 acq_rel"
         );
         test_atomic!(
             builder,
-            atomic!(xor arg0_p_i64, i64t.int(123); seq_cst),
+            atomic!(xor arg0_p_i64, i64_t.int(123); seq_cst),
             "%7 = atomicrmw xor i64* %0, i64 123 seq_cst"
         );
         test_atomic!(
             builder,
-            atomic!(max arg0_p_i64, i64t.int(123); not_atomic),
+            atomic!(max arg0_p_i64, i64_t.int(123); not_atomic),
             "%8 = atomicrmw max i64* %0, i64 123"
         );
         test_atomic!(
             builder,
-            atomic!(min arg0_p_i64, i64t.int(123); not_atomic),
+            atomic!(min arg0_p_i64, i64_t.int(123); not_atomic),
             "%9 = atomicrmw min i64* %0, i64 123"
         );
         test_atomic!(
             builder,
-            atomic!(umax arg0_p_i64, i64t.int(123); not_atomic),
+            atomic!(umax arg0_p_i64, i64_t.int(123); not_atomic),
             "%10 = atomicrmw umax i64* %0, i64 123"
         );
         test_atomic!(
             builder,
-            atomic!(umin arg0_p_i64, i64t.int(123); not_atomic),
+            atomic!(umin arg0_p_i64, i64_t.int(123); not_atomic),
             "%11 = atomicrmw umin i64* %0, i64 123"
         );
 
@@ -405,7 +405,7 @@ mod tests {
         );
 
         assert_eq!(
-            atomic!(cmpxchg arg0_p_i64, i64t.int(123), i64t.int(456); unordered unordered)
+            atomic!(cmpxchg arg0_p_i64, i64_t.int(123), i64_t.int(456); unordered unordered)
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
