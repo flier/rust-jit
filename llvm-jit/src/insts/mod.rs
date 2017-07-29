@@ -30,6 +30,8 @@ mod select;
 #[macro_use]
 mod call;
 #[macro_use]
+mod vaarg;
+#[macro_use]
 mod vector;
 #[macro_use]
 mod aggregate;
@@ -54,4 +56,5 @@ pub use self::select::Select;
 pub use self::switch::{Switch, SwitchInst};
 pub use self::terminator::{LandingPad, Resume, Unreachable};
 pub use self::unary::{FNeg, IsNotNull, IsNull, NSWNeg, NUWNeg, Neg, Not};
+pub use self::vaarg::VaArg;
 pub use self::vector::{ExtractElement, InsertElement, ShuffleVector};
