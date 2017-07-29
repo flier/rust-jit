@@ -11,9 +11,9 @@ use context::Context;
 use errors::Result;
 use function::Function;
 use function::FunctionType;
+use global::GlobalVar;
 use types::{AsTypeRef, TypeRef};
 use utils::{AsResult, from_unchecked_cstr, unchecked_cstring};
-use value::GlobalVar;
 
 /// Modules represent the top-level structure in an LLVM program.
 #[derive(Debug)]

@@ -28,6 +28,7 @@ mod types;
 mod value;
 #[macro_use]
 mod constant;
+mod global;
 mod function;
 #[macro_use]
 pub mod insts;
@@ -40,6 +41,7 @@ pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantStr
 pub use context::{Context, GlobalContext};
 pub use engine::{ExecutionEngine, Interpreter, MCJIT};
 pub use function::{Function, FunctionType};
+pub use global::GlobalVar;
 pub use insts::{IRBuilder, Position};
 pub use module::Module;
 pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos, AllTargetMCs,
@@ -47,7 +49,7 @@ pub use target::{AllAsmParsers, AllAsmPrinters, AllDisassemblers, AllTargetInfos
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
                 TypeKind, TypeRef, VectorType};
 pub use utils::{AsBool, AsLLVMBool, AsResult, Boolinator};
-pub use value::{BlockAddress, GlobalVar, Instruction, ValueKind, ValueRef};
+pub use value::{BlockAddress, Instruction, ValueKind, ValueRef};
 
 pub mod prelude {
     pub use constant::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray,
