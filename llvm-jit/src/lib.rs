@@ -45,13 +45,10 @@ pub use function::{Function, FunctionType};
 pub use global::GlobalVar;
 pub use insts::{IRBuilder, Position};
 pub use module::{AddressSpace, Module};
-pub use target::{Target, TargetData, TargetIter, TargetMachine};
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
                 TypeKind, TypeRef, VectorType};
 pub use utils::{AsBool, AsLLVMBool, AsResult, Boolinator};
 pub use value::{BlockAddress, Instruction, ValueKind, ValueRef};
-
-pub use insts::*;
 
 pub mod prelude {
     pub use constant::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray,
