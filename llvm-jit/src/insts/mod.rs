@@ -46,7 +46,7 @@ pub use self::builder::{IRBuilder, InstructionBuilder, Position};
 pub use self::call::{Call, CallConv, CallInst, CallSite};
 pub use self::cast::*;
 pub use self::cmp::{FCmp, FCmpInst, ICmp, ICmpInst};
-pub use self::gep::GetElementPtr;
+pub use self::gep::{GetElementPtr, GetElementPtrInst};
 pub use self::globalstr::{GlobalString, GlobalStringPtr, global_str, global_str_ptr};
 pub use self::invoke::{Invoke, InvokeInst};
 pub use self::memory::{Alloca, AllocaInst, Free, Load, Malloc, Store, free, load, store};

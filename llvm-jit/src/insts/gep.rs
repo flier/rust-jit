@@ -4,7 +4,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::unchecked_cstring;
+use utils::{AsBool, AsLLVMBool, unchecked_cstring};
 use value::{Instruction, ValueRef};
 
 /// an instruction for type-safe pointer arithmetic to access elements of arrays and structs
@@ -49,7 +49,7 @@ impl<'a> GetElementPtr<'a> {
 }
 
 impl<'a> InstructionBuilder for GetElementPtr<'a> {
-    type Target = Instruction;
+    type Target = GetElementPtrInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         unsafe {
@@ -85,6 +85,24 @@ impl<'a> InstructionBuilder for GetElementPtr<'a> {
                 }
             }
         }.into()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GetElementPtrInst(Instruction);
+
+inherit_from!(GetElementPtrInst, Instruction, ValueRef, LLVMValueRef);
+
+/// an instruction for type-safe pointer arithmetic to access elements of arrays and structs
+impl GetElementPtrInst {
+    /// Check whether the given GEP instruction is inbounds.
+    pub fn in_bounds(&self) -> bool {
+        unsafe { LLVMIsInBounds(self.as_raw()) }.as_bool()
+    }
+
+    /// Set the given GEP instruction to be inbounds or not.
+    pub fn set_in_bounds(&self, in_bounds: bool) {
+        unsafe { LLVMSetIsInBounds(self.as_raw(), in_bounds.as_bool()) }
     }
 }
 
