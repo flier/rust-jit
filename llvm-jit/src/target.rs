@@ -1,15 +1,167 @@
+use std::borrow::Cow;
 use std::ffi::CStr;
 use std::fmt;
+use std::ptr;
 
-use llvm::core::*;
 use llvm::target::*;
+use llvm::target_machine::*;
 
 use context::Context;
+use errors::Result;
 use global::GlobalVar;
 use module::{AddressSpace, Module};
 use types::{AsTypeRef, StructType, TypeRef};
-use utils::unchecked_cstring;
+use utils::{AsBool, AsResult, DisposableMessage, unchecked_cstring};
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Target(LLVMTargetRef);
+
+impl Default for Target {
+    fn default() -> Self {
+        Target::from_triple(Target::default_triple_string()).unwrap()
+    }
+}
+
+impl Target {
+    /// Finds the target corresponding to the given name
+    pub fn from_name<S: AsRef<str>>(s: S) -> Option<Target> {
+        unsafe { LLVMGetTargetFromName(unchecked_cstring(s).as_ptr()).as_mut() }
+            .map(|target| Target(target))
+    }
+
+    /// Finds the target corresponding to the given triple
+    pub fn from_triple<S: AsRef<str>>(s: S) -> Result<Target> {
+        let mut target = ptr::null_mut();
+        let mut msg = ptr::null_mut();
+
+        if unsafe {
+            LLVMGetTargetFromTriple(unchecked_cstring(s).as_ptr(), &mut target, &mut msg)
+        }.is_ok()
+        {
+            Ok(Target(target))
+        } else {
+            bail!(msg.to_string())
+        }
+    }
+
+    /// Get a triple for the host machine as a string.
+    pub fn default_triple_string() -> String {
+        unsafe { LLVMGetDefaultTargetTriple() }.to_string()
+    }
+
+    /// Returns the name of a target.
+    pub fn name(&self) -> Cow<str> {
+        unsafe { CStr::from_ptr(LLVMGetTargetName(self.0)) }.to_string_lossy()
+    }
+
+    /// Returns the description  of a target.
+    pub fn description(&self) -> Cow<str> {
+        unsafe { CStr::from_ptr(LLVMGetTargetDescription(self.0)) }.to_string_lossy()
+    }
+
+    /// Returns if the target has a JIT
+    pub fn has_jit(&self) -> bool {
+        unsafe { LLVMTargetHasJIT(self.0) }.as_bool()
+    }
+
+    /// Returns if the target has a TargetMachine associated
+    pub fn has_target_machine(&self) -> bool {
+        unsafe { LLVMTargetHasTargetMachine(self.0) }.as_bool()
+    }
+
+    /// Returns if the target as an ASM backend (required for emitting output)
+    pub fn has_asm_backend(&self) -> bool {
+        unsafe { LLVMTargetHasAsmBackend(self.0) }.as_bool()
+    }
+}
+
+pub fn targets() -> TargetIter {
+    TargetIter::new()
+}
+
+pub struct TargetIter(Option<LLVMTargetRef>);
+
+impl TargetIter {
+    pub fn new() -> Self {
+        TargetIter(None)
+    }
+}
+
+impl Iterator for TargetIter {
+    type Item = Target;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0 = unsafe {
+            if let Some(next) = self.0 {
+                LLVMGetNextTarget(next)
+            } else {
+                LLVMGetFirstTarget()
+            }.as_mut()
+        }.map(|target| target as *mut LLVMTarget);
+
+        self.0.map(|target| Target(target))
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TargetMachine(LLVMTargetMachineRef);
+
+impl Drop for TargetMachine {
+    fn drop(&mut self) {
+        unsafe { LLVMDisposeTargetMachine(self.0) }
+    }
+}
+
+impl TargetMachine {
+    pub fn new(
+        target: &Target,
+        triple: &str,
+        cpu: &str,
+        feature: &str,
+        opt_level: LLVMCodeGenOptLevel,
+        reloc_mode: LLVMRelocMode,
+        code_model: LLVMCodeModel,
+    ) -> Self {
+        TargetMachine(unsafe {
+            LLVMCreateTargetMachine(
+                target.0,
+                unchecked_cstring(triple).as_ptr(),
+                unchecked_cstring(cpu).as_ptr(),
+                unchecked_cstring(feature).as_ptr(),
+                opt_level,
+                reloc_mode,
+                code_model,
+            )
+        })
+    }
+
+    /// Returns the Target used in a TargetMachine
+    pub fn target(&self) -> Target {
+        Target(unsafe { LLVMGetTargetMachineTarget(self.0) })
+    }
+
+    /// Returns the triple used creating this target machine.
+    pub fn triple(&self) -> String {
+        unsafe { LLVMGetTargetMachineTriple(self.0) }.to_string()
+    }
+
+    /// Returns the cpu used creating this target machine.
+    pub fn cpu(&self) -> String {
+        unsafe { LLVMGetTargetMachineCPU(self.0) }.to_string()
+    }
+
+    /// Returns the feature string used creating this target machine.
+    pub fn feature(&self) -> String {
+        unsafe { LLVMGetTargetMachineFeatureString(self.0) }.to_string()
+    }
+
+    /// Create a DataLayout based on the targetMachine.
+    pub fn create_data_layout(&self) -> TargetData {
+        TargetData::from_machine(self)
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct TargetData(LLVMTargetDataRef);
 
 inherit_from!(TargetData, LLVMTargetDataRef);
@@ -22,19 +174,19 @@ impl Drop for TargetData {
 
 impl fmt::Display for TargetData {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe {
-            let s = LLVMCopyStringRepOfTargetData(self.0);
-
-            let r = write!(f, "{}", CStr::from_ptr(s).to_string_lossy());
-
-            LLVMDisposeMessage(s);
-
-            r
-        }
+        write!(
+            f,
+            "{}",
+            unsafe { LLVMCopyStringRepOfTargetData(self.0) }.to_string()
+        )
     }
 }
 
 impl TargetData {
+    pub fn from_machine(machine: &TargetMachine) -> Self {
+        TargetData(unsafe { LLVMCreateTargetDataLayout(machine.0) })
+    }
+
     /// Creates target data from a target layout string.
     pub fn create<S: AsRef<str>>(s: S) -> Self {
         unsafe { LLVMCreateTargetData(unchecked_cstring(s).as_ptr()) }.into()
