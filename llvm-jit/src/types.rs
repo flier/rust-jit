@@ -9,6 +9,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use context::{Context, GlobalContext};
+use module::AddressSpace;
 use utils::{AsBool, AsLLVMBool, unchecked_cstring};
 use value::ValueRef;
 
@@ -487,7 +488,7 @@ inherit_type_ref!(PointerType);
 
 impl PointerType {
     /// Obtain the address space of a pointer type.
-    pub fn address_space(&self) -> u32 {
+    pub fn address_space(&self) -> AddressSpace {
         unsafe { LLVMGetPointerAddressSpace(self.as_raw()) }
     }
 }
@@ -503,11 +504,11 @@ pub trait ToPointerType {
     /// Create a pointer type in the address space that points to a defined type.
     ///
     /// The created type will exist in the context that its pointee type exists in.
-    fn ptr_t_in_address_space(&self, address_space: u32) -> PointerType;
+    fn ptr_t_in_address_space(&self, address_space: AddressSpace) -> PointerType;
 }
 
 impl ToPointerType for TypeRef {
-    fn ptr_t_in_address_space(&self, address_space: u32) -> PointerType {
+    fn ptr_t_in_address_space(&self, address_space: AddressSpace) -> PointerType {
         unsafe { LLVMPointerType(self.as_raw(), address_space) }.into()
     }
 }

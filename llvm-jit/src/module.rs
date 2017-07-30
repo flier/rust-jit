@@ -15,6 +15,8 @@ use global::GlobalVar;
 use types::{AsTypeRef, TypeRef};
 use utils::{AsResult, from_unchecked_cstr, unchecked_cstring};
 
+pub type AddressSpace = u32;
+
 /// Modules represent the top-level structure in an LLVM program.
 #[derive(Debug)]
 pub struct Module(LLVMModuleRef);
@@ -82,12 +84,12 @@ impl Module {
     }
 
     /// Obtain the data layout for a module.
-    pub fn data_layout(&self) -> Cow<str> {
+    pub fn data_layout_str(&self) -> Cow<str> {
         unsafe { CStr::from_ptr(LLVMGetDataLayoutStr(self.0)).to_string_lossy() }
     }
 
     /// Set the data layout for a module.
-    pub fn set_data_layout<S: AsRef<str>>(&self, name: S) {
+    pub fn set_data_layout_str<S: AsRef<str>>(&self, name: S) {
         let cname = unchecked_cstring(name);
         unsafe { LLVMSetDataLayout(self.0, cname.as_ptr()) }
     }
@@ -214,7 +216,7 @@ impl Module {
         &self,
         name: S,
         ty: TypeRef,
-        address_space: u32,
+        address_space: AddressSpace,
     ) -> GlobalVar {
         let cname = unchecked_cstring(name);
 
@@ -311,9 +313,9 @@ mod tests {
         m.set_name("hello");
         assert_eq!(m.name(), "hello");
 
-        assert_eq!(m.data_layout(), "");
-        m.set_data_layout("e");
-        assert_eq!(m.data_layout(), "e");
+        assert_eq!(m.data_layout_str(), "");
+        m.set_data_layout_str("e");
+        assert_eq!(m.data_layout_str(), "e");
 
         assert_eq!(m.target_triple(), "");
         m.set_target_triple("x86_64-apple-darwin");

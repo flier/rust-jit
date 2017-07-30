@@ -43,7 +43,7 @@ pub use engine::{ExecutionEngine, Interpreter, MCJIT};
 pub use function::{Function, FunctionType};
 pub use global::GlobalVar;
 pub use insts::{IRBuilder, Position};
-pub use module::Module;
+pub use module::{AddressSpace, Module};
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
                 TypeKind, TypeRef, VectorType};
 pub use utils::{AsBool, AsLLVMBool, AsResult, Boolinator};
