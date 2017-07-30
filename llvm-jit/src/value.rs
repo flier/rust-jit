@@ -9,7 +9,7 @@ use llvm::prelude::*;
 
 use block::BasicBlock;
 use types::TypeRef;
-use utils::{AsBool, unchecked_cstring};
+use utils::{AsBool, DisposableMessage, unchecked_cstring};
 
 /// Represents an individual value in LLVM IR.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -102,15 +102,11 @@ impl ValueRef {
 
 impl fmt::Display for ValueRef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe {
-            let s = LLVMPrintValueToString(self.0);
-
-            let r = write!(f, "{}", CStr::from_ptr(s).to_string_lossy());
-
-            LLVMDisposeMessage(s);
-
-            r
-        }
+        write!(
+            f,
+            "{}",
+            unsafe { LLVMPrintValueToString(self.0) }.to_string()
+        )
     }
 }
 

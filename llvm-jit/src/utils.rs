@@ -2,6 +2,9 @@ use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::slice;
 
+use libc;
+
+use llvm::core::LLVMDisposeMessage;
 use llvm::prelude::*;
 
 pub const TRUE: LLVMBool = 1;
@@ -144,6 +147,20 @@ pub fn unchecked_cstring<S: AsRef<str>>(s: S) -> CString {
 
 pub fn from_unchecked_cstr<'a>(p: *const u8, len: usize) -> Cow<'a, str> {
     unsafe { CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(p, len)).to_string_lossy() }
+}
+
+pub trait DisposableMessage {
+    fn to_string(self) -> String;
+}
+
+impl DisposableMessage for *mut libc::c_char {
+    fn to_string(self) -> String {
+        unsafe {
+            let s = CStr::from_ptr(self).to_string_lossy().into();
+            LLVMDisposeMessage(self);
+            s
+        }
+    }
 }
 
 macro_rules! inherit_from {

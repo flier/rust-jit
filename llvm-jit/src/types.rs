@@ -10,7 +10,7 @@ use llvm::prelude::*;
 
 use context::{Context, GlobalContext};
 use module::AddressSpace;
-use utils::{AsBool, AsLLVMBool, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, DisposableMessage, unchecked_cstring};
 use value::ValueRef;
 
 /// Each value in the LLVM IR has a type, an `TypeRef`.
@@ -70,15 +70,11 @@ impl TypeRef {
 
 impl fmt::Display for TypeRef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe {
-            let s = LLVMPrintTypeToString(self.0);
-
-            let r = write!(f, "{}", CStr::from_ptr(s).to_string_lossy());
-
-            LLVMDisposeMessage(s);
-
-            r
-        }
+        write!(
+            f,
+            "{}",
+            unsafe { LLVMPrintTypeToString(self.0) }.to_string()
+        )
     }
 }
 

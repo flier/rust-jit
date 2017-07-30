@@ -13,7 +13,7 @@ use function::Function;
 use function::FunctionType;
 use global::GlobalVar;
 use types::{AsTypeRef, TypeRef};
-use utils::{AsResult, from_unchecked_cstr, unchecked_cstring};
+use utils::{AsResult, DisposableMessage, from_unchecked_cstr, unchecked_cstring};
 
 pub type AddressSpace = u32;
 
@@ -281,15 +281,11 @@ impl Clone for Module {
 
 impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe {
-            let s = LLVMPrintModuleToString(self.0);
-
-            let r = write!(f, "{}", CStr::from_ptr(s).to_string_lossy());
-
-            LLVMDisposeMessage(s);
-
-            r
-        }
+        write!(
+            f,
+            "{}",
+            unsafe { LLVMPrintModuleToString(self.0) }.to_string()
+        )
     }
 }
 
