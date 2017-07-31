@@ -71,7 +71,7 @@ pub struct Interpreter(ExecutionEngine);
 inherit_from!(Interpreter, ExecutionEngine, LLVMExecutionEngineRef);
 
 impl Interpreter {
-    pub fn init() {
+    pub fn link_in() {
         unsafe { LLVMLinkInInterpreter() }
     }
 
@@ -155,7 +155,7 @@ pub struct MCJITCompiler(ExecutionEngine);
 inherit_from!(MCJITCompiler, ExecutionEngine, LLVMExecutionEngineRef);
 
 impl MCJITCompiler {
-    pub fn init() {
+    pub fn link_in() {
         unsafe { LLVMLinkInMCJIT() }
     }
 
@@ -498,7 +498,7 @@ mod tests {
 
     #[test]
     fn call_function_with_address() {
-        MCJITCompiler::init();
+        MCJITCompiler::link_in();
         NativeTarget::init().unwrap();
         NativeAsmPrinter::init().unwrap();
 
