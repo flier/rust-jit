@@ -322,12 +322,13 @@ mod tests {
     use llvm;
 
     use super::*;
-    use context::{Context, GlobalContext};
+    use context::Context;
     use types::*;
 
     #[test]
     fn null() {
-        let i64_t = GlobalContext::int64_t();
+        let c = Context::new();
+        let i64_t = c.int64_t();
         let v = i64_t.null();
 
         assert!(!v.as_raw().is_null());
@@ -345,7 +346,8 @@ mod tests {
 
     #[test]
     fn undef() {
-        let i64_t = GlobalContext::int64_t();
+        let c = Context::new();
+        let i64_t = c.int64_t();
         let v = i64_t.undef();
 
         assert!(!v.as_raw().is_null());
@@ -363,7 +365,8 @@ mod tests {
 
     #[test]
     fn null_ptr() {
-        let i64_t = GlobalContext::int64_t();
+        let c = Context::new();
+        let i64_t = c.int64_t();
         let v = i64_t.null_ptr();
 
         assert!(!v.as_raw().is_null());
@@ -381,7 +384,8 @@ mod tests {
 
     #[test]
     fn int() {
-        let i32_t = GlobalContext::int32_t();
+        let c = Context::new();
+        let i32_t = c.int32_t();
         let v = i32_t.int(-123);
 
         assert!(!v.as_raw().is_null());
@@ -402,7 +406,8 @@ mod tests {
 
     #[test]
     fn floating_point() {
-        let f32_t = GlobalContext::float_t();
+        let c = Context::new();
+        let f32_t = c.float_t();
         let v = f32_t.real(-123.0);
 
         assert!(!v.as_raw().is_null());
@@ -422,7 +427,8 @@ mod tests {
 
     #[test]
     fn string_in_global_context() {
-        let v = ConstantString::str("hello");
+        let c = Context::new();
+        let v = c.str("hello");
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"[6 x i8] c"hello\00""#);

@@ -188,11 +188,13 @@ mod tests {
     use llvm;
 
     use super::*;
-    use context::GlobalContext;
+    use context::Context;
+    use prelude::*;
 
     #[test]
     fn function() {
-        let i64_t = GlobalContext::int64_t();
+        let c = Context::new();
+        let i64_t = c.int64_t();
         let argts = [i64_t, i64_t, i64_t];
         let t = FunctionType::new(i64_t, &argts, false);
 

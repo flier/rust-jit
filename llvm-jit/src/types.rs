@@ -544,7 +544,8 @@ mod tests {
 
     #[test]
     fn typeref() {
-        let void_t = GlobalContext::void_t();
+        let c = Context::new();
+        let void_t = c.void_t();
 
         assert!(!void_t.as_raw().is_null());
         assert!(matches!(
@@ -556,7 +557,7 @@ mod tests {
 
         assert_eq!(void_t.to_string(), "void");
 
-        let i64_t = GlobalContext::int64_t();
+        let i64_t = c.int64_t();
 
         assert!(!i64_t.as_raw().is_null());
         assert!(matches!(
