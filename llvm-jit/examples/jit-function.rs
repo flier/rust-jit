@@ -54,7 +54,7 @@ fn main() {
     jit::target::NativeAsmPrinter::init().unwrap();
 
     // build an execution engine
-    let engine = jit::ExecutionEngine::for_module(&module).unwrap();
+    let engine = jit::ExecutionEngine::for_module(module).unwrap();
 
     let addr = engine.get_function_address("sum").unwrap();
 

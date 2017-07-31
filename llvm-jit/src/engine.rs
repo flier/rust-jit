@@ -1,4 +1,4 @@
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::mem;
 use std::ptr;
 
@@ -7,10 +7,13 @@ use llvm::execution_engine::*;
 
 use errors::Result;
 use function::Function;
+use global::GlobalVar;
 use module::Module;
+use target::{TargetData, TargetMachine};
 use types::TypeRef;
-use utils::{AsBool, AsLLVMBool, AsResult, unchecked_cstring};
+use utils::{AsLLVMBool, AsResult, unchecked_cstring};
 
+/// The GenericValue class is used to represent an LLVM value of arbitrary type.
 #[derive(Debug, PartialEq)]
 pub struct GenericValue(LLVMGenericValueRef);
 
@@ -23,8 +26,14 @@ impl Drop for GenericValue {
 }
 
 impl GenericValue {
-    pub fn from_int<T: Into<TypeRef>>(ty: T, n: u64, is_signed: bool) -> Self {
-        unsafe { LLVMCreateGenericValueOfInt(ty.into().as_raw(), n, is_signed.as_bool()) }.into()
+    pub fn from_uint<T: Into<TypeRef>>(ty: T, n: u64) -> Self {
+        unsafe { LLVMCreateGenericValueOfInt(ty.into().as_raw(), n, false.as_bool()) }.into()
+    }
+
+    pub fn from_int<T: Into<TypeRef>>(ty: T, n: i64) -> Self {
+        unsafe {
+            LLVMCreateGenericValueOfInt(ty.into().as_raw(), mem::transmute(n), true.as_bool())
+        }.into()
     }
 
     pub fn from_ptr<T>(p: *const T) -> Self {
@@ -56,19 +65,126 @@ impl GenericValue {
     }
 }
 
-pub struct MCJIT;
+#[derive(Debug)]
+pub struct Interpreter(ExecutionEngine);
 
-impl MCJIT {
-    pub fn init() {
-        unsafe { LLVMLinkInMCJIT() }
-    }
-}
-
-pub struct Interpreter;
+inherit_from!(Interpreter, ExecutionEngine, LLVMExecutionEngineRef);
 
 impl Interpreter {
     pub fn init() {
         unsafe { LLVMLinkInInterpreter() }
+    }
+
+    pub fn for_module(module: Module) -> Result<Self> {
+        unsafe {
+            let mut engine = mem::uninitialized();
+            let mut err = mem::zeroed();
+
+            if LLVMCreateInterpreterForModule(&mut engine, module.as_raw(), &mut err).is_ok() {
+                trace!("create Interpreter({:?}) for {:?}", engine, module);
+
+                mem::forget(module);
+
+                Ok(Interpreter(ExecutionEngine(engine)))
+            } else {
+                let m = module.as_raw();
+
+                mem::forget(module);
+
+                bail!(format!(
+                    "fail to create interpreter for Module({:?}), {}",
+                    m,
+                    CStr::from_ptr(err).to_string_lossy()
+                ))
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct JITCompiler(ExecutionEngine);
+
+inherit_from!(JITCompiler, ExecutionEngine, LLVMExecutionEngineRef);
+
+impl JITCompiler {
+    pub fn for_module(module: Module, opt_level: u32) -> Result<Self> {
+        let module = module.forget();
+
+        unsafe {
+            let mut engine = mem::uninitialized();
+            let mut err = mem::zeroed();
+
+            if LLVMCreateJITCompilerForModule(&mut engine, module.as_raw(), opt_level, &mut err)
+                .is_ok()
+            {
+                trace!("create JITCompiler({:?}) for {:?}", engine, module);
+
+                Ok(JITCompiler(ExecutionEngine(engine)))
+            } else {
+                bail!(format!(
+                    "fail to create JITCompiler for {:?}, {}",
+                    module,
+                    CStr::from_ptr(err).to_string_lossy()
+                ))
+            }
+        }
+    }
+}
+
+pub struct MCJITCompilerOptions(LLVMMCJITCompilerOptions);
+
+inherit_from!(MCJITCompilerOptions, LLVMMCJITCompilerOptions);
+
+impl Default for MCJITCompilerOptions {
+    fn default() -> Self {
+        unsafe {
+            let mut options: LLVMMCJITCompilerOptions = mem::uninitialized();
+
+            LLVMInitializeMCJITCompilerOptions(&mut options, mem::size_of_val(&options));
+
+            options.into()
+        }
+    }
+}
+
+pub type MCJIT = MCJITCompiler;
+
+#[derive(Debug)]
+pub struct MCJITCompiler(ExecutionEngine);
+
+inherit_from!(MCJITCompiler, ExecutionEngine, LLVMExecutionEngineRef);
+
+impl MCJITCompiler {
+    pub fn init() {
+        unsafe { LLVMLinkInMCJIT() }
+    }
+
+    pub fn for_module(module: Module, mut options: MCJITCompilerOptions) -> Result<Self> {
+        let module = module.forget();
+
+        unsafe {
+            let mut engine = mem::uninitialized();
+            let mut err = mem::zeroed();
+
+            if LLVMCreateMCJITCompilerForModule(
+                &mut engine,
+                module.as_raw(),
+                &mut options.0,
+                mem::size_of::<LLVMMCJITCompilerOptions>(),
+                &mut err,
+            ).is_ok()
+            {
+                trace!("create MCJITCompiler({:?}) for {:?}", engine, module);
+
+                Ok(MCJITCompiler(ExecutionEngine(engine)))
+            } else {
+                bail!(format!(
+                    "fail to create MCJITCompiler for {:?}, {}",
+                    module,
+                    CStr::from_ptr(err).to_string_lossy()
+                ))
+            }
+        }
     }
 }
 
@@ -76,8 +192,20 @@ impl Interpreter {
 #[derive(Debug)]
 pub struct ExecutionEngine(LLVMExecutionEngineRef);
 
+inherit_from!(ExecutionEngine, LLVMExecutionEngineRef);
+
+impl Drop for ExecutionEngine {
+    fn drop(&mut self) {
+        trace!("drop {:?}", self);
+
+        unsafe { LLVMDisposeExecutionEngine(self.0) }
+    }
+}
+
 impl ExecutionEngine {
-    pub fn for_module(module: &Module) -> Result<Self> {
+    pub fn for_module(module: Module) -> Result<Self> {
+        let module = module.forget();
+
         unsafe {
             let mut engine = mem::uninitialized();
             let mut err = mem::zeroed();
@@ -96,16 +224,6 @@ impl ExecutionEngine {
         }
     }
 
-    /// Wrap a raw execution engine reference.
-    pub fn from_raw(engine: LLVMExecutionEngineRef) -> Self {
-        ExecutionEngine(engine)
-    }
-
-    /// Extracts the raw execution engine reference.
-    pub fn as_raw(&self) -> LLVMExecutionEngineRef {
-        self.0
-    }
-
     /// This method is used to execute all of the static constructors for a program.
     pub fn run_static_constructors(&self) -> &Self {
         unsafe { LLVMRunStaticConstructors(self.0) }
@@ -120,13 +238,78 @@ impl ExecutionEngine {
         self
     }
 
+    /// This is a helper function which wraps runFunction to handle the common task of
+    /// starting up main with the specified rgc, argv, and envp parameters.
+    pub fn run_function_as_main(&self, func: Function, args: &[&str], env_vars: &[&str]) -> i32 {
+        let args = args.iter()
+            .map(|arg| unsafe {
+                CString::from_vec_unchecked(arg.as_bytes().to_vec())
+            })
+            .collect::<Vec<CString>>();
+
+        let mut argv = args.iter()
+            .map(|arg| arg.as_ptr())
+            .collect::<Vec<*const libc::c_char>>();
+
+        argv.push(ptr::null());
+
+        let env_vars = env_vars
+            .iter()
+            .map(|var| unsafe {
+                CString::from_vec_unchecked(var.as_bytes().to_vec())
+            })
+            .collect::<Vec<CString>>();
+
+        let mut environ = env_vars
+            .iter()
+            .map(|var| var.as_ptr())
+            .collect::<Vec<*const libc::c_char>>();
+
+        environ.push(ptr::null());
+
+        unsafe {
+            LLVMRunFunctionAsMain(
+                self.as_raw(),
+                func.as_raw(),
+                args.len() as u32,
+                argv.as_ptr(),
+                environ.as_ptr(),
+            )
+        }
+    }
+
+    /// Execute the specified function with the specified arguments, and return the result.
+    ///
+    /// For MCJIT execution engines, clients are encouraged to use the "GetFunctionAddress" method
+    /// (rather than runFunction) and cast the returned uint64_t to the desired function pointer type.
+    /// However, for backwards compatibility MCJIT's implementation can execute 'main-like' function
+    /// (i.e. those returning void or int, and taking either no arguments or (int, char*[])).
+    pub fn run_function(&self, func: Function, args: &[GenericValue]) -> GenericValue {
+        let mut args = args.iter()
+            .map(|arg| arg.as_raw())
+            .collect::<Vec<LLVMGenericValueRef>>();
+
+        unsafe {
+            LLVMRunFunction(
+                self.as_raw(),
+                func.as_raw(),
+                args.len() as u32,
+                args.as_mut_ptr(),
+            )
+        }.into()
+    }
+
     /// Add a Module to the list of modules that we can JIT from.
-    pub fn add_module(&self, module: &Module) -> &Self {
+    pub fn add_module(&self, module: Module) -> Module {
         trace!("add {:?} to {:?}", module, self);
 
-        unsafe { LLVMAddModule(self.0, module.as_raw()) }
+        unsafe { LLVMAddModule(self.0, module.as_raw()) };
 
-        self
+        let m = module.as_raw().into();
+
+        mem::forget(module);
+
+        m
     }
 
     /// Remove a Module from the list of modules.
@@ -137,7 +320,11 @@ impl ExecutionEngine {
         if unsafe { LLVMRemoveModule(self.0, module.as_raw(), &mut out, &mut err) }.is_ok() {
             trace!("remove {:?} from {:?}", module, self);
 
-            Ok(Module::from_raw(out))
+            let m = module.as_raw().into();
+
+            mem::forget(module);
+
+            Ok(m)
         } else {
             bail!(format!("fail to remove {:?}, {}", module, unsafe {
                 CStr::from_ptr(err).to_string_lossy()
@@ -152,7 +339,7 @@ impl ExecutionEngine {
         let cname = unchecked_cstring(name);
         let mut func = ptr::null_mut();
 
-        if unsafe { LLVMFindFunction(self.0, cname.as_ptr(), &mut func) }.as_bool() {
+        if unsafe { LLVMFindFunction(self.0, cname.as_ptr(), &mut func) }.is_ok() {
             let f = func.into();
 
             trace!(
@@ -172,6 +359,32 @@ impl ExecutionEngine {
 
             None
         }
+    }
+
+    pub fn target_data(&self) -> TargetData {
+        unsafe { LLVMGetExecutionEngineTargetData(self.as_raw()) }.into()
+    }
+
+    pub fn target_machine(&self) -> TargetMachine {
+        unsafe { LLVMGetExecutionEngineTargetMachine(self.as_raw()) }.into()
+    }
+
+    /// Tell the execution engine that the specified global is at the specified location.
+    ///
+    /// This is used internally as functions are JIT'd and as global variables are laid out in memory.
+    /// It can and should also be used by clients of the EE
+    /// that want to have an LLVM global overlay existing data in memory.
+    /// Values to be mapped should be named, and have external or weak linkage.
+    /// Mappings are automatically removed when their GlobalValue is destroyed.
+    pub fn add_global_mapping<T>(&self, var: GlobalVar, addr: *mut T) {
+        unsafe { LLVMAddGlobalMapping(self.as_raw(), var.as_raw(), addr as *mut libc::c_void) }
+    }
+
+    /// This returns the address of the specified global value.
+    ///
+    /// This may involve code generation if it's a function.
+    pub fn get_ptr_to_global<T>(&self, var: GlobalVar) -> *mut T {
+        unsafe { LLVMGetPointerToGlobal(self.as_raw(), var.as_raw()) as *mut T }
     }
 
     /// Return the address of the specified global value.
@@ -229,10 +442,176 @@ impl ExecutionEngine {
     }
 }
 
-impl Drop for ExecutionEngine {
-    fn drop(&mut self) {
-        trace!("drop {:?}", self);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use context::Context;
+    use function::FunctionType;
+    use insts::*;
+    use insts::{IRBuilder, Position};
+    use module::Module;
+    use prelude::*;
+    use target::{NativeAsmPrinter, NativeTarget};
+    use types::*;
 
-        unsafe { LLVMDisposeExecutionEngine(self.0) }
+    #[test]
+    fn generic_value() {
+        let c = Context::new();
+
+        let v = GenericValue::from_int(c.int64_t(), -123);
+
+        assert_eq!(v.int_width(), 64);
+        assert_eq!(v.to_int(), -123);
+
+        let v = GenericValue::from_uint(c.int32_t(), 456);
+
+        assert_eq!(v.int_width(), 32);
+        assert_eq!(v.to_uint(), 456);
+
+        let mut i = 123;
+        let v = GenericValue::from_ptr(&mut i);
+
+        assert_eq!(v.to_ptr(), &mut i as *mut i32);
+
+        let double_t = c.double_t();
+        let v = GenericValue::from_float(double_t, -123.0);
+
+        assert_eq!(v.to_float(double_t), -123.0);
+    }
+
+    #[test]
+    fn module() {
+        let c = Context::new();
+        let m = Module::with_name_in_context("module", &c);
+
+        // add it to our module
+        let opts = MCJITCompilerOptions::default();
+        let ee = MCJITCompiler::for_module(m, opts).unwrap();
+
+        // module
+        let test = Module::with_name_in_context("test", &c);
+
+        let test = ee.add_module(test);
+
+        assert_eq!(ee.remove_module(test).unwrap().name(), "test");
+    }
+
+    #[test]
+    fn call_function_with_address() {
+        MCJITCompiler::init();
+        NativeTarget::init().unwrap();
+        NativeAsmPrinter::init().unwrap();
+
+        let c = Context::new();
+        let m = Module::with_name_in_context("module", &c);
+
+        // get a type for sum function
+        let i64_t = c.int64_t();
+        let argts = [i64_t, i64_t, i64_t];
+        let function_type = FunctionType::new(i64_t, &argts, false);
+
+        let f = m.add_function("sum", function_type);
+
+        let builder = IRBuilder::within_context(&c);
+        let bb = f.append_basic_block_in_context("entry", &c);
+        builder.position(Position::AtEnd(bb));
+
+        // add it to our module
+        let opts = MCJITCompilerOptions::default();
+        let ee = MCJITCompiler::for_module(m, opts).unwrap();
+
+        // get the function's arguments
+        let x = f.get_param(0).unwrap();
+        let y = f.get_param(1).unwrap();
+        let z = f.get_param(2).unwrap();
+
+        let sum = builder.emit(add(x, y, "sum.1"));
+        let sum = builder.emit(add(sum, z, "sum.2"));
+
+        // Emit a `ret` into the function
+        builder.emit(ret!(sum));
+
+        // call with address
+        assert_eq!(ee.find_function("sum"), Some(f));
+
+        let addr = ee.get_function_address("sum").unwrap();
+
+        let sum: extern "C" fn(u64, u64, u64) -> u64 = unsafe { mem::transmute(addr) };
+
+        assert_eq!(sum(1, 2, 3), 6);
+    }
+
+    #[test]
+    fn run_function_without_args() {
+        let c = Context::new();
+        let m = Module::with_name_in_context("module", &c);
+
+        let f64_t = c.double_t();
+        let pi = m.add_function("pi", FunctionType::new(f64_t, &[], false));
+
+        let builder = IRBuilder::within_context(&c);
+        let bb = pi.append_basic_block_in_context("entry", &c);
+        builder.position(Position::AtEnd(bb));
+
+        builder.emit(ret!(f64_t.real(3.1415926)));
+
+        // add it to our module
+        let ee = Interpreter::for_module(m).unwrap();
+
+        // run function
+        assert_eq!(ee.run_function(pi, &[]).to_float(f64_t), 3.1415926);
+    }
+
+    #[test]
+    fn run_function_as_main() {
+        let c = Context::new();
+        let m = Module::with_name_in_context("module", &c);
+
+        let i32_t = c.int32_t();
+        let pp_char_t = c.int8_t().ptr_t().ptr_t();
+        let main = m.add_function(
+            "main",
+            FunctionType::new(i32_t, &[i32_t, pp_char_t.into(), pp_char_t.into()], false),
+        );
+
+        let builder = IRBuilder::within_context(&c);
+        let bb = main.append_basic_block_in_context("entry", &c);
+        builder.position(Position::AtEnd(bb));
+
+        let argc = main.get_param(0).unwrap();
+
+        builder.emit(ret!(argc));
+
+        m.dump();
+
+        let ee = ExecutionEngine::for_module(m).unwrap();
+
+        assert_eq!(
+            ee.run_function_as_main(main, &["123", "456", "789"], &[]),
+            3
+        );
+    }
+
+    #[test]
+    fn global_vars() {
+        let c = Context::new();
+        let m = Module::with_name_in_context("module", &c);
+
+        let i64_t = c.int64_t();
+        let x = m.add_global_var("x", i64_t);
+
+        let ee = ExecutionEngine::for_module(m).unwrap();
+
+        let mut v: i64 = 123;
+
+        {
+            ee.add_global_mapping(x, &mut v);
+        }
+
+        assert_eq!(unsafe { ptr::read::<i64>(ee.get_ptr_to_global(x)) }, 123);
+
+        let addr: *const i64 = unsafe { mem::transmute(ee.get_global_value_address("x").unwrap()) };
+
+        assert_eq!(addr, &v);
     }
 }

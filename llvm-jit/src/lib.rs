@@ -10,6 +10,8 @@ extern crate libc;
 extern crate llvm_sys as llvm;
 
 #[cfg(test)]
+extern crate pretty_env_logger;
+#[cfg(test)]
 extern crate tempfile;
 #[cfg(test)]
 #[macro_use]
@@ -40,7 +42,7 @@ pub mod target;
 pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
                    ConstantStruct, ConstantVector};
 pub use context::{Context, GlobalContext};
-pub use engine::{ExecutionEngine, GenericValue, Interpreter, MCJIT};
+pub use engine::{ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJIT};
 pub use function::{Function, FunctionType};
 pub use global::GlobalVar;
 pub use insts::{IRBuilder, Position};

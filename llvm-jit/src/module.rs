@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::ffi::CStr;
 use std::fmt;
+use std::mem;
 use std::path::Path;
 use std::ptr;
 
@@ -19,7 +20,25 @@ pub type AddressSpace = u32;
 
 /// Modules represent the top-level structure in an LLVM program.
 #[derive(Debug)]
-pub struct Module(LLVMModuleRef);
+pub struct Module(State);
+
+#[derive(Debug)]
+pub enum State {
+    Owned(LLVMModuleRef),
+    Borrowed(LLVMModuleRef),
+}
+
+impl From<LLVMModuleRef> for Module {
+    fn from(m: LLVMModuleRef) -> Self {
+        Module::from_faw(m)
+    }
+}
+
+impl From<Module> for LLVMModuleRef {
+    fn from(m: Module) -> Self {
+        m.as_raw()
+    }
+}
 
 impl Module {
     /// Create a new, empty module in the global context.
@@ -33,7 +52,7 @@ impl Module {
             module
         );
 
-        Module(module)
+        Module(State::Owned(module))
     }
 
     /// Create a new, empty module in a specific context.
@@ -48,29 +67,36 @@ impl Module {
             module,
         );
 
-        Module(module)
+        Module(State::Owned(module))
     }
 
-    /// Wrap a raw module reference.
-    pub fn from_raw(module: LLVMModuleRef) -> Self {
-        Module(module)
+    pub fn from_faw(m: LLVMModuleRef) -> Self {
+        Module(State::Borrowed(m))
     }
 
-    /// Extracts the raw module reference.
     pub fn as_raw(&self) -> LLVMModuleRef {
-        self.0
+        match self.0 {
+            State::Owned(m) |
+            State::Borrowed(m) => m,
+        }
+    }
+
+    pub fn forget(self) -> Self {
+        let m = self.as_raw();
+        mem::forget(self);
+        Self::from_faw(m)
     }
 
     /// Obtain the context to which this module is associated.
     pub fn context(&self) -> Context {
-        unsafe { LLVMGetModuleContext(self.0) }.into()
+        unsafe { LLVMGetModuleContext(self.as_raw()) }.into()
     }
 
     /// Obtain the identifier of a module.
     pub fn name(&self) -> Cow<str> {
         unsafe {
             let mut len = 0;
-            let p = LLVMGetModuleIdentifier(self.0, &mut len);
+            let p = LLVMGetModuleIdentifier(self.as_raw(), &mut len);
 
             from_unchecked_cstr(p as *const u8, len as usize + 1)
         }
@@ -80,34 +106,34 @@ impl Module {
     pub fn set_name<S: AsRef<str>>(&self, name: S) {
         let len = name.as_ref().len();
         let cname = unchecked_cstring(name);
-        unsafe { LLVMSetModuleIdentifier(self.0, cname.as_ptr(), len) }
+        unsafe { LLVMSetModuleIdentifier(self.as_raw(), cname.as_ptr(), len) }
     }
 
     /// Obtain the data layout for a module.
     pub fn data_layout_str(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetDataLayoutStr(self.0)).to_string_lossy() }
+        unsafe { CStr::from_ptr(LLVMGetDataLayoutStr(self.as_raw())).to_string_lossy() }
     }
 
     /// Set the data layout for a module.
     pub fn set_data_layout_str<S: AsRef<str>>(&self, name: S) {
         let cname = unchecked_cstring(name);
-        unsafe { LLVMSetDataLayout(self.0, cname.as_ptr()) }
+        unsafe { LLVMSetDataLayout(self.as_raw(), cname.as_ptr()) }
     }
 
     /// Obtain the target triple for a module.
     pub fn target_triple(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetTarget(self.0)).to_string_lossy() }
+        unsafe { CStr::from_ptr(LLVMGetTarget(self.as_raw())).to_string_lossy() }
     }
 
     /// Set the target triple for a module.
     pub fn set_target_triple<S: AsRef<str>>(&self, triple: S) {
         let ctriple = unchecked_cstring(triple);
-        unsafe { LLVMSetTarget(self.0, ctriple.as_ptr()) }
+        unsafe { LLVMSetTarget(self.as_raw(), ctriple.as_ptr()) }
     }
 
     /// Dump a representation of a module to stderr.
     pub fn dump(&self) {
-        unsafe { LLVMDumpModule(self.0) }
+        unsafe { LLVMDumpModule(self.as_raw()) }
     }
 
     /// Print a representation of a module to a file.
@@ -116,7 +142,7 @@ impl Module {
         let mut err = ptr::null_mut();
 
         unsafe {
-            if LLVMPrintModuleToFile(self.0, cfilename.as_ptr(), &mut err).is_ok() {
+            if LLVMPrintModuleToFile(self.as_raw(), cfilename.as_ptr(), &mut err).is_ok() {
                 Ok(())
             } else {
                 bail!(format!(
@@ -132,7 +158,7 @@ impl Module {
     /// Obtain a Type from a module by its registered name.
     pub fn get_type<S: AsRef<str>>(&self, name: S) -> Option<TypeRef> {
         let cname = unchecked_cstring(name);
-        let t = unsafe { LLVMGetTypeByName(self.0, cname.as_ptr()).as_mut() }
+        let t = unsafe { LLVMGetTypeByName(self.as_raw(), cname.as_ptr()).as_mut() }
             .map(|t| TypeRef::from_raw(t));
 
         if let Some(t) = t {
@@ -152,7 +178,7 @@ impl Module {
     /// Add a function to a module under a specified name.
     pub fn add_function<S: AsRef<str>>(&self, name: S, func_type: FunctionType) -> Function {
         let cname = unchecked_cstring(name);
-        let func = unsafe { LLVMAddFunction(self.0, cname.as_ptr(), func_type.as_raw()) };
+        let func = unsafe { LLVMAddFunction(self.as_raw(), cname.as_ptr(), func_type.as_raw()) };
 
         trace!(
             "add function `{}`: {:?} to {:?}: Function({:?})",
@@ -168,7 +194,7 @@ impl Module {
     /// Obtain a Function value from a Module by its name.
     pub fn get_function<S: AsRef<str>>(&self, name: S) -> Option<Function> {
         let cname = unchecked_cstring(name);
-        let func = unsafe { LLVMGetNamedFunction(self.0, cname.as_ptr()).as_mut() }
+        let func = unsafe { LLVMGetNamedFunction(self.as_raw(), cname.as_ptr()).as_mut() }
             .map(|f| Function::from_raw(f));
 
         if let Some(f) = func {
@@ -265,9 +291,11 @@ impl_iter!(
 
 impl Drop for Module {
     fn drop(&mut self) {
-        trace!("drop {:?}", self);
+        if let State::Owned(m) = self.0 {
+            trace!("drop {:?}", self);
 
-        unsafe { LLVMDisposeModule(self.0) }
+            unsafe { LLVMDisposeModule(m) }
+        }
     }
 }
 
@@ -275,7 +303,7 @@ impl Clone for Module {
     fn clone(&self) -> Self {
         trace!("clone {:?}", self);
 
-        Module(unsafe { LLVMCloneModule(self.0) })
+        unsafe { LLVMCloneModule(self.as_raw()) }.into()
     }
 }
 
@@ -284,7 +312,7 @@ impl fmt::Display for Module {
         write!(
             f,
             "{}",
-            unsafe { LLVMPrintModuleToString(self.0) }.to_string()
+            unsafe { LLVMPrintModuleToString(self.as_raw()) }.to_string()
         )
     }
 }

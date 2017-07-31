@@ -16,6 +16,8 @@ use utils::{AsBool, AsResult, DisposableMessage, unchecked_cstring};
 #[derive(Clone, Debug, PartialEq)]
 pub struct Target(LLVMTargetRef);
 
+inherit_from!(Target, LLVMTargetRef);
+
 impl Default for Target {
     fn default() -> Self {
         Target::from_triple(Target::default_triple_string()).unwrap()
@@ -105,6 +107,8 @@ impl Iterator for TargetIter {
 
 #[derive(Debug, PartialEq)]
 pub struct TargetMachine(LLVMTargetMachineRef);
+
+inherit_from!(TargetMachine, LLVMTargetMachineRef);
 
 impl Drop for TargetMachine {
     fn drop(&mut self) {
