@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
+use std::ptr;
 use std::slice;
 
 use libc;
@@ -141,6 +142,19 @@ impl Boolinator for LLVMBool {
     }
 }
 
+pub trait AsMutPtr<T> {
+    fn as_mut_ptr(self) -> *mut T;
+}
+
+impl<'a, T> AsMutPtr<T> for Option<&'a mut T> {
+    fn as_mut_ptr(self) -> *mut T {
+        match self {
+            Some(value) => value as *mut T,
+            None => ptr::null_mut(),
+        }
+    }
+}
+
 pub fn unchecked_cstring<S: AsRef<str>>(s: S) -> CString {
     unsafe { CString::from_vec_unchecked(s.as_ref().as_bytes().to_vec()) }
 }
@@ -173,6 +187,12 @@ macro_rules! inherit_from {
             }
         }
 
+        impl ::std::ops::DerefMut for $ty {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
+            }
+        }
+
         impl ::std::convert::From<$raw> for $ty {
             fn from(f: $raw) -> Self {
                 $ty(f.into())
@@ -198,6 +218,12 @@ macro_rules! inherit_from {
 
             fn deref(&self) -> &Self::Target {
                 &self.0
+            }
+        }
+
+        impl ::std::ops::DerefMut for $ty {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
             }
         }
 
@@ -245,6 +271,12 @@ macro_rules! inherit_from {
 
             fn deref(&self) -> &Self::Target {
                 &self.0
+            }
+        }
+
+        impl ::std::ops::DerefMut for $ty {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
             }
         }
 

@@ -14,6 +14,8 @@ extern crate pretty_env_logger;
 #[cfg(test)]
 extern crate tempfile;
 #[cfg(test)]
+extern crate mmap;
+#[cfg(test)]
 #[macro_use]
 extern crate matches;
 #[cfg(test)]
@@ -42,7 +44,8 @@ pub mod target;
 pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
                    ConstantStruct, ConstantVector};
 pub use context::{Context, GlobalContext};
-pub use engine::{ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJIT};
+pub use engine::{ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJIT, MCJITCompiler,
+                 MCJITCompilerOptions, MCJITMemoryManager};
 pub use function::{Function, FunctionType};
 pub use global::GlobalVar;
 pub use insts::{IRBuilder, Position};
