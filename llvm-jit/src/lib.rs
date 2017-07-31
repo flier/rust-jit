@@ -40,7 +40,7 @@ pub mod target;
 pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
                    ConstantStruct, ConstantVector};
 pub use context::{Context, GlobalContext};
-pub use engine::{ExecutionEngine, Interpreter, MCJIT};
+pub use engine::{ExecutionEngine, GenericValue, Interpreter, MCJIT};
 pub use function::{Function, FunctionType};
 pub use global::GlobalVar;
 pub use insts::{IRBuilder, Position};

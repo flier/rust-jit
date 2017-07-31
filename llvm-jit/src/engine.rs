@@ -2,12 +2,59 @@ use std::ffi::CStr;
 use std::mem;
 use std::ptr;
 
+use libc;
 use llvm::execution_engine::*;
 
 use errors::Result;
 use function::Function;
 use module::Module;
-use utils::{AsBool, AsResult, unchecked_cstring};
+use types::TypeRef;
+use utils::{AsBool, AsLLVMBool, AsResult, unchecked_cstring};
+
+#[derive(Debug, PartialEq)]
+pub struct GenericValue(LLVMGenericValueRef);
+
+inherit_from!(GenericValue, LLVMGenericValueRef);
+
+impl Drop for GenericValue {
+    fn drop(&mut self) {
+        unsafe { LLVMDisposeGenericValue(self.0) }
+    }
+}
+
+impl GenericValue {
+    pub fn from_int<T: Into<TypeRef>>(ty: T, n: u64, is_signed: bool) -> Self {
+        unsafe { LLVMCreateGenericValueOfInt(ty.into().as_raw(), n, is_signed.as_bool()) }.into()
+    }
+
+    pub fn from_ptr<T>(p: *const T) -> Self {
+        unsafe { LLVMCreateGenericValueOfPointer(p as *mut libc::c_void) }.into()
+    }
+
+    pub fn from_float<T: Into<TypeRef>>(ty: T, n: f64) -> Self {
+        unsafe { LLVMCreateGenericValueOfFloat(ty.into().as_raw(), n) }.into()
+    }
+
+    pub fn int_width(&self) -> u32 {
+        unsafe { LLVMGenericValueIntWidth(self.0) as u32 }
+    }
+
+    pub fn to_uint(self) -> u64 {
+        unsafe { LLVMGenericValueToInt(self.0, false.as_bool()) }
+    }
+
+    pub fn to_int(self) -> i64 {
+        unsafe { mem::transmute(LLVMGenericValueToInt(self.0, true.as_bool())) }
+    }
+
+    pub fn to_ptr<T>(self) -> *mut T {
+        unsafe { LLVMGenericValueToPointer(self.0) as *mut T }
+    }
+
+    pub fn to_float<T: Into<TypeRef>>(self, ty: T) -> f64 {
+        unsafe { LLVMGenericValueToFloat(ty.into().as_raw(), self.0) }
+    }
+}
 
 pub struct MCJIT;
 
