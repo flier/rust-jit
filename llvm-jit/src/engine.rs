@@ -485,8 +485,6 @@ impl ExecutionEngine {
 
 #[cfg(test)]
 mod tests {
-    use std::borrow::Cow;
-
     use llvm::prelude::*;
     use mmap;
     use pretty_env_logger;
@@ -661,64 +659,41 @@ mod tests {
         assert_eq!(addr, &v);
     }
 
-    struct MemorySection<'a> {
-        mm: mmap::MemoryMap,
-        size: usize,
-        alignment: u32,
-        section_id: u32,
-        section_name: Cow<'a, str>,
-    }
+    struct MemorySection(mmap::MemoryMap);
 
-    impl<'a> MemorySection<'a> {
-        pub fn code(
-            size: ::libc::uintptr_t,
-            alignment: ::libc::c_uint,
-            section_id: ::libc::c_uint,
-            section_name: *const ::libc::c_char,
-        ) -> Self {
-            let mm = mmap::MemoryMap::new(
-                size as usize,
-                &[mmap::MapOption::MapWritable, mmap::MapOption::MapExecutable],
-            ).unwrap();
+    impl MemorySection {
+        pub fn code(size: usize, alignment: usize) -> Self {
+            let aligned = (size + alignment - 1) / alignment * alignment;
 
-            MemorySection {
-                mm,
-                size,
-                alignment,
-                section_id,
-                section_name: unsafe { CStr::from_ptr(section_name).to_string_lossy() },
-            }
+            MemorySection(
+                mmap::MemoryMap::new(
+                    aligned,
+                    &[mmap::MapOption::MapWritable, mmap::MapOption::MapExecutable],
+                ).unwrap(),
+            )
         }
 
-        pub fn data(
-            size: ::libc::uintptr_t,
-            alignment: ::libc::c_uint,
-            section_id: ::libc::c_uint,
-            section_name: *const ::libc::c_char,
-            is_read_only: LLVMBool,
-        ) -> Self {
+        pub fn data(size: usize, alignment: usize, is_read_only: bool) -> Self {
             let mut options = vec![mmap::MapOption::MapReadable];
 
-            if !is_read_only.as_bool() {
+            if !is_read_only {
                 options.push(mmap::MapOption::MapWritable);
             };
 
-            let mm = mmap::MemoryMap::new(size as usize, &options).unwrap();
+            let aligned = (size + alignment - 1) / alignment * alignment;
 
-            MemorySection {
-                mm,
-                size,
-                alignment,
-                section_id,
-                section_name: unsafe { CStr::from_ptr(section_name).to_string_lossy() },
-            }
+            MemorySection(mmap::MemoryMap::new(aligned, &options).unwrap())
+        }
+
+        pub fn base(&self) -> *mut u8 {
+            self.0.data()
         }
     }
 
     #[derive(Default)]
-    struct MemoryManager<'a> {
-        code_sections: Vec<MemorySection<'a>>,
-        data_sections: Vec<MemorySection<'a>>,
+    struct MemoryManager {
+        code_sections: Vec<MemorySection>,
+        data_sections: Vec<MemorySection>,
     }
 
     extern "C" fn mm_alloc_code(
@@ -728,8 +703,8 @@ mod tests {
         section_id: ::libc::c_uint,
         section_name: *const ::libc::c_char,
     ) -> *mut u8 {
-        let section = MemorySection::code(size, alignment, section_id, section_name);
-        let p = section.mm.data();
+        let section = MemorySection::code(size as usize, alignment as usize);
+        let p = section.base();
 
         trace!(
             "allocate {} bytes (align to {}) code section `{}` #{} @ {:?}",
@@ -754,8 +729,9 @@ mod tests {
         section_name: *const ::libc::c_char,
         is_read_only: LLVMBool,
     ) -> *mut u8 {
-        let section = MemorySection::data(size, alignment, section_id, section_name, is_read_only);
-        let p = section.mm.data();
+        let section =
+            MemorySection::data(size as usize, alignment as usize, is_read_only.as_bool());
+        let p = section.base();
 
         trace!(
             "allocated {} bytes (align to {}) {} data section `{}` #{} @ {:?}",
@@ -812,7 +788,7 @@ mod tests {
             mm_alloc_data,
             mm_finalize,
             mm_destroy,
-        );
+        ).unwrap();
 
         opts.MCJMM = mm.into();
 
@@ -832,8 +808,6 @@ mod tests {
         store(n, p).emit_to(&builder);
         free(p).emit_to(&builder);
         ret!(n).emit_to(&builder);
-
-        m.dump();
 
         let ee = MCJITCompiler::for_module(m, opts).unwrap();
 
