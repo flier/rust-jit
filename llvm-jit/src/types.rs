@@ -571,7 +571,7 @@ mod tests {
     }
 
     #[test]
-    fn integer() {
+    fn global_context() {
         assert_eq!(GlobalContext::int1_t().to_string(), "i1");
         assert_eq!(GlobalContext::int8_t().to_string(), "i8");
         assert_eq!(GlobalContext::int16_t().to_string(), "i16");
@@ -588,6 +588,22 @@ mod tests {
         assert_eq!(GlobalContext::int128_t().width(), 128);
         assert_eq!(GlobalContext::int_type(512).width(), 512);
 
+        assert_eq!(GlobalContext::half_t().to_string(), "half");
+        assert_eq!(GlobalContext::float_t().to_string(), "float");
+        assert_eq!(GlobalContext::double_t().to_string(), "double");
+        assert_eq!(GlobalContext::x86_fp80_t().to_string(), "x86_fp80");
+        assert_eq!(GlobalContext::fp128_t().to_string(), "fp128");
+        assert_eq!(GlobalContext::ppc_fp128_t().to_string(), "ppc_fp128");
+
+        assert_eq!(GlobalContext::void_t().to_string(), "void");
+        assert_eq!(GlobalContext::label_t().to_string(), "label");
+        assert_eq!(GlobalContext::x86_mmx_t().to_string(), "x86_mmx");
+
+        struct_in_global_context()
+    }
+
+    #[test]
+    fn integer() {
         let c = Context::new();
 
         assert_eq!(c.int1_t().to_string(), "i1");
@@ -638,13 +654,6 @@ mod tests {
 
     #[test]
     fn floating_point() {
-        assert_eq!(GlobalContext::half_t().to_string(), "half");
-        assert_eq!(GlobalContext::float_t().to_string(), "float");
-        assert_eq!(GlobalContext::double_t().to_string(), "double");
-        assert_eq!(GlobalContext::x86_fp80_t().to_string(), "x86_fp80");
-        assert_eq!(GlobalContext::fp128_t().to_string(), "fp128");
-        assert_eq!(GlobalContext::ppc_fp128_t().to_string(), "ppc_fp128");
-
         let c = Context::new();
 
         assert_eq!(c.half_t().to_string(), "half");
@@ -682,10 +691,6 @@ mod tests {
 
     #[test]
     fn other() {
-        assert_eq!(GlobalContext::void_t().to_string(), "void");
-        assert_eq!(GlobalContext::label_t().to_string(), "label");
-        assert_eq!(GlobalContext::x86_mmx_t().to_string(), "x86_mmx");
-
         let c = Context::new();
 
         assert_eq!(c.void_t().to_string(), "void");
@@ -706,7 +711,6 @@ mod tests {
         ));
     }
 
-    #[test]
     fn struct_in_global_context() {
         let i16_t = GlobalContext::int16_t();
         let i32_t = GlobalContext::int32_t();
