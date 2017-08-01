@@ -321,6 +321,7 @@ impl fmt::Display for Module {
 mod tests {
     use std::io::prelude::*;
 
+    use llvm::analysis::LLVMVerifierFailureAction;
     use tempfile::NamedTempFile;
 
     use super::*;
@@ -388,5 +389,14 @@ target triple = "x86_64-apple-darwin"
         assert_eq!(m.get_function("sum"), Some(sum));
 
         assert_eq!(m.functions().collect::<Vec<Function>>(), vec![f, sum]);
+
+        assert!(
+            m.verify(LLVMVerifierFailureAction::LLVMAbortProcessAction)
+                .is_ok()
+        );
+        assert!(
+            sum.verify(LLVMVerifierFailureAction::LLVMAbortProcessAction)
+                .is_ok()
+        );
     }
 }

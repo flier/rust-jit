@@ -41,6 +41,7 @@ mod block;
 mod passmgr;
 mod engine;
 pub mod target;
+mod analysis;
 
 pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
                    ConstantStruct, ConstantVector};
