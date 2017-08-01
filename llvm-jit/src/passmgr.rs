@@ -4,6 +4,8 @@ use llvm::core::*;
 use llvm::prelude::*;
 use llvm::transforms::ipo::*;
 use llvm::transforms::pass_manager_builder::*;
+use llvm::transforms::scalar::*;
+use llvm::transforms::vectorize::*;
 
 use function::Function;
 use module::Module;
@@ -120,6 +122,211 @@ pub enum Pass {
     /// so it should only be used in situations where the strip utility would be used,
     /// such as reducing code size or making it harder to reverse engineer code.
     StripSymbols,
+
+    /// Basic-Block Vectorization¶
+    ///
+    /// This pass combines instructions inside basic blocks to form vector instructions.
+    /// It iterates over each basic block, attempting to pair compatible instructions,
+    /// repeating this process until no additional pairs are selected for vectorization.
+    /// When the outputs of some pair of compatible instructions are used
+    /// as inputs by some other pair of compatible instructions,
+    /// those pairs are part of a potential vectorization chain.
+    /// Instruction pairs are only fused into vector instructions
+    /// when they are part of a chain longer than some threshold length.
+    /// Moreover, the pass attempts to find the best possible chain for each pair of compatible instructions.
+    /// These heuristics are intended to prevent vectorization in cases
+    /// where it would not yield a performance increase of the resulting code.
+    BBVectorize,
+
+    /// Create a loop vectorization pass.
+    LoopVectorize,
+
+    /// Create a bottom-up SLP vectorizer pass.
+    SLPVectorizer,
+
+    /// Aggressive Dead Code Elimination
+    ///
+    /// ADCE aggressively tries to eliminate code.
+    ///
+    /// This pass is similar to DCE but it assumes that values are dead until proven otherwise.
+    /// This is similar to SCCP, except applied to the liveness of values.
+    AggressiveDCE,
+
+    /// Bit Tracking Dead Code Elimination
+    ///
+    /// This pass uses a bit-tracking DCE algorithm in order to remove computations of dead bits.
+    BitTrackingDCE,
+
+    /// Alignment From Assumptions
+    ///
+    /// Use assume intrinsics to set load/store alignments.
+    AlignmentFromAssumptions,
+
+    /// Simplify the CFG
+    ///
+    /// Merge basic blocks, eliminate unreachable blocks, simplify terminator instructions, etc...
+    CFGSimplification,
+
+    /// Dead Store Elimination
+    ///
+    /// A trivial dead store elimination that only considers basic-block local redundant stores.
+    /// This pass deletes stores that are post-dominated by must-aliased stores and are not loaded used between the stores.
+    DeadStoreElimination,
+
+    /// Converts vector operations into scalar operations
+    Scalarizer,
+
+    /// Merged Load Store Motion
+    ///
+    /// This pass merges loads and stores in diamonds.
+    /// Loads are hoisted into the header, while stores sink into the footer.
+    MergedLoadStoreMotion,
+
+    /// Global Value Numbering
+    ///
+    /// This pass performs global value numbering to eliminate fully and partially redundant instructions.
+    /// It also performs redundant load elimination.
+    GVN,
+
+    /// This pass performs global value numbering and redundant load elimination cotemporaneously.
+    NewGVN,
+
+    /// Induction Variable Simplify
+    ///
+    /// Transform induction variables in a program to all use a single canonical induction variable per loop.
+    IndVarSimplify,
+
+    /// Instruction Combining
+    ///
+    /// Combine instructions to form fewer, simple instructions.
+    /// This pass does not modify the CFG, and has a tendency to make instructions dead,
+    /// so a subsequent DCE pass is useful.
+    ///
+    /// This pass combines things like:
+    ///    %Y = add int 1, %X
+    ///    %Z = add int 1, %Y
+    /// into:
+    ///    %Z = add int 2, %X
+    InstructionCombining,
+
+    /// Jump Threading
+    ///
+    /// Thread control through mult-pred/multi-succ blocks where some preds always go to some succ.
+    /// Thresholds other than minus one override the internal BB duplication default threshold.
+    JumpThreading,
+
+    /// Loop Invariant Code Motion
+    ///
+    /// This pass is a loop invariant code motion and memory promotion pass.
+    ///
+    /// This pass performs loop invariant code motion,
+    /// attempting to remove as much code from the body of a loop as possible.
+    /// It does this by either hoisting code into the preheader block,
+    /// or by sinking code to the exit blocks if it is safe.
+    /// This pass also promotes must-aliased memory locations in the loop to live in registers,
+    /// thus hoisting and sinking “invariant” loads and stores.
+    LICM,
+
+    /// Loop Deletion
+    ///
+    /// This pass performs DCE of non-infinite loops that it can prove are dead.
+    LoopDeletion,
+
+    /// LoopIdiom - This pass recognizes and replaces idioms in loops.
+    LoopIdiom,
+
+    /// LoopRotate - This pass is a simple loop rotating pass.
+    LoopRotate,
+
+    /// LoopReroll - This pass is a simple loop rerolling pass.
+    LoopReroll,
+
+    /// LoopUnroll - This pass is a simple loop unrolling pass.
+    LoopUnroll,
+
+    /// LoopUnswitch - This pass is a simple loop unswitching pass.
+    LoopUnswitch,
+
+    /// MemCpyOpt - This pass performs optimizations related to eliminating memcpy
+    /// calls and/or combining multiple stores into memset's.
+    MemCpyOpt,
+
+    /// PartiallyInlineLibCalls - Tries to inline the fast path of library calls such as sqrt.
+    PartiallyInlineLibCalls,
+
+    /// LowerSwitch - This pass converts SwitchInst instructions into a sequence of chained binary branch instructions.
+    LowerSwitch,
+
+    /// PromoteMemoryToRegister - This pass is used to promote memory references to be register references.
+    /// A simple example of the transformation performed by this pass is:
+    /// ```
+    ///        FROM CODE                           TO CODE
+    ///   %X = alloca i32, i32 1                 ret i32 42
+    ///   store i32 42, i32 *%X
+    ///   %Y = load i32* %X
+    ///   ret i32 %Y
+    /// ```
+    PromoteMemoryToRegister,
+
+    /// Reassociate - This pass reassociates commutative expressions in an order
+    /// that is designed to promote better constant propagation, GCSE, LICM, PRE...
+    ///
+    /// For example:  4 + (x + 5)  ->  x + (4 + 5)
+    ///
+    Reassociate,
+
+    /// SCCP - Sparse conditional constant propagation.
+    SCCP,
+
+    /// SROA - Replace aggregates or pieces of aggregates with scalar SSA values.
+    ScalarReplAggregates,
+
+    /// SROA - Replace aggregates or pieces of aggregates with scalar SSA values.
+    ScalarReplAggregatesSSA,
+
+    /// SROA - Replace aggregates or pieces of aggregates with scalar SSA values.
+    ScalarReplAggregatesWithThreshold(i32),
+
+    /// The simplify-libcalls pass has been removed.
+    SimplifyLibCalls,
+
+    /// TailCallElimination - This pass eliminates call instructions to the current
+    /// function which occur immediately before return instructions.
+    TailCallElimination,
+
+    /// ConstantPropagation - A worklist driven constant propagation pass
+    ConstantPropagation,
+
+    /// DemoteRegisterToMemoryPass - This pass is used to demote registers to memory references.
+    /// In basically undoes the PromoteMemoryToRegister pass to make cfg hacking easier.
+    DemoteMemoryToRegister,
+
+    /// Check a module for errors, and report separate error states for IR and debug info errors.
+    Verifier,
+
+    /// ValuePropagation - Propagate CFG-derived value information
+    CorrelatedValuePropagation,
+
+    /// EarlyCSE - This pass performs a simple and fast CSE pass over the dominator tree.
+    EarlyCSE,
+
+    /// EarlyCSE - This pass performs a simple and fast CSE pass over the dominator tree.
+    EarlyCSEMemSSA,
+
+    /// LowerExpectIntrinsics - Removes llvm.expect intrinsics and creates "block_weights" metadata.
+    LowerExpectIntrinsic,
+
+    /// TypeBasedAAWrapper - This pass implements metadata-based type-based alias analysis.
+    TypeBasedAliasAnalysis,
+
+    /// ScopedNoAliasAAWrapperPass - This pass implements metadata-based scoped noalias analysis.
+    ScopedNoAliasAA,
+
+    /// Basic Alias Analysis (stateless AA impl)
+    ///
+    /// A basic alias analysis pass that implements identities (two different globals cannot alias, etc),
+    /// but does no stateful analysis.
+    BasicAliasAnalysis,
 }
 
 #[derive(Debug)]
@@ -146,8 +353,12 @@ impl PassManager {
         unsafe { LLVMRunPassManager(self.0, module.as_raw()) }.as_bool()
     }
 
+    /// add pass to pipeline
+    ///
+    /// @see: https://llvm.org/docs/Passes.html#bb-vectorize-basic-block-vectorization
     pub fn add_pass(&self, pass: Pass) {
         match pass {
+            // Interprocedural transformations
             Pass::ArgumentPromotion => unsafe { LLVMAddArgumentPromotionPass(self.as_raw()) },
             Pass::ConstantMerge => unsafe { LLVMAddConstantMergePass(self.as_raw()) },
             Pass::DeadArgElimination => unsafe { LLVMAddDeadArgEliminationPass(self.as_raw()) },
@@ -166,6 +377,72 @@ impl PassManager {
             },
             Pass::StripDeadPrototypes => unsafe { LLVMAddStripDeadPrototypesPass(self.as_raw()) },
             Pass::StripSymbols => unsafe { LLVMAddStripSymbolsPass(self.as_raw()) },
+
+            // Vectorization transformations
+            Pass::BBVectorize => unsafe { LLVMAddBBVectorizePass(self.as_raw()) },
+            Pass::LoopVectorize => unsafe { LLVMAddLoopVectorizePass(self.as_raw()) },
+            Pass::SLPVectorizer => unsafe { LLVMAddSLPVectorizePass(self.as_raw()) },
+
+            /// Scalar transformations
+            Pass::AggressiveDCE => unsafe { LLVMAddAggressiveDCEPass(self.as_raw()) },
+            /// Added in LLVM 3.7.
+            Pass::BitTrackingDCE => unsafe { LLVMAddBitTrackingDCEPass(self.as_raw()) },
+            Pass::AlignmentFromAssumptions => unsafe {
+                LLVMAddAlignmentFromAssumptionsPass(self.as_raw())
+            },
+            Pass::CFGSimplification => unsafe { LLVMAddCFGSimplificationPass(self.as_raw()) },
+            Pass::DeadStoreElimination => unsafe { LLVMAddDeadStoreEliminationPass(self.as_raw()) },
+            Pass::Scalarizer => unsafe { LLVMAddScalarizerPass(self.as_raw()) },
+            Pass::MergedLoadStoreMotion => unsafe {
+                LLVMAddMergedLoadStoreMotionPass(self.as_raw())
+            },
+            Pass::GVN => unsafe { LLVMAddGVNPass(self.as_raw()) },
+            Pass::NewGVN => unsafe { LLVMAddNewGVNPass(self.as_raw()) },
+            Pass::IndVarSimplify => unsafe { LLVMAddIndVarSimplifyPass(self.as_raw()) },
+            Pass::InstructionCombining => unsafe { LLVMAddInstructionCombiningPass(self.as_raw()) },
+            Pass::JumpThreading => unsafe { LLVMAddJumpThreadingPass(self.as_raw()) },
+            Pass::LICM => unsafe { LLVMAddLICMPass(self.as_raw()) },
+            Pass::LoopDeletion => unsafe { LLVMAddLoopDeletionPass(self.as_raw()) },
+            Pass::LoopIdiom => unsafe { LLVMAddLoopIdiomPass(self.as_raw()) },
+            Pass::LoopRotate => unsafe { LLVMAddLoopRotatePass(self.as_raw()) },
+            Pass::LoopReroll => unsafe { LLVMAddLoopRerollPass(self.as_raw()) },
+            Pass::LoopUnroll => unsafe { LLVMAddLoopUnrollPass(self.as_raw()) },
+            Pass::LoopUnswitch => unsafe { LLVMAddLoopUnswitchPass(self.as_raw()) },
+            Pass::MemCpyOpt => unsafe { LLVMAddMemCpyOptPass(self.as_raw()) },
+            Pass::PartiallyInlineLibCalls => unsafe {
+                LLVMAddPartiallyInlineLibCallsPass(self.as_raw())
+            },
+            Pass::LowerSwitch => unsafe { LLVMAddLowerSwitchPass(self.as_raw()) },
+            Pass::PromoteMemoryToRegister => unsafe {
+                LLVMAddPromoteMemoryToRegisterPass(self.as_raw())
+            },
+            Pass::Reassociate => unsafe { LLVMAddReassociatePass(self.as_raw()) },
+            Pass::SCCP => unsafe { LLVMAddSCCPPass(self.as_raw()) },
+            Pass::ScalarReplAggregates => unsafe { LLVMAddScalarReplAggregatesPass(self.as_raw()) },
+            Pass::ScalarReplAggregatesSSA => unsafe {
+                LLVMAddScalarReplAggregatesPassSSA(self.as_raw())
+            },
+            Pass::ScalarReplAggregatesWithThreshold(threshold) => unsafe {
+                LLVMAddScalarReplAggregatesPassWithThreshold(self.as_raw(), threshold)
+            },
+            Pass::SimplifyLibCalls => unsafe { LLVMAddSimplifyLibCallsPass(self.as_raw()) },
+            Pass::TailCallElimination => unsafe { LLVMAddTailCallEliminationPass(self.as_raw()) },
+            Pass::ConstantPropagation => unsafe { LLVMAddConstantPropagationPass(self.as_raw()) },
+            Pass::DemoteMemoryToRegister => unsafe {
+                LLVMAddDemoteMemoryToRegisterPass(self.as_raw())
+            },
+            Pass::Verifier => unsafe { LLVMAddVerifierPass(self.as_raw()) },
+            Pass::CorrelatedValuePropagation => unsafe {
+                LLVMAddCorrelatedValuePropagationPass(self.as_raw())
+            },
+            Pass::EarlyCSE => unsafe { LLVMAddEarlyCSEPass(self.as_raw()) },
+            Pass::EarlyCSEMemSSA => unsafe { LLVMAddEarlyCSEMemSSAPass(self.as_raw()) },
+            Pass::LowerExpectIntrinsic => unsafe { LLVMAddLowerExpectIntrinsicPass(self.as_raw()) },
+            Pass::TypeBasedAliasAnalysis => unsafe {
+                LLVMAddTypeBasedAliasAnalysisPass(self.as_raw())
+            },
+            Pass::ScopedNoAliasAA => unsafe { LLVMAddScopedNoAliasAAPass(self.as_raw()) },
+            Pass::BasicAliasAnalysis => unsafe { LLVMAddBasicAliasAnalysisPass(self.as_raw()) },
         }
     }
 }
