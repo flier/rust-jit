@@ -6,6 +6,9 @@
 extern crate log;
 #[macro_use]
 extern crate error_chain;
+#[macro_use]
+extern crate bitflags;
+extern crate hexplay;
 extern crate libc;
 extern crate llvm_sys as llvm;
 
@@ -22,6 +25,7 @@ extern crate matches;
 #[macro_use]
 extern crate hamcrest;
 
+#[macro_use]
 pub mod errors;
 #[macro_use]
 mod utils;
@@ -42,10 +46,12 @@ mod passmgr;
 mod engine;
 pub mod target;
 mod analysis;
+mod disasm;
 
 pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
                    ConstantStruct, ConstantVector};
 pub use context::{Context, GlobalContext};
+pub use disasm::Disasm;
 pub use engine::{ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJIT, MCJITCompiler,
                  MCJITCompilerOptions, MCJITMemoryManager};
 pub use function::{Function, FunctionType};

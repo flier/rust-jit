@@ -487,7 +487,6 @@ impl ExecutionEngine {
 mod tests {
     use llvm::prelude::*;
     use mmap;
-    use pretty_env_logger;
 
     use super::*;
     use context::Context;
@@ -771,8 +770,6 @@ mod tests {
 
     #[test]
     fn memory_manager() {
-        let _ = pretty_env_logger::init().unwrap();
-
         MCJITCompiler::link_in();
         NativeTarget::init().unwrap();
         NativeAsmPrinter::init().unwrap();

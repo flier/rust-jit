@@ -6,6 +6,8 @@ authors = ["Flier Lu <flier.lu@gmail.com>"]
 [dependencies]
 log = "0.3"
 error-chain = "0.10"
+bitflags = "0.9"
+hexplay = "0.1"
 libc = "0.2"
 llvm-sys = "40"
 
