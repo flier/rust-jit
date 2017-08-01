@@ -1,11 +1,15 @@
+use std::ops::Deref;
+
 use llvm::core::*;
 use llvm::prelude::*;
 use llvm::transforms::ipo::*;
+use llvm::transforms::pass_manager_builder::*;
 
 use function::Function;
 use module::Module;
 use utils::{AsBool, AsLLVMBool};
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Pass {
     /// Promote ‘by reference’ arguments to scalars
     ///
@@ -118,7 +122,7 @@ pub enum Pass {
     StripSymbols,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug)]
 pub struct PassManager(LLVMPassManagerRef);
 
 inherit_from!(PassManager, LLVMPassManagerRef);
@@ -166,6 +170,7 @@ impl PassManager {
     }
 }
 
+#[derive(Debug)]
 pub struct FunctionPassManager(PassManager);
 
 inherit_from!(FunctionPassManager, PassManager, LLVMPassManagerRef);
@@ -204,5 +209,91 @@ impl PassRegistry {
     /// Return the global pass registry, for use with initialization functions.
     pub fn global() -> Self {
         unsafe { LLVMGetGlobalPassRegistry() }.into()
+    }
+}
+
+#[derive(Debug)]
+pub struct PassManagerBuilder(LLVMPassManagerBuilderRef);
+
+inherit_from!(PassManagerBuilder, LLVMPassManagerBuilderRef);
+
+impl Drop for PassManagerBuilder {
+    fn drop(&mut self) {
+        unsafe { LLVMPassManagerBuilderDispose(self.as_raw()) }
+    }
+}
+
+impl PassManagerBuilder {
+    pub fn new() -> Self {
+        unsafe { LLVMPassManagerBuilderCreate() }.into()
+    }
+
+    /// The Optimization Level - Specify the basic optimization level.
+    ///
+    ///  - 0: -O0
+    ///  - 1: -O1
+    ///  - 2: -O2
+    ///  - 3: -O3
+    pub fn set_opt_level(&mut self, opt_level: u32) -> &mut Self {
+        unsafe { LLVMPassManagerBuilderSetOptLevel(self.as_raw(), opt_level) };
+
+        self
+    }
+
+    /// How much we're optimizing for size.
+    ///
+    ///  - 0: none
+    ///  - 1: -Os
+    ///  - 2: -Oz
+    pub fn set_size_level(&mut self, size_level: u32) -> &mut Self {
+        unsafe { LLVMPassManagerBuilderSetSizeLevel(self.as_raw(), size_level) };
+
+        self
+    }
+
+    pub fn set_disable_unit_at_atime(&mut self, v: bool) -> &mut Self {
+        unsafe { LLVMPassManagerBuilderSetDisableUnitAtATime(self.as_raw(), v.as_bool()) };
+
+        self
+    }
+
+    pub fn set_disable_unroll_loops(&mut self, v: bool) -> &mut Self {
+        unsafe { LLVMPassManagerBuilderSetDisableUnrollLoops(self.as_raw(), v.as_bool()) };
+
+        self
+    }
+
+    pub fn use_inliner_with_threshold(&mut self, threshold: u32) -> &mut Self {
+        unsafe { LLVMPassManagerBuilderUseInlinerWithThreshold(self.as_raw(), threshold) };
+
+        self
+    }
+
+    pub fn populate_function_pass_manager<M: AsRef<Deref<Target = PassManager>>>(&self, mgr: M) {
+        unsafe {
+            LLVMPassManagerBuilderPopulateFunctionPassManager(self.as_raw(), mgr.as_ref().as_raw())
+        }
+    }
+
+    pub fn populate_module_pass_manager<M: AsRef<Deref<Target = PassManager>>>(&self, mgr: M) {
+        unsafe {
+            LLVMPassManagerBuilderPopulateModulePassManager(self.as_raw(), mgr.as_ref().as_raw())
+        }
+    }
+
+    pub fn populate_lto_pass_manager<M: AsRef<Deref<Target = PassManager>>>(
+        &self,
+        mgr: M,
+        internalize: bool,
+        run_inliner: bool,
+    ) {
+        unsafe {
+            LLVMPassManagerBuilderPopulateLTOPassManager(
+                self.as_raw(),
+                mgr.as_ref().as_raw(),
+                internalize.as_bool(),
+                run_inliner.as_bool(),
+            )
+        }
     }
 }

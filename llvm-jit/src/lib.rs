@@ -51,7 +51,7 @@ pub use function::{Function, FunctionType};
 pub use global::GlobalVar;
 pub use insts::{IRBuilder, Position};
 pub use module::{AddressSpace, Module};
-pub use passmgr::{Pass, PassManager, PassRegistry};
+pub use passmgr::{Pass, PassManager, PassManagerBuilder, PassRegistry};
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
                 TypeKind, TypeRef, VectorType};
 pub use utils::{AsBool, AsLLVMBool, AsResult, Boolinator};
