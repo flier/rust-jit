@@ -49,6 +49,7 @@ mod analysis;
 mod disasm;
 mod membuf;
 mod object;
+mod bitcode;
 
 pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
                    ConstantStruct, ConstantVector};

@@ -20,6 +20,12 @@ impl Drop for MemoryBuffer {
     }
 }
 
+impl Clone for MemoryBuffer {
+    fn clone(&self) -> Self {
+        MemoryBuffer::from_bytes(self.as_bytes(), "clone")
+    }
+}
+
 impl MemoryBuffer {
     /// Open the specified file as a MemoryBuffer.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
