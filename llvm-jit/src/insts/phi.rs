@@ -113,8 +113,11 @@ impl PhiNode {
 
 #[macro_export]
 macro_rules! phi {
-    ($ty:expr, $([ $value:expr, $block:expr ])* ; $name:expr ) => ({
+    ( $ty:expr, $([ $value:expr, $block:expr ])* ; $name:expr ) => ({
         $crate::insts::Phi::new($ty.into(), $name.into()) $( .add_incoming( $value.into(), $block.into() ) )*
+    });
+    ( $ty:expr, $([ $value:expr, $block:expr ])* ) => ({
+        phi!( $ty, $([ $value, $block ])* ; "phi" )
     })
 }
 

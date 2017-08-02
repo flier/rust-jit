@@ -118,6 +118,19 @@ macro_rules! invoke {
     ($func:expr, $( $arg:expr ),* ; $name:expr) => ({
         $crate::insts::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into())
     });
+
+    ($func:expr, $( $arg:expr ),* ; to $then:expr ; unwind $unwind:expr) => ({
+        invoke!($func, $( $arg ),* ; to $then ; unwind $unwind ; "invoke")
+    });
+    ($func:expr, $( $arg:expr ),* ; to $then:expr) => ({
+        invoke!($func, $( $arg ),* ; to $then ; "invoke")
+    });
+    ($func:expr, $( $arg:expr ),* ; unwind $unwind:expr) => ({
+        invoke!($func, $( $arg ),* ; unwind $unwind ; "invoke")
+    });
+    ($func:expr, $( $arg:expr ),*) => ({
+        invoke!($func, $( $arg ),* ; "invoke")
+    });
 }
 
 #[cfg(test)]
@@ -149,12 +162,12 @@ mod tests {
         let bb_unwind = fn_test.append_basic_block_in_context("catch", &context);
 
         let invoke =
-            invoke!(fn_hello, i64_t.uint(123), i64_t.int(456); to bb_normal; unwind bb_unwind; "ret")
+            invoke!(fn_hello, i64_t.uint(123), i64_t.int(456); to bb_normal; unwind bb_unwind)
                 .emit_to(&builder);
 
         assert_eq!(
             invoke.to_string().trim(),
-            r#"%ret = invoke i64 @hello(i64 123, i64 456)
+            r#"%invoke = invoke i64 @hello(i64 123, i64 456)
           to label %normal unwind label %catch"#
         );
 

@@ -127,14 +127,24 @@ impl GetElementPtrInst {
 /// even if it happens to point into allocated storage.
 #[macro_export]
 macro_rules! gep {
-    ($ptr:expr, [ $( $index:expr ),* ]; $name:expr) => ({
+    ($ptr:expr, $( $index:expr ),* ; $name:expr) => ({
         $crate::insts::GetElementPtr::new($ptr.into(), vec![ $( $index.into() ),* ], $name.into())
     });
-    (inbounds $ptr:expr, [ $( $index:expr ),* ]; $name:expr) => ({
+    (inbounds $ptr:expr, $( $index:expr ),* ; $name:expr) => ({
         $crate::insts::GetElementPtr::in_bounds($ptr.into(), vec![ $( $index.into() ),* ], $name.into())
     });
-    (structure $struct_ptr:expr, $index:expr; $name:expr) => ({
+    (structure $struct_ptr:expr, $index:expr ; $name:expr) => ({
         $crate::insts::GetElementPtr::in_struct($struct_ptr.into(), $index, $name.into())
+    });
+
+    ($ptr:expr, $( $index:expr ),*) => ({
+        gep!($ptr, $( $index ),* ; "gep")
+    });
+    (inbounds $ptr:expr, $( $index:expr ),*) => ({
+        gep!(inbounds $ptr, $( $index ),* ; "inbounds_gep")
+    });
+    (structure $struct_ptr:expr, $index:expr) => ({
+        gep!(structure $struct_ptr, $index; "struct_gep")
     });
 }
 
@@ -170,7 +180,7 @@ mod tests {
         let p_struct = alloca!(struct_t; "p_struct").emit_to(&builder);
 
         assert_eq!(
-            gep!(p_array, [i64_t.int(1)]; "gep")
+            gep!(p_array, i64_t.int(1))
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -178,7 +188,7 @@ mod tests {
         );
 
         assert_eq!(
-            gep!(inbounds p_vector, [i64_t.int(1)]; "inbounds_gep")
+            gep!(inbounds p_vector, i64_t.int(1))
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -186,7 +196,7 @@ mod tests {
         );
 
         assert_eq!(
-            gep!(structure p_struct, 1; "struct_gep")
+            gep!(structure p_struct, 1)
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -194,7 +204,7 @@ mod tests {
         );
 
         assert_eq!(
-            gep!(inbounds p_struct, [i32_t.int(2), i32_t.int(1)]; "inbounds_gep")
+            gep!(inbounds p_struct, i32_t.int(2), i32_t.int(1))
                 .emit_to(&builder)
                 .to_string()
                 .trim(),

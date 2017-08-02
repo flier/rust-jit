@@ -160,6 +160,12 @@ macro_rules! fence {
             $name.into(),
         )
     );
+    (singlethread $ordering:ident) => (
+        fence!(singlethread $ordering; format!("fence_{}", stringify!($ordering)))
+    );
+    ($ordering:ident) => (
+        fence!($ordering; format!("fence_{}", stringify!($ordering)))
+    );
 }
 
 #[macro_export]
@@ -391,18 +397,16 @@ mod tests {
         );
 
         assert_eq!(
-            fence!(acquire; "fence")
-                .emit_to(&builder)
-                .to_string()
-                .trim(),
-            "%fence = fence acquire"
+            fence!(acquire).emit_to(&builder).to_string().trim(),
+            "%fence_acquire = fence acquire"
         );
+
         assert_eq!(
-            fence!(singlethread acq_rel; "fence")
+            fence!(singlethread acq_rel)
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
-            "%fence1 = fence singlethread acq_rel"
+            "%fence_acq_rel = fence singlethread acq_rel"
         );
 
         assert_eq!(

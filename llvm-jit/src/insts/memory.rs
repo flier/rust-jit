@@ -64,6 +64,13 @@ macro_rules! malloc {
     ($array_ty:expr, $size:expr; $name:expr) => ({
         $crate::insts::Malloc::array($array_ty.into(), $size.into(), $name.into())
     });
+
+    ($ty:expr) => ({
+        malloc!($ty ; "malloc")
+    });
+    ($array_ty:expr, $size:expr) => ({
+        malloc!($array_ty, $size ; "array_malloc")
+    });
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -136,6 +143,13 @@ macro_rules! alloca {
     });
     ($array_ty:expr, $size:expr; $name:expr) => ({
         $crate::insts::Alloca::array($array_ty.into(), $size.into(), $name.into())
+    });
+
+    ($ty:expr) => ({
+        alloca!($ty ; "alloca")
+    });
+    ($array_ty:expr, $size:expr) => ({
+        alloca!($array_ty, $size ; "array_alloca")
     });
 }
 
@@ -251,7 +265,7 @@ mod tests {
 
         let arg0_p_i64 = function.get_param(0).unwrap();
 
-        let p = malloc!(i64_t; "malloc").emit_to(&builder);
+        let p = malloc!(i64_t).emit_to(&builder);
 
         free(p).emit_to(&builder);
 
@@ -265,7 +279,7 @@ mod tests {
             ]
         );
 
-        malloc!(i64_t, i64_t.int(123); "array_malloc").emit_to(&builder);
+        malloc!(i64_t, i64_t.int(123)).emit_to(&builder);
 
         assert_eq!(
             bb.last_instructions(4),
@@ -277,13 +291,13 @@ mod tests {
             ]
         );
 
-        let alloca = alloca!(i64_t; "alloca").emit_to(&builder);
+        let alloca = alloca!(i64_t).emit_to(&builder);
 
         assert_eq!(alloca.to_string().trim(), "%alloca = alloca i64");
         assert_eq!(alloca.allocated_type(), i64_t);
 
         assert_eq!(
-            alloca!(i64_t, i64_t.int(123); "array_alloca")
+            alloca!(i64_t, i64_t.int(123))
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
