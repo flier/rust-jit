@@ -6,6 +6,7 @@ use std::ptr;
 
 use llvm::bit_reader::*;
 use llvm::bit_writer::*;
+use llvm::ir_reader::*;
 
 use context::{Context, GlobalContext};
 use errors::Result;
@@ -44,6 +45,22 @@ impl GlobalContext {
 }
 
 impl Context {
+    /// Read LLVM IR from a memory buffer and convert it to an in-memory Module.
+    pub fn parse_ir(&self, buf: MemoryBuffer) -> Result<Module> {
+        let mut module = ptr::null_mut();
+        let mut msg = ptr::null_mut();
+
+        if unsafe { LLVMParseIRInContext(self.as_raw(), buf.into_raw(), &mut module, &mut msg) }
+            .is_ok()
+        {
+            Ok(module.into())
+        } else {
+            bail!(format!("fail to parse IR code, {}", unsafe {
+                CStr::from_ptr(msg).to_string_lossy()
+            }))
+        }
+    }
+
     /// Parse the specified bitcode file, returning the module.
     pub fn parse_bitcode(&self, buf: &MemoryBuffer) -> Result<Module> {
         let mut module = ptr::null_mut();
@@ -109,6 +126,24 @@ mod tests {
     use function::FunctionType;
     use insts::{IRBuilder, Position};
     use prelude::*;
+
+    #[test]
+    fn ir_code() {
+        let c = Context::new();
+        let buf = MemoryBuffer::from_bytes(
+            br#"
+source_filename = "test"
+
+define void @nop() {
+entry:
+  ret void
+}"#,
+            "test",
+        );
+        let m = c.parse_ir(buf).unwrap();
+
+        assert!(m.get_function("nop").is_some());
+    }
 
     #[test]
     fn bitcode() {
