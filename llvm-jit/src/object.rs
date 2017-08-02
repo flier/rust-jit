@@ -24,58 +24,104 @@ impl ObjectFile {
     }
 
     pub fn sections(&self) -> SectionIter {
-        SectionIter {
-            obj: self,
-            iter: None,
-        }
+        SectionIter::new(self)
     }
 
     pub fn symbols(&self) -> SymbolIter {
-        SymbolIter {
-            obj: self,
-            iter: None,
-        }
+        SymbolIter::new(self)
     }
 }
 
-pub struct SectionIter<'a> {
-    obj: &'a ObjectFile,
-    iter: Option<LLVMSectionIteratorRef>,
+pub enum IterState<'a, T: 'a, I> {
+    Start(&'a T),
+    Next(&'a T, I),
+    End,
 }
 
-impl<'a> Drop for SectionIter<'a> {
-    fn drop(&mut self) {
-        if let Some(iter) = self.iter.take() {
-            unsafe { LLVMDisposeSectionIterator(iter) }
-        }
-    }
-}
+macro_rules! impl_iter {
+    ($name:ident < $container:ty, $raw:ty > -> $item:ty {
+        dispose => $dispose:path,
+        first => $first:path,
+        next => $next:path,
+        is_end => $is_end:path,
+    }) => (
+        pub struct $name<'a>(IterState<'a, $container, $raw>);
 
-impl<'a> Iterator for SectionIter<'a> {
-    type Item = Section;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        unsafe {
-            if let Some(iter) = self.iter {
-                LLVMMoveToNextSection(iter);
-            } else {
-                self.iter = Some(LLVMGetSections(self.obj.as_raw()));
+        impl<'a> $name<'a> {
+            pub fn new(container: &'a $container) -> Self {
+                $name(IterState::Start(container))
             }
+        }
 
-            if let Some(iter) = self.iter {
-                if LLVMIsSectionIteratorAtEnd(self.obj.as_raw(), iter).as_bool() {
-                    None
-                } else {
-                    Some(Section(iter))
+        impl<'a> Drop for $name<'a> {
+            fn drop(&mut self) {
+                if let IterState::Next(_, iter) = self.0 {
+                    unsafe { $dispose(iter) };
+
+                    self.0 = IterState::End;
                 }
-            } else {
-                None
             }
         }
-    }
+
+        impl<'a> Iterator for $name<'a> {
+            type Item = $item;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                unsafe {
+                    match self.0 {
+                        IterState::Start(container) => {
+                            let iter = $first(container.as_raw());
+
+                            Some((container, iter))
+                        }
+                        IterState::Next(container, iter) => {
+                            $next(iter);
+
+                            Some((container, iter))
+                        }
+                        IterState::End => None,
+                    }.and_then(|(container, iter)| {
+                        let finished = $is_end(container.as_raw(), iter).as_bool();
+
+                        if finished {
+                            $dispose(iter);
+
+                            self.0 = IterState::End;
+
+                            None
+                        } else {
+                            self.0 = IterState::Next(container, iter);
+
+                            Some(iter.into())
+                        }
+                    })
+                }
+            }
+        }
+    )
 }
+
+impl_iter!(SectionIter<ObjectFile, LLVMSectionIteratorRef> -> Section {
+    dispose => LLVMDisposeSectionIterator,
+    first => LLVMGetSections,
+    next => LLVMMoveToNextSection,
+    is_end => LLVMIsSectionIteratorAtEnd,
+});
+
+impl_iter!(SymbolIter<ObjectFile, LLVMSymbolIteratorRef> -> Symbol {
+    dispose => LLVMDisposeSymbolIterator,
+    first => LLVMGetSymbols,
+    next => LLVMMoveToNextSymbol,
+    is_end => LLVMIsSymbolIteratorAtEnd,
+});
 
 pub struct Section(LLVMSectionIteratorRef);
+
+impl From<LLVMSectionIteratorRef> for Section {
+    fn from(iter: LLVMSectionIteratorRef) -> Self {
+        Section(iter)
+    }
+}
 
 impl Section {
     fn as_raw(&self) -> LLVMSectionIteratorRef {
@@ -104,104 +150,56 @@ impl Section {
     }
 
     pub fn relocations(&self) -> RelocIter {
-        RelocIter {
-            section: self,
-            iter: None,
-        }
+        RelocIter::new(self)
     }
 }
 
-pub struct SymbolIter<'a> {
-    obj: &'a ObjectFile,
-    iter: Option<LLVMSymbolIteratorRef>,
+impl_iter!(RelocIter<Section, LLVMRelocationIteratorRef> -> Relocation {
+    dispose => LLVMDisposeRelocationIterator,
+    first => LLVMGetRelocations,
+    next => LLVMMoveToNextRelocation,
+    is_end => LLVMIsRelocationIteratorAtEnd,
+});
+
+pub enum Symbol {
+    Owned(LLVMSymbolIteratorRef),
+    Borrowed(LLVMSymbolIteratorRef),
 }
 
-impl<'a> Drop for SymbolIter<'a> {
-    fn drop(&mut self) {
-        if let Some(iter) = self.iter.take() {
-            unsafe { LLVMDisposeSymbolIterator(iter) }
-        }
+impl From<LLVMSymbolIteratorRef> for Symbol {
+    fn from(iter: LLVMSymbolIteratorRef) -> Self {
+        Symbol::Borrowed(iter)
     }
 }
-
-impl<'a> Iterator for SymbolIter<'a> {
-    type Item = Symbol;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        unsafe {
-            if let Some(iter) = self.iter {
-                LLVMMoveToNextSymbol(iter);
-            } else {
-                self.iter = Some(LLVMGetSymbols(self.obj.as_raw()));
-            }
-
-            if let Some(iter) = self.iter {
-                if LLVMIsSymbolIteratorAtEnd(self.obj.as_raw(), iter).as_bool() {
-                    None
-                } else {
-                    Some(Symbol(iter))
-                }
-            } else {
-                None
-            }
-        }
-    }
-}
-
-pub struct Symbol(LLVMSymbolIteratorRef);
 
 impl Symbol {
+    fn as_raw(&self) -> LLVMSymbolIteratorRef {
+        match *self {
+            Symbol::Owned(iter) |
+            Symbol::Borrowed(iter) => iter,
+        }
+    }
+
     pub fn name(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetSymbolName(self.0)).to_string_lossy() }
+        unsafe { CStr::from_ptr(LLVMGetSymbolName(self.as_raw())).to_string_lossy() }
     }
 
     pub fn size(&self) -> usize {
-        unsafe { LLVMGetSymbolSize(self.0) as usize }
+        unsafe { LLVMGetSymbolSize(self.as_raw()) as usize }
     }
 
     pub fn address(&self) -> u64 {
-        unsafe { LLVMGetSymbolAddress(self.0) }
-    }
-}
-
-pub struct RelocIter<'a> {
-    section: &'a Section,
-    iter: Option<LLVMRelocationIteratorRef>,
-}
-
-impl<'a> Drop for RelocIter<'a> {
-    fn drop(&mut self) {
-        if let Some(iter) = self.iter.take() {
-            unsafe { LLVMDisposeRelocationIterator(iter) }
-        }
-    }
-}
-
-impl<'a> Iterator for RelocIter<'a> {
-    type Item = Relocation;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        unsafe {
-            if let Some(iter) = self.iter {
-                LLVMMoveToNextRelocation(iter);
-            } else {
-                self.iter = Some(LLVMGetRelocations(self.section.as_raw()));
-            }
-
-            if let Some(iter) = self.iter {
-                if LLVMIsRelocationIteratorAtEnd(self.section.as_raw(), iter).as_bool() {
-                    None
-                } else {
-                    Some(Relocation(iter))
-                }
-            } else {
-                None
-            }
-        }
+        unsafe { LLVMGetSymbolAddress(self.as_raw()) }
     }
 }
 
 pub struct Relocation(LLVMRelocationIteratorRef);
+
+impl From<LLVMRelocationIteratorRef> for Relocation {
+    fn from(iter: LLVMRelocationIteratorRef) -> Self {
+        Relocation(iter)
+    }
+}
 
 impl Relocation {
     pub fn offset(&self) -> u64 {
@@ -209,7 +207,7 @@ impl Relocation {
     }
 
     pub fn symbol(&self) -> Symbol {
-        Symbol(unsafe { LLVMGetRelocationSymbol(self.0) })
+        Symbol::Owned(unsafe { LLVMGetRelocationSymbol(self.0) })
     }
 
     pub fn type_id(&self) -> u64 {
