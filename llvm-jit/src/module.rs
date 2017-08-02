@@ -81,10 +81,10 @@ impl Module {
         }
     }
 
-    pub fn forget(self) -> Self {
-        let m = self.as_raw();
+    pub fn into_raw(self) -> LLVMModuleRef {
+        let raw = self.as_raw();
         mem::forget(self);
-        Self::from_faw(m)
+        raw
     }
 
     /// Obtain the context to which this module is associated.

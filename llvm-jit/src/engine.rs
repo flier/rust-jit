@@ -77,23 +77,18 @@ impl Interpreter {
 
     pub fn for_module(module: Module) -> Result<Self> {
         unsafe {
+            let module = module.into_raw();
             let mut engine = mem::uninitialized();
             let mut err = mem::zeroed();
 
-            if LLVMCreateInterpreterForModule(&mut engine, module.as_raw(), &mut err).is_ok() {
-                trace!("create Interpreter({:?}) for {:?}", engine, module);
-
-                mem::forget(module);
+            if LLVMCreateInterpreterForModule(&mut engine, module, &mut err).is_ok() {
+                trace!("create Interpreter({:?}) for Module({:?})", engine, module);
 
                 Ok(Interpreter(ExecutionEngine(engine)))
             } else {
-                let m = module.as_raw();
-
-                mem::forget(module);
-
                 bail!(format!(
                     "fail to create interpreter for Module({:?}), {}",
-                    m,
+                    module,
                     CStr::from_ptr(err).to_string_lossy()
                 ))
             }
@@ -108,21 +103,18 @@ inherit_from!(JITCompiler, ExecutionEngine, LLVMExecutionEngineRef);
 
 impl JITCompiler {
     pub fn for_module(module: Module, opt_level: u32) -> Result<Self> {
-        let module = module.forget();
-
         unsafe {
+            let module = module.into_raw();
             let mut engine = mem::uninitialized();
             let mut err = mem::zeroed();
 
-            if LLVMCreateJITCompilerForModule(&mut engine, module.as_raw(), opt_level, &mut err)
-                .is_ok()
-            {
-                trace!("create JITCompiler({:?}) for {:?}", engine, module);
+            if LLVMCreateJITCompilerForModule(&mut engine, module, opt_level, &mut err).is_ok() {
+                trace!("create JITCompiler({:?}) for Module({:?})", engine, module);
 
                 Ok(JITCompiler(ExecutionEngine(engine)))
             } else {
                 bail!(format!(
-                    "fail to create JITCompiler for {:?}, {}",
+                    "fail to create JITCompiler for Module({:?}), {}",
                     module,
                     CStr::from_ptr(err).to_string_lossy()
                 ))
@@ -139,16 +131,6 @@ inherit_from!(MCJITMemoryManager, LLVMMCJITMemoryManagerRef);
 impl Drop for MCJITMemoryManager {
     fn drop(&mut self) {
         unsafe { LLVMDisposeMCJITMemoryManager(self.0) }
-    }
-}
-
-impl From<MCJITMemoryManager> for LLVMMCJITMemoryManagerRef {
-    fn from(mm: MCJITMemoryManager) -> Self {
-        let m = mm.0;
-
-        mem::forget(mm);
-
-        m
     }
 }
 
@@ -201,26 +183,29 @@ impl MCJITCompiler {
     }
 
     pub fn for_module(module: Module, mut options: MCJITCompilerOptions) -> Result<Self> {
-        let module = module.forget();
-
         unsafe {
+            let module = module.into_raw();
             let mut engine = mem::uninitialized();
             let mut err = mem::zeroed();
 
             if LLVMCreateMCJITCompilerForModule(
                 &mut engine,
-                module.as_raw(),
+                module,
                 &mut options.0,
                 mem::size_of::<LLVMMCJITCompilerOptions>(),
                 &mut err,
             ).is_ok()
             {
-                trace!("create MCJITCompiler({:?}) for {:?}", engine, module);
+                trace!(
+                    "create MCJITCompiler({:?}) for Module({:?})",
+                    engine,
+                    module
+                );
 
                 Ok(MCJITCompiler(ExecutionEngine(engine)))
             } else {
                 bail!(format!(
-                    "fail to create MCJITCompiler for {:?}, {}",
+                    "fail to create MCJITCompiler for Module({:?}), {}",
                     module,
                     CStr::from_ptr(err).to_string_lossy()
                 ))
@@ -245,19 +230,22 @@ impl Drop for ExecutionEngine {
 
 impl ExecutionEngine {
     pub fn for_module(module: Module) -> Result<Self> {
-        let module = module.forget();
-
         unsafe {
+            let module = module.into_raw();
             let mut engine = mem::uninitialized();
             let mut err = mem::zeroed();
 
-            if LLVMCreateExecutionEngineForModule(&mut engine, module.as_raw(), &mut err).is_ok() {
-                trace!("create ExecutionEngine({:?}) for {:?}", engine, module);
+            if LLVMCreateExecutionEngineForModule(&mut engine, module, &mut err).is_ok() {
+                trace!(
+                    "create ExecutionEngine({:?}) for Module({:?})",
+                    engine,
+                    module
+                );
 
                 Ok(ExecutionEngine(engine))
             } else {
                 bail!(format!(
-                    "fail to create execution engine for {:?}, {}",
+                    "fail to create execution engine for Module({:?}), {}",
                     module,
                     CStr::from_ptr(err).to_string_lossy()
                 ))
@@ -346,26 +334,19 @@ impl ExecutionEngine {
 
         unsafe { LLVMAddModule(self.0, module.as_raw()) };
 
-        let m = module.as_raw().into();
-
-        mem::forget(module);
-
-        m
+        module.into_raw().into()
     }
 
     /// Remove a Module from the list of modules.
     pub fn remove_module(&self, module: Module) -> Result<Module> {
+        let module = module.into_raw();
         let mut out = ptr::null_mut();
         let mut err = ptr::null_mut();
 
-        if unsafe { LLVMRemoveModule(self.0, module.as_raw(), &mut out, &mut err) }.is_ok() {
-            trace!("remove {:?} from {:?}", module, self);
+        if unsafe { LLVMRemoveModule(self.0, module, &mut out, &mut err) }.is_ok() {
+            trace!("remove Module({:?}) from {:?}", module, self);
 
-            let m = module.as_raw().into();
-
-            mem::forget(module);
-
-            Ok(m)
+            Ok(module.into())
         } else {
             bail!(format!("fail to remove {:?}, {}", module, unsafe {
                 CStr::from_ptr(err).to_string_lossy()
@@ -787,7 +768,7 @@ mod tests {
             mm_destroy,
         ).unwrap();
 
-        opts.MCJMM = mm.into();
+        opts.MCJMM = mm.into_raw();
 
         let i64_t = c.int64_t();
 

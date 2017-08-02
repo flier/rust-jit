@@ -1,5 +1,4 @@
 use std::ffi::CString;
-use std::mem;
 use std::path::Path;
 use std::ptr;
 use std::slice;
@@ -77,12 +76,6 @@ impl MemoryBuffer {
                 unchecked_cstring(name).as_ptr(),
             )
         }.into()
-    }
-
-    pub fn into_raw(self) -> LLVMMemoryBufferRef {
-        let raw = self.0;
-        mem::forget(self);
-        raw
     }
 
     pub fn as_bytes(&self) -> &[u8] {
