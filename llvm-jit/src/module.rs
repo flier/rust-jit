@@ -175,6 +175,22 @@ impl Module {
         t
     }
 
+    /// Look up the specified function in the module symbol table.
+    ///
+    /// If it does not exist, add a prototype for the function and return it.
+    /// This is nice because it allows most passes to get away with not handling
+    /// the symbol table directly for this common task.
+    pub fn get_or_insert_function<S: AsRef<str>>(
+        &self,
+        name: S,
+        return_type: TypeRef,
+        params_type: &[TypeRef],
+    ) -> Function {
+        self.get_function(name.as_ref()).unwrap_or_else(|| {
+            self.add_function(name, FunctionType::new(return_type, params_type, false))
+        })
+    }
+
     /// Add a function to a module under a specified name.
     pub fn add_function<S: AsRef<str>>(&self, name: S, func_type: FunctionType) -> Function {
         let cname = unchecked_cstring(name);

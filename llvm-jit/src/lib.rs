@@ -56,7 +56,7 @@ pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantStr
 pub use context::{Context, GlobalContext};
 pub use disasm::Disasm;
 pub use engine::{ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJIT, MCJITCompiler,
-                 MCJITCompilerOptions, MCJITMemoryManager};
+                 MCJITCompilerOptions, MCJITMemoryManager, shutdown};
 pub use function::{Function, FunctionType};
 pub use global::GlobalVar;
 pub use insts::{IRBuilder, Position};

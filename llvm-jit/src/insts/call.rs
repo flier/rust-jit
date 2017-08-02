@@ -104,6 +104,9 @@ macro_rules! call {
     ($func:expr, $( $arg:expr ),*; $name:expr) => ({
         $crate::insts::Call::new($func.into(), vec![ $( $arg.into() ),* ], $name.into())
     });
+    ($func:expr, $( $arg:expr ),*) => ({
+        call!($func, $( $arg ),*; "call")
+    });
 }
 
 #[cfg(test)]

@@ -40,6 +40,17 @@ macro_rules! define_binary_operator {
         {
             $crate::insts::$operator::new(lhs.into(), rhs.into(), name.into())
         }
+
+        #[doc=$comment]
+        #[macro_export]
+        macro_rules! $alias {
+            ($lhs:expr, $rhs:expr; $name:expr) => (
+                $alias($lhs, $rhs, $name)
+            );
+            ($lhs:expr, $rhs:expr) => (
+                $alias($lhs, $rhs, stringify!($alias))
+            )
+        }
     )
 }
 

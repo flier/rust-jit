@@ -3,6 +3,7 @@ use std::mem;
 use std::ptr;
 
 use libc;
+use llvm::core::LLVMShutdown;
 use llvm::execution_engine::*;
 
 use errors::Result;
@@ -12,6 +13,11 @@ use module::Module;
 use target::{TargetData, TargetMachine};
 use types::TypeRef;
 use utils::{AsLLVMBool, AsMutPtr, AsResult, unchecked_cstring};
+
+/// Deallocate and destroy all ManagedStatic variables.
+pub fn shutdown() {
+    unsafe { LLVMShutdown() }
+}
 
 /// The GenericValue class is used to represent an LLVM value of arbitrary type.
 #[derive(Debug, PartialEq)]

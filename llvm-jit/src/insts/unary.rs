@@ -37,6 +37,17 @@ macro_rules! define_unary_instruction {
         {
             $crate::insts::$operator::new(value.into(), name.into())
         }
+
+        #[doc=$comment]
+        #[macro_export]
+        macro_rules! $alias {
+            ($value:expr; $name:expr) => (
+                $alias($value, $name)
+            );
+            ($value:expr) => (
+                $alias($value, stringify!($alias))
+            )
+        }
     )
 }
 

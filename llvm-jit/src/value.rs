@@ -68,7 +68,7 @@ impl ValueRef {
     }
 
     /// Set the string name of a value.
-    pub fn set_name<S: AsRef<str>>(&mut self, name: S) {
+    pub fn set_name<S: AsRef<str>>(&self, name: S) {
         let cname = unchecked_cstring(name);
 
         unsafe { LLVMSetValueName(self.0, cname.as_ptr()) }

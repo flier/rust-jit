@@ -147,6 +147,9 @@ macro_rules! icmp {
     (sle $lhs:expr, $rhs:expr ; $name:expr) => (
         $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntSLE, $lhs.into(), $rhs.into(), $name.into())
     );
+    ($op:ident $lhs:expr, $rhs:expr) => {
+        icmp!($op $lhs, $rhs; stringify!($op))
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -271,6 +274,9 @@ macro_rules! fcmp {
     (true $lhs:expr, $rhs:expr ; $name:expr) => (
         $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealPredicateTrue, $lhs.into(), $rhs.into(), $name.into())
     );
+    ($op:ident $lhs:expr, $rhs:expr) => {
+        fcmp!($op $lhs, $rhs; stringify!($op))
+    }
 }
 
 #[cfg(test)]

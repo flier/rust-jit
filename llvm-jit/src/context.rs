@@ -7,7 +7,6 @@ use llvm::prelude::*;
 #[derive(Debug, PartialEq)]
 pub struct Context(State);
 
-
 #[derive(Debug, PartialEq)]
 enum State {
     Owned(LLVMContextRef),

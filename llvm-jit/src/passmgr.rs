@@ -511,7 +511,7 @@ impl PassManagerBuilder {
     ///  - 1: -O1
     ///  - 2: -O2
     ///  - 3: -O3
-    pub fn set_opt_level(&mut self, opt_level: u32) -> &mut Self {
+    pub fn set_opt_level(&self, opt_level: u32) -> &Self {
         unsafe { LLVMPassManagerBuilderSetOptLevel(self.as_raw(), opt_level) };
 
         self
@@ -522,25 +522,25 @@ impl PassManagerBuilder {
     ///  - 0: none
     ///  - 1: -Os
     ///  - 2: -Oz
-    pub fn set_size_level(&mut self, size_level: u32) -> &mut Self {
+    pub fn set_size_level(&self, size_level: u32) -> &Self {
         unsafe { LLVMPassManagerBuilderSetSizeLevel(self.as_raw(), size_level) };
 
         self
     }
 
-    pub fn set_disable_unit_at_atime(&mut self, v: bool) -> &mut Self {
+    pub fn set_disable_unit_at_atime(&self, v: bool) -> &Self {
         unsafe { LLVMPassManagerBuilderSetDisableUnitAtATime(self.as_raw(), v.as_bool()) };
 
         self
     }
 
-    pub fn set_disable_unroll_loops(&mut self, v: bool) -> &mut Self {
+    pub fn set_disable_unroll_loops(&self, v: bool) -> &Self {
         unsafe { LLVMPassManagerBuilderSetDisableUnrollLoops(self.as_raw(), v.as_bool()) };
 
         self
     }
 
-    pub fn use_inliner_with_threshold(&mut self, threshold: u32) -> &mut Self {
+    pub fn use_inliner_with_threshold(&self, threshold: u32) -> &Self {
         unsafe { LLVMPassManagerBuilderUseInlinerWithThreshold(self.as_raw(), threshold) };
 
         self
