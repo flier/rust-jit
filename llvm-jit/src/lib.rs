@@ -47,6 +47,8 @@ mod engine;
 pub mod target;
 mod analysis;
 mod disasm;
+mod membuf;
+mod object;
 
 pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
                    ConstantStruct, ConstantVector};
@@ -57,7 +59,9 @@ pub use engine::{ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJIT,
 pub use function::{Function, FunctionType};
 pub use global::GlobalVar;
 pub use insts::{IRBuilder, Position};
+pub use membuf::MemoryBuffer;
 pub use module::{AddressSpace, Module};
+pub use object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
 pub use passmgr::{Pass, PassManager, PassManagerBuilder, PassRegistry};
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
                 TypeKind, TypeRef, VectorType};

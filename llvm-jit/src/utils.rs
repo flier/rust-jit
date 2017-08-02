@@ -195,7 +195,7 @@ macro_rules! inherit_from {
 
         impl ::std::convert::From<$raw> for $ty {
             fn from(f: $raw) -> Self {
-                $ty(f.into())
+                $ty::from_raw(f)
             }
         }
 
@@ -253,7 +253,7 @@ macro_rules! inherit_from {
 
         impl ::std::convert::From<$raw> for $ty {
             fn from(f: $raw) -> Self {
-                $ty(f.into())
+                $ty::from_raw(f)
             }
         }
 
@@ -288,7 +288,7 @@ macro_rules! inherit_from {
 
         impl ::std::convert::From<$raw> for $ty {
             fn from(f: $raw) -> Self {
-                $ty(f.into())
+                $ty::from_raw(f)
             }
         }
 
