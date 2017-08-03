@@ -26,6 +26,8 @@ impl<'a> InstructionBuilder for GlobalString<'a> {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             LLVMBuildGlobalString(
                 builder.as_raw(),
@@ -62,6 +64,8 @@ impl<'a> InstructionBuilder for GlobalStringPtr<'a> {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             LLVMBuildGlobalStringPtr(
                 builder.as_raw(),

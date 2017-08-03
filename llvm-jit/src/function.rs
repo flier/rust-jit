@@ -104,7 +104,7 @@ impl Function {
         let block = unsafe { LLVMAppendBasicBlock(self.as_raw(), cname.as_ptr()) }.into();
 
         trace!(
-            "{:?} create `{}` {:?} in the global context",
+            "{:?} create `{}` block in the global context: {:?}",
             self,
             cname.to_string_lossy(),
             block
@@ -125,11 +125,11 @@ impl Function {
         }.into();
 
         trace!(
-            "{:?} create `{}` {:?} in {:?}",
+            "{:?} create `{}` block in {:?}: {:?}",
             self,
             cname.to_string_lossy(),
+            context,
             block,
-            context
         );
 
         block

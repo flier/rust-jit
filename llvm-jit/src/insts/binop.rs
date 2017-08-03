@@ -20,6 +20,8 @@ macro_rules! define_binary_operator {
             type Target = $crate::Instruction;
 
             fn emit_to(&self, builder: & $crate::insts::IRBuilder) -> Self::Target {
+                trace!("{:?} emit instruction: {:?}", builder, self);
+
                 unsafe {
                     $func(
                         builder.as_raw(),

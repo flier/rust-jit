@@ -28,6 +28,8 @@ impl<'a> InstructionBuilder for ExtractElement<'a> {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             LLVMBuildExtractElement(
                 builder.as_raw(),
@@ -73,6 +75,8 @@ impl<'a> InstructionBuilder for InsertElement<'a> {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             LLVMBuildInsertElement(
                 builder.as_raw(),
@@ -115,6 +119,8 @@ impl<'a> InstructionBuilder for ShuffleVector<'a> {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             LLVMBuildShuffleVector(
                 builder.as_raw(),

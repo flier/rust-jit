@@ -52,6 +52,8 @@ impl<'a> InstructionBuilder for GetElementPtr<'a> {
     type Target = GetElementPtrInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             match self.gep {
                 GEP::Indices(ref indices) |

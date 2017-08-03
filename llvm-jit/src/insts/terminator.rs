@@ -45,6 +45,8 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         let clauses = self.clauses
             .iter()
             .map(|clause| clause.as_raw())
@@ -84,6 +86,8 @@ impl InstructionBuilder for Resume {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe { LLVMBuildResume(builder.as_raw(), self.0.as_raw()) }.into()
     }
 }
@@ -106,6 +110,8 @@ impl InstructionBuilder for Unreachable {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe { LLVMBuildUnreachable(builder.as_raw()) }.into()
     }
 }

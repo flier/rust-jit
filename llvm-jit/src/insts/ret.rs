@@ -13,6 +13,8 @@ impl InstructionBuilder for RetVoid {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe { LLVMBuildRetVoid(builder.as_raw()) }.into()
     }
 }
@@ -31,6 +33,8 @@ impl InstructionBuilder for Ret {
     type Target = TerminatorInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe { LLVMBuildRet(builder.as_raw(), self.0.as_raw()) }.into()
     }
 }
@@ -52,6 +56,8 @@ impl InstructionBuilder for AggregateRet {
     type Target = TerminatorInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         let mut values = self.0
             .iter()
             .map(|v| v.as_raw())

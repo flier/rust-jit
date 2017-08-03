@@ -22,6 +22,8 @@ impl InstructionBuilder for Br {
     type Target = BranchInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe { LLVMBuildBr(builder.as_raw(), self.0.as_raw()) }.into()
     }
 }
@@ -66,6 +68,8 @@ impl InstructionBuilder for CondBr {
     type Target = BranchInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             LLVMBuildCondBr(
                 builder.as_raw(),
@@ -108,6 +112,8 @@ impl InstructionBuilder for IndirectBr {
     type Target = BranchInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         let br: BranchInst = unsafe {
             LLVMBuildIndirectBr(
                 builder.as_raw(),

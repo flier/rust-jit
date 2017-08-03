@@ -72,6 +72,8 @@ impl<'a> InstructionBuilder for ICmp<'a> {
     type Target = ICmpInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             LLVMBuildICmp(
                 builder.as_raw(),
@@ -175,6 +177,8 @@ impl<'a> InstructionBuilder for FCmp<'a> {
     type Target = FCmpInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             LLVMBuildFCmp(
                 builder.as_raw(),

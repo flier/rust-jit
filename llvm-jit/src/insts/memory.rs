@@ -36,6 +36,8 @@ impl<'a> InstructionBuilder for Malloc<'a> {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             if let Some(size) = self.size {
                 LLVMBuildArrayMalloc(
@@ -101,6 +103,8 @@ impl<'a> InstructionBuilder for Alloca<'a> {
     type Target = AllocaInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             if let Some(size) = self.size {
                 LLVMBuildArrayAlloca(
@@ -166,6 +170,8 @@ impl InstructionBuilder for Free {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe { LLVMBuildFree(builder.as_raw(), self.0.as_raw()) }.into()
     }
 }
@@ -191,6 +197,8 @@ impl<'a> InstructionBuilder for Load<'a> {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             LLVMBuildLoad(
                 builder.as_raw(),
@@ -226,6 +234,8 @@ impl InstructionBuilder for Store {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe { LLVMBuildStore(builder.as_raw(), self.value.as_raw(), self.ptr.as_raw()) }.into()
     }
 }

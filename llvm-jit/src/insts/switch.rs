@@ -41,6 +41,8 @@ impl InstructionBuilder for Switch {
     type Target = SwitchInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         let switch: SwitchInst = unsafe {
             LLVMBuildSwitch(
                 builder.as_raw(),

@@ -88,8 +88,6 @@ impl IRBuilder {
     }
 
     pub fn emit<I: InstructionBuilder + fmt::Debug>(&self, inst: I) -> I::Target {
-        trace!("{:?} emit: {:?}", self, inst);
-
         inst.emit_to(self)
     }
 }

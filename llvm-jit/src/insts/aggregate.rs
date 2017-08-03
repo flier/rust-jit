@@ -28,6 +28,8 @@ impl<'a> InstructionBuilder for ExtractValue<'a> {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             LLVMBuildExtractValue(
                 builder.as_raw(),
@@ -72,6 +74,8 @@ impl<'a> InstructionBuilder for InsertValue<'a> {
     type Target = Instruction;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+        trace!("{:?} emit instruction: {:?}", builder, self);
+
         unsafe {
             LLVMBuildInsertValue(
                 builder.as_raw(),
