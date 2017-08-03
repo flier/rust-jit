@@ -40,6 +40,12 @@ impl From<Module> for LLVMModuleRef {
     }
 }
 
+impl PartialEq<Module> for Module {
+    fn eq(&self, other: &Module) -> bool {
+        self.as_raw() == other.as_raw()
+    }
+}
+
 impl Module {
     /// Create a new, empty module in the global context.
     pub fn with_name<S: AsRef<str>>(name: S) -> Self {

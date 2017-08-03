@@ -67,7 +67,7 @@ pub use disasm::Disasm;
 pub use engine::{ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJIT, MCJITCompiler,
                  MCJITCompilerOptions, MCJITMemoryManager, shutdown};
 pub use function::{Function, FunctionType};
-pub use global::GlobalVar;
+pub use global::{DLLStorageClass, GlobalValue, GlobalVar, Linkage, ThreadLocalMode, Visibility};
 pub use insts::{IRBuilder, Position};
 pub use membuf::MemoryBuffer;
 pub use module::{AddressSpace, Module};
@@ -89,6 +89,7 @@ pub mod prelude {
     pub use attribute::AttributeGroups;
     pub use constant::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray,
                        ToConstantStruct};
+    pub use global::GlobalValue;
     pub use insts::InstructionBuilder;
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType,
                     ToPointerType, ToStructType, ToVectorType};

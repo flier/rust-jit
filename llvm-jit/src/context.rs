@@ -4,10 +4,10 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 /// Contexts are execution states for the core LLVM IR system.
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub struct Context(State);
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 enum State {
     Owned(LLVMContextRef),
     Global(LLVMContextRef),
@@ -17,6 +17,12 @@ enum State {
 impl Default for Context {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl PartialEq<Context> for Context {
+    fn eq(&self, other: &Context) -> bool {
+        self.as_raw() == other.as_raw()
     }
 }
 

@@ -1,18 +1,87 @@
+use std::borrow::Cow;
+use std::ffi::CStr;
+
 use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
 
 use constant::Constant;
-use utils::{AsBool, AsLLVMBool};
-use value::ValueRef;
+use module::Module;
+use utils::{AsBool, AsLLVMBool, unchecked_cstring};
+use value::{AsValueRef, ValueRef};
+
+pub type Linkage = LLVMLinkage;
+pub type Visibility = LLVMVisibility;
+pub type DLLStorageClass = LLVMDLLStorageClass;
+
+pub trait GlobalValue: AsValueRef {
+    fn parent(&self) -> Module {
+        unsafe { LLVMGetGlobalParent(self.as_raw()) }.into()
+    }
+
+    fn is_declaration(&self) -> bool {
+        unsafe { LLVMIsDeclaration(self.as_raw()) }.as_bool()
+    }
+
+    fn linkage(&self) -> Linkage {
+        unsafe { LLVMGetLinkage(self.as_raw()) }
+    }
+
+    fn set_linkage(&self, linkage: Linkage) -> &Self {
+        unsafe { LLVMSetLinkage(self.as_raw(), linkage) };
+        self
+    }
+
+    fn section(&self) -> Option<Cow<str>> {
+        unsafe {
+            LLVMGetSection(self.as_raw()).as_ref().map(|s| {
+                CStr::from_ptr(s).to_string_lossy()
+            })
+        }
+    }
+
+    fn set_section(&self, section: &str) -> &Self {
+        unsafe { LLVMSetSection(self.as_raw(), unchecked_cstring(section).as_ptr()) };
+        self
+    }
+
+    fn visibility(&self) -> Visibility {
+        unsafe { LLVMGetVisibility(self.as_raw()) }
+    }
+
+    fn set_visibility(&self, visibility: Visibility) -> &Self {
+        unsafe { LLVMSetVisibility(self.as_raw(), visibility) };
+        self
+    }
+
+    fn dll_storage_class(&self) -> DLLStorageClass {
+        unsafe { LLVMGetDLLStorageClass(self.as_raw()) }
+    }
+
+    fn set_dll_storage_class(&self, class: DLLStorageClass) -> &Self {
+        unsafe { LLVMSetDLLStorageClass(self.as_raw(), class) };
+        self
+    }
+
+    fn has_unnamed_addr(&self) -> bool {
+        unsafe { LLVMHasUnnamedAddr(self.as_raw()) }.as_bool()
+    }
+
+    fn set_unnamed_addr(&self, has_unnamed_addr: bool) -> &Self {
+        unsafe { LLVMSetUnnamedAddr(self.as_raw(), has_unnamed_addr.as_bool()) };
+        self
+    }
+}
 
 pub type ThreadLocalMode = LLVMThreadLocalMode;
 
 /// Global Variables
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct GlobalVar(ValueRef);
+pub struct GlobalVar(Constant);
 
-inherit_value_ref!(GlobalVar);
+inherit_from!(GlobalVar, Constant, ValueRef, LLVMValueRef);
+
+impl GlobalValue for GlobalVar {}
 
 impl GlobalVar {
     pub fn delete(&self) {
@@ -93,7 +162,22 @@ mod tests {
 
         assert_eq!(x.to_string(), "@x = external global i64");
 
-        // set initializer
+        // global value
+        assert_eq!(x.parent(), m);
+        assert!(x.is_declaration());
+        assert!(matches!(x.linkage(), LLVMLinkage::LLVMExternalLinkage));
+        assert_eq!(x.section(), None);
+        assert!(matches!(
+            x.visibility(),
+            LLVMVisibility::LLVMDefaultVisibility
+        ));
+        assert!(matches!(
+            x.dll_storage_class(),
+            LLVMDLLStorageClass::LLVMDefaultStorageClass
+        ));
+        assert!(!x.has_unnamed_addr());
+
+        // initializer
         assert_eq!(x.initializer(), None);
 
         let v = i64_t.uint(123).into();
