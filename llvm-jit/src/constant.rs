@@ -9,12 +9,28 @@ use types::{StructType, TypeRef};
 use utils::{AsBool, AsLLVMBool, from_unchecked_cstr, unchecked_cstring};
 use value::{AsValueRef, ValueRef};
 
+pub trait AsConstant: AsValueRef {
+    fn as_const(&self) -> &Constant;
+}
+
 macro_rules! impl_constant {
     ($ty:ident) => (
         inherit_value_ref!($ty);
+
+        impl AsConstant for $ty {
+            fn as_const(&self) -> &Constant {
+                &self
+            }
+        }
     );
     ($ty:ident, $parent:ty) => (
         inherit_value_ref!($ty, $parent);
+
+        impl AsConstant for $ty {
+            fn as_const(&self) -> &Constant {
+                &self.0
+            }
+        }
     );
 }
 
@@ -192,7 +208,10 @@ impl ConstantStrings for Context {
     }
 }
 
-pub type ConstantStruct = Constant;
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ConstantStruct(Constant);
+
+impl_constant!(ConstantStruct, Constant);
 
 impl ConstantStruct {
     /// Create a ConstantStruct in the global Context.
@@ -244,9 +263,9 @@ pub trait ConstantDataSequential: AsValueRef {
 
 /// Constant Array Declarations.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ConstantArray(ValueRef);
+pub struct ConstantArray(Constant);
 
-inherit_value_ref!(ConstantArray);
+impl_constant!(ConstantArray, Constant);
 
 impl ConstantDataSequential for ConstantArray {}
 
@@ -273,9 +292,9 @@ impl ToConstantArray for TypeRef {
 
 /// Constant Vector Declarations.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ConstantVector(ValueRef);
+pub struct ConstantVector(Constant);
 
-inherit_value_ref!(ConstantVector);
+impl_constant!(ConstantVector, Constant);
 
 impl ConstantDataSequential for ConstantVector {}
 

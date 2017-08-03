@@ -2,7 +2,7 @@ use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
 
-use constant::{Constant, ConstantInt, ConstantVector};
+use constant::{AsConstant, Constant, ConstantInt, ConstantVector};
 use types::TypeRef;
 use utils::{AsLLVMBool, unchecked_cstring};
 use value::{AsValueRef, ValueRef};
@@ -123,7 +123,7 @@ pub trait ConstantExpr {
     fn insert_value(&self, element: Constant, indices: &mut [u32]) -> Constant;
 }
 
-impl ConstantExpr for Constant {
+impl<T: AsConstant> ConstantExpr for T {
     fn neg(&self) -> Constant {
         unsafe { LLVMConstNeg(self.as_raw()) }.into()
     }
@@ -403,5 +403,88 @@ impl TypeRef {
                 is_align_stack.as_bool(),
             )
         }.into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use prelude::*;
+
+    #[test]
+    fn const_expr() {
+        let c = Context::new();
+
+        let bool_t = c.int1_t();
+        let i64_t = c.int64_t();
+        let f64_t = c.double_t();
+
+        let b = bool_t.int(1);
+        let i = i64_t.int(123);
+        let u = i64_t.uint(123);
+        let f = f64_t.real(123.0);
+
+        let bv = bool_t.vector_t(4).vector_of(
+            &[
+                bool_t.int(1).into(),
+                bool_t.int(0).into(),
+                bool_t.int(1).into(),
+                bool_t.int(0).into(),
+            ],
+        );
+        let iv = i64_t.vector_t(4).vector_of(
+            &[
+                i64_t.int(1).into(),
+                i64_t.int(2).into(),
+                i64_t.int(3).into(),
+                i64_t.int(4).into(),
+            ],
+        );
+        let fv = f64_t.vector_t(4).vector_of(
+            &[
+                f64_t.real(1.0).into(),
+                f64_t.real(2.0).into(),
+                f64_t.real(3.0).into(),
+                f64_t.real(4.0).into(),
+            ],
+        );
+
+        // neg
+        assert_eq!(i.neg().to_string(), "i64 -123");
+        assert_eq!(
+            iv.neg().to_string(),
+            "<4 x i64> <i64 -1, i64 -2, i64 -3, i64 -4>"
+        );
+
+        // fneg
+        assert_eq!(f.fneg().to_string(), "double -1.230000e+02");
+        assert_eq!(
+            fv.fneg().to_string(),
+            "<4 x double> <double -1.000000e+00, double -2.000000e+00, double -3.000000e+00, double -4.000000e+00>"
+        );
+
+        // not
+        assert_eq!(b.not().to_string(), "i1 false");
+        assert_eq!(
+            bv.not().to_string(),
+            "<4 x i1> <i1 false, i1 true, i1 false, i1 true>"
+        );
+
+        // add
+        assert_eq!(i.add(i64_t.int(456).into()).to_string(), "i64 579");
+        assert_eq!(
+            iv.add(iv.into()).to_string(),
+            "<4 x i64> <i64 2, i64 4, i64 6, i64 8>"
+        );
+
+        // fadd
+        assert_eq!(
+            f.fadd(f64_t.real(456.0).into()).to_string(),
+            "double 5.790000e+02"
+        );
+        assert_eq!(
+            fv.fadd(fv.into()).to_string(),
+            "<4 x double> <double 2.000000e+00, double 4.000000e+00, double 6.000000e+00, double 8.000000e+00>"
+        );
     }
 }
