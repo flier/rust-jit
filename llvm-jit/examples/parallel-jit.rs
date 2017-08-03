@@ -17,7 +17,6 @@ extern crate crossbeam;
 extern crate llvm_jit as jit;
 extern crate llvm_sys as llvm;
 
-use std::mem;
 use std::sync::{Arc, Barrier};
 
 use jit::{Context, ExecutionEngine, Function, GenericValue, IRBuilder, Module, Position};
@@ -82,7 +81,7 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
     let recurse_bb = fib_f.append_basic_block_in_context("recurse", &context);
 
     // Create the "if (arg < 2) goto exitbb"
-    let cond_inst = icmp!(sle argx, two; "cond").emit_to(&builder);
+    let cond_inst = icmp!(slt argx, two; "cond").emit_to(&builder);
     br!(
         cond_inst => ret_bb,
         _ => recurse_bb
@@ -115,8 +114,8 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
 fn main() {
     pretty_env_logger::init().unwrap();
 
-    jit::MCJIT::link_in();
-    jit::target::AllTargetMCs::init();
+    jit::target::NativeTarget::init().unwrap();
+    jit::target::NativeAsmPrinter::init().unwrap();
 
     let context = Context::new();
 
@@ -136,27 +135,11 @@ fn main() {
 
     let i32_t = context.int32_t();
 
-    let addr = ee.get_function_address("add1");
-
-    println!("add1 @ {:?}", addr);
-
-    let add1: extern "C" fn(i32) -> i32 = unsafe { mem::transmute(addr.unwrap()) };
-
-    println!("add1(1000) = {}", add1(1000));
-
-    let addr = ee.get_function_address("fib").unwrap();
-
-    let fib: extern "C" fn(i32) -> i32 = unsafe { mem::transmute(addr) };
-
-    println!("fib(1000) = {}", fib(1000));
-
     let barrier = Arc::new(Barrier::new(3));
 
     crossbeam::scope(|scope| {
         let add1_thread = scope.spawn(|| {
             barrier.clone().wait();
-
-            println!("add1(1000)");
 
             let v = ee.run_function(add1_f, &[GenericValue::from_int(i32_t, 1000)])
                 .to_int();
@@ -166,8 +149,6 @@ fn main() {
         let fib_thread1 = scope.spawn(|| {
             barrier.clone().wait();
 
-            println!("fib(39)");
-
             let v = ee.run_function(fib_f, &[GenericValue::from_int(i32_t, 39)])
                 .to_int();
 
@@ -176,16 +157,14 @@ fn main() {
         let fib_thread2 = scope.spawn(|| {
             barrier.clone().wait();
 
-            println!("fib(42)");
-
             let v = ee.run_function(fib_f, &[GenericValue::from_int(i32_t, 42)])
                 .to_int();
 
             v
         });
 
-        println!("Add1 returned {}", add1_thread.join());
-        println!("Fib1 returned {}", fib_thread1.join());
-        println!("Fib2 returned {}", fib_thread2.join());
+        println!("Add1(1000) returned {}", add1_thread.join());
+        println!("Fib1(39) returned {}", fib_thread1.join());
+        println!("Fib2(42) returned {}", fib_thread2.join());
     });
 }

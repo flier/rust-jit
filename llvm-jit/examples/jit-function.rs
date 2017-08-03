@@ -49,7 +49,6 @@ fn main() {
     //
     // see also: https://bitbucket.org/tari/llvm-sys.rs/issues/12/
 
-    jit::MCJIT::link_in();
     jit::target::NativeTarget::init().unwrap();
     jit::target::NativeAsmPrinter::init().unwrap();
 
