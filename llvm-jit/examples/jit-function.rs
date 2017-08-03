@@ -13,7 +13,6 @@ fn main() {
     // Set up a context, module and builder in that context.
     let context = jit::Context::new();
     let module = jit::Module::with_name_in_context("sum", &context);
-    let builder = jit::IRBuilder::within_context(&context);
 
     // get a type for sum function
     let i64_t = context.int64_t();
@@ -25,7 +24,7 @@ fn main() {
 
     // Create a basic block in the function and set our builder to generate code in it.
     let bb = function.append_basic_block_in_context("entry", &context);
-
+    let builder = jit::IRBuilder::within_context(&context);
     builder.position(jit::Position::AtEnd(bb));
 
     // get the function's arguments
