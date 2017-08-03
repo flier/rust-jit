@@ -8,19 +8,19 @@ fn main() {
     pretty_env_logger::init().unwrap();
 
     // Set up a context, module and builder in that context.
-    let context = jit::Context::new();
-    let module = jit::Module::with_name_in_context("nop", &context);
-    let builder = jit::IRBuilder::within_context(&context);
+    let context = Context::new();
+    let module = Module::with_name_in_context("nop", &context);
+    let builder = IRBuilder::within_context(&context);
 
     // Get the type signature for void nop(void);
     // Then create it in our module.
     let void = context.void_t();
-    let function_type = jit::FunctionType::new(void, &[], false);
+    let function_type = FunctionType::new(void, &[], false);
     let function = module.add_function("nop", function_type);
 
     // Create a basic block in the function and set our builder to generate code in it.
     let bb = function.append_basic_block_in_context("entry", &context);
-    builder.position(jit::Position::AtEnd(bb));
+    builder.position(Position::AtEnd(bb));
 
     // Emit a `ret void` into the function
     builder.emit(ret!());

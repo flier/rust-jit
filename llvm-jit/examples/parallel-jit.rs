@@ -19,8 +19,6 @@ extern crate llvm_sys as llvm;
 
 use std::sync::{Arc, Barrier};
 
-use jit::{Context, ExecutionEngine, Function, GenericValue, IRBuilder, Module, Position};
-use jit::insts::*;
 use jit::prelude::*;
 
 fn create_add1(context: &Context, module: &Module) -> Function {
@@ -88,12 +86,12 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
     ).emit_to(&builder);
 
     // Create: ret int 1
-    builder.position(jit::Position::AtEnd(ret_bb));
+    builder.position(Position::AtEnd(ret_bb));
 
     ret!(one).emit_to(&builder);
 
     // create fib(x-1)
-    builder.position(jit::Position::AtEnd(recurse_bb));
+    builder.position(Position::AtEnd(recurse_bb));
 
     let sub = sub!(argx, one; "arg").emit_to(&builder);
     let call_fib_x1 = call!(fib_f, sub; "fibx1").emit_to(&builder);

@@ -29,16 +29,15 @@
 #[macro_use]
 extern crate llvm_jit as jit;
 
-use jit::insts::*;
 use jit::prelude::*;
 
 fn main() {
     jit::target::AllTargetMCs::init();
 
-    let context = jit::Context::new();
+    let context = Context::new();
 
     // Create some module to put our function into it.
-    let m = jit::Module::with_name_in_context("test", &context);
+    let m = Module::with_name_in_context("test", &context);
 
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".
@@ -49,8 +48,8 @@ fn main() {
     let bb = add1_f.append_basic_block_in_context("EntryBlock", &context);
 
     // Create a basic block builder with default parameters.
-    let builder = jit::IRBuilder::within_context(&context);
-    builder.position(jit::Position::AtEnd(bb));
+    let builder = IRBuilder::within_context(&context);
+    builder.position(Position::AtEnd(bb));
 
     // Get the constant `1'.
     let one = i32_t.int(1);
@@ -75,7 +74,7 @@ fn main() {
     let bb = foo_f.append_basic_block_in_context("EntryBlock", &context);
 
     // Tell the basic block builder to attach itself to the new basic block
-    builder.position(jit::Position::AtEnd(bb));
+    builder.position(Position::AtEnd(bb));
 
     // Get the constant `10'.
     let ten = i32_t.int(10);
@@ -93,7 +92,7 @@ fn main() {
     );
 
     // Now we create the JIT.
-    let ee = jit::ExecutionEngine::for_module(m).unwrap();
+    let ee = ExecutionEngine::for_module(m).unwrap();
 
     // Call the `foo' function with no arguments:
     let noargs = &[];

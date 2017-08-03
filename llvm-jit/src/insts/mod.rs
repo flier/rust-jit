@@ -1,3 +1,7 @@
+//! The definitions of all of the subclasses of the `Instruction`.
+//!
+//! This is meant to be an easy way to get access to all instruction subclasses.
+
 mod builder;
 #[macro_use]
 mod ret;
