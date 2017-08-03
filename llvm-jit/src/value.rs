@@ -44,6 +44,7 @@ where
 }
 
 pub type ValueKind = LLVMValueKind;
+pub type Opcode = LLVMOpcode;
 
 impl ValueRef {
     /// Dump a representation of a value to stderr.
@@ -59,6 +60,10 @@ impl ValueRef {
     /// Obtain the enumerated type of a Value instance.
     pub fn kind(&self) -> ValueKind {
         unsafe { LLVMGetValueKind(self.0) }
+    }
+
+    pub fn opcode(&self) -> Opcode {
+        unsafe { LLVMGetConstOpcode(self.as_raw()) }
     }
 
     /// Obtain the string name of a value.

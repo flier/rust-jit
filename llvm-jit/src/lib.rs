@@ -75,7 +75,7 @@ pub use object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
 pub use passmgr::{Pass, PassManager, PassManagerBuilder, PassRegistry};
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
                 TypeKind, TypeRef, VectorType};
-pub use value::{BlockAddress, Instruction, ValueKind, ValueRef};
+pub use value::{BlockAddress, Instruction, Opcode, ValueKind, ValueRef};
 
 pub mod prelude {
     //! A prelude for writing LLVM JIT code.
