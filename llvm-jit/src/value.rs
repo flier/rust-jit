@@ -92,12 +92,12 @@ impl ValueRef {
         unsafe { LLVMIsNull(self.0) }.as_bool()
     }
 
-    /// Determine whether an LLVMValueRef is itself a basic block.
+    /// Determine whether a `ValueRef` is itself a basic block.
     pub fn is_basic_block(&self) -> bool {
         unsafe { LLVMValueIsBasicBlock(self.0) }.as_bool()
     }
 
-    /// Convert an LLVMValueRef to an LLVMBasicBlockRef instance.
+    /// Convert a `ValueRef` to an `BasicBlock` instance.
     pub fn as_basic_block(&self) -> Option<BasicBlock> {
         unsafe { LLVMValueAsBasicBlock(self.0).as_mut() }.map(|block| BasicBlock::from_raw(block))
     }

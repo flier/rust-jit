@@ -4,8 +4,10 @@ use std::ffi::CStr;
 use llvm::core::*;
 use llvm::prelude::*;
 
+use context::Context;
 use function::Function;
 use insts::TerminatorInst;
+use utils::unchecked_cstring;
 use value::{BlockAddress, Instruction, ValueRef};
 
 /// Basic Block
@@ -67,6 +69,47 @@ impl BasicBlock {
     /// Move a basic block to after another one.
     pub fn move_after(&self, pos: BasicBlock) {
         unsafe { LLVMMoveBasicBlockAfter(self.0, pos.0) }
+    }
+
+    /// Insert a basic block in a function before another basic block.
+    ///
+    /// The function to add to is determined by the function of the passed basic block.
+    pub fn insert_before_in_context<S: AsRef<str>>(
+        &self,
+        name: S,
+        context: &Context,
+    ) -> BasicBlock {
+        let cname = unchecked_cstring(name);
+        let block = unsafe {
+            LLVMInsertBasicBlockInContext(context.as_raw(), self.as_raw(), cname.as_ptr())
+        }.into();
+
+        trace!(
+            "insert `{}` block before {:?} in {:?}: {:?}",
+            cname.to_string_lossy(),
+            self,
+            context,
+            block,
+        );
+
+        block
+    }
+
+    /// Insert a basic block in a function before another basic block using the global context.
+    ///
+    /// The function to add to is determined by the function of the passed basic block.
+    pub fn insert_before<S: AsRef<str>>(&self, name: S) -> BasicBlock {
+        let cname = unchecked_cstring(name);
+        let block = unsafe { LLVMInsertBasicBlock(self.as_raw(), cname.as_ptr()) }.into();
+
+        trace!(
+            "insert `{}` block before {:?} in the global context: {:?}",
+            cname.to_string_lossy(),
+            self,
+            block,
+        );
+
+        block
     }
 
     /// Obtain an iterator to the instructions in a basic block.
