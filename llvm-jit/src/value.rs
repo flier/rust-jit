@@ -15,6 +15,9 @@ use utils::{AsBool, DisposableMessage, unchecked_cstring};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ValueRef(LLVMValueRef);
 
+unsafe impl Send for ValueRef {}
+unsafe impl Sync for ValueRef {}
+
 inherit_from!(ValueRef, LLVMValueRef);
 
 macro_rules! inherit_value_ref {

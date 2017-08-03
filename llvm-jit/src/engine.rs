@@ -224,6 +224,9 @@ impl MCJITCompiler {
 #[derive(Debug)]
 pub struct ExecutionEngine(LLVMExecutionEngineRef);
 
+unsafe impl Send for ExecutionEngine {}
+unsafe impl Sync for ExecutionEngine {}
+
 inherit_from!(ExecutionEngine, LLVMExecutionEngineRef);
 
 impl Drop for ExecutionEngine {

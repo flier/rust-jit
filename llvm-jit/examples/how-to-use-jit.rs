@@ -45,21 +45,19 @@ fn main() {
     let i32_t = context.int32_t();
     let add1_f = m.get_or_insert_function("add1", i32_t, &[i32_t]);
 
-    // Add a basic block to the function. As before, it automatically inserts
-    // because of the last argument.
+    // Add a basic block to the function.
     let bb = add1_f.append_basic_block_in_context("EntryBlock", &context);
 
-    // Create a basic block builder with default parameters.  The builder will
-    // automatically append instructions to the basic block `BB'.
+    // Create a basic block builder with default parameters.
     let builder = jit::IRBuilder::within_context(&context);
     builder.position(jit::Position::AtEnd(bb));
 
-    // Get pointers to the constant `1'.
+    // Get the constant `1'.
     let one = i32_t.int(1);
 
-    // Get pointers to the integer argument of the add1 function...
+    // Get the integer argument of the add1 function...
     assert!(add1_f.params().count() > 0); // Make sure there's an arg
-    let argx = add1_f.params().next().unwrap(); // Get the arg
+    let argx = add1_f.get_param(0).unwrap(); // Get the arg
     argx.set_name("AnArg"); // Give it a nice symbolic name for fun.
 
     // Create the add instruction, inserting it into the end of BB.
@@ -79,7 +77,7 @@ fn main() {
     // Tell the basic block builder to attach itself to the new basic block
     builder.position(jit::Position::AtEnd(bb));
 
-    // Get pointer to the constant `10'.
+    // Get the constant `10'.
     let ten = i32_t.int(10);
 
     // Pass Ten to the call to `add1_f`

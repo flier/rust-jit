@@ -17,6 +17,9 @@ use value::ValueRef;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeRef(LLVMTypeRef);
 
+unsafe impl Send for TypeRef {}
+unsafe impl Sync for TypeRef {}
+
 inherit_from!(TypeRef, LLVMTypeRef);
 
 macro_rules! inherit_type_ref {
