@@ -47,11 +47,11 @@ macro_rules! define_binary_operator {
         #[macro_export]
         macro_rules! $alias {
             ($lhs:expr, $rhs:expr; $name:expr) => (
-                $alias($lhs, $rhs, $name)
+                $crate::insts::$alias($lhs, $rhs, $name)
             );
             ($lhs:expr, $rhs:expr) => (
-                $alias($lhs, $rhs, stringify!($alias))
-            )
+                $crate::insts::$alias($lhs, $rhs, stringify!($alias))
+            );
         }
     )
 }

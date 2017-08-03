@@ -42,6 +42,17 @@ macro_rules! define_cast_instruction {
         {
             $crate::insts::$operator::new(value.into(), ty.into(), name.into())
         }
+
+        #[doc=$comment]
+        #[macro_export]
+        macro_rules! $alias {
+            ($value:expr; $name:expr) => (
+                $crate::insts::$alias($value, $name)
+            );
+            ($value:expr) => (
+                $crate::insts::$alias($value, stringify!($alias))
+            );
+        }
     )
 }
 

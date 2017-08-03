@@ -44,10 +44,10 @@ macro_rules! define_unary_instruction {
         #[macro_export]
         macro_rules! $alias {
             ($value:expr; $name:expr) => (
-                $alias($value, $name)
+                $crate::insts::$alias($value, $name)
             );
             ($value:expr) => (
-                $alias($value, stringify!($alias))
+                $crate::insts::$alias($value, stringify!($alias))
             )
         }
     )
