@@ -14,9 +14,6 @@ use utils::{AsBool, from_unchecked_cstr, unchecked_cstring};
 
 pub type AttributeIndex = LLVMAttributeIndex;
 
-pub const RETURN_INDEX: AttributeIndex = LLVMAttributeReturnIndex;
-pub const FUNCTION_INDEX: AttributeIndex = LLVMAttributeFunctionIndex;
-
 pub mod attrs {
     //! The target-independent enum attributes.
 
@@ -403,9 +400,4 @@ impl<T: CallSite> AttributeGroups for T {
             )
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
 }

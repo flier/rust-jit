@@ -14,12 +14,12 @@ use target::{TargetData, TargetMachine};
 use types::TypeRef;
 use utils::{AsLLVMBool, AsMutPtr, AsResult, unchecked_cstring};
 
-/// Deallocate and destroy all ManagedStatic variables.
+/// Deallocate and destroy all `ManagedStatic` variables.
 pub fn shutdown() {
     unsafe { LLVMShutdown() }
 }
 
-/// The GenericValue class is used to represent an LLVM value of arbitrary type.
+/// The `GenericValue` class is used to represent an LLVM value of arbitrary type.
 #[derive(Debug, PartialEq)]
 pub struct GenericValue(LLVMGenericValueRef);
 
@@ -54,19 +54,19 @@ impl GenericValue {
         unsafe { LLVMGenericValueIntWidth(self.0) as u32 }
     }
 
-    pub fn to_uint(self) -> u64 {
+    pub fn to_uint(&self) -> u64 {
         unsafe { LLVMGenericValueToInt(self.0, false.as_bool()) }
     }
 
-    pub fn to_int(self) -> i64 {
+    pub fn to_int(&self) -> i64 {
         unsafe { mem::transmute(LLVMGenericValueToInt(self.0, true.as_bool())) }
     }
 
-    pub fn to_ptr<T>(self) -> *mut T {
+    pub fn to_ptr<T>(&self) -> *mut T {
         unsafe { LLVMGenericValueToPointer(self.0) as *mut T }
     }
 
-    pub fn to_float<T: Into<TypeRef>>(self, ty: T) -> f64 {
+    pub fn to_float<T: Into<TypeRef>>(&self, ty: T) -> f64 {
         unsafe { LLVMGenericValueToFloat(ty.into().as_raw(), self.0) }
     }
 }
@@ -157,6 +157,13 @@ impl MCJITMemoryManager {
                 destroy,
             ).as_mut()
         }.map(|mm| MCJITMemoryManager::from_raw(mm))
+    }
+
+    /// Consumes the wrapper, returning the wrapped raw pointer.
+    pub fn into_raw(self) -> LLVMMCJITMemoryManagerRef {
+        let raw = self.as_raw();
+        ::std::mem::forget(self);
+        raw
     }
 }
 
@@ -475,6 +482,9 @@ impl ExecutionEngine {
 
 #[cfg(test)]
 mod tests {
+    use std::f64;
+
+    use hamcrest::prelude::*;
     use llvm::prelude::*;
     use mmap;
 
@@ -504,14 +514,14 @@ mod tests {
         assert_eq!(v.to_uint(), 456);
 
         let mut i = 123;
-        let v = GenericValue::from_ptr(&mut i);
+        let v = GenericValue::from_ptr(&i);
 
         assert_eq!(v.to_ptr(), &mut i as *mut i32);
 
         let double_t = c.double_t();
         let v = GenericValue::from_float(double_t, -123.0);
 
-        assert_eq!(v.to_float(double_t), -123.0);
+        assert_that!(v.to_float(double_t), is(close_to(-123.0, f64::EPSILON)));
     }
 
     #[test]
@@ -588,13 +598,16 @@ mod tests {
         let bb = pi.append_basic_block_in_context("entry", &c);
         builder.position(Position::AtEnd(bb));
 
-        builder.emit(ret!(f64_t.real(3.1415926)));
+        builder.emit(ret!(f64_t.real(f64::consts::PI)));
 
         // add it to our module
         let ee = Interpreter::for_module(m).unwrap();
 
         // run function
-        assert_eq!(ee.run_function(pi, &[]).to_float(f64_t), 3.1415926);
+        assert_that!(
+            ee.run_function(pi, &[]).to_float(f64_t),
+            is(close_to(f64::consts::PI, f64::EPSILON))
+        );
     }
 
     #[test]
@@ -642,10 +655,7 @@ mod tests {
         }
 
         assert_eq!(unsafe { ptr::read::<i64>(ee.get_ptr_to_global(x)) }, 123);
-
-        let addr: *const i64 = unsafe { mem::transmute(ee.get_global_value_address("x").unwrap()) };
-
-        assert_eq!(addr, &v);
+        assert_eq!(ee.get_global_value_address("x").unwrap() as *const i64, &v);
     }
 
     struct MemorySection(mmap::MemoryMap);

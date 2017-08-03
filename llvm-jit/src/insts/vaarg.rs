@@ -7,7 +7,7 @@ use types::TypeRef;
 use utils::unchecked_cstring;
 use value::{Instruction, ValueRef};
 
-/// The ‘va_arg‘ instruction is used to access arguments passed through the “variable argument” area of a function call. It is used to implement the va_arg macro in C.
+/// The `va_arg` instruction is used to access arguments passed through the “variable argument” area of a function call. It is used to implement the `va_arg` macro in C.
 #[derive(Clone, Debug, PartialEq)]
 pub struct VaArg<'a> {
     args: ValueRef,
@@ -38,7 +38,7 @@ impl<'a> InstructionBuilder for VaArg<'a> {
     }
 }
 
-/// The ‘va_arg‘ instruction is used to access arguments passed through the “variable argument” area of a function call. It is used to implement the va_arg macro in C.
+/// The `va_arg` instruction is used to access arguments passed through the “variable argument” area of a function call. It is used to implement the `va_arg` macro in C.
 pub fn va_arg<'a, A, T, N>(args: A, ty: T, name: N) -> VaArg<'a>
 where
     A: Into<ValueRef>,

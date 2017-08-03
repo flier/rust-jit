@@ -62,7 +62,7 @@ impl InstructionBuilder for Switch {
 
 /// The switch instruction specifies a table of values and destinations.
 ///
-/// When the ‘switch‘ instruction is executed, this table is searched for the given value.
+/// When the `switch` instruction is executed, this table is searched for the given value.
 /// If the value is found, control flow is transferred to the corresponding destination;
 /// otherwise, control flow is transferred to the default destination.
 #[derive(Clone, Copy, Debug, PartialEq)]

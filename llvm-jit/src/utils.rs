@@ -209,13 +209,6 @@ macro_rules! inherit_from {
             pub fn as_raw(&self) -> $raw {
                 self.0
             }
-
-            /// Consumes the wrapper, returning the wrapped raw pointer.
-            pub fn into_raw(self) -> $raw {
-                let raw = self.as_raw();
-                ::std::mem::forget(self);
-                raw
-            }
         }
     };
 

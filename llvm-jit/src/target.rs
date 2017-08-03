@@ -81,11 +81,12 @@ pub fn targets() -> TargetIter {
     TargetIter::new()
 }
 
+#[derive(Debug, Default)]
 pub struct TargetIter(Option<LLVMTargetRef>);
 
 impl TargetIter {
     pub fn new() -> Self {
-        TargetIter(None)
+        TargetIter::default()
     }
 }
 
@@ -101,7 +102,7 @@ impl Iterator for TargetIter {
             }.as_mut()
         }.map(|target| target as *mut LLVMTarget);
 
-        self.0.map(|target| Target(target))
+        self.0.map(Target)
     }
 }
 

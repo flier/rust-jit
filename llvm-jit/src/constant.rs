@@ -400,7 +400,7 @@ mod tests {
         assert!(!v.is_undef());
         assert!(!v.is_null());
 
-        assert_eq!(v.zero_extended(), 0xffffff85);
+        assert_eq!(v.zero_extended(), 0xffff_ff85);
         assert_eq!(v.sign_extended(), -123);
     }
 
@@ -422,7 +422,7 @@ mod tests {
         assert!(!v.is_undef());
         assert!(!v.is_null());
 
-        assert_that!(v.as_double(), is(close_to(-123f64, f64::EPSILON)));
+        assert_that!(v.as_double(), is(close_to(-123.0, f64::EPSILON)));
     }
 
     #[test]

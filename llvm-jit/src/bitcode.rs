@@ -162,7 +162,7 @@ entry:
 
         let bitcode = m.bitcode();
 
-        assert!(bitcode.len() > 0);
+        assert!(!bitcode.is_empty());
 
         let mut f = NamedTempFile::new().unwrap();
 

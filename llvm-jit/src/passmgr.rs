@@ -13,7 +13,7 @@ use utils::{AsBool, AsLLVMBool};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Pass {
-    /// Promote ‘by reference’ arguments to scalars
+    /// Promote `by reference’ arguments to scalars
     ///
     /// This pass promotes “by reference” arguments to be “by value” arguments.
     ///
@@ -340,6 +340,12 @@ impl Drop for PassManager {
     }
 }
 
+impl Default for PassManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PassManager {
     /// Constructs a new whole-module pass pipeline.
     ///
@@ -383,9 +389,8 @@ impl PassManager {
             Pass::LoopVectorize => unsafe { LLVMAddLoopVectorizePass(self.as_raw()) },
             Pass::SLPVectorizer => unsafe { LLVMAddSLPVectorizePass(self.as_raw()) },
 
-            /// Scalar transformations
+            // Scalar transformations
             Pass::AggressiveDCE => unsafe { LLVMAddAggressiveDCEPass(self.as_raw()) },
-            /// Added in LLVM 3.7.
             Pass::BitTrackingDCE => unsafe { LLVMAddBitTrackingDCEPass(self.as_raw()) },
             Pass::AlignmentFromAssumptions => unsafe {
                 LLVMAddAlignmentFromAssumptionsPass(self.as_raw())
@@ -497,6 +502,12 @@ inherit_from!(PassManagerBuilder, LLVMPassManagerBuilderRef);
 impl Drop for PassManagerBuilder {
     fn drop(&mut self) {
         unsafe { LLVMPassManagerBuilderDispose(self.as_raw()) }
+    }
+}
+
+impl Default for PassManagerBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

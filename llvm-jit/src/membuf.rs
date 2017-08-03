@@ -95,6 +95,17 @@ impl MemoryBuffer {
     pub fn len(&self) -> usize {
         unsafe { LLVMGetBufferSize(self.as_raw()) as usize }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Consumes the wrapper, returning the wrapped raw pointer.
+    pub fn into_raw(self) -> LLVMMemoryBufferRef {
+        let raw = self.as_raw();
+        ::std::mem::forget(self);
+        raw
+    }
 }
 
 #[cfg(test)]
