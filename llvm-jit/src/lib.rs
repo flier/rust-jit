@@ -72,6 +72,7 @@ pub use value::{BlockAddress, Instruction, ValueKind, ValueRef};
 pub mod prelude {
     pub use constant::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray,
                        ToConstantStruct};
+    pub use insts::InstructionBuilder;
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType,
                     ToPointerType, ToStructType, ToVectorType};
 }
