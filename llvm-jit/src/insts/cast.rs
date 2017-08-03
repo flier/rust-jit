@@ -125,7 +125,7 @@ define_cast_instruction!(
 define_cast_instruction!(
     BitCast,
     LLVMBuildBitCast,
-    bitcast,
+    bit_cast,
     "The `bitcast` instruction converts value to type ty2 without changing any bits."
 );
 define_cast_instruction!(
@@ -277,8 +277,8 @@ mod tests {
 
         test_instruction!(
             b,
-            bitcast!(arg6_p_i64, p_f64_t),
-            "%bitcast = bitcast i64* %6 to double*"
+            bit_cast!(arg6_p_i64, p_f64_t),
+            "%bit_cast = bitcast i64* %6 to double*"
         );
         test_instruction!(
             b,

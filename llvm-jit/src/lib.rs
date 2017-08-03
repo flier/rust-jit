@@ -42,6 +42,7 @@ mod types;
 mod value;
 #[macro_use]
 mod constant;
+mod constexpr;
 mod attribute;
 mod global;
 mod function;
@@ -89,6 +90,7 @@ pub mod prelude {
     pub use attribute::AttributeGroups;
     pub use constant::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray,
                        ToConstantStruct};
+    pub use constexpr::ConstantExpr;
     pub use global::GlobalValue;
     pub use insts::InstructionBuilder;
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType,
