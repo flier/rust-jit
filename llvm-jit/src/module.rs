@@ -15,6 +15,7 @@ use function::FunctionType;
 use global::GlobalVar;
 use types::{AsTypeRef, TypeRef};
 use utils::{AsResult, DisposableMessage, from_unchecked_cstr, unchecked_cstring};
+use value::ValueRef;
 
 pub type AddressSpace = u32;
 
@@ -179,6 +180,29 @@ impl Module {
         }
 
         t
+    }
+
+    pub fn get_named_operands<S: AsRef<str>>(&self, name: S) -> Vec<ValueRef> {
+        let cname = unchecked_cstring(name);
+        let count = unsafe { LLVMGetNamedMetadataNumOperands(self.as_raw(), cname.as_ptr()) };
+
+        let mut operands = vec![ptr::null_mut(); count as usize];
+
+        unsafe {
+            LLVMGetNamedMetadataOperands(self.as_raw(), cname.as_ptr(), operands.as_mut_ptr())
+        };
+
+        operands.into_iter().map(ValueRef::from_raw).collect()
+    }
+
+    pub fn add_named_operand<S: AsRef<str>, V: AsRef<ValueRef>>(&self, name: S, v: V) {
+        unsafe {
+            LLVMAddNamedMetadataOperand(
+                self.as_raw(),
+                unchecked_cstring(name).as_ptr(),
+                v.as_ref().as_raw(),
+            )
+        }
     }
 
     /// Look up the specified function in the module symbol table.
