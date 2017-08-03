@@ -8,6 +8,7 @@ use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
 
+use constant::ConstantInt;
 use context::{Context, GlobalContext};
 use module::AddressSpace;
 use utils::{AsBool, AsLLVMBool, DisposableMessage, unchecked_cstring};
@@ -68,6 +69,17 @@ impl TypeRef {
     /// Obtain a constant value referring to an undefined value of a type.
     pub fn undef(&self) -> ValueRef {
         unsafe { LLVMGetUndef(self.0) }.into()
+    }
+
+    /// Computes the alignment of a type in a target independent way (Note: the return type is an i64).
+    pub fn align_of(&self) -> ConstantInt {
+        unsafe { LLVMAlignOf(self.0) }.into()
+    }
+
+    /// Computes the (alloc) size of a type (in address-units, not bits)
+    /// in a target independent way (Note: the return type is an i64).
+    pub fn size_of(&self) -> ConstantInt {
+        unsafe { LLVMSizeOf(self.0) }.into()
     }
 }
 
