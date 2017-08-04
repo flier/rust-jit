@@ -46,11 +46,11 @@ macro_rules! define_cast_instruction {
         #[doc=$comment]
         #[macro_export]
         macro_rules! $alias {
-            ($value:expr; $name:expr) => (
-                $crate::insts::$alias($value, $name)
+            ($value:expr, $ty:expr; $name:expr) => (
+                $crate::insts::$alias($value, $ty, $name)
             );
-            ($value:expr) => (
-                $crate::insts::$alias($value, stringify!($alias))
+            ($value:expr, $ty:expr) => (
+                $crate::insts::$alias($value, $ty, stringify!($alias))
             );
         }
     )

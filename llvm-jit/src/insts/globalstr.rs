@@ -47,6 +47,16 @@ where
     GlobalString::new(s.into(), name.into())
 }
 
+#[macro_export]
+macro_rules! global_str {
+    ($s:expr; $name:expr) => (
+        $crate::insts::GlobalString::new($s.into(), $name.into())
+    );
+    ($s:expr) => {
+        $crate::insts::GlobalString::new($s.into(), "".into())
+    }
+}
+
 /// Same as `GlobalString`, but return a pointer with "i8*" type instead of a pointer to array of i8.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GlobalStringPtr<'a> {
@@ -76,13 +86,24 @@ impl<'a> InstructionBuilder for GlobalStringPtr<'a> {
     }
 }
 
-/// Make a new global variable with initializer type i8*, return a pointer with "i8*" type instead of a pointer to array of i8.
+/// Make a new global variable with initializer type i8*,
+/// return a pointer with "i8*" type instead of a pointer to array of i8.
 pub fn global_str_ptr<'a, S, N>(s: S, name: N) -> GlobalStringPtr<'a>
 where
     S: Into<Cow<'a, str>>,
     N: Into<Cow<'a, str>>,
 {
     GlobalStringPtr::new(s.into(), name.into())
+}
+
+#[macro_export]
+macro_rules! global_str_ptr {
+    ($s:expr; $name:expr) => (
+        $crate::insts::GlobalStringPtr::new($s.into(), $name.into())
+    );
+    ($s:expr) => {
+        $crate::insts::GlobalStringPtr::new($s.into(), "".into())
+    }
 }
 
 #[cfg(test)]

@@ -181,6 +181,11 @@ pub fn free<P: Into<ValueRef>>(ptr: P) -> Free {
     Free::new(ptr.into())
 }
 
+#[macro_export]
+macro_rules! free {
+    ($ptr:expr) => ($crate::insts::Free::new($ptr.into()))
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Load<'a> {
     ptr: ValueRef,
@@ -218,6 +223,16 @@ where
     Load::new(ptr.into(), name.into())
 }
 
+#[macro_export]
+macro_rules! load {
+    ($ptr:expr; $name:expr) => (
+        $crate::insts::Load::new($ptr.into(), $name.into())
+    );
+    ($ptr:expr) => {
+        load!($ptr; "load")
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Store {
     value: ValueRef,
@@ -247,6 +262,13 @@ where
     P: Into<ValueRef>,
 {
     Store::new(value.into(), ptr.into())
+}
+
+#[macro_export]
+macro_rules! store {
+    ($value:expr, $ptr:expr) => {
+        $crate::insts::Store::new($value.into(), $ptr.into())
+    }
 }
 
 #[cfg(test)]
