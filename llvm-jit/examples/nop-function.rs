@@ -10,7 +10,7 @@ fn main() {
     // Set up a context, module and builder in that context.
     let context = Context::new();
     let module = context.create_module("nop");
-    let builder = context.create_builder();
+    let mut builder = context.create_builder();
 
     // Get the type signature for void nop(void);
     // Then create it in our module.
@@ -23,7 +23,7 @@ fn main() {
     builder.position_at_end(bb);
 
     // Emit a `ret void` into the function
-    builder.emit(ret!());
+    builder <<= ret!();
 
     // Dump the module as IR to stdout.
     module.dump();

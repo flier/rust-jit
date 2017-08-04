@@ -566,11 +566,11 @@ mod tests {
         let y = f.get_param(1).unwrap();
         let z = f.get_param(2).unwrap();
 
-        let sum = builder.emit(add(x, y, "sum.1"));
-        let sum = builder.emit(add(sum, z, "sum.2"));
+        let sum = add(x, y, "sum.1").emit_to(&builder);
+        let sum = add(sum, z, "sum.2").emit_to(&builder);
 
         // Emit a `ret` into the function
-        builder.emit(ret!(sum));
+        ret!(sum).emit_to(&builder);
 
         // call with address
         assert_eq!(ee.find_function("sum"), Some(f));
@@ -594,7 +594,7 @@ mod tests {
         let bb = pi.append_basic_block_in_context("entry", &c);
         builder.position_at_end(bb);
 
-        builder.emit(ret!(f64_t.real(f64::consts::PI)));
+        ret!(f64_t.real(f64::consts::PI)).emit_to(&builder);
 
         // add it to our module
         let ee = Interpreter::for_module(m).unwrap();
@@ -618,13 +618,13 @@ mod tests {
             FunctionType::new(i32_t, &[i32_t, pp_char_t.into(), pp_char_t.into()], false),
         );
 
-        let builder = c.create_builder();
+        let mut builder = c.create_builder();
         let bb = main.append_basic_block_in_context("entry", &c);
         builder.position_at_end(bb);
 
         let argc = main.get_param(0).unwrap();
 
-        builder.emit(ret!(argc));
+        builder <<= ret!(argc);
 
         let ee = ExecutionEngine::for_module(m).unwrap();
 

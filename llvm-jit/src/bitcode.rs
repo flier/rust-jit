@@ -148,7 +148,7 @@ entry:
     fn bitcode() {
         let c = Context::new();
         let m = c.create_module("test");
-        let b = c.create_builder();
+        let mut b = c.create_builder();
 
         let f = m.add_function("nop", FunctionType::new(c.void_t(), &[], false));
 
@@ -157,7 +157,7 @@ entry:
         b.position(Position::AtEnd(bb));
 
         // Emit a `ret void` into the function
-        b.emit(ret!());
+        b <<= ret!();
 
         let bitcode = m.bitcode();
 

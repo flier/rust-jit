@@ -169,11 +169,11 @@ mod tests {
         let y = function.get_param(1).unwrap();
         let z = function.get_param(2).unwrap();
 
-        let sum1 = builder.emit(add(x, y, "sum.1"));
-        let sum2 = builder.emit(add(sum1, z, "sum.2"));
+        let sum1 = add(x, y, "sum.1").emit_to(&builder);
+        let sum2 = add(sum1, z, "sum.2").emit_to(&builder);
 
         // Emit a `ret` into the function
-        let ret = builder.emit(ret!(sum2));
+        let ret = ret!(sum2).emit_to(&builder);
 
         assert!(!bb.as_raw().is_null());
         assert_eq!(bb.name(), "entry");

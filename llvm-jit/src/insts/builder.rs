@@ -1,4 +1,4 @@
-use std::fmt;
+use std::ops;
 
 use llvm::core::*;
 use llvm::prelude::*;
@@ -72,8 +72,14 @@ impl IRBuilder {
         unsafe { LLVMPositionBuilderAtEnd(self.0, block.as_raw()) }
     }
 
-    pub fn emit<I: InstructionBuilder + fmt::Debug>(&self, inst: I) -> I::Target {
+    pub fn emit<I: InstructionBuilder>(&self, inst: I) -> I::Target {
         inst.emit_to(self)
+    }
+}
+
+impl<I: InstructionBuilder> ops::ShlAssign<I> for IRBuilder {
+    fn shl_assign(&mut self, inst: I) {
+        inst.emit_to(self);
     }
 }
 

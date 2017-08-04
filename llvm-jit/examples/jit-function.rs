@@ -23,7 +23,7 @@ fn main() {
 
     // Create a basic block in the function and set our builder to generate code in it.
     let bb = function.append_basic_block_in_context("entry", &context);
-    let builder = context.create_builder();
+    let mut builder = context.create_builder();
     builder.position_at_end(bb);
 
     // get the function's arguments
@@ -31,11 +31,11 @@ fn main() {
     let y = function.get_param(1).unwrap();
     let z = function.get_param(2).unwrap();
 
-    let sum = builder.emit(add!(x, y; "sum.1"));
-    let sum = builder.emit(add!(sum, z; "sum.2"));
+    let sum = add!(x, y; "sum.1").emit_to(&builder);
+    let sum = add!(sum, z; "sum.2").emit_to(&builder);
 
     // Emit a `ret` into the function
-    builder.emit(ret!(sum));
+    builder <<= ret!(sum);
 
     // done building
     drop(builder);
