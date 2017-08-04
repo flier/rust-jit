@@ -362,7 +362,7 @@ impl PassManager {
     /// add pass to pipeline
     ///
     /// @see: https://llvm.org/docs/Passes.html#bb-vectorize-basic-block-vectorization
-    pub fn add_pass(&self, pass: Pass) {
+    pub fn add(&self, pass: Pass) {
         match pass {
             // Interprocedural transformations
             Pass::ArgumentPromotion => unsafe { LLVMAddArgumentPromotionPass(self.as_raw()) },

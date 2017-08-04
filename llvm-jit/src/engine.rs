@@ -615,7 +615,7 @@ mod tests {
         let pp_char_t = c.int8_t().ptr_t().ptr_t();
         let main = m.add_function(
             "main",
-            FunctionType::new(i32_t, &[i32_t, pp_char_t.into(), pp_char_t.into()], false),
+            FunctionType::new(i32_t, types![i32_t, pp_char_t, pp_char_t], false),
         );
 
         let mut builder = c.create_builder();

@@ -199,15 +199,15 @@ mod tests {
 
         let f_ty = FunctionType::new(
             c.void_t(),
-            &[
+            types![
                 i64_t,
                 i64_t,
                 f64_t,
                 f64_t,
                 i32_t,
                 f32_t,
-                p_i64_t.into(),
-                p_f64_t.into(),
+                p_i64_t,
+                p_f64_t,
             ],
             false,
         );

@@ -12,6 +12,12 @@ use constant::Constant;
 use types::TypeRef;
 use utils::{AsBool, DisposableMessage, unchecked_cstring};
 
+#[macro_export]
+macro_rules! values {
+    ($($x:expr),*) => (&[ $($x.into()),* ]);
+    ($($x:expr,)*) => (&[ $($x.into()),* ]);
+}
+
 /// Represents an individual value in LLVM IR.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ValueRef(LLVMValueRef);

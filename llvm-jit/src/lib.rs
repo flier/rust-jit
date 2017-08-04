@@ -73,7 +73,7 @@ pub use insts::{IRBuilder, Position};
 pub use membuf::MemoryBuffer;
 pub use module::{AddressSpace, Module};
 pub use object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
-pub use passmgr::{Pass, PassManager, PassManagerBuilder, PassRegistry};
+pub use passmgr::{FunctionPassManager, Pass, PassManager, PassManagerBuilder, PassRegistry};
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
                 TypeKind, TypeRef, VectorType};
 pub use value::{BlockAddress, Instruction, Opcode, ValueKind, ValueRef};

@@ -330,7 +330,7 @@ mod tests {
         let i64_t = c.int64_t();
         let p_i64_t = i64_t.ptr_t();
 
-        let f_ty = FunctionType::new(c.void_t(), &[p_i64_t.into(), p_i64_t.into()], false);
+        let f_ty = FunctionType::new(c.void_t(), types![p_i64_t, p_i64_t], false);
         let f = m.add_function("test", f_ty);
 
         let bb = f.append_basic_block_in_context("entry", &c);

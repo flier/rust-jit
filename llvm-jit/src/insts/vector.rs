@@ -159,7 +159,7 @@ mod tests {
         let i64_t = context.int64_t();
         let function_type = FunctionType::new(
             context.void_t(),
-            &[i64_t.vector_t(3).into(), i64_t.vector_t(3).into()],
+            types![i64_t.vector_t(3), i64_t.vector_t(3)],
             false,
         );
         let function = module.add_function("test", function_type);

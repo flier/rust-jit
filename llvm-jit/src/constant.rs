@@ -487,8 +487,7 @@ mod tests {
     #[test]
     fn structure() {
         let c = Context::new();
-        let v =
-            ConstantStruct::structure(&[c.int64_t().int(123).into(), c.str("hello").into()], true);
+        let v = ConstantStruct::structure(types![c.int64_t().int(123), c.str("hello")], true);
 
         assert!(!v.as_raw().is_null());
         assert_eq!(
@@ -509,7 +508,7 @@ mod tests {
     fn array() {
         let c = Context::new();
         let i64_t = c.int64_t();
-        let v = i64_t.array_of(&[i64_t.int(123).into(), i64_t.int(456).into()]);
+        let v = i64_t.array_of(types![i64_t.int(123), i64_t.int(456)]);
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"[2 x i64] [i64 123, i64 456]"#);

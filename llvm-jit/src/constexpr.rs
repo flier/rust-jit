@@ -424,30 +424,24 @@ mod tests {
         let u = i64_t.uint(123);
         let f = f64_t.real(123.0);
 
-        let bv = bool_t.vector_t(4).vector_of(
-            &[
-                bool_t.int(1).into(),
-                bool_t.int(0).into(),
-                bool_t.int(1).into(),
-                bool_t.int(0).into(),
-            ],
-        );
-        let iv = i64_t.vector_t(4).vector_of(
-            &[
-                i64_t.int(1).into(),
-                i64_t.int(2).into(),
-                i64_t.int(3).into(),
-                i64_t.int(4).into(),
-            ],
-        );
-        let fv = f64_t.vector_t(4).vector_of(
-            &[
-                f64_t.real(1.0).into(),
-                f64_t.real(2.0).into(),
-                f64_t.real(3.0).into(),
-                f64_t.real(4.0).into(),
-            ],
-        );
+        let bv = bool_t.vector_t(4).vector_of(types![
+                bool_t.int(1),
+                bool_t.int(0),
+                bool_t.int(1),
+                bool_t.int(0),
+            ]);
+        let iv = i64_t.vector_t(4).vector_of(types![
+                i64_t.int(1),
+                i64_t.int(2),
+                i64_t.int(3),
+                i64_t.int(4),
+            ]);
+        let fv = f64_t.vector_t(4).vector_of(types![
+                f64_t.real(1.0),
+                f64_t.real(2.0),
+                f64_t.real(3.0),
+                f64_t.real(4.0),
+            ]);
 
         // neg
         assert_eq!(i.neg().to_string(), "i64 -123");

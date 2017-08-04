@@ -14,6 +14,12 @@ use module::AddressSpace;
 use utils::{AsBool, AsLLVMBool, DisposableMessage, unchecked_cstring};
 use value::ValueRef;
 
+#[macro_export]
+macro_rules! types {
+    ($($x:expr),*) => (&[ $($x.into()),* ]);
+    ($($x:expr,)*) => (&[ $($x.into()),* ]);
+}
+
 /// Each value in the LLVM IR has a type, an `TypeRef`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeRef(LLVMTypeRef);
