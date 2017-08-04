@@ -11,7 +11,7 @@ fn main() {
 
     // Set up a context, module and builder in that context.
     let context = Context::new();
-    let module = Module::with_name_in_context("sum", &context);
+    let module = context.create_module("sum");
 
     // get a type for sum function
     let i64_t = context.int64_t();

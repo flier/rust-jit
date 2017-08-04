@@ -125,17 +125,13 @@ macro_rules! phi {
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
     use prelude::*;
-    use types::*;
 
     #[test]
     fn phi() {
         let context = Context::new();
-        let module = Module::with_name_in_context("phi", &context);
+        let module = context.create_module("phi");
         let builder = IRBuilder::within_context(&context);
 
         let i64_t = context.int64_t();

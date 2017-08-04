@@ -147,17 +147,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
     use prelude::*;
-    use types::*;
 
     #[test]
     fn vector() {
         let context = Context::new();
-        let module = Module::with_name_in_context("vector", &context);
+        let module = context.create_module("vector");
         let builder = IRBuilder::within_context(&context);
 
         let i64_t = context.int64_t();

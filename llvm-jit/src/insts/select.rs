@@ -69,17 +69,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
     use prelude::*;
-    use types::*;
 
     #[test]
     fn select_inst() {
         let context = Context::new();
-        let module = Module::with_name_in_context("br", &context);
+        let module = context.create_module("select");
         let builder = IRBuilder::within_context(&context);
 
         let bool_t = context.int1_t();

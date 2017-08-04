@@ -139,17 +139,13 @@ macro_rules! invoke {
 mod tests {
     use llvm::LLVMCallConv;
 
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
     use prelude::*;
-    use types::*;
 
     #[test]
     fn invoke() {
         let context = Context::new();
-        let module = Module::with_name_in_context("invoke", &context);
+        let module = context.create_module("invoke");
         let builder = IRBuilder::within_context(&context);
 
         let i64_t = context.int64_t();

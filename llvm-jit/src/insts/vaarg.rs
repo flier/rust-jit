@@ -50,16 +50,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
-    use types::*;
+    use prelude::*;
 
     #[test]
     fn va_arg_inst() {
         let context = Context::new();
-        let module = Module::with_name_in_context("invoke", &context);
+        let module = context.create_module("va_arg");
         let builder = IRBuilder::within_context(&context);
 
         let fn_test = module.add_function("test", FunctionType::new(context.void_t(), &[], false));

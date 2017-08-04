@@ -172,17 +172,14 @@ macro_rules! br {
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
     use prelude::*;
     use types::*;
 
     #[test]
     fn br() {
         let context = Context::new();
-        let module = Module::with_name_in_context("br", &context);
+        let module = context.create_module("br");
         let builder = IRBuilder::within_context(&context);
 
         let function_type = FunctionType::new(context.void_t(), &[], false);
@@ -203,7 +200,7 @@ mod tests {
     #[test]
     fn cond_br() {
         let context = Context::new();
-        let module = Module::with_name_in_context("br", &context);
+        let module = context.create_module("cond_br");
         let builder = IRBuilder::within_context(&context);
 
         let function_type = FunctionType::new(context.void_t(), &[], false);
@@ -239,7 +236,7 @@ mod tests {
     #[test]
     fn indirect_br() {
         let context = Context::new();
-        let module = Module::with_name_in_context("br", &context);
+        let module = context.create_module("indirect_br");
         let builder = IRBuilder::within_context(&context);
 
         let function_type = FunctionType::new(context.void_t(), &[], false);

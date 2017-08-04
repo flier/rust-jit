@@ -118,7 +118,7 @@ fn main() {
     let context = Context::new();
 
     // Create some module to put our function into it.
-    let module = Module::with_name_in_context("test", &context);
+    let module = context.create_module("test");
 
     let add1_f = create_add1(&context, &module);
     let fib_f = create_fib_function(&context, &module);

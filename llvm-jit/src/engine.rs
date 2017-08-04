@@ -489,11 +489,7 @@ mod tests {
     use mmap;
 
     use super::*;
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use insts::{IRBuilder, Position};
-    use module::Module;
     use prelude::*;
     use target::{NativeAsmPrinter, NativeTarget};
     use types::*;
@@ -527,14 +523,14 @@ mod tests {
     #[test]
     fn module() {
         let c = Context::new();
-        let m = Module::with_name_in_context("module", &c);
+        let m = c.create_module("module");
 
         // add it to our module
         let opts = MCJITCompilerOptions::default();
         let ee = MCJITCompiler::for_module(m, opts).unwrap();
 
         // module
-        let test = Module::with_name_in_context("test", &c);
+        let test = c.create_module("test");
 
         let test = ee.add_module(test);
 
@@ -548,7 +544,7 @@ mod tests {
         NativeAsmPrinter::init().unwrap();
 
         let c = Context::new();
-        let m = Module::with_name_in_context("call_function_with_address", &c);
+        let m = c.create_module("call_function_with_address");
 
         // get a type for sum function
         let i64_t = c.int64_t();
@@ -589,7 +585,7 @@ mod tests {
     #[test]
     fn run_function_without_args() {
         let c = Context::new();
-        let m = Module::with_name_in_context("run_function_without_args", &c);
+        let m = c.create_module("run_function_without_args");
 
         let f64_t = c.double_t();
         let pi = m.add_function("pi", FunctionType::new(f64_t, &[], false));
@@ -613,7 +609,7 @@ mod tests {
     #[test]
     fn run_function_as_main() {
         let c = Context::new();
-        let m = Module::with_name_in_context("run_function_as_main", &c);
+        let m = c.create_module("run_function_as_main");
 
         let i32_t = c.int32_t();
         let pp_char_t = c.int8_t().ptr_t().ptr_t();
@@ -641,7 +637,7 @@ mod tests {
     #[test]
     fn global_vars() {
         let c = Context::new();
-        let m = Module::with_name_in_context("global_vars", &c);
+        let m = c.create_module("global_vars");
 
         let i64_t = c.int64_t();
         let x = m.add_global_var("x", i64_t);
@@ -775,7 +771,7 @@ mod tests {
         NativeAsmPrinter::init().unwrap();
 
         let c = Context::new();
-        let m = Module::with_name_in_context("memory_manager", &c);
+        let m = c.create_module("memory_manager");
 
         let mut opts = MCJITCompilerOptions::default();
         let mut ctxt = MemoryManager::default();

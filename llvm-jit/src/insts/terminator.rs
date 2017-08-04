@@ -123,17 +123,13 @@ pub fn unreachable() -> Unreachable {
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
     use prelude::*;
-    use types::*;
 
     #[test]
     fn terminator() {
         let context = Context::new();
-        let module = Module::with_name_in_context("invoke", &context);
+        let module = context.create_module("terminator");
         let builder = IRBuilder::within_context(&context);
 
         let fn_test = module.add_function("test", FunctionType::new(context.void_t(), &[], false));

@@ -134,15 +134,13 @@ mod tests {
     use llvm;
 
     use super::*;
-    use context::Context;
-    use module::Module;
     use prelude::*;
     use types::*;
 
     #[test]
     fn global_var() {
         let c = Context::new();
-        let m = Module::with_name_in_context("test", &c);
+        let m = c.create_module("global_var");
 
         assert_eq!(m.get_global_var("x"), None);
 

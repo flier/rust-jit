@@ -223,12 +223,8 @@ define_binary_operator!(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
-    use types::*;
+    use prelude::*;
 
     macro_rules! test_bin_op {
         ($builder:ident, $name:ident ( $arg0_i64:ident, $arg1_i64:ident ), $display:expr) => (
@@ -242,7 +238,7 @@ mod tests {
     #[test]
     fn binops() {
         let c = Context::new();
-        let m = Module::with_name_in_context("instructions", &c);
+        let m = c.create_module("binops");
         let b = IRBuilder::within_context(&c);
 
         let i64_t = c.int64_t();
@@ -328,7 +324,7 @@ mod tests {
     #[test]
     fn ptr_diff() {
         let c = Context::new();
-        let m = Module::with_name_in_context("instructions", &c);
+        let m = c.create_module("ptr_diff");
         let b = IRBuilder::within_context(&c);
 
         let i64_t = c.int64_t();

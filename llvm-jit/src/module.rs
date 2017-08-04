@@ -8,7 +8,7 @@ use std::ptr;
 use llvm::core::*;
 use llvm::prelude::*;
 
-use context::Context;
+use context::{Context, GlobalContext};
 use errors::Result;
 use function::Function;
 use function::FunctionType;
@@ -29,54 +29,7 @@ pub enum State {
     Borrowed(LLVMModuleRef),
 }
 
-impl From<LLVMModuleRef> for Module {
-    fn from(m: LLVMModuleRef) -> Self {
-        Module::from_faw(m)
-    }
-}
-
-impl From<Module> for LLVMModuleRef {
-    fn from(m: Module) -> Self {
-        m.as_raw()
-    }
-}
-
-impl PartialEq<Module> for Module {
-    fn eq(&self, other: &Module) -> bool {
-        self.as_raw() == other.as_raw()
-    }
-}
-
 impl Module {
-    /// Create a new, empty module in the global context.
-    pub fn with_name<S: AsRef<str>>(name: S) -> Self {
-        let cname = unchecked_cstring(name);
-        let module = unsafe { LLVMModuleCreateWithName(cname.as_ptr()) };
-
-        trace!(
-            "create `{}` module in global context: Module({:?})",
-            cname.to_string_lossy(),
-            module
-        );
-
-        Module(State::Owned(module))
-    }
-
-    /// Create a new, empty module in a specific context.
-    pub fn with_name_in_context<S: AsRef<str>>(name: S, context: &Context) -> Self {
-        let cname = unchecked_cstring(name);
-        let module = unsafe { LLVMModuleCreateWithNameInContext(cname.as_ptr(), context.as_raw()) };
-
-        trace!(
-            "create `{}` module in {:?}: Module({:?})",
-            cname.to_string_lossy(),
-            context,
-            module,
-        );
-
-        Module(State::Owned(module))
-    }
-
     pub fn from_faw(m: LLVMModuleRef) -> Self {
         Module(State::Borrowed(m))
     }
@@ -353,6 +306,24 @@ impl Clone for Module {
     }
 }
 
+impl From<LLVMModuleRef> for Module {
+    fn from(m: LLVMModuleRef) -> Self {
+        Module::from_faw(m)
+    }
+}
+
+impl From<Module> for LLVMModuleRef {
+    fn from(m: Module) -> Self {
+        m.as_raw()
+    }
+}
+
+impl PartialEq<Module> for Module {
+    fn eq(&self, other: &Module) -> bool {
+        self.as_raw() == other.as_raw()
+    }
+}
+
 impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -360,6 +331,39 @@ impl fmt::Display for Module {
             "{}",
             unsafe { LLVMPrintModuleToString(self.as_raw()) }.to_string()
         )
+    }
+}
+
+impl Context {
+    /// Create a new, empty module in a specific context.
+    pub fn create_module<S: AsRef<str>>(&self, name: S) -> Module {
+        let cname = unchecked_cstring(name);
+        let module = unsafe { LLVMModuleCreateWithNameInContext(cname.as_ptr(), self.as_raw()) };
+
+        trace!(
+            "create `{}` module in {:?}: Module({:?})",
+            cname.to_string_lossy(),
+            self,
+            module,
+        );
+
+        Module(State::Owned(module))
+    }
+}
+
+impl GlobalContext {
+    /// Create a new, empty module in the global context.
+    pub fn create_module<S: AsRef<str>>(name: S) -> Module {
+        let cname = unchecked_cstring(name);
+        let module = unsafe { LLVMModuleCreateWithName(cname.as_ptr()) };
+
+        trace!(
+            "create `{}` module in global context: Module({:?})",
+            cname.to_string_lossy(),
+            module
+        );
+
+        Module(State::Owned(module))
     }
 }
 
@@ -376,7 +380,7 @@ mod tests {
     #[test]
     fn create() {
         let context = Context::new();
-        let m = Module::with_name_in_context("test", &context);
+        let m = context.create_module("test");
 
         assert!(!m.as_raw().is_null());
         assert_eq!(m.name(), "test");
@@ -415,7 +419,7 @@ target triple = "x86_64-apple-darwin"
     #[test]
     fn function() {
         let context = Context::new();
-        let m = Module::with_name_in_context("test", &context);
+        let m = context.create_module("function");
 
         assert_eq!(m.get_function("nop"), None);
 

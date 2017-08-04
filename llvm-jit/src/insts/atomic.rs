@@ -310,12 +310,8 @@ macro_rules! atomic {
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
     use prelude::*;
-    use types::*;
 
     macro_rules! test_atomic {
         ($builder:expr, atomic !( $op:ident $ptr:expr, $value:expr ; $ordering:ident ), $display:expr) => (
@@ -332,7 +328,7 @@ mod tests {
     #[test]
     fn atomic() {
         let context = Context::new();
-        let module = Module::with_name_in_context("atomi", &context);
+        let module = context.create_module("atomic");
         let builder = IRBuilder::within_context(&context);
 
         let i64_t = context.int64_t();

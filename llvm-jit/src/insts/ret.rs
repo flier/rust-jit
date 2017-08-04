@@ -110,17 +110,14 @@ macro_rules! ret {
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
     use prelude::*;
     use types::*;
 
     #[test]
     fn ret_void() {
         let context = Context::new();
-        let module = Module::with_name_in_context("ret_void", &context);
+        let module = context.create_module("ret_void");
         let builder = IRBuilder::within_context(&context);
 
         let function_type = FunctionType::new(context.void_t(), &[], false);
@@ -135,7 +132,7 @@ mod tests {
     #[test]
     fn ret() {
         let context = Context::new();
-        let module = Module::with_name_in_context("ret", &context);
+        let module = context.create_module("ret");
         let builder = IRBuilder::within_context(&context);
 
         let i64_t = context.int64_t();
@@ -154,7 +151,7 @@ mod tests {
     #[test]
     fn aggregate_ret() {
         let context = Context::new();
-        let module = Module::with_name_in_context("aggregate_ret", &context);
+        let module = context.create_module("aggregate_ret");
         let builder = IRBuilder::within_context(&context);
 
         let i64_t = context.int64_t();

@@ -10,7 +10,7 @@ fn main() {
     let context = Context::new();
 
     // Create the "module" or "program" or "translation unit" to hold the function
-    let m = Module::with_name_in_context("test", &context);
+    let m = context.create_module("test");
 
     // Create the main function: first create the type 'int ()'
     let i32_t = context.int32_t();

@@ -152,17 +152,13 @@ macro_rules! gep {
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
     use prelude::*;
-    use types::*;
 
     #[test]
     fn gep() {
         let context = Context::new();
-        let module = Module::with_name_in_context("gep", &context);
+        let module = context.create_module("gep");
         let builder = IRBuilder::within_context(&context);
 
         let function_type = FunctionType::new(context.void_t(), &[], false);

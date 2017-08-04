@@ -37,7 +37,7 @@ fn main() {
     let context = Context::new();
 
     // Create some module to put our function into it.
-    let m = Module::with_name_in_context("test", &context);
+    let m = context.create_module("test");
 
     // Create the add1 function entry and insert this entry into module M.  The
     // function will have a return type of "int" and take an argument of "int".

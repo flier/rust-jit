@@ -251,17 +251,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
     use prelude::*;
-    use types::*;
 
     #[test]
     fn memory() {
         let context = Context::new();
-        let module = Module::with_name_in_context("memory", &context);
+        let module = context.create_module("memory");
         let builder = IRBuilder::within_context(&context);
 
         let i64_t = context.int64_t();

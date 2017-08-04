@@ -87,16 +87,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
-    use types::*;
+    use prelude::*;
 
     #[test]
     fn globalstr() {
         let context = Context::new();
-        let module = Module::with_name_in_context("memory", &context);
+        let module = context.create_module("globalstr");
         let builder = IRBuilder::within_context(&context);
 
         let function_type = FunctionType::new(context.void_t(), &[], false);

@@ -285,11 +285,8 @@ macro_rules! fcmp {
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
-    use types::*;
+    use prelude::*;
 
     macro_rules! test_icmp {
         ($builder:expr, $pred:ident !( $lhs:expr, $rhs:expr)) => ({
@@ -318,7 +315,7 @@ mod tests {
     #[test]
     fn icmp() {
         let context = Context::new();
-        let module = Module::with_name_in_context("cmp", &context);
+        let module = context.create_module("icmp");
         let builder = IRBuilder::within_context(&context);
 
         let i64_t = context.int64_t();
@@ -347,7 +344,7 @@ mod tests {
     #[test]
     fn fcmp() {
         let context = Context::new();
-        let module = Module::with_name_in_context("cmp", &context);
+        let module = context.create_module("fcmp");
         let builder = IRBuilder::within_context(&context);
 
         let f64_t = context.double_t();

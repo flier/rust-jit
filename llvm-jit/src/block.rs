@@ -141,17 +141,14 @@ impl_iter!(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use context::Context;
-    use function::FunctionType;
     use insts::{IRBuilder, Position, add};
-    use module::Module;
     use prelude::*;
 
     #[test]
     fn basic_block() {
         // Set up a context, module and builder in that context.
         let context = Context::new();
-        let module = Module::with_name_in_context("sum", &context);
+        let module = context.create_module("sum");
         let builder = IRBuilder::within_context(&context);
 
         // get a type for sum function

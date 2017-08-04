@@ -101,17 +101,13 @@ pub fn insert_value<'a, V: Into<ValueRef>, T: Into<ValueRef>, N: Into<Cow<'a, st
 #[cfg(test)]
 mod tests {
     use super::*;
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
     use prelude::*;
-    use types::*;
 
     #[test]
     fn aggregate() {
         let context = Context::new();
-        let module = Module::with_name_in_context("aggregate", &context);
+        let module = context.create_module("aggregate");
         let builder = IRBuilder::within_context(&context);
 
         let i32_t = context.int32_t();

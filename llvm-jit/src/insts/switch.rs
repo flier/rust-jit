@@ -90,17 +90,13 @@ macro_rules! switch {
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
     use prelude::*;
-    use types::*;
 
     #[test]
     fn switch() {
         let context = Context::new();
-        let module = Module::with_name_in_context("switch", &context);
+        let module = context.create_module("switch");
         let builder = IRBuilder::within_context(&context);
 
         let function_type = FunctionType::new(context.void_t(), &[], false);

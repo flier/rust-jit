@@ -148,7 +148,7 @@ entry:
     #[test]
     fn bitcode() {
         let c = Context::new();
-        let m = Module::with_name_in_context("test", &c);
+        let m = c.create_module("test");
         let b = IRBuilder::within_context(&c);
 
         let f = m.add_function("nop", FunctionType::new(c.void_t(), &[], false));

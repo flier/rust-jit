@@ -173,11 +173,8 @@ define_cast_instruction!(
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
     use insts::*;
-    use module::Module;
-    use types::*;
+    use prelude::*;
 
     macro_rules! test_instruction {
         ($builder:ident, $name:ident !( $arg0_i64:ident, $arg1_i64:ident ), $display:expr) => (
@@ -188,7 +185,7 @@ mod tests {
     #[test]
     fn cast() {
         let c = Context::new();
-        let m = Module::with_name_in_context("instructions", &c);
+        let m = c.create_module("cast");
         let b = IRBuilder::within_context(&c);
 
         let i32_t = c.int32_t();
