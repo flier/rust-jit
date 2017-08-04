@@ -75,6 +75,12 @@ impl SwitchInst {
     pub fn default_dest(&self) -> BasicBlock {
         unsafe { LLVMGetSwitchDefaultDest(self.as_raw()) }.into()
     }
+
+    /// Add a case to the switch instruction
+    pub fn add_case<V: Into<ValueRef>>(&self, on: V, dest: BasicBlock) -> &Self {
+        unsafe { LLVMAddCase(self.as_raw(), on.into().as_raw(), dest.as_raw()) };
+        self
+    }
 }
 
 /// The `switch` instruction is used to transfer control flow to one of several different places.
@@ -82,6 +88,9 @@ impl SwitchInst {
 macro_rules! switch {
     ($cond:expr; _ => $default:expr , $( $on:expr => $dest:expr ),*) => ({
         $crate::insts::Switch::on($cond.into()).default($default) $( .case($on.into(), $dest) )*
+    });
+    ($cond:expr; _ => $default:expr) => ({
+        $crate::insts::Switch::on($cond.into()).default($default)
     });
     ($cond:expr; $( $on:expr => $dest:expr ),*) => ({
         $crate::insts::Switch::on($cond.into()) $( .case($on.into(), $dest) )*

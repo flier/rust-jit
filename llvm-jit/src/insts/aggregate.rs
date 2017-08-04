@@ -50,6 +50,16 @@ pub fn extract_value<'a, V: Into<ValueRef>, N: Into<Cow<'a, str>>>(
     ExtractValue::new(aggregate.into(), index, name.into())
 }
 
+#[macro_export]
+macro_rules! extract_value {
+    ($aggregate:expr, $index:expr; $name:expr) => (
+        $crate::insts::ExtractValue::new($aggregate.into(), $index as u32, $name.into())
+    );
+    ($aggregate:expr, $index:expr) => {
+        extract_value!($aggregate, $index; "extract_value")
+    }
+}
+
 /// This instruction inserts a struct field of array element value into an aggregate value.
 #[derive(Clone, Debug, PartialEq)]
 pub struct InsertValue<'a> {
@@ -96,6 +106,16 @@ pub fn insert_value<'a, V: Into<ValueRef>, T: Into<ValueRef>, N: Into<Cow<'a, st
     name: N,
 ) -> InsertValue<'a> {
     InsertValue::new(aggregate.into(), element.into(), index, name.into())
+}
+
+#[macro_export]
+macro_rules! insert_value {
+    ($aggregate:expr, $element:expr, $index:expr; $name:expr) => (
+        $crate::insts::InsertValue::new($aggregate.into(), $element.into(), $index as u32, $name.into())
+    );
+    ($aggregate:expr, $element:expr, $index:expr) => {
+        insert_value!($aggregate, $element, $index; "extract_value")
+    }
 }
 
 #[cfg(test)]

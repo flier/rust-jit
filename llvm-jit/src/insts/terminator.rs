@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::ptr;
 
 use llvm::core::*;
 use llvm::prelude::*;
@@ -12,20 +13,25 @@ use value::{AsValueRef, Instruction, ValueRef};
 #[derive(Clone, Debug, PartialEq)]
 pub struct LandingPad<'a> {
     result_ty: TypeRef,
-    personality_fn: Function,
+    personality_fn: Option<Function>,
     name: Cow<'a, str>,
     clauses: Vec<ValueRef>,
     cleanup: bool,
 }
 
 impl<'a> LandingPad<'a> {
-    pub fn new(result_ty: TypeRef, personality_fn: Function, name: Cow<'a, str>) -> Self {
+    pub fn new(
+        result_ty: TypeRef,
+        personality_fn: Option<Function>,
+        name: Cow<'a, str>,
+        cleanup: bool,
+    ) -> Self {
         LandingPad {
             result_ty,
             personality_fn,
             name,
             clauses: vec![],
-            cleanup: false,
+            cleanup: cleanup,
         }
     }
 
@@ -42,7 +48,7 @@ impl<'a> LandingPad<'a> {
 }
 
 impl<'a> InstructionBuilder for LandingPad<'a> {
-    type Target = Instruction;
+    type Target = LandingPadInst;
 
     fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
@@ -52,24 +58,57 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
             .map(|clause| clause.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        let landing_pad: Instruction = unsafe {
+        let landingpad: LandingPadInst = unsafe {
             LLVMBuildLandingPad(
                 builder.as_raw(),
                 self.result_ty.as_raw(),
-                self.personality_fn.as_raw(),
+                self.personality_fn.map_or(ptr::null_mut(), |f| f.as_raw()),
                 clauses.len() as u32,
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
         }.into();
 
         for clause in &self.clauses {
-            unsafe { LLVMAddClause(landing_pad.as_raw(), clause.as_raw()) }
+            unsafe { LLVMAddClause(landingpad.as_raw(), clause.as_raw()) }
         }
 
-        unsafe { LLVMSetCleanup(landing_pad.as_raw(), self.cleanup.as_bool()) }
+        unsafe { LLVMSetCleanup(landingpad.as_raw(), self.cleanup.as_bool()) }
 
-        landing_pad
+        landingpad
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LandingPadInst(Instruction);
+
+inherit_from!(LandingPadInst, Instruction, ValueRef, LLVMValueRef);
+
+impl LandingPadInst {
+    pub fn add_clause<V: Into<ValueRef>>(&self, clause: V) -> &Self {
+        unsafe { LLVMAddClause(self.as_raw(), clause.into().as_raw()) };
+        self
+    }
+
+    pub fn set_cleanup(&self, cleanup: bool) -> &Self {
+        unsafe { LLVMSetCleanup(self.as_raw(), cleanup.as_bool()) };
+        self
+    }
+}
+
+#[macro_export]
+macro_rules! landing_pad {
+    ($ty:expr, $personality:expr; $name:expr) => (
+        $crate::insts::LandingPad::new($ty.into(), Some($personality.into()), $name.into(), false)
+    );
+    ($ty:expr; $name:expr) => (
+        $crate::insts::LandingPad::new($ty.into(), None, $name.into(), false)
+    );
+    ($ty:expr, $personality:expr) => (
+        landing_pad!($ty, $personality; "landingpad")
+    );
+    ($ty:expr) => (
+        landing_pad!($ty; "landingpad")
+    );
 }
 
 /// The `resume` instruction is a terminator instruction that has no successors.
@@ -98,6 +137,13 @@ where
     R: Into<ValueRef>,
 {
     Resume::new(result.into())
+}
+
+#[macro_export]
+macro_rules! resume {
+    ($result:expr) => (
+        $crate::insts::Resume::new($result.into())
+    )
 }
 
 /// The `unreachable` instruction is used to inform the optimizer that a particular portion of the code is not reachable.
