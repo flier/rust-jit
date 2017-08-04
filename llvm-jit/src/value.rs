@@ -8,6 +8,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use block::BasicBlock;
+use constant::Constant;
 use types::TypeRef;
 use utils::{AsBool, DisposableMessage, unchecked_cstring};
 
@@ -85,6 +86,14 @@ impl ValueRef {
     /// Determine whether the specified value instance is constant.
     pub fn is_constant(&self) -> bool {
         unsafe { LLVMIsConstant(self.0) }.as_bool()
+    }
+
+    pub fn as_constant(&self) -> Option<Constant> {
+        if self.is_constant() {
+            Some(self.as_raw().into())
+        } else {
+            None
+        }
     }
 
     /// Determine whether a value instance is undefined.
