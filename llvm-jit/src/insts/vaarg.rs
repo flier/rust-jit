@@ -62,7 +62,7 @@ mod tests {
         let fn_test = module.add_function("test", FunctionType::new(context.void_t(), &[], false));
 
         let bb = fn_test.append_basic_block_in_context("entry", &context);
-        builder.position(Position::AtEnd(bb));
+        builder.position_at_end(bb);
 
         let i8_t = context.int8_t();
         let p_i8_t = i8_t.ptr_t();

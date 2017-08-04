@@ -154,7 +154,7 @@ mod tests {
             module.add_function("hello", FunctionType::new(i64_t, &[i64_t, i64_t], false));
 
         let bb = fn_test.append_basic_block_in_context("entry", &context);
-        builder.position(Position::AtEnd(bb));
+        builder.position_at_end(bb);
 
         let bb_normal = fn_test.append_basic_block_in_context("normal", &context);
         let bb_unwind = fn_test.append_basic_block_in_context("catch", &context);

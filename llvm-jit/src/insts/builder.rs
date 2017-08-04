@@ -48,17 +48,28 @@ impl IRBuilder {
     pub fn position(&self, position: Position) -> &Self {
         trace!("{:?} move position {:?}", self, position);
 
-        unsafe {
-            match position {
-                Position::To(block, instr) => {
-                    LLVMPositionBuilder(self.0, block.as_raw(), instr.as_raw())
-                }
-                Position::Before(instr) => LLVMPositionBuilderBefore(self.0, instr.as_raw()),
-                Position::AtEnd(block) => LLVMPositionBuilderAtEnd(self.0, block.as_raw()),
-            }
+        match position {
+            Position::To(block, instr) => self.position_to(block, instr),
+            Position::Before(instr) => self.position_before(instr),
+            Position::AtEnd(block) => self.position_at_end(block),
         }
 
         self
+    }
+
+    /// This specifies that created instructions should be inserted at the specified point.
+    pub fn position_to(&self, block: BasicBlock, instr: Instruction) {
+        unsafe { LLVMPositionBuilder(self.0, block.as_raw(), instr.as_raw()) }
+    }
+
+    /// This specifies that created instructions should be inserted before the specified instruction.
+    pub fn position_before(&self, instr: Instruction) {
+        unsafe { LLVMPositionBuilderBefore(self.0, instr.as_raw()) }
+    }
+
+    /// This specifies that created instructions should be appended to the end of the specified block.
+    pub fn position_at_end(&self, block: BasicBlock) {
+        unsafe { LLVMPositionBuilderAtEnd(self.0, block.as_raw()) }
     }
 
     pub fn emit<I: InstructionBuilder + fmt::Debug>(&self, inst: I) -> I::Target {

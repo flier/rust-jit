@@ -555,7 +555,7 @@ mod tests {
 
         let builder = c.create_builder();
         let bb = f.append_basic_block_in_context("entry", &c);
-        builder.position(Position::AtEnd(bb));
+        builder.position_at_end(bb);
 
         // add it to our module
         let opts = MCJITCompilerOptions::default();
@@ -592,7 +592,7 @@ mod tests {
 
         let builder = c.create_builder();
         let bb = pi.append_basic_block_in_context("entry", &c);
-        builder.position(Position::AtEnd(bb));
+        builder.position_at_end(bb);
 
         builder.emit(ret!(f64_t.real(f64::consts::PI)));
 
@@ -620,7 +620,7 @@ mod tests {
 
         let builder = c.create_builder();
         let bb = main.append_basic_block_in_context("entry", &c);
-        builder.position(Position::AtEnd(bb));
+        builder.position_at_end(bb);
 
         let argc = main.get_param(0).unwrap();
 
@@ -791,7 +791,7 @@ mod tests {
 
         let builder = c.create_builder();
         let bb = f.append_basic_block_in_context("entry", &c);
-        builder.position(Position::AtEnd(bb));
+        builder.position_at_end(bb);
 
         let arg0_i64 = f.get_param(0).unwrap();
 

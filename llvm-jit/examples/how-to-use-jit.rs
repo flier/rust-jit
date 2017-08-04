@@ -49,7 +49,7 @@ fn main() {
 
     // Create a basic block builder with default parameters.
     let builder = context.create_builder();
-    builder.position(Position::AtEnd(bb));
+    builder.position_at_end(bb);
 
     // Get the constant `1'.
     let one = i32_t.int(1);
@@ -74,7 +74,7 @@ fn main() {
     let bb = foo_f.append_basic_block_in_context("EntryBlock", &context);
 
     // Tell the basic block builder to attach itself to the new basic block
-    builder.position(Position::AtEnd(bb));
+    builder.position_at_end(bb);
 
     // Get the constant `10'.
     let ten = i32_t.int(10);

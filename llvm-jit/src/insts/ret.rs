@@ -124,7 +124,7 @@ mod tests {
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
-        builder.position(Position::AtEnd(bb));
+        builder.position_at_end(bb);
 
         assert_eq!(ret!().emit_to(&builder).to_string().trim(), "ret void");
     }
@@ -140,7 +140,7 @@ mod tests {
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
-        builder.position(Position::AtEnd(bb));
+        builder.position_at_end(bb);
 
         assert_eq!(
             ret!(i64_t.uint(123)).emit_to(&builder).to_string().trim(),
@@ -161,7 +161,7 @@ mod tests {
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
-        builder.position(Position::AtEnd(bb));
+        builder.position_at_end(bb);
 
         assert_eq!(
             ret!(i64_t.uint(123), f64_t.real(456f64))

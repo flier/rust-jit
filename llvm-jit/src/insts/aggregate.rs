@@ -118,7 +118,7 @@ mod tests {
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
-        builder.position(Position::AtEnd(bb));
+        builder.position_at_end(bb);
 
         let arg0_array = function.get_param(0).unwrap();
         let arg1_struct = function.get_param(1).unwrap();

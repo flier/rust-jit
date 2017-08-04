@@ -33,7 +33,7 @@ fn create_add1(context: &Context, module: &Module) -> Function {
 
     // Create a basic block builder with default parameters.
     let builder = context.create_builder();
-    builder.position(Position::AtEnd(bb));
+    builder.position_at_end(bb);
 
     // Get the constant `1'.
     let one = i32_t.int(1);
@@ -63,7 +63,7 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
 
     // Create a basic block builder with default parameters.
     let builder = context.create_builder();
-    builder.position(Position::AtEnd(bb));
+    builder.position_at_end(bb);
 
     // Get the constants.
     let one = i32_t.int(1);

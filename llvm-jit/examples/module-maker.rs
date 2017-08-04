@@ -24,7 +24,7 @@ fn main() {
     // because of the last argument.
     let bb = f.append_basic_block_in_context("EntryBlock", &context);
     let builder = context.create_builder();
-    builder.position(Position::AtEnd(bb));
+    builder.position_at_end(bb);
 
     // Get the constant integers...
     let two = i32_t.int(2);

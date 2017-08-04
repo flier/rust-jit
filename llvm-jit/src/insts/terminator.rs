@@ -135,7 +135,7 @@ mod tests {
         let fn_test = module.add_function("test", FunctionType::new(context.void_t(), &[], false));
 
         let bb = fn_test.append_basic_block_in_context("entry", &context);
-        builder.position(Position::AtEnd(bb));
+        builder.position_at_end(bb);
 
         let i64_t = context.int64_t();
 

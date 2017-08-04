@@ -130,7 +130,7 @@ mod tests {
             module.add_function("hello", FunctionType::new(i64_t, &[i64_t, i64_t], false));
 
         let bb = fn_test.append_basic_block_in_context("entry", &context);
-        builder.position(Position::AtEnd(bb));
+        builder.position_at_end(bb);
 
         let call = call!(fn_hello, i64_t.uint(123), i64_t.int(456); "call").emit_to(&builder);
 

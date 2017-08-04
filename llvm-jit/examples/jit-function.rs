@@ -24,7 +24,7 @@ fn main() {
     // Create a basic block in the function and set our builder to generate code in it.
     let bb = function.append_basic_block_in_context("entry", &context);
     let builder = context.create_builder();
-    builder.position(Position::AtEnd(bb));
+    builder.position_at_end(bb);
 
     // get the function's arguments
     let x = function.get_param(0).unwrap();

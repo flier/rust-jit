@@ -20,7 +20,7 @@ fn main() {
 
     // Create a basic block in the function and set our builder to generate code in it.
     let bb = function.append_basic_block_in_context("entry", &context);
-    builder.position(Position::AtEnd(bb));
+    builder.position_at_end(bb);
 
     // Emit a `ret void` into the function
     builder.emit(ret!());
