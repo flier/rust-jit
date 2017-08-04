@@ -221,6 +221,7 @@ impl Attribute {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct EnumAttribute(Attribute);
 
 inherit_from!(EnumAttribute, Attribute, LLVMAttributeRef);
@@ -237,6 +238,7 @@ impl EnumAttribute {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StringAttribute(Attribute);
 
 inherit_from!(StringAttribute, Attribute, LLVMAttributeRef);
@@ -261,22 +263,22 @@ impl StringAttribute {
 
 pub trait AttributeGroups {
     /// adds the attribute to the list of attributes.
-    fn add_attribute(&self, idx: AttributeIndex, attr: Attribute);
+    fn add_attribute<A: Into<Attribute>>(&self, attr: A);
 
     /// get the attribute from the list of attributes.
-    fn get_attributes(&self, idx: AttributeIndex) -> Vec<Attribute>;
+    fn get_attributes(&self) -> Vec<Attribute>;
 
     /// get the attribute from the list of attributes.
-    fn get_enum_attribute(&self, idx: AttributeIndex, kind: AttributeKind) -> EnumAttribute;
+    fn get_enum_attribute(&self, kind: AttributeKind) -> EnumAttribute;
 
     /// get the attribute from the list of attributes.
-    fn get_string_attribute(&self, idx: AttributeIndex, kind: &str) -> StringAttribute;
+    fn get_string_attribute(&self, kind: &str) -> StringAttribute;
 
     /// removes the attribute from the list of attributes.
-    fn remove_enum_attribute(&self, idx: AttributeIndex, kind: AttributeKind);
+    fn remove_enum_attribute(&self, kind: AttributeKind);
 
     /// removes the attribute from the list of attributes.
-    fn remove_string_attribute(&self, idx: AttributeIndex, kind: &str);
+    fn remove_string_attribute(&self, kind: &str);
 }
 
 impl Context {
@@ -313,43 +315,60 @@ impl Function {
 }
 
 impl AttributeGroups for Function {
-    fn add_attribute(&self, idx: AttributeIndex, attr: Attribute) {
-        unsafe { LLVMAddAttributeAtIndex(self.as_raw(), idx, attr.as_raw()) }
+    fn add_attribute<A: Into<Attribute>>(&self, attr: A) {
+        unsafe {
+            LLVMAddAttributeAtIndex(
+                self.as_raw(),
+                LLVMAttributeFunctionIndex,
+                attr.into().as_raw(),
+            )
+        }
     }
 
-    fn get_attributes(&self, idx: AttributeIndex) -> Vec<Attribute> {
-        let count = unsafe { LLVMGetAttributeCountAtIndex(self.as_raw(), idx) };
+    fn get_attributes(&self) -> Vec<Attribute> {
+        let count =
+            unsafe { LLVMGetAttributeCountAtIndex(self.as_raw(), LLVMAttributeFunctionIndex) };
         let mut attrs: Vec<LLVMAttributeRef> = vec![ptr::null_mut(); count as usize];
 
-        unsafe { LLVMGetAttributesAtIndex(self.as_raw(), idx, attrs.as_mut_ptr()) };
+        unsafe {
+            LLVMGetAttributesAtIndex(
+                self.as_raw(),
+                LLVMAttributeFunctionIndex,
+                attrs.as_mut_ptr(),
+            )
+        };
 
         attrs.into_iter().map(Attribute::from_raw).collect()
     }
 
-    fn get_enum_attribute(&self, idx: AttributeIndex, kind: AttributeKind) -> EnumAttribute {
-        unsafe { LLVMGetEnumAttributeAtIndex(self.as_raw(), idx, kind.as_raw()) }.into()
+    fn get_enum_attribute(&self, kind: AttributeKind) -> EnumAttribute {
+        unsafe {
+            LLVMGetEnumAttributeAtIndex(self.as_raw(), LLVMAttributeFunctionIndex, kind.as_raw())
+        }.into()
     }
 
-    fn get_string_attribute(&self, idx: AttributeIndex, kind: &str) -> StringAttribute {
+    fn get_string_attribute(&self, kind: &str) -> StringAttribute {
         unsafe {
             LLVMGetStringAttributeAtIndex(
                 self.as_raw(),
-                idx,
+                LLVMAttributeFunctionIndex,
                 kind.as_ptr() as *const i8,
                 kind.len() as u32,
             )
         }.into()
     }
 
-    fn remove_enum_attribute(&self, idx: AttributeIndex, kind: AttributeKind) {
-        unsafe { LLVMRemoveEnumAttributeAtIndex(self.as_raw(), idx, kind.as_raw()) }
+    fn remove_enum_attribute(&self, kind: AttributeKind) {
+        unsafe {
+            LLVMRemoveEnumAttributeAtIndex(self.as_raw(), LLVMAttributeFunctionIndex, kind.as_raw())
+        }
     }
 
-    fn remove_string_attribute(&self, idx: AttributeIndex, kind: &str) {
+    fn remove_string_attribute(&self, kind: &str) {
         unsafe {
             LLVMRemoveStringAttributeAtIndex(
                 self.as_raw(),
-                idx,
+                LLVMAttributeFunctionIndex,
                 kind.as_ptr() as *const i8,
                 kind.len() as u32,
             )
@@ -358,43 +377,56 @@ impl AttributeGroups for Function {
 }
 
 impl<T: CallSite> AttributeGroups for T {
-    fn add_attribute(&self, idx: AttributeIndex, attr: Attribute) {
-        unsafe { LLVMAddCallSiteAttribute(self.as_raw(), idx, attr.as_raw()) }
+    fn add_attribute<A: Into<Attribute>>(&self, attr: A) {
+        unsafe {
+            LLVMAddCallSiteAttribute(
+                self.as_raw(),
+                LLVMAttributeReturnIndex,
+                attr.into().as_raw(),
+            )
+        }
     }
 
-    fn get_attributes(&self, idx: AttributeIndex) -> Vec<Attribute> {
-        let count = unsafe { LLVMGetCallSiteAttributeCount(self.as_raw(), idx) };
+    fn get_attributes(&self) -> Vec<Attribute> {
+        let count =
+            unsafe { LLVMGetCallSiteAttributeCount(self.as_raw(), LLVMAttributeReturnIndex) };
         let mut attrs: Vec<LLVMAttributeRef> = vec![ptr::null_mut(); count as usize];
 
-        unsafe { LLVMGetCallSiteAttributes(self.as_raw(), idx, attrs.as_mut_ptr()) };
+        unsafe {
+            LLVMGetCallSiteAttributes(self.as_raw(), LLVMAttributeReturnIndex, attrs.as_mut_ptr())
+        };
 
         attrs.into_iter().map(Attribute::from_raw).collect()
     }
 
-    fn get_enum_attribute(&self, idx: AttributeIndex, kind: AttributeKind) -> EnumAttribute {
-        unsafe { LLVMGetCallSiteEnumAttribute(self.as_raw(), idx, kind.as_raw()) }.into()
+    fn get_enum_attribute(&self, kind: AttributeKind) -> EnumAttribute {
+        unsafe {
+            LLVMGetCallSiteEnumAttribute(self.as_raw(), LLVMAttributeReturnIndex, kind.as_raw())
+        }.into()
     }
 
-    fn get_string_attribute(&self, idx: AttributeIndex, kind: &str) -> StringAttribute {
+    fn get_string_attribute(&self, kind: &str) -> StringAttribute {
         unsafe {
             LLVMGetCallSiteStringAttribute(
                 self.as_raw(),
-                idx,
+                LLVMAttributeReturnIndex,
                 kind.as_ptr() as *const i8,
                 kind.len() as u32,
             )
         }.into()
     }
 
-    fn remove_enum_attribute(&self, idx: AttributeIndex, kind: AttributeKind) {
-        unsafe { LLVMRemoveCallSiteEnumAttribute(self.as_raw(), idx, kind.as_raw()) }
+    fn remove_enum_attribute(&self, kind: AttributeKind) {
+        unsafe {
+            LLVMRemoveCallSiteEnumAttribute(self.as_raw(), LLVMAttributeReturnIndex, kind.as_raw())
+        }
     }
 
-    fn remove_string_attribute(&self, idx: AttributeIndex, kind: &str) {
+    fn remove_string_attribute(&self, kind: &str) {
         unsafe {
             LLVMRemoveCallSiteStringAttribute(
                 self.as_raw(),
-                idx,
+                LLVMAttributeReturnIndex,
                 kind.as_ptr() as *const i8,
                 kind.len() as u32,
             )

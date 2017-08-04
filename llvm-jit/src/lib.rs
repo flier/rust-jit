@@ -59,9 +59,7 @@ mod membuf;
 mod object;
 mod bitcode;
 
-pub use attribute::attrs;
-
-pub use attribute::{Attribute, EnumAttribute, StringAttribute};
+pub use attribute::{Attribute, AttributeIndex, EnumAttribute, StringAttribute, attrs};
 pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
                    ConstantStruct, ConstantVector};
 pub use context::{Context, GlobalContext};
@@ -83,11 +81,14 @@ pub use value::{BlockAddress, Instruction, Opcode, ValueKind, ValueRef};
 pub mod prelude {
     //! A prelude for writing LLVM JIT code.
 
+    pub use block::BasicBlock;
     pub use context::Context;
     pub use engine::{ExecutionEngine, GenericValue};
     pub use function::{Function, FunctionType};
     pub use insts::{IRBuilder, Position};
     pub use module::Module;
+    pub use types::TypeRef;
+    pub use value::ValueRef;
 
     pub use attribute::AttributeGroups;
     pub use constant::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray,
@@ -98,4 +99,5 @@ pub mod prelude {
     pub use intrinsics::Intrinsics;
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType,
                     ToPointerType, ToStructType, ToVectorType};
+    pub use value::AsValueRef;
 }
