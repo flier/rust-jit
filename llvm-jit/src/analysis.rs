@@ -9,10 +9,17 @@ use utils::{AsResult, DisposableMessage};
 
 impl Module {
     /// Verify that a module is valid, taking the specified action if not.
-    pub fn verify(&self, action: LLVMVerifierFailureAction) -> Result<()> {
+    pub fn verify(&self) -> Result<()> {
         let mut msg = ptr::null_mut();
 
-        if unsafe { LLVMVerifyModule(self.as_raw(), action, &mut msg) }.is_ok() {
+        if unsafe {
+            LLVMVerifyModule(
+                self.as_raw(),
+                LLVMVerifierFailureAction::LLVMReturnStatusAction,
+                &mut msg,
+            )
+        }.is_ok()
+        {
             Ok(())
         } else {
             bail!(format!("verify {:?} failed, {}", self, msg.to_string()))
@@ -24,8 +31,14 @@ impl Function {
     /// Verify that a single function is valid, taking the specified action.
     ///
     /// Useful for debugging.
-    pub fn verify(&self, action: LLVMVerifierFailureAction) -> Result<()> {
-        if unsafe { LLVMVerifyFunction(self.as_raw(), action) }.is_ok() {
+    pub fn verify(&self) -> Result<()> {
+        if unsafe {
+            LLVMVerifyFunction(
+                self.as_raw(),
+                LLVMVerifierFailureAction::LLVMReturnStatusAction,
+            )
+        }.is_ok()
+        {
             Ok(())
         } else {
             bail!(format!("verify {:?} failed", self))
