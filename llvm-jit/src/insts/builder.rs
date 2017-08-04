@@ -4,7 +4,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use block::BasicBlock;
-use context::Context;
+use context::{Context, GlobalContext};
 use value::{AsValueRef, Instruction};
 
 pub trait InstructionBuilder {
@@ -25,11 +25,7 @@ pub enum Position {
 #[derive(Debug)]
 pub struct IRBuilder(LLVMBuilderRef);
 
-impl Default for IRBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+inherit_from!(IRBuilder, LLVMBuilderRef);
 
 impl Drop for IRBuilder {
     fn drop(&mut self) {
@@ -40,28 +36,6 @@ impl Drop for IRBuilder {
 }
 
 impl IRBuilder {
-    /// Create a new IR builder in the global context.
-    pub fn new() -> Self {
-        let builder = unsafe { LLVMCreateBuilder() };
-
-        trace!("create builder in global context: IRBuilder({:?})", builder);
-
-        IRBuilder(builder)
-    }
-
-    /// Create a new IR builder in a specific context.
-    pub fn within_context(context: &Context) -> Self {
-        let builder = unsafe { LLVMCreateBuilderInContext(context.as_raw()) };
-
-        trace!("create builder in {:?}: IRBuilder({:?})", context, builder);
-
-        IRBuilder(builder)
-    }
-
-    pub fn as_raw(&self) -> LLVMBuilderRef {
-        self.0
-    }
-
     pub fn insert_block(&self) -> Option<BasicBlock> {
         unsafe { LLVMGetInsertBlock(self.0).as_mut() }.map(|block| BasicBlock::from_raw(block))
     }
@@ -89,5 +63,27 @@ impl IRBuilder {
 
     pub fn emit<I: InstructionBuilder + fmt::Debug>(&self, inst: I) -> I::Target {
         inst.emit_to(self)
+    }
+}
+
+impl Context {
+    /// Create a new IR builder in a specific context.
+    pub fn create_builder(&self) -> IRBuilder {
+        let builder = unsafe { LLVMCreateBuilderInContext(self.as_raw()) }.into();
+
+        trace!("create builder in {:?}: {:?}", self, builder);
+
+        builder
+    }
+}
+
+impl GlobalContext {
+    /// Create a new IR builder in the global context.
+    pub fn create_builder() -> IRBuilder {
+        let builder = unsafe { LLVMCreateBuilder() }.into();
+
+        trace!("create builder in global context: {:?}", builder);
+
+        builder
     }
 }

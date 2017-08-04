@@ -258,7 +258,7 @@ mod tests {
     fn memory() {
         let context = Context::new();
         let module = context.create_module("memory");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let i64_t = context.int64_t();
         let p_i64_t = i64_t.ptr_t();

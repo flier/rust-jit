@@ -118,7 +118,7 @@ mod tests {
     fn ret_void() {
         let context = Context::new();
         let module = context.create_module("ret_void");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let function_type = FunctionType::new(context.void_t(), &[], false);
         let function = module.add_function("test", function_type);
@@ -133,7 +133,7 @@ mod tests {
     fn ret() {
         let context = Context::new();
         let module = context.create_module("ret");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let i64_t = context.int64_t();
         let function_type = FunctionType::new(i64_t, &[], false);
@@ -152,7 +152,7 @@ mod tests {
     fn aggregate_ret() {
         let context = Context::new();
         let module = context.create_module("aggregate_ret");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let i64_t = context.int64_t();
         let f64_t = context.double_t();

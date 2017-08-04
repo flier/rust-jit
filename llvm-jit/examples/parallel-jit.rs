@@ -32,7 +32,7 @@ fn create_add1(context: &Context, module: &Module) -> Function {
     let bb = add1_f.append_basic_block_in_context("entry", &context);
 
     // Create a basic block builder with default parameters.
-    let builder = IRBuilder::within_context(&context);
+    let builder = context.create_builder();
     builder.position(Position::AtEnd(bb));
 
     // Get the constant `1'.
@@ -62,7 +62,7 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
     let bb = fib_f.append_basic_block_in_context("entry", &context);
 
     // Create a basic block builder with default parameters.
-    let builder = IRBuilder::within_context(&context);
+    let builder = context.create_builder();
     builder.position(Position::AtEnd(bb));
 
     // Get the constants.

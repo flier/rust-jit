@@ -23,7 +23,7 @@ fn main() {
     // Add a basic block to the function... again, it automatically inserts
     // because of the last argument.
     let bb = f.append_basic_block_in_context("EntryBlock", &context);
-    let builder = IRBuilder::within_context(&context);
+    let builder = context.create_builder();
     builder.position(Position::AtEnd(bb));
 
     // Get the constant integers...

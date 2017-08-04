@@ -239,7 +239,7 @@ mod tests {
     fn binops() {
         let c = Context::new();
         let m = c.create_module("binops");
-        let b = IRBuilder::within_context(&c);
+        let b = c.create_builder();
 
         let i64_t = c.int64_t();
         let f64_t = c.double_t();
@@ -325,7 +325,7 @@ mod tests {
     fn ptr_diff() {
         let c = Context::new();
         let m = c.create_module("ptr_diff");
-        let b = IRBuilder::within_context(&c);
+        let b = c.create_builder();
 
         let i64_t = c.int64_t();
         let p_i64_t = i64_t.ptr_t();

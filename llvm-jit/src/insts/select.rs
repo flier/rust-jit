@@ -76,7 +76,7 @@ mod tests {
     fn select_inst() {
         let context = Context::new();
         let module = context.create_module("select");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let bool_t = context.int1_t();
 

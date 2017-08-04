@@ -180,7 +180,7 @@ mod tests {
     fn br() {
         let context = Context::new();
         let module = context.create_module("br");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let function_type = FunctionType::new(context.void_t(), &[], false);
         let function = module.add_function("test", function_type);
@@ -201,7 +201,7 @@ mod tests {
     fn cond_br() {
         let context = Context::new();
         let module = context.create_module("cond_br");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let function_type = FunctionType::new(context.void_t(), &[], false);
         let function = module.add_function("test", function_type);
@@ -237,7 +237,7 @@ mod tests {
     fn indirect_br() {
         let context = Context::new();
         let module = context.create_module("indirect_br");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let function_type = FunctionType::new(context.void_t(), &[], false);
         let function = module.add_function("test", function_type);

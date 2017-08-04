@@ -108,7 +108,7 @@ mod tests {
     fn aggregate() {
         let context = Context::new();
         let module = context.create_module("aggregate");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let i32_t = context.int32_t();
         let i64_t = context.int64_t();

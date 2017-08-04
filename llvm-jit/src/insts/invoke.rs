@@ -146,7 +146,7 @@ mod tests {
     fn invoke() {
         let context = Context::new();
         let module = context.create_module("invoke");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let i64_t = context.int64_t();
         let fn_test = module.add_function("test", FunctionType::new(context.void_t(), &[], false));

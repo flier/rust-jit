@@ -553,7 +553,7 @@ mod tests {
 
         let f = m.add_function("sum", function_type);
 
-        let builder = IRBuilder::within_context(&c);
+        let builder = c.create_builder();
         let bb = f.append_basic_block_in_context("entry", &c);
         builder.position(Position::AtEnd(bb));
 
@@ -590,7 +590,7 @@ mod tests {
         let f64_t = c.double_t();
         let pi = m.add_function("pi", FunctionType::new(f64_t, &[], false));
 
-        let builder = IRBuilder::within_context(&c);
+        let builder = c.create_builder();
         let bb = pi.append_basic_block_in_context("entry", &c);
         builder.position(Position::AtEnd(bb));
 
@@ -618,7 +618,7 @@ mod tests {
             FunctionType::new(i32_t, &[i32_t, pp_char_t.into(), pp_char_t.into()], false),
         );
 
-        let builder = IRBuilder::within_context(&c);
+        let builder = c.create_builder();
         let bb = main.append_basic_block_in_context("entry", &c);
         builder.position(Position::AtEnd(bb));
 
@@ -789,7 +789,7 @@ mod tests {
 
         let f = m.add_function("test", FunctionType::new(i64_t, &[i64_t], false));
 
-        let builder = IRBuilder::within_context(&c);
+        let builder = c.create_builder();
         let bb = f.append_basic_block_in_context("entry", &c);
         builder.position(Position::AtEnd(bb));
 

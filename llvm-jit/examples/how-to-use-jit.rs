@@ -48,7 +48,7 @@ fn main() {
     let bb = add1_f.append_basic_block_in_context("EntryBlock", &context);
 
     // Create a basic block builder with default parameters.
-    let builder = IRBuilder::within_context(&context);
+    let builder = context.create_builder();
     builder.position(Position::AtEnd(bb));
 
     // Get the constant `1'.

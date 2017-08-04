@@ -10,7 +10,7 @@ fn main() {
     // Set up a context, module and builder in that context.
     let context = Context::new();
     let module = context.create_module("nop");
-    let builder = IRBuilder::within_context(&context);
+    let builder = context.create_builder();
 
     // Get the type signature for void nop(void);
     // Then create it in our module.

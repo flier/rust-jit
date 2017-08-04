@@ -57,7 +57,7 @@ mod tests {
     fn va_arg_inst() {
         let context = Context::new();
         let module = context.create_module("va_arg");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let fn_test = module.add_function("test", FunctionType::new(context.void_t(), &[], false));
 

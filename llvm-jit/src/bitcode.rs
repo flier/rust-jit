@@ -123,8 +123,7 @@ mod tests {
 
     use super::*;
     use errors::{Error, ErrorKind};
-    use function::FunctionType;
-    use insts::{IRBuilder, Position};
+    use insts::Position;
     use prelude::*;
 
     #[test]
@@ -149,7 +148,7 @@ entry:
     fn bitcode() {
         let c = Context::new();
         let m = c.create_module("test");
-        let b = IRBuilder::within_context(&c);
+        let b = c.create_builder();
 
         let f = m.add_function("nop", FunctionType::new(c.void_t(), &[], false));
 

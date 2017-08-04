@@ -97,7 +97,7 @@ mod tests {
     fn switch() {
         let context = Context::new();
         let module = context.create_module("switch");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let function_type = FunctionType::new(context.void_t(), &[], false);
         let function = module.add_function("test", function_type);

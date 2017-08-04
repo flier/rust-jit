@@ -111,7 +111,7 @@ mod tests {
     fn unary() {
         let c = Context::new();
         let m = c.create_module("unary");
-        let b = IRBuilder::within_context(&c);
+        let b = c.create_builder();
 
         let i64_t = c.int64_t();
         let p_i64_t = i64_t.ptr_t();

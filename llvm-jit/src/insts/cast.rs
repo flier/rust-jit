@@ -186,7 +186,7 @@ mod tests {
     fn cast() {
         let c = Context::new();
         let m = c.create_module("cast");
-        let b = IRBuilder::within_context(&c);
+        let b = c.create_builder();
 
         let i32_t = c.int32_t();
         let i64_t = c.int64_t();

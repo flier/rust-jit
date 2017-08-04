@@ -316,7 +316,7 @@ mod tests {
     fn icmp() {
         let context = Context::new();
         let module = context.create_module("icmp");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let i64_t = context.int64_t();
 
@@ -345,7 +345,7 @@ mod tests {
     fn fcmp() {
         let context = Context::new();
         let module = context.create_module("fcmp");
-        let builder = IRBuilder::within_context(&context);
+        let builder = context.create_builder();
 
         let f64_t = context.double_t();
 

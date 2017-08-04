@@ -23,7 +23,7 @@ fn main() {
 
     // Create a basic block in the function and set our builder to generate code in it.
     let bb = function.append_basic_block_in_context("entry", &context);
-    let builder = IRBuilder::within_context(&context);
+    let builder = context.create_builder();
     builder.position(Position::AtEnd(bb));
 
     // get the function's arguments
