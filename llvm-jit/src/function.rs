@@ -167,6 +167,21 @@ impl Function {
     pub fn delete(self) {
         unsafe { LLVMDeleteFunction(self.as_raw()) }
     }
+
+    /// Check whether the given function has a personality function.
+    pub fn has_personality_function(&self) -> bool {
+        unsafe { LLVMHasPersonalityFunction(self.as_raw()).as_bool() }
+    }
+
+    /// Obtain the personality function attached to the function.
+    pub fn get_personality_function(&self) -> Function {
+        unsafe { LLVMGetPersonalityFn(self.as_raw()) }.into()
+    }
+
+    /// Set the personality function attached to the function.
+    pub fn set_personality_function(&self, func: Function) {
+        unsafe { LLVMSetPersonalityFn(self.as_raw(), func.as_raw()) }
+    }
 }
 
 impl_iter!(
