@@ -94,40 +94,45 @@ impl GlobalVar {
         unsafe { LLVMGetInitializer(self.as_raw()).as_mut() }.map(|var| Constant::from_raw(var))
     }
 
-    pub fn set_initializer(&self, initializer: Constant) {
-        unsafe { LLVMSetInitializer(self.as_raw(), initializer.as_raw()) }
+    pub fn set_initializer<C: Into<Constant>>(&self, initializer: C) -> &Self {
+        unsafe { LLVMSetInitializer(self.as_raw(), initializer.into().as_raw()) };
+        self
     }
 
     pub fn is_thread_local(&self) -> bool {
         unsafe { LLVMIsThreadLocal(self.as_raw()) }.as_bool()
     }
 
-    pub fn set_thread_local(&self, is_thread_local: bool) {
-        unsafe { LLVMSetThreadLocal(self.as_raw(), is_thread_local.as_bool()) }
+    pub fn set_thread_local(&self, is_thread_local: bool) -> &Self {
+        unsafe { LLVMSetThreadLocal(self.as_raw(), is_thread_local.as_bool()) };
+        self
     }
 
     pub fn is_global_constant(&self) -> bool {
         unsafe { LLVMIsGlobalConstant(self.as_raw()) }.as_bool()
     }
 
-    pub fn set_global_constant(&self, is_global_constant: bool) {
-        unsafe { LLVMSetGlobalConstant(self.as_raw(), is_global_constant.as_bool()) }
+    pub fn set_global_constant(&self, is_global_constant: bool) -> &Self {
+        unsafe { LLVMSetGlobalConstant(self.as_raw(), is_global_constant.as_bool()) };
+        self
     }
 
     pub fn thread_local_mode(&self) -> ThreadLocalMode {
         unsafe { LLVMGetThreadLocalMode(self.as_raw()) }
     }
 
-    pub fn set_thread_local_mode(&self, mode: ThreadLocalMode) {
-        unsafe { LLVMSetThreadLocalMode(self.as_raw(), mode) }
+    pub fn set_thread_local_mode(&self, mode: ThreadLocalMode) -> &Self {
+        unsafe { LLVMSetThreadLocalMode(self.as_raw(), mode) };
+        self
     }
 
     pub fn is_externally_initialized(&self) -> bool {
         unsafe { LLVMIsExternallyInitialized(self.as_raw()) }.as_bool()
     }
 
-    pub fn set_externally_initialized(&self, is_externally_initialized: bool) {
-        unsafe { LLVMSetExternallyInitialized(self.as_raw(), is_externally_initialized.as_bool()) }
+    pub fn set_externally_initialized(&self, is_externally_initialized: bool) -> &Self {
+        unsafe { LLVMSetExternallyInitialized(self.as_raw(), is_externally_initialized.as_bool()) };
+        self
     }
 }
 

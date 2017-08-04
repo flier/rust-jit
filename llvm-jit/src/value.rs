@@ -83,10 +83,12 @@ impl ValueRef {
     }
 
     /// Set the string name of a value.
-    pub fn set_name<S: AsRef<str>>(&self, name: S) {
+    pub fn set_name<S: AsRef<str>>(&self, name: S) -> &Self {
         let cname = unchecked_cstring(name);
 
-        unsafe { LLVMSetValueName(self.0, cname.as_ptr()) }
+        unsafe { LLVMSetValueName(self.0, cname.as_ptr()) };
+
+        self
     }
 
     /// Determine whether the specified value instance is constant.
@@ -186,8 +188,9 @@ impl Instruction {
     }
 
     /// Set metadata associated with an instruction value.
-    pub fn set_metadata(&self, kind_id: u32, node: ValueRef) {
-        unsafe { LLVMSetMetadata(self.as_raw(), kind_id, node.as_raw()) }
+    pub fn set_metadata(&self, kind_id: u32, node: ValueRef) -> &Self {
+        unsafe { LLVMSetMetadata(self.as_raw(), kind_id, node.as_raw()) };
+        self
     }
 
     /// Obtain the instruction that occurs after the one specified.
