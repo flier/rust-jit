@@ -6,6 +6,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use constant::Constant;
+use function::Function;
 use module::Module;
 use utils::{AsBool, AsLLVMBool, unchecked_cstring};
 use value::{AsValueRef, ValueRef};
@@ -13,6 +14,9 @@ use value::{AsValueRef, ValueRef};
 pub type Linkage = LLVMLinkage;
 pub type Visibility = LLVMVisibility;
 pub type DLLStorageClass = LLVMDLLStorageClass;
+
+impl GlobalValue for GlobalVar {}
+impl GlobalValue for Function {}
 
 pub trait GlobalValue: AsValueRef {
     fn parent(&self) -> Module {
@@ -80,8 +84,6 @@ pub type ThreadLocalMode = LLVMThreadLocalMode;
 pub struct GlobalVar(Constant);
 
 inherit_from!(GlobalVar, Constant, ValueRef, LLVMValueRef);
-
-impl GlobalValue for GlobalVar {}
 
 impl GlobalVar {
     pub fn delete(&self) {
