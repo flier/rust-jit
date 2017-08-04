@@ -163,14 +163,17 @@ impl Module {
     /// If it does not exist, add a prototype for the function and return it.
     /// This is nice because it allows most passes to get away with not handling
     /// the symbol table directly for this common task.
-    pub fn get_or_insert_function<S: AsRef<str>>(
+    pub fn get_or_insert_function<S: AsRef<str>, T: Into<TypeRef>>(
         &self,
         name: S,
-        return_type: TypeRef,
+        return_type: T,
         params_type: &[TypeRef],
     ) -> Function {
         self.get_function(name.as_ref()).unwrap_or_else(|| {
-            self.add_function(name, FunctionType::new(return_type, params_type, false))
+            self.add_function(
+                name,
+                FunctionType::new(return_type.into(), params_type, false),
+            )
         })
     }
 
@@ -220,8 +223,13 @@ impl Module {
     }
 
     /// Add a global variable to a module under a specified name.
-    pub fn add_global_var<S: AsRef<str>>(&self, name: S, ty: TypeRef) -> GlobalVar {
+    pub fn add_global_var<S, T>(&self, name: S, ty: T) -> GlobalVar
+    where
+        S: AsRef<str>,
+        T: Into<TypeRef>,
+    {
         let cname = unchecked_cstring(name);
+        let ty = ty.into();
 
         let var = unsafe { LLVMAddGlobal(self.as_raw(), ty.as_raw(), cname.as_ptr()) };
 
@@ -440,13 +448,7 @@ target triple = "x86_64-apple-darwin"
 
         assert_eq!(m.functions().collect::<Vec<Function>>(), vec![f, sum]);
 
-        assert!(
-            m.verify(LLVMVerifierFailureAction::LLVMAbortProcessAction)
-                .is_ok()
-        );
-        assert!(
-            sum.verify(LLVMVerifierFailureAction::LLVMAbortProcessAction)
-                .is_ok()
-        );
+        assert!(m.verify().is_ok());
+        assert!(sum.verify().is_ok());
     }
 }
