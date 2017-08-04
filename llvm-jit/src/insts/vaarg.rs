@@ -66,7 +66,7 @@ mod tests {
 
         let i8_t = context.int8_t();
         let p_i8_t = i8_t.ptr_t();
-        let va_list = context.anonymous_struct_t(&[p_i8_t.into()], false);
+        let va_list = context.struct_t(&[p_i8_t.into()], false);
 
         let ap = alloca!(va_list; "ap").emit_to(&builder);
         va_arg(ap, context.int32_t(), "va_arg").emit_to(&builder);

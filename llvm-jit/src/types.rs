@@ -407,20 +407,23 @@ impl StructType {
 
 pub trait ToStructType {
     /// Create a new structure type in a context.
-    fn anonymous_struct_t(&self, elements: &[TypeRef], packed: bool) -> StructType;
+    fn struct_t(&self, elements: &[TypeRef], packed: bool) -> StructType;
 
     /// Create an empty structure in a context having a specified name.
     fn empty_struct_t<S: AsRef<str>>(&self, name: S) -> StructType;
 
-    fn struct_t<S: AsRef<str>>(&self, name: S, elements: &[TypeRef], packed: bool) -> StructType {
-        let ty = self.empty_struct_t(name);
-
-        ty.set_body(elements, packed)
+    fn named_struct_t<S: AsRef<str>>(
+        &self,
+        name: S,
+        elements: &[TypeRef],
+        packed: bool,
+    ) -> StructType {
+        self.empty_struct_t(name).set_body(elements, packed)
     }
 }
 
 impl ToStructType for Context {
-    fn anonymous_struct_t(&self, elements: &[TypeRef], packed: bool) -> StructType {
+    fn struct_t(&self, elements: &[TypeRef], packed: bool) -> StructType {
         let mut elements = elements
             .iter()
             .map(|t| t.as_raw())
@@ -758,7 +761,7 @@ mod tests {
         let i32_t = c.int32_t();
         let i64_t = c.int64_t();
         let argts = [i16_t, i32_t, i64_t];
-        let t = c.anonymous_struct_t(&argts, true);
+        let t = c.struct_t(&argts, true);
 
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMStructTypeKind));
