@@ -46,6 +46,7 @@ mod constexpr;
 mod attribute;
 mod global;
 mod function;
+mod intrinsics;
 #[macro_use]
 pub mod insts;
 mod block;
@@ -70,6 +71,7 @@ pub use engine::{ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJIT,
 pub use function::{Function, FunctionType};
 pub use global::{DLLStorageClass, GlobalValue, GlobalVar, Linkage, ThreadLocalMode, Visibility};
 pub use insts::{IRBuilder, Position};
+pub use intrinsics::{Intrinsic, IntrinsicId};
 pub use membuf::MemoryBuffer;
 pub use module::{AddressSpace, Module};
 pub use object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
@@ -93,6 +95,7 @@ pub mod prelude {
     pub use constexpr::ConstantExpr;
     pub use global::GlobalValue;
     pub use insts::InstructionBuilder;
+    pub use intrinsics::Intrinsics;
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType,
                     ToPointerType, ToStructType, ToVectorType};
 }

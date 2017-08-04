@@ -3,6 +3,9 @@ name = "llvm-jit"
 version = "0.1.0"
 authors = ["Flier Lu <flier.lu@gmail.com>"]
 
+[lib]
+doctest = false
+
 [dependencies]
 log = "0.3"
 error-chain = "0.10"
