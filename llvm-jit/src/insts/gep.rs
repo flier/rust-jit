@@ -135,18 +135,22 @@ macro_rules! gep {
     (inbounds $ptr:expr, $( $index:expr ),* ; $name:expr) => ({
         $crate::insts::GetElementPtr::in_bounds($ptr.into(), vec![ $( $index.into() ),* ], $name.into())
     });
-    (structure $struct_ptr:expr, $index:expr ; $name:expr) => ({
-        $crate::insts::GetElementPtr::in_struct($struct_ptr.into(), $index, $name.into())
-    });
 
     ($ptr:expr, $( $index:expr ),*) => ({
         gep!($ptr, $( $index ),* ; "gep")
     });
     (inbounds $ptr:expr, $( $index:expr ),*) => ({
-        gep!(inbounds $ptr, $( $index ),* ; "inbounds_gep")
+        gep!(inbounds $ptr, $( $index ),* ; "gep_inbounds")
     });
-    (structure $struct_ptr:expr, $index:expr) => ({
-        gep!(structure $struct_ptr, $index; "struct_gep")
+}
+
+#[macro_export]
+macro_rules! struct_gep {
+    ($struct_ptr:expr, $index:expr ; $name:expr) => ({
+        $crate::insts::GetElementPtr::in_struct($struct_ptr.into(), $index, $name.into())
+    });
+    ($struct_ptr:expr, $index:expr) => ({
+        struct_gep!($struct_ptr, $index; "struct_gep")
     });
 }
 
@@ -190,11 +194,11 @@ mod tests {
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
-            "%inbounds_gep = getelementptr inbounds <4 x i64>, <4 x i64>* %p_vector, i64 1"
+            "%gep_inbounds = getelementptr inbounds <4 x i64>, <4 x i64>* %p_vector, i64 1"
         );
 
         assert_eq!(
-            gep!(structure p_struct, 1)
+            struct_gep!(p_struct, 1)
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -206,7 +210,7 @@ mod tests {
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
-            "%inbounds_gep1 = getelementptr inbounds %struct, %struct* %p_struct, i32 2, i32 1"
+            "%gep_inbounds1 = getelementptr inbounds %struct, %struct* %p_struct, i32 2, i32 1"
         );
     }
 }
