@@ -50,7 +50,9 @@ extern crate llvm_sys as llvm;
 extern crate libc;
 
 use std::env;
+use std::ffi::CStr;
 use std::mem;
+use std::ptr;
 
 use jit::{Constant, ConstantInt, FunctionPassManager, StructType};
 use jit::insts::*;
@@ -63,7 +65,7 @@ const ourBaseExceptionClass: u64 = 0;
 #[repr(C)]
 pub struct OurExceptionType_t {
     /// type info type
-    type_info: i32,
+    type_id: i32,
 }
 
 /// This is our Exception class which relies on a negative offset to calculate
@@ -82,6 +84,17 @@ pub struct OurBaseException_t {
 
 pub type OurException = OurBaseException_t;
 pub type OurUnwindException = _Unwind_Exception;
+
+impl OurBaseException_t {
+    fn base_from_unwind_offset() -> isize {
+        let dummyException: OurBaseException_t = unsafe { mem::zeroed() };
+
+        unsafe {
+            mem::transmute::<_, isize>(&dummyException.unwindException) -
+                mem::transmute::<_, isize>(&dummyException)
+        }
+    }
+}
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -109,32 +122,15 @@ pub const unwinder_private_data_size: usize = 5;
 #[cfg(target_arch = "x86_64")]
 pub const unwinder_private_data_size: usize = 6;
 
-#[cfg(all(target_arch = "arm", not(target_os = "ios")))]
-pub const unwinder_private_data_size: usize = 20;
-
-#[cfg(all(target_arch = "arm", target_os = "ios"))]
-pub const unwinder_private_data_size: usize = 5;
-
-#[cfg(target_arch = "aarch64")]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(target_arch = "mips")]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(target_arch = "mips64")]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(target_arch = "s390x")]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(target_arch = "sparc64")]
-pub const unwinder_private_data_size: usize = 2;
-
-#[cfg(target_os = "emscripten")]
-pub const unwinder_private_data_size: usize = 20;
+#[repr(C)]
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum _Unwind_Action {
+    _UA_SEARCH_PHASE = 1,
+    _UA_CLEANUP_PHASE = 2,
+    _UA_HANDLER_FRAME = 4,
+    _UA_FORCE_UNWIND = 8,
+    _UA_END_OF_STACK = 16,
+}
 
 #[repr(C)]
 pub struct _Unwind_Exception {
@@ -147,6 +143,174 @@ pub enum _Unwind_Context {}
 
 pub type _Unwind_Exception_Cleanup_Fn = extern "C" fn(unwind_code: _Unwind_Reason_Code,
                                                       exception: *mut _Unwind_Exception);
+extern "C" {
+    pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
+    pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
+    pub fn _Unwind_GetLanguageSpecificData(ctx: *mut _Unwind_Context) -> *mut libc::c_void;
+    pub fn _Unwind_GetRegionStart(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
+    pub fn _Unwind_GetTextRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
+    pub fn _Unwind_GetDataRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
+}
+
+// Note: Better ways to decide on bit width
+//
+/// Prints a 32 bit number, according to the format, to stderr.
+/// @param intToPrint integer to print
+/// @param format printf like format to use when printing
+extern "C" fn print_int32(i: i32, f: *const libc::c_char) {
+    if !f.is_null() {
+        print!(
+            "{}",
+            unsafe { CStr::from_ptr(f).to_string_lossy() }.replace("{}", &i.to_string())
+        )
+    } else {
+        println!("::print32Int(...):NULL arg.")
+    }
+}
+
+// Note: Better ways to decide on bit width
+//
+/// Prints a 64 bit number, according to the format, to stderr.
+/// @param intToPrint integer to print
+/// @param format printf like format to use when printing
+extern "C" fn print_int64(i: i64, f: *const libc::c_char) {
+    if !f.is_null() {
+        print!(
+            "{}",
+            unsafe { CStr::from_ptr(f).to_string_lossy() }.replace("{}", &i.to_string())
+        )
+    } else {
+        println!("::print64Int(...):NULL arg.")
+    }
+}
+
+/// Prints a C string to stderr
+/// @param toPrint string to print
+extern "C" fn print_str(s: *const libc::c_char) {
+    if !s.is_null() {
+        print!("{}", unsafe { &CStr::from_ptr(s).to_string_lossy() })
+    } else {
+        println!("::printStr(...):NULL arg.")
+    }
+}
+
+/// Deletes the true previously allocated exception whose address
+/// is calculated from the supplied OurBaseException_t::unwindException
+/// member address. Handles (ignores), NULL pointers.
+/// @param expToDelete exception to delete
+extern "C" fn delete_our_exception(exc: *mut OurUnwindException) {
+    trace!("deleteOurException({:?})", exc);
+
+    unsafe {
+        if !exc.is_null() && (*exc).exception_class == ourBaseExceptionClass {
+            libc::free((exc as *mut libc::c_char).offset(
+                OurBaseException_t::base_from_unwind_offset(),
+            ) as *mut libc::c_void)
+        }
+    }
+}
+
+/// This function is the struct _Unwind_Exception API mandated delete function
+/// used by foreign exception handlers when deleting our exception
+/// (OurException), instances.
+/// @param reason See @link http://mentorembedded.github.com/cxx-abi/abi-eh.html
+/// @unlink
+/// @param expToDelete exception instance to delete
+extern "C" fn delete_from_unwind_our_exception(
+    reason: _Unwind_Reason_Code,
+    exc: *mut OurUnwindException,
+) {
+    trace!("deleteFromUnwindOurException({:?})", exc);
+
+    delete_our_exception(exc)
+}
+
+/// Creates (allocates on the heap), an exception (OurException instance),
+/// of the supplied type info type.
+/// @param type type info type
+extern "C" fn create_our_exception(type_id: i32) -> *const OurUnwindException {
+    unsafe {
+        let size = mem::size_of::<OurException>();
+        let p = libc::malloc(size);
+        libc::memset(p, 0, size);
+        let exc = p as *mut OurException;
+
+        (*exc).exceptionType.type_id = type_id;
+        (*exc).unwindException.exception_class = ourBaseExceptionClass;
+        (*exc).unwindException.exception_cleanup = delete_from_unwind_our_exception;
+
+        &(*exc).unwindException
+    }
+}
+
+/// This is the personality function which is embedded (dwarf emitted), in the
+/// dwarf unwind info block. Again see: JITDwarfEmitter.cpp.
+/// See @link http://mentorembedded.github.com/cxx-abi/abi-eh.html @unlink
+/// @param version unsupported (ignored), unwind version
+/// @param _Unwind_Action actions minimally supported unwind stage
+///        (forced specifically not supported)
+/// @param exceptionClass exception class (_Unwind_Exception::exception_class)
+///        of thrown exception.
+/// @param exceptionObject thrown _Unwind_Exception instance.
+/// @param context unwind system context
+/// @returns minimally supported unwinding control indicator
+extern "C" fn our_personality(
+    version: i32,
+    actions: _Unwind_Action,
+    exceptionClass: _Unwind_Exception_Class,
+    exceptionObject: *const _Unwind_Exception,
+    context: *mut _Unwind_Context,
+) -> _Unwind_Reason_Code {
+    trace!("We are in ourPersonality(...):actions is {:?}.", actions);
+
+    if actions == _Unwind_Action::_UA_SEARCH_PHASE {
+        trace!("ourPersonality(...):In search phase.")
+    } else {
+        trace!("ourPersonality(...):In non-search phase.")
+    }
+
+    let lsda = unsafe { _Unwind_GetLanguageSpecificData(context) };
+
+    trace!("ourPersonality(...):lsda = <{:?}>", lsda);
+
+    // The real work of the personality function is captured here
+    return handle_lsda(
+        version,
+        lsda as *const libc::c_char,
+        actions,
+        exceptionClass,
+        exceptionObject,
+        context,
+    );
+}
+
+/// Deals with the Language specific data portion of the emitted dwarf code.
+/// See @link http://mentorembedded.github.com/cxx-abi/abi-eh.html @unlink
+/// @param version unsupported (ignored), unwind version
+/// @param lsda language specific data area
+/// @param _Unwind_Action actions minimally supported unwind stage
+///        (forced specifically not supported)
+/// @param exceptionClass exception class (_Unwind_Exception::exception_class)
+///        of thrown exception.
+/// @param exceptionObject thrown _Unwind_Exception instance.
+/// @param context unwind system context
+/// @returns minimally supported unwinding control indicator
+fn handle_lsda(
+    version: i32,
+    lsda: *const libc::c_char,
+    actions: _Unwind_Action,
+    exceptionClass: _Unwind_Exception_Class,
+    exceptionObject: *const _Unwind_Exception,
+    context: *mut _Unwind_Context,
+) -> _Unwind_Reason_Code {
+    let mut reason = _Unwind_Reason_Code::_URC_CONTINUE_UNWIND;
+
+    if lsda.is_null() {
+        trace!("handleLsda(...):lsda is non-zero.");
+    }
+
+    reason
+}
 
 #[derive(Debug)]
 struct Example {
@@ -155,8 +319,6 @@ struct Example {
     fpm: FunctionPassManager,
 
     ourTypeInfoNames: Vec<String>,
-
-    ourBaseFromUnwindOffset: usize,
 
     ourTypeInfoType: Option<StructType>,
     ourCaughtResultType: Option<StructType>,
@@ -210,8 +372,6 @@ impl Example {
 
             ourTypeInfoNames: vec![],
 
-            ourBaseFromUnwindOffset: 0,
-
             ourTypeInfoType: None,
             ourCaughtResultType: None,
             ourExceptionType: None,
@@ -221,6 +381,10 @@ impl Example {
             ourExceptionThrownState: None,
             ourExceptionCaughtState: None,
         }
+    }
+
+    fn dump(&self) {
+        self.module.dump();
     }
 
     /// Creates test code by generating and organizing these functions into the
@@ -437,7 +601,7 @@ impl Example {
             unwindException,
             self.ourUnwindExceptionType.unwrap().ptr_t()
         ).emit_to(&builder);
-        let p = gep!(structure p, 0).emit_to(&builder);
+        let p = struct_gep!(p, 0).emit_to(&builder);
         let unwindExceptionClass = load!(p).emit_to(&builder);
 
         // Branch to the externalExceptionBlock if the exception is foreign or
@@ -469,17 +633,18 @@ impl Example {
         // Note: ourBaseFromUnwindOffset is usually negative
         let p = gep!(
             unwindException,
-            i64_t.int(self.ourBaseFromUnwindOffset as i64)
+            i64_t.int(OurBaseException_t::base_from_unwind_offset() as i64)
         ).emit_to(&builder);
-        let typeInfoThrown = ptr_cast!(p, self.ourExceptionType.unwrap().ptr_t()).emit_to(&builder);
+        let typeInfoThrown = ptr_cast!(p, self.ourExceptionType.unwrap().ptr_t(); "typeInfoThrown")
+            .emit_to(&builder);
 
         // Retrieve thrown exception type info type
         //
         // Note: Index is not relative to pointer but instead to structure
         //       unlike a true getelementptr (GEP) instruction
-        let typeInfoThrown = gep!(structure typeInfoThrown, 0).emit_to(&builder);
-        let p = ptr_cast!(typeInfoThrown, i8_t.ptr_t()).emit_to(&builder);
-        let typeInfoThrownType = gep!(structure p, 0).emit_to(&builder);
+        let typeInfoThrown = struct_gep!(typeInfoThrown, 0; "typeInfoThrown").emit_to(&builder);
+        let typeInfoThrownType = struct_gep!(typeInfoThrown, 0; "typeInfoThrownType")
+            .emit_to(&builder);
         let load = load!(typeInfoThrownType).emit_to(&builder);
 
         self.generate_integer_print(
@@ -503,8 +668,6 @@ impl Example {
         }
 
         //func.verify().unwrap();
-
-        //self.fpm.run(func);
 
         func
     }
@@ -724,8 +887,6 @@ impl Example {
 
         //func.verify().unwrap();
 
-        //self.fpm.run(func);
-
         func
     }
 
@@ -813,13 +974,6 @@ impl Example {
         let i64_t = self.context.int64_t();
 
         // Exception initializations
-
-        let dummyException: OurBaseException_t = unsafe { mem::zeroed() };
-
-        self.ourBaseFromUnwindOffset = unsafe {
-            mem::transmute::<_, usize>(&dummyException.unwindException) -
-                mem::transmute::<_, usize>(&dummyException)
-        };
 
         // Setup exception catch state
         self.ourExceptionNotThrownState = Some(i8_t.int(0));
@@ -931,6 +1085,30 @@ impl Example {
             types![i32_t, i32_t, i64_t, i8_t.ptr_t(), i8_t.ptr_t()],
         );
     }
+
+    fn create_execution_engine(self) -> ExecutionEngine {
+        let print32Int = self.module.get_function("print32Int").unwrap();
+        let print64Int = self.module.get_function("print64Int").unwrap();
+        let printStr = self.module.get_function("printStr").unwrap();
+        let throwCppException = self.module.get_function("throwCppException").unwrap();
+        let deleteOurException = self.module.get_function("deleteOurException").unwrap();
+        let createOurException = self.module.get_function("createOurException").unwrap();
+        let ourPersonality = self.module.get_function("ourPersonality").unwrap();
+
+        let ee = ExecutionEngine::for_module(self.module).unwrap();
+
+        ee.add_global_mapping(print32Int, &mut print_int32);
+        ee.add_global_mapping(print64Int, &mut print_int64);
+        ee.add_global_mapping(printStr, &mut print_str);
+        ee.add_global_mapping(throwCppException, &mut panic_in_rust);
+        ee.add_global_mapping(deleteOurException, &mut delete_our_exception);
+        ee.add_global_mapping(createOurException, &mut create_our_exception);
+        ee.add_global_mapping(ourPersonality, &mut our_personality);
+
+        ee.run_static_destructors();
+
+        ee
+    }
 }
 
 extern "C" fn panic_in_rust(_: i32) {
@@ -947,19 +1125,17 @@ fn main() {
 
     let mut example = Example::new();
 
-    let func = example.create_unwind_exception_test("panic_in_rust");
+    let func = example.create_unwind_exception_test("throwCppException");
 
     println!("\nBegin module dump:\n\n");
 
-    example.module.dump();
+    example.dump();
 
     println!("\nEnd module dump:\n");
 
     println!("\n\nBegin Test:\n");
 
-    let ee = ExecutionEngine::for_module(example.module).unwrap();
-
-    ee.run_static_destructors();
+    let ee = example.create_execution_engine();
 
     for arg in env::args().skip(1) {
         // Run test for each argument whose value is the exception type to throw.
