@@ -8,7 +8,7 @@ use llvm::execution_engine::*;
 
 use errors::Result;
 use function::Function;
-use global::GlobalVar;
+use global::{GlobalValue, GlobalVar};
 use module::Module;
 use target::{TargetData, TargetMachine};
 use types::TypeRef;
@@ -414,7 +414,7 @@ impl ExecutionEngine {
     /// that want to have an LLVM global overlay existing data in memory.
     /// Values to be mapped should be named, and have external or weak linkage.
     /// Mappings are automatically removed when their GlobalValue is destroyed.
-    pub fn add_global_mapping<T>(&self, var: GlobalVar, addr: *mut T) {
+    pub fn add_global_mapping<V: GlobalValue, T>(&self, var: V, addr: *mut T) {
         unsafe { LLVMAddGlobalMapping(self.as_raw(), var.as_raw(), addr as *mut libc::c_void) }
     }
 
