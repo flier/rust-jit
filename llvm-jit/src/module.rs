@@ -379,7 +379,6 @@ impl GlobalContext {
 mod tests {
     use std::io::prelude::*;
 
-    use llvm::analysis::LLVMVerifierFailureAction;
     use tempfile::NamedTempFile;
 
     use super::*;
