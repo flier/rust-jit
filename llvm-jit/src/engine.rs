@@ -8,7 +8,7 @@ use llvm::execution_engine::*;
 
 use errors::Result;
 use function::Function;
-use global::{GlobalValue, GlobalVar};
+use global::GlobalValue;
 use module::Module;
 use target::{TargetData, TargetMachine};
 use types::TypeRef;
