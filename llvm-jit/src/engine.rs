@@ -421,7 +421,7 @@ impl ExecutionEngine {
     /// This returns the address of the specified global value.
     ///
     /// This may involve code generation if it's a function.
-    pub fn get_ptr_to_global<T>(&self, var: GlobalVar) -> *mut T {
+    pub fn get_ptr_to_global<V: GlobalValue, T>(&self, var: V) -> *mut T {
         unsafe { LLVMGetPointerToGlobal(self.as_raw(), var.as_raw()) as *mut T }
     }
 

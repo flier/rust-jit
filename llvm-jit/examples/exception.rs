@@ -1115,7 +1115,27 @@ extern "C" fn panic_in_rust(_: i32) {
     panic!("thrown by panic_in_rust(...)")
 }
 
-fn run_exception_throw(ee: &ExecutionEngine, func: &Function, type_to_throw: u32) {}
+/// This is a test harness which runs test by executing generated
+/// function with a type info type to throw. Harness wraps the execution
+/// of generated function in a C++ try catch clause.
+/// @param engine execution engine to use for executing generated function.
+///        This demo program expects this to be a JIT instance for demo
+///        purposes.
+/// @param function generated test function to run
+/// @param typeToThrow type info type of generated exception to throw, or
+///        indicator to cause foreign exception to be thrown.
+fn run_exception_throw(ee: &ExecutionEngine, func: &Function, type_to_throw: u32) {
+    // Find test's function pointer
+    let func: extern "C" fn(typeToThrow: i32) =
+        unsafe { mem::transmute(ee.get_ptr_to_global(func)) };
+
+    let result = panic::catch_unwind(|| func(typeToThrow));
+
+    println!(
+        "\nrunExceptionThrow(...):In C++ catch OurCppRunException with reason: {:?}",
+        result
+    );
+}
 
 fn main() {
     pretty_env_logger::init().unwrap();
