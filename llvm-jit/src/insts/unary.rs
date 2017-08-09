@@ -18,7 +18,7 @@ macro_rules! define_unary_instruction {
         impl<'a> $crate::insts::InstructionBuilder for $operator<'a> {
             type Target = $crate::Instruction;
 
-            fn emit_to(&self, builder: & $crate::insts::IRBuilder) -> Self::Target {
+            fn emit_to(self, builder: & $crate::insts::IRBuilder) -> Self::Target {
                 trace!("{:?} emit instruction: {:?}", builder, self);
 
                 unsafe {

@@ -35,7 +35,7 @@ impl<'a> Select<'a> {
 impl<'a> InstructionBuilder for Select<'a> {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe {

@@ -35,7 +35,7 @@ impl<'a> Malloc<'a> {
 impl<'a> InstructionBuilder for Malloc<'a> {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe {
@@ -102,7 +102,7 @@ impl<'a> Alloca<'a> {
 impl<'a> InstructionBuilder for Alloca<'a> {
     type Target = AllocaInst;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe {
@@ -169,7 +169,7 @@ impl Free {
 impl InstructionBuilder for Free {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe { LLVMBuildFree(builder.as_raw(), self.0.as_raw()) }.into()
@@ -201,7 +201,7 @@ impl<'a> Load<'a> {
 impl<'a> InstructionBuilder for Load<'a> {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe {
@@ -248,7 +248,7 @@ impl Store {
 impl InstructionBuilder for Store {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe { LLVMBuildStore(builder.as_raw(), self.value.as_raw(), self.ptr.as_raw()) }.into()

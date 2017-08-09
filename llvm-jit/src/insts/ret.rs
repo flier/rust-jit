@@ -1,3 +1,5 @@
+use std::fmt;
+
 use llvm::core::*;
 use llvm::prelude::*;
 
@@ -6,13 +8,13 @@ use insts::{IRBuilder, InstructionBuilder};
 use value::{AsValueRef, Instruction, ValueRef};
 
 /// Create a 'ret void' instruction.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RetVoid;
 
 impl InstructionBuilder for RetVoid {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe { LLVMBuildRetVoid(builder.as_raw()) }.into()
@@ -20,22 +22,25 @@ impl InstructionBuilder for RetVoid {
 }
 
 /// Create a 'ret <val>' instruction.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Ret(ValueRef);
+#[derive(Clone, Debug, PartialEq)]
+pub struct Ret<T>(T);
 
-impl Ret {
-    pub fn new(ret: ValueRef) -> Self {
+impl<T> Ret<T> {
+    pub fn new(ret: T) -> Self {
         Ret(ret)
     }
 }
 
-impl InstructionBuilder for Ret {
+impl<T> InstructionBuilder for Ret<T>
+where
+    T: InstructionBuilder + fmt::Debug,
+{
     type Target = TerminatorInst;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe { LLVMBuildRet(builder.as_raw(), self.0.as_raw()) }.into()
+        unsafe { LLVMBuildRet(builder.as_raw(), self.0.emit_to(builder).into().as_raw()) }.into()
     }
 }
 
@@ -55,7 +60,7 @@ impl AggregateRet {
 impl InstructionBuilder for AggregateRet {
     type Target = TerminatorInst;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         let mut values = self.0
@@ -101,7 +106,7 @@ macro_rules! ret {
         $crate::insts::RetVoid
     };
     ($result:expr) => {
-        $crate::insts::Ret::new($result.into())
+        $crate::insts::Ret::new($result)
     };
     ($( $result:expr ),*) => {
         $crate::insts::AggregateRet::new(vec![$( $result.into() ),*])

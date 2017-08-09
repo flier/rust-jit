@@ -4,29 +4,34 @@ macro_rules! define_binary_operator {
     ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
         #[doc=$comment]
         #[derive(Clone, Debug, PartialEq)]
-        pub struct $operator<'a> {
-            lhs: $crate::ValueRef,
-            rhs: $crate::ValueRef,
+        pub struct $operator<'a, LHS, RHS>
+        {
+            lhs: LHS,
+            rhs: RHS,
             name: ::std::borrow::Cow<'a, str>,
         }
 
-        impl<'a> $operator<'a> {
-            pub fn new(lhs: $crate::ValueRef, rhs: $crate::ValueRef, name: ::std::borrow::Cow<'a, str>) -> Self {
+        impl<'a, LHS, RHS> $operator<'a, LHS, RHS> {
+            pub fn new(lhs: LHS, rhs: RHS, name: ::std::borrow::Cow<'a, str>) -> Self {
                 $operator { lhs, rhs, name }
             }
         }
 
-        impl<'a> $crate::insts::InstructionBuilder for $operator<'a> {
+        impl<'a, LHS, RHS> $crate::insts::InstructionBuilder for $operator<'a, LHS, RHS>
+        where
+            LHS: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
+            RHS: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
+        {
             type Target = $crate::Instruction;
 
-            fn emit_to(&self, builder: & $crate::insts::IRBuilder) -> Self::Target {
+            fn emit_to(self, builder: & $crate::insts::IRBuilder) -> Self::Target {
                 trace!("{:?} emit instruction: {:?}", builder, self);
 
                 unsafe {
                     $func(
                         builder.as_raw(),
-                        self.lhs.as_raw(),
-                        self.rhs.as_raw(),
+                        self.lhs.emit_to(builder).into().as_raw(),
+                        self.rhs.emit_to(builder).into().as_raw(),
                         $crate::utils::unchecked_cstring(self.name.clone()).as_ptr(),
                     )
                 }.into()
@@ -34,13 +39,11 @@ macro_rules! define_binary_operator {
         }
 
         #[doc=$comment]
-        pub fn $alias<'a, LHS, RHS, N>(lhs: LHS, rhs: RHS, name: N) -> $operator<'a>
+        pub fn $alias<'a, LHS, RHS, N>(lhs: LHS, rhs: RHS, name: N) -> $operator<'a, LHS, RHS>
         where
-            LHS: Into<$crate::ValueRef>,
-            RHS: Into<$crate::ValueRef>,
             N: Into<::std::borrow::Cow<'a, str>>
         {
-            $crate::insts::$operator::new(lhs.into(), rhs.into(), name.into())
+            $crate::insts::$operator::new(lhs, rhs, name.into())
         }
 
         #[doc=$comment]

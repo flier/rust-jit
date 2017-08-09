@@ -52,7 +52,7 @@ impl<'a> Invoke<'a> {
 impl<'a> InstructionBuilder for Invoke<'a> {
     type Target = InvokeInst;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         let mut args = self.args

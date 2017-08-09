@@ -23,6 +23,7 @@ pub struct Call<'a> {
     func: Function,
     args: Vec<ValueRef>,
     name: Cow<'a, str>,
+    tail_call: bool,
 }
 
 impl<'a> Call<'a> {
@@ -31,14 +32,26 @@ impl<'a> Call<'a> {
             func: func,
             args: args,
             name: name,
+            tail_call: false,
         }
+    }
+
+    /// Obtain whether a call instruction is a tail call.
+    pub fn is_tail_call(&self) -> bool {
+        self.tail_call
+    }
+
+    /// Set whether a call instruction is a tail call.
+    pub fn set_tail_call(mut self, is_tail_call: bool) -> Self {
+        self.tail_call = is_tail_call;
+        self
     }
 }
 
 impl<'a> InstructionBuilder for Call<'a> {
     type Target = CallInst;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         let mut args = self.args
@@ -46,7 +59,7 @@ impl<'a> InstructionBuilder for Call<'a> {
             .map(|arg| arg.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        unsafe {
+        let call: CallInst = unsafe {
             LLVMBuildCall(
                 builder.as_raw(),
                 self.func.as_raw(),
@@ -54,7 +67,11 @@ impl<'a> InstructionBuilder for Call<'a> {
                 args.len() as u32,
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
-        }.into()
+        }.into();
+
+        call.set_tail_call(self.tail_call);
+
+        call
     }
 }
 

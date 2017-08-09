@@ -31,11 +31,8 @@ fn main() {
     let y = function.get_param(1).unwrap();
     let z = function.get_param(2).unwrap();
 
-    let sum = add!(x, y; "sum.1").emit_to(&builder);
-    let sum = add!(sum, z; "sum.2").emit_to(&builder);
-
     // Emit a `ret` into the function
-    builder <<= ret!(sum);
+    builder <<= ret!(add!(add!(x, y; "sum.1"), z; "sum.2"));
 
     // done building
     drop(builder);

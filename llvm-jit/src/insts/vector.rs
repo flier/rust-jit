@@ -27,7 +27,7 @@ impl<'a> ExtractElement<'a> {
 impl<'a> InstructionBuilder for ExtractElement<'a> {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe {
@@ -74,7 +74,7 @@ impl<'a> InsertElement<'a> {
 impl<'a> InstructionBuilder for InsertElement<'a> {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe {
@@ -118,7 +118,7 @@ impl<'a> ShuffleVector<'a> {
 impl<'a> InstructionBuilder for ShuffleVector<'a> {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe {

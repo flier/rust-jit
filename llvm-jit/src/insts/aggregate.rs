@@ -27,7 +27,7 @@ impl<'a> ExtractValue<'a> {
 impl<'a> InstructionBuilder for ExtractValue<'a> {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe {
@@ -83,7 +83,7 @@ impl<'a> InsertValue<'a> {
 impl<'a> InstructionBuilder for InsertValue<'a> {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe {

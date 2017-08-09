@@ -35,7 +35,7 @@ impl<'a> Phi<'a> {
 impl<'a> InstructionBuilder for Phi<'a> {
     type Target = PhiNode;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         let phi: PhiNode = unsafe {

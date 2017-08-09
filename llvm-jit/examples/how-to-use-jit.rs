@@ -48,7 +48,7 @@ fn main() {
     let bb = add1_f.append_basic_block_in_context("EntryBlock", &context);
 
     // Create a basic block builder with default parameters.
-    let builder = context.create_builder();
+    let mut builder = context.create_builder();
     builder.position_at_end(bb);
 
     // Get the constant `1'.
@@ -60,10 +60,10 @@ fn main() {
     argx.set_name("AnArg"); // Give it a nice symbolic name for fun.
 
     // Create the add instruction, inserting it into the end of BB.
-    let add = add!(one, argx).emit_to(&builder);
+    let add = add!(one, argx);
 
     // Create the return instruction and add it to the basic block
-    ret!(add).emit_to(&builder);
+    builder <<= ret!(add);
 
     // Now, function add1 is ready.
 
@@ -80,11 +80,10 @@ fn main() {
     let ten = i32_t.int(10);
 
     // Pass Ten to the call to `add1_f`
-    let add1_call_res = call!(add1_f, ten).emit_to(&builder);
-    add1_call_res.set_tail_call(true);
+    let add1_call_res = call!(add1_f, ten).set_tail_call(true);
 
     // Create the return instruction and add it to the basic block.
-    ret!(add1_call_res).emit_to(&builder);
+    builder <<= ret!(add1_call_res);
 
     println!(
         "We just constructed this LLVM module:\n\n{}\n\nRunning foo: ",

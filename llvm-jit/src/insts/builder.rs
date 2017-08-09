@@ -5,12 +5,20 @@ use llvm::prelude::*;
 
 use block::BasicBlock;
 use context::{Context, GlobalContext};
-use value::{AsValueRef, Instruction};
+use value::{AsValueRef, Instruction, ValueRef};
 
 pub trait InstructionBuilder {
-    type Target: AsValueRef;
+    type Target: Into<ValueRef>;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target;
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target;
+}
+
+impl<T: Into<ValueRef>> InstructionBuilder for T {
+    type Target = ValueRef;
+
+    fn emit_to(self, _builder: &IRBuilder) -> Self::Target {
+        self.into()
+    }
 }
 
 #[derive(Debug)]

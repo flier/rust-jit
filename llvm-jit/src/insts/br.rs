@@ -1,3 +1,4 @@
+use std::fmt;
 use std::ptr;
 
 use llvm::core::*;
@@ -21,7 +22,7 @@ impl Br {
 impl InstructionBuilder for Br {
     type Target = BranchInst;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe { LLVMBuildBr(builder.as_raw(), self.0.as_raw()) }.into()
@@ -30,14 +31,14 @@ impl InstructionBuilder for Br {
 
 /// Create a conditional `br cond, trueDest, falseDest` instruction.
 #[derive(Clone, Debug, PartialEq)]
-pub struct CondBr {
-    cond: ValueRef,
+pub struct CondBr<T> {
+    cond: T,
     then: Option<BasicBlock>,
     or_else: Option<BasicBlock>,
 }
 
-impl CondBr {
-    pub fn new(cond: ValueRef, then: Option<BasicBlock>, or_else: Option<BasicBlock>) -> CondBr {
+impl<T> CondBr<T> {
+    pub fn new(cond: T, then: Option<BasicBlock>, or_else: Option<BasicBlock>) -> CondBr<T> {
         CondBr {
             cond,
             then,
@@ -45,9 +46,9 @@ impl CondBr {
         }
     }
 
-    pub fn on<V: Into<ValueRef>>(cond: V) -> Self {
+    pub fn on(cond: T) -> Self {
         CondBr {
-            cond: cond.into(),
+            cond: cond,
             then: None,
             or_else: None,
         }
@@ -64,16 +65,19 @@ impl CondBr {
     }
 }
 
-impl InstructionBuilder for CondBr {
+impl<T> InstructionBuilder for CondBr<T>
+where
+    T: InstructionBuilder + fmt::Debug,
+{
     type Target = BranchInst;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe {
             LLVMBuildCondBr(
                 builder.as_raw(),
-                self.cond.as_raw(),
+                self.cond.emit_to(builder).into().as_raw(),
                 self.then.map_or(ptr::null_mut(), |bb| bb.as_raw()),
                 self.or_else.map_or(ptr::null_mut(), |bb| bb.as_raw()),
             )
@@ -84,19 +88,19 @@ impl InstructionBuilder for CondBr {
 /// Create an indirect branch instruction with the specified address operand,
 /// with an optional hint for the number of destinations that will be added (for efficient allocation).
 #[derive(Clone, Debug, PartialEq)]
-pub struct IndirectBr {
-    addr: ValueRef,
+pub struct IndirectBr<T> {
+    addr: T,
     dests: Vec<BasicBlock>,
 }
 
-impl IndirectBr {
-    pub fn new(addr: ValueRef, dests: Vec<BasicBlock>) -> Self {
+impl<T> IndirectBr<T> {
+    pub fn new(addr: T, dests: Vec<BasicBlock>) -> Self {
         IndirectBr { addr, dests }
     }
 
-    pub fn on<V: Into<ValueRef>>(addr: V) -> Self {
+    pub fn on(addr: T) -> Self {
         IndirectBr {
-            addr: addr.into(),
+            addr: addr,
             dests: vec![],
         }
     }
@@ -108,16 +112,19 @@ impl IndirectBr {
     }
 }
 
-impl InstructionBuilder for IndirectBr {
+impl<T> InstructionBuilder for IndirectBr<T>
+where
+    T: InstructionBuilder + fmt::Debug,
+{
     type Target = BranchInst;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         let br: BranchInst = unsafe {
             LLVMBuildIndirectBr(
                 builder.as_raw(),
-                self.addr.as_raw(),
+                self.addr.emit_to(builder).into().as_raw(),
                 self.dests.len() as u32,
             )
         }.into();
@@ -163,10 +170,10 @@ macro_rules! br {
         $crate::insts::IndirectBr::on($addr) $( .jump_to($dest.into()) )*
     );
     ($cond:expr => $then:expr) => (
-         $crate::insts::CondBr::new($cond.into(), Some($then.into()), None)
+         $crate::insts::CondBr::new($cond, Some($then.into()), None)
     );
     ($cond:expr => $then:expr, _ => $or_else:expr) => (
-        $crate::insts::CondBr::new($cond.into(), Some($then.into()), Some($or_else.into()))
+        $crate::insts::CondBr::new($cond, Some($then.into()), Some($or_else.into()))
     );
 }
 

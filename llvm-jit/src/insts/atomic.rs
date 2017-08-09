@@ -28,7 +28,7 @@ impl<'a> Fence<'a> {
 impl<'a> InstructionBuilder for Fence<'a> {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe {
@@ -72,7 +72,7 @@ impl AtomicRMW {
 impl InstructionBuilder for AtomicRMW {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe {
@@ -121,7 +121,7 @@ impl AtomicCmpXchg {
 impl InstructionBuilder for AtomicCmpXchg {
     type Target = Instruction;
 
-    fn emit_to(&self, builder: &IRBuilder) -> Self::Target {
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         unsafe {

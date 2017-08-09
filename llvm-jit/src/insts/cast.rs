@@ -4,28 +4,31 @@ macro_rules! define_cast_instruction {
     ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
         #[doc=$comment]
         #[derive(Clone, Debug, PartialEq)]
-        pub struct $operator<'a> {
-            value: $crate::ValueRef,
+        pub struct $operator<'a, T> {
+            value: T,
             dest_ty: $crate::TypeRef,
             name: ::std::borrow::Cow<'a, str>,
         }
 
-        impl<'a> $operator<'a> {
-            pub fn new(value: $crate::ValueRef, dest_ty: $crate::TypeRef, name: ::std::borrow::Cow<'a, str>) -> Self {
+        impl<'a, T> $operator<'a, T> {
+            pub fn new(value: T, dest_ty: $crate::TypeRef, name: ::std::borrow::Cow<'a, str>) -> Self {
                 $operator { value, dest_ty, name }
             }
         }
 
-        impl<'a> $crate::insts::InstructionBuilder for $operator<'a> {
+        impl<'a, T> $crate::insts::InstructionBuilder for $operator<'a, T>
+        where
+            T: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
+        {
             type Target = $crate::Instruction;
 
-            fn emit_to(&self, builder: & $crate::insts::IRBuilder) -> Self::Target {
+            fn emit_to(self, builder: & $crate::insts::IRBuilder) -> Self::Target {
                 trace!("{:?} emit instruction: {:?}", builder, self);
 
                 unsafe {
                     $func(
                         builder.as_raw(),
-                        self.value.as_raw(),
+                        self.value.emit_to(builder).into().as_raw(),
                         self.dest_ty.as_raw(),
                         $crate::utils::unchecked_cstring(self.name.clone()).as_ptr(),
                     )
@@ -34,13 +37,13 @@ macro_rules! define_cast_instruction {
         }
 
         #[doc=$comment]
-        pub fn $alias<'a, V, T, N>(value: V, ty: T, name: N) -> $operator<'a>
+        pub fn $alias<'a, V, T, N>(value: V, ty: T, name: N) -> $operator<'a, V>
         where
-            V: Into<$crate::ValueRef>,
+            V: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
             T: Into<$crate::TypeRef>,
             N: Into<::std::borrow::Cow<'a, str>>
         {
-            $crate::insts::$operator::new(value.into(), ty.into(), name.into())
+            $crate::insts::$operator::new(value, ty.into(), name.into())
         }
 
         #[doc=$comment]
