@@ -52,6 +52,7 @@ extern crate libc;
 use std::env;
 use std::ffi::CStr;
 use std::mem;
+use std::panic;
 use std::ptr;
 
 use jit::{Constant, ConstantInt, FunctionPassManager, StructType};
@@ -1124,12 +1125,12 @@ extern "C" fn panic_in_rust(_: i32) {
 /// @param function generated test function to run
 /// @param typeToThrow type info type of generated exception to throw, or
 ///        indicator to cause foreign exception to be thrown.
-fn run_exception_throw(ee: &ExecutionEngine, func: &Function, type_to_throw: u32) {
+fn run_exception_throw(ee: &ExecutionEngine, func: &Function, type_to_throw: i32) {
     // Find test's function pointer
-    let func: extern "C" fn(typeToThrow: i32) =
-        unsafe { mem::transmute(ee.get_ptr_to_global(func)) };
+    let addr: *const u8 = ee.get_ptr_to_global(*func);
+    let func: extern "C" fn(type_to_throw: i32) = unsafe { mem::transmute(addr) };
 
-    let result = panic::catch_unwind(|| func(typeToThrow));
+    let result = panic::catch_unwind(|| func(type_to_throw));
 
     println!(
         "\nrunExceptionThrow(...):In C++ catch OurCppRunException with reason: {:?}",
