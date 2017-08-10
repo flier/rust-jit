@@ -50,10 +50,10 @@ where
 #[macro_export]
 macro_rules! global_str {
     ($s:expr; $name:expr) => (
-        $crate::insts::GlobalString::new($s.into(), $name.into())
+        $crate::insts::global_str($s.into(), $name)
     );
     ($s:expr) => {
-        $crate::insts::GlobalString::new($s.into(), "".into())
+        $crate::insts::global_str($s.into(), "")
     }
 }
 
@@ -99,10 +99,10 @@ where
 #[macro_export]
 macro_rules! global_str_ptr {
     ($s:expr; $name:expr) => (
-        $crate::insts::GlobalStringPtr::new($s.into(), $name.into())
+        $crate::insts::global_str_ptr::new($s, $name)
     );
     ($s:expr) => {
-        $crate::insts::GlobalStringPtr::new($s.into(), "".into())
+        $crate::insts::global_str_ptr::new($s, "")
     }
 }
 

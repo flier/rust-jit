@@ -57,7 +57,7 @@ pub fn extract_value<'a, T, N: Into<Cow<'a, str>>>(
 #[macro_export]
 macro_rules! extract_value {
     ($aggregate:expr, $index:expr; $name:expr) => (
-        $crate::insts::ExtractValue::new($aggregate, $index as u32, $name.into())
+        $crate::insts::extract_value($aggregate, $index as u32, $name.into())
     );
     ($aggregate:expr, $index:expr) => {
         extract_value!($aggregate, $index; "extract_value")
@@ -119,7 +119,7 @@ pub fn insert_value<'a, T, E, N: Into<Cow<'a, str>>>(
 #[macro_export]
 macro_rules! insert_value {
     ($aggregate:expr, $element:expr, $index:expr; $name:expr) => (
-        $crate::insts::InsertValue::new($aggregate, $element, $index as u32, $name.into())
+        $crate::insts::insert_value($aggregate, $element, $index as u32, $name.into())
     );
     ($aggregate:expr, $element:expr, $index:expr) => {
         insert_value!($aggregate, $element, $index; "extract_value")

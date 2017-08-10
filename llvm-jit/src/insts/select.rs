@@ -81,7 +81,7 @@ where
 #[macro_export]
 macro_rules! select {
     ($cond:expr => $then:expr, _ => $or_else:expr; $name:expr) => (
-        $crate::insts::Select::new($cond, $then, $or_else, $name.into())
+        $crate::insts::select($cond, $then, $or_else, $name)
     );
     ($cond:expr => $then:expr, _ => $or_else:expr) => (
         select!($cond, $then, $or_else; "select")

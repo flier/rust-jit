@@ -143,7 +143,7 @@ pub fn resume<V>(result: V) -> Resume<V> {
 #[macro_export]
 macro_rules! resume {
     ($result:expr) => (
-        $crate::insts::Resume::new($result)
+        $crate::insts::resume($result)
     )
 }
 
