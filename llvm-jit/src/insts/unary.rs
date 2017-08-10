@@ -4,18 +4,21 @@ macro_rules! define_unary_instruction {
     ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
         #[doc=$comment]
         #[derive(Clone, Debug, PartialEq)]
-        pub struct $operator<'a> {
-            value: $crate::ValueRef,
+        pub struct $operator<'a, V> {
+            value: V,
             name: ::std::borrow::Cow<'a, str>,
         }
 
-        impl<'a> $operator<'a> {
-            pub fn new(value: $crate::ValueRef, name: ::std::borrow::Cow<'a, str>) -> Self {
+        impl<'a, V> $operator<'a, V> {
+            pub fn new(value: V, name: ::std::borrow::Cow<'a, str>) -> Self {
                 $operator { value, name }
             }
         }
 
-        impl<'a> $crate::insts::InstructionBuilder for $operator<'a> {
+        impl<'a, V> $crate::insts::InstructionBuilder for $operator<'a, V>
+        where
+            V: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
+        {
             type Target = $crate::Instruction;
 
             fn emit_to(self, builder: & $crate::insts::IRBuilder) -> Self::Target {
@@ -24,7 +27,7 @@ macro_rules! define_unary_instruction {
                 unsafe {
                     $func(
                         builder.as_raw(),
-                        self.value.as_raw(),
+                        self.value.emit_to(builder).into().as_raw(),
                         $crate::utils::unchecked_cstring(self.name.clone()).as_ptr(),
                     )
                 }.into()
@@ -32,9 +35,8 @@ macro_rules! define_unary_instruction {
         }
 
         #[doc=$comment]
-        pub fn $alias<'a, V, N>(value: V, name: N) -> $operator<'a>
+        pub fn $alias<'a, V, N>(value: V, name: N) -> $operator<'a, V>
         where
-            V: Into<$crate::ValueRef>,
             N: Into<::std::borrow::Cow<'a, str>>
         {
             $crate::insts::$operator::new(value.into(), name.into())
@@ -102,8 +104,8 @@ mod tests {
     use prelude::*;
 
     macro_rules! test_unary_inst {
-        ($builder:ident, $name:ident ( $arg0_i64:ident ), $display:expr) => (
-            assert_eq!( $name ( $arg0_i64, stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
+        ($builder:ident, $name:ident !( $arg0_i64:ident ), $display:expr) => (
+            assert_eq!( $name !( $arg0_i64 ; stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
         )
     }
 
@@ -128,22 +130,22 @@ mod tests {
         let arg2_f64 = f.get_param(2).unwrap();
         let arg3_f64 = f.get_param(3).unwrap();
 
-        test_unary_inst!(b, neg(arg0_i64), "%neg = sub i64 0, %0");
-        test_unary_inst!(b, neg_nsw(arg0_i64), "%neg_nsw = sub nsw i64 0, %0");
-        test_unary_inst!(b, neg_nuw(arg0_i64), "%neg_nuw = sub nuw i64 0, %0");
-        test_unary_inst!(b, fneg(arg2_f64), "%fneg = fsub double -0.000000e+00, %2");
+        test_unary_inst!(b, neg!(arg0_i64), "%neg = sub i64 0, %0");
+        test_unary_inst!(b, neg_nsw!(arg0_i64), "%neg_nsw = sub nsw i64 0, %0");
+        test_unary_inst!(b, neg_nuw!(arg0_i64), "%neg_nuw = sub nuw i64 0, %0");
+        test_unary_inst!(b, fneg!(arg2_f64), "%fneg = fsub double -0.000000e+00, %2");
 
-        test_unary_inst!(b, not(arg0_i64), "%not = xor i64 %0, -1");
+        test_unary_inst!(b, not!(arg0_i64), "%not = xor i64 %0, -1");
         test_unary_inst!(
             b,
-            not(arg3_f64),
+            not!(arg3_f64),
             "%not1 = xor double %3, 0xFFFFFFFFFFFFFFFF"
         );
 
-        test_unary_inst!(b, is_null(arg1_p_i64), "%is_null = icmp eq i64* %1, null");
+        test_unary_inst!(b, is_null!(arg1_p_i64), "%is_null = icmp eq i64* %1, null");
         test_unary_inst!(
             b,
-            is_not_null(arg1_p_i64),
+            is_not_null!(arg1_p_i64),
             "%is_not_null = icmp ne i64* %1, null"
         );
     }

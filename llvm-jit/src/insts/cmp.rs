@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt;
 use std::mem;
 
 use llvm::{LLVMIntPredicate, LLVMRealPredicate};
@@ -10,15 +11,15 @@ use utils::unchecked_cstring;
 use value::{AsValueRef, Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ICmp<'a> {
+pub struct ICmp<'a, L, R> {
     op: u32, // TODO: use LLVMIntPredicate when llvm-sys update
-    lhs: ValueRef,
-    rhs: ValueRef,
+    lhs: L,
+    rhs: R,
     name: Cow<'a, str>,
 }
 
-impl<'a> ICmp<'a> {
-    pub fn new(op: LLVMIntPredicate, lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+impl<'a, L, R> ICmp<'a, L, R> {
+    pub fn new(op: LLVMIntPredicate, lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
         ICmp {
             op: op as u32,
             lhs,
@@ -27,48 +28,52 @@ impl<'a> ICmp<'a> {
         }
     }
 
-    pub fn equals(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+    pub fn equals(lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
         Self::new(LLVMIntPredicate::LLVMIntEQ, lhs, rhs, name)
     }
 
-    pub fn not_equals(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+    pub fn not_equals(lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
         Self::new(LLVMIntPredicate::LLVMIntNE, lhs, rhs, name)
     }
 
-    pub fn unsigned_greater_than(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+    pub fn unsigned_greater_than(lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
         Self::new(LLVMIntPredicate::LLVMIntUGT, lhs, rhs, name)
     }
 
-    pub fn unsigned_greater_or_equal(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+    pub fn unsigned_greater_or_equal(lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
         Self::new(LLVMIntPredicate::LLVMIntUGE, lhs, rhs, name)
     }
 
-    pub fn unsigned_less_than(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+    pub fn unsigned_less_than(lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
         Self::new(LLVMIntPredicate::LLVMIntULT, lhs, rhs, name)
     }
 
-    pub fn unsigned_less_or_equal(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+    pub fn unsigned_less_or_equal(lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
         Self::new(LLVMIntPredicate::LLVMIntULE, lhs, rhs, name)
     }
 
-    pub fn signed_greater_than(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+    pub fn signed_greater_than(lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
         Self::new(LLVMIntPredicate::LLVMIntSGT, lhs, rhs, name)
     }
 
-    pub fn signed_greater_or_equal(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+    pub fn signed_greater_or_equal(lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
         Self::new(LLVMIntPredicate::LLVMIntSGE, lhs, rhs, name)
     }
 
-    pub fn signed_less_than(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+    pub fn signed_less_than(lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
         Self::new(LLVMIntPredicate::LLVMIntSLT, lhs, rhs, name)
     }
 
-    pub fn signed_less_or_equal(lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+    pub fn signed_less_or_equal(lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
         Self::new(LLVMIntPredicate::LLVMIntSGE, lhs, rhs, name)
     }
 }
 
-impl<'a> InstructionBuilder for ICmp<'a> {
+impl<'a, L, R> InstructionBuilder for ICmp<'a, L, R>
+where
+    L: InstructionBuilder + fmt::Debug,
+    R: InstructionBuilder + fmt::Debug,
+{
     type Target = ICmpInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -78,8 +83,8 @@ impl<'a> InstructionBuilder for ICmp<'a> {
             LLVMBuildICmp(
                 builder.as_raw(),
                 mem::transmute(self.op),
-                self.lhs.as_raw(),
-                self.rhs.as_raw(),
+                self.lhs.emit_to(builder).into().as_raw(),
+                self.rhs.emit_to(builder).into().as_raw(),
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
         }.into()
@@ -120,34 +125,34 @@ impl ICmpInst {
 #[macro_export]
 macro_rules! icmp {
     (eq $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntEQ, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntEQ, $lhs, $rhs, $name.into())
     );
     (ne $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntNE, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntNE, $lhs, $rhs, $name.into())
     );
     (ugt $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntUGT, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntUGT, $lhs, $rhs, $name.into())
     );
     (uge $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntUGE, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntUGE, $lhs, $rhs, $name.into())
     );
     (ult $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntULT, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntULT, $lhs, $rhs, $name.into())
     );
     (ule $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntULE, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntULE, $lhs, $rhs, $name.into())
     );
     (sgt $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntSGT, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntSGT, $lhs, $rhs, $name.into())
     );
     (sge $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntSGE, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntSGE, $lhs, $rhs, $name.into())
     );
     (slt $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntSLT, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntSLT, $lhs, $rhs, $name.into())
     );
     (sle $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntSLE, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::ICmp::new(::llvm::LLVMIntPredicate::LLVMIntSLE, $lhs, $rhs, $name.into())
     );
     ($op:ident $lhs:expr, $rhs:expr) => {
         icmp!($op $lhs, $rhs; stringify!($op))
@@ -155,15 +160,15 @@ macro_rules! icmp {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct FCmp<'a> {
+pub struct FCmp<'a, L, R> {
     op: u32, // TODO: use LLVMRealPredicate when llvm-sys update
-    lhs: ValueRef,
-    rhs: ValueRef,
+    lhs: L,
+    rhs: R,
     name: Cow<'a, str>,
 }
 
-impl<'a> FCmp<'a> {
-    pub fn new(op: LLVMRealPredicate, lhs: ValueRef, rhs: ValueRef, name: Cow<'a, str>) -> Self {
+impl<'a, L, R> FCmp<'a, L, R> {
+    pub fn new(op: LLVMRealPredicate, lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
         FCmp {
             op: op as u32,
             lhs,
@@ -173,7 +178,11 @@ impl<'a> FCmp<'a> {
     }
 }
 
-impl<'a> InstructionBuilder for FCmp<'a> {
+impl<'a, L, R> InstructionBuilder for FCmp<'a, L, R>
+where
+    L: InstructionBuilder + fmt::Debug,
+    R: InstructionBuilder + fmt::Debug,
+{
     type Target = FCmpInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -183,8 +192,8 @@ impl<'a> InstructionBuilder for FCmp<'a> {
             LLVMBuildFCmp(
                 builder.as_raw(),
                 mem::transmute(self.op),
-                self.lhs.as_raw(),
-                self.rhs.as_raw(),
+                self.lhs.emit_to(builder).into().as_raw(),
+                self.rhs.emit_to(builder).into().as_raw(),
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
         }.into()
@@ -231,52 +240,52 @@ impl FCmpInst {
 #[macro_export]
 macro_rules! fcmp {
     (false $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealPredicateFalse, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealPredicateFalse, $lhs, $rhs, $name.into())
     );
     (oeq $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealOEQ, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealOEQ, $lhs, $rhs, $name.into())
     );
     (ogt $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealOGT, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealOGT, $lhs, $rhs, $name.into())
     );
     (oge $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealOGE, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealOGE, $lhs, $rhs, $name.into())
     );
     (olt $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealOLT, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealOLT, $lhs, $rhs, $name.into())
     );
     (ole $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealOLE, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealOLE, $lhs, $rhs, $name.into())
     );
     (one $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealONE, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealONE, $lhs, $rhs, $name.into())
     );
     (ord $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealORD, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealORD, $lhs, $rhs, $name.into())
     );
     (uno $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealUNO, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealUNO, $lhs, $rhs, $name.into())
     );
     (ueq $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealUEQ, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealUEQ, $lhs, $rhs, $name.into())
     );
     (ugt $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealUGT, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealUGT, $lhs, $rhs, $name.into())
     );
     (uge $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealUGE, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealUGE, $lhs, $rhs, $name.into())
     );
     (ult $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealULT, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealULT, $lhs, $rhs, $name.into())
     );
     (ule $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealULE, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealULE, $lhs, $rhs, $name.into())
     );
     (une $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealUNE, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealUNE, $lhs, $rhs, $name.into())
     );
     (true $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealPredicateTrue, $lhs.into(), $rhs.into(), $name.into())
+        $crate::insts::FCmp::new(::llvm::LLVMRealPredicate::LLVMRealPredicateTrue, $lhs, $rhs, $name.into())
     );
     ($op:ident $lhs:expr, $rhs:expr) => {
         fcmp!($op $lhs, $rhs; stringify!($op))

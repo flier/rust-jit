@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt;
 
 use llvm::core::*;
 use llvm::prelude::*;
@@ -9,13 +10,13 @@ use utils::unchecked_cstring;
 use value::{AsValueRef, Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Malloc<'a> {
+pub struct Malloc<'a, V> {
     ty: TypeRef,
-    size: Option<ValueRef>,
+    size: Option<V>,
     name: Cow<'a, str>,
 }
 
-impl<'a> Malloc<'a> {
+impl<'a, V> Malloc<'a, V> {
     pub fn new(ty: TypeRef, name: Cow<'a, str>) -> Self {
         Malloc {
             ty,
@@ -23,7 +24,7 @@ impl<'a> Malloc<'a> {
             name,
         }
     }
-    pub fn array(ty: TypeRef, size: ValueRef, name: Cow<'a, str>) -> Self {
+    pub fn array(ty: TypeRef, size: V, name: Cow<'a, str>) -> Self {
         Malloc {
             ty,
             size: Some(size),
@@ -32,7 +33,10 @@ impl<'a> Malloc<'a> {
     }
 }
 
-impl<'a> InstructionBuilder for Malloc<'a> {
+impl<'a, V> InstructionBuilder for Malloc<'a, V>
+where
+    V: InstructionBuilder + fmt::Debug,
+{
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -43,7 +47,7 @@ impl<'a> InstructionBuilder for Malloc<'a> {
                 LLVMBuildArrayMalloc(
                     builder.as_raw(),
                     self.ty.as_raw(),
-                    size.as_raw(),
+                    size.emit_to(builder).into().as_raw(),
                     unchecked_cstring(self.name.clone()).as_ptr(),
                 )
             } else {
@@ -61,10 +65,10 @@ impl<'a> InstructionBuilder for Malloc<'a> {
 #[macro_export]
 macro_rules! malloc {
     ($ty:expr; $name:expr) => ({
-        $crate::insts::Malloc::new($ty.into(), $name.into())
+        $crate::insts::Malloc::<ValueRef>::new($ty.into(), $name.into())
     });
     ($array_ty:expr, $size:expr; $name:expr) => ({
-        $crate::insts::Malloc::array($array_ty.into(), $size.into(), $name.into())
+        $crate::insts::Malloc::array($array_ty.into(), $size, $name.into())
     });
 
     ($ty:expr) => ({
@@ -76,13 +80,13 @@ macro_rules! malloc {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Alloca<'a> {
+pub struct Alloca<'a, V> {
     ty: TypeRef,
-    size: Option<ValueRef>,
+    size: Option<V>,
     name: Cow<'a, str>,
 }
 
-impl<'a> Alloca<'a> {
+impl<'a, V> Alloca<'a, V> {
     pub fn new(ty: TypeRef, name: Cow<'a, str>) -> Self {
         Alloca {
             ty,
@@ -90,7 +94,7 @@ impl<'a> Alloca<'a> {
             name,
         }
     }
-    pub fn array(ty: TypeRef, size: ValueRef, name: Cow<'a, str>) -> Self {
+    pub fn array(ty: TypeRef, size: V, name: Cow<'a, str>) -> Self {
         Alloca {
             ty,
             size: Some(size),
@@ -99,7 +103,10 @@ impl<'a> Alloca<'a> {
     }
 }
 
-impl<'a> InstructionBuilder for Alloca<'a> {
+impl<'a, V> InstructionBuilder for Alloca<'a, V>
+where
+    V: InstructionBuilder + fmt::Debug,
+{
     type Target = AllocaInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -110,7 +117,7 @@ impl<'a> InstructionBuilder for Alloca<'a> {
                 LLVMBuildArrayAlloca(
                     builder.as_raw(),
                     self.ty.as_raw(),
-                    size.as_raw(),
+                    size.emit_to(builder).into().as_raw(),
                     unchecked_cstring(self.name.clone()).as_ptr(),
                 )
             } else {
@@ -143,10 +150,10 @@ impl AllocaInst {
 #[macro_export]
 macro_rules! alloca {
     ($ty:expr; $name:expr) => ({
-        $crate::insts::Alloca::new($ty.into(), $name.into())
+        $crate::insts::Alloca::<ValueRef>::new($ty.into(), $name.into())
     });
     ($array_ty:expr, $size:expr; $name:expr) => ({
-        $crate::insts::Alloca::array($array_ty.into(), $size.into(), $name.into())
+        $crate::insts::Alloca::array($array_ty.into(), $size, $name.into())
     });
 
     ($ty:expr) => ({
@@ -158,47 +165,55 @@ macro_rules! alloca {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Free(ValueRef);
+pub struct Free<V>(V);
 
-impl Free {
-    pub fn new(ptr: ValueRef) -> Self {
+impl<V> Free<V> {
+    pub fn new(ptr: V) -> Self {
         Free(ptr)
     }
 }
 
-impl InstructionBuilder for Free {
+impl<V> InstructionBuilder for Free<V>
+where
+    V: InstructionBuilder + fmt::Debug,
+{
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe { LLVMBuildFree(builder.as_raw(), self.0.as_raw()) }.into()
+        unsafe { LLVMBuildFree(builder.as_raw(), self.0.emit_to(builder).into().as_raw()) }.into()
     }
 }
 
 /// Deallocates the memory allocation pointed to by ptr.
-pub fn free<P: Into<ValueRef>>(ptr: P) -> Free {
-    Free::new(ptr.into())
+pub fn free<P>(ptr: P) -> Free<P> {
+    Free::new(ptr)
 }
 
 #[macro_export]
 macro_rules! free {
-    ($ptr:expr) => ($crate::insts::Free::new($ptr.into()))
+    ($ptr:expr) => (
+        $crate::insts::free($ptr)
+    )
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Load<'a> {
-    ptr: ValueRef,
+pub struct Load<'a, V> {
+    ptr: V,
     name: Cow<'a, str>,
 }
 
-impl<'a> Load<'a> {
-    pub fn new(ptr: ValueRef, name: Cow<'a, str>) -> Self {
+impl<'a, V> Load<'a, V> {
+    pub fn new(ptr: V, name: Cow<'a, str>) -> Self {
         Load { ptr, name }
     }
 }
 
-impl<'a> InstructionBuilder for Load<'a> {
+impl<'a, V> InstructionBuilder for Load<'a, V>
+where
+    V: InstructionBuilder + fmt::Debug,
+{
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -207,7 +222,7 @@ impl<'a> InstructionBuilder for Load<'a> {
         unsafe {
             LLVMBuildLoad(
                 builder.as_raw(),
-                self.ptr.as_raw(),
+                self.ptr.emit_to(builder).into().as_raw(),
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
         }.into()
@@ -215,18 +230,17 @@ impl<'a> InstructionBuilder for Load<'a> {
 }
 
 /// The `load` instruction is used to read from memory.
-pub fn load<'a, P, N>(ptr: P, name: N) -> Load<'a>
+pub fn load<'a, P, N>(ptr: P, name: N) -> Load<'a, P>
 where
-    P: Into<ValueRef>,
     N: Into<Cow<'a, str>>,
 {
-    Load::new(ptr.into(), name.into())
+    Load::new(ptr, name.into())
 }
 
 #[macro_export]
 macro_rules! load {
     ($ptr:expr; $name:expr) => (
-        $crate::insts::Load::new($ptr.into(), $name.into())
+        $crate::insts::load($ptr, $name)
     );
     ($ptr:expr) => {
         load!($ptr; "load")
@@ -234,40 +248,46 @@ macro_rules! load {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Store {
-    value: ValueRef,
-    ptr: ValueRef,
+pub struct Store<V, P> {
+    value: V,
+    ptr: P,
 }
 
-impl Store {
-    pub fn new(value: ValueRef, ptr: ValueRef) -> Self {
+impl<V, P> Store<V, P> {
+    pub fn new(value: V, ptr: P) -> Self {
         Store { value, ptr }
     }
 }
 
-impl InstructionBuilder for Store {
+impl<V, P> InstructionBuilder for Store<V, P>
+where
+    V: InstructionBuilder + fmt::Debug,
+    P: InstructionBuilder + fmt::Debug,
+{
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe { LLVMBuildStore(builder.as_raw(), self.value.as_raw(), self.ptr.as_raw()) }.into()
+        unsafe {
+            LLVMBuildStore(
+                builder.as_raw(),
+                self.value.emit_to(builder).into().as_raw(),
+                self.ptr.emit_to(builder).into().as_raw(),
+            )
+        }.into()
     }
 }
 
 /// The `store` instruction is used to write to memory.
-pub fn store<V, P>(value: V, ptr: P) -> Store
-where
-    V: Into<ValueRef>,
-    P: Into<ValueRef>,
-{
-    Store::new(value.into(), ptr.into())
+pub fn store<V, P>(value: V, ptr: P) -> Store<V, P> {
+    Store::new(value, ptr)
 }
 
 #[macro_export]
 macro_rules! store {
     ($value:expr, $ptr:expr) => {
-        $crate::insts::Store::new($value.into(), $ptr.into())
+        $crate::insts::store($value, $ptr)
     }
 }
 
@@ -280,7 +300,7 @@ mod tests {
     fn memory() {
         let context = Context::new();
         let module = context.create_module("memory");
-        let builder = context.create_builder();
+        let mut builder = context.create_builder();
 
         let i64_t = context.int64_t();
         let p_i64_t = i64_t.ptr_t();
@@ -293,9 +313,9 @@ mod tests {
 
         let arg0_p_i64 = function.get_param(0).unwrap();
 
-        let p = malloc!(i64_t).emit_to(&builder);
+        let p = malloc!(i64_t);
 
-        free(p).emit_to(&builder);
+        builder <<= free!(p);
 
         assert_eq!(
             bb.last_instructions(4),
@@ -307,7 +327,7 @@ mod tests {
             ]
         );
 
-        malloc!(i64_t, i64_t.int(123)).emit_to(&builder);
+        builder <<= malloc!(i64_t, i64_t.int(123));
 
         assert_eq!(
             bb.last_instructions(4),
@@ -333,15 +353,12 @@ mod tests {
         );
 
         assert_eq!(
-            load(arg0_p_i64, "load")
-                .emit_to(&builder)
-                .to_string()
-                .trim(),
+            load!(arg0_p_i64).emit_to(&builder).to_string().trim(),
             "%load = load i64, i64* %0"
         );
 
         assert_eq!(
-            store(i64_t.int(123), arg0_p_i64)
+            store!(i64_t.int(123), arg0_p_i64)
                 .emit_to(&builder)
                 .to_string()
                 .trim(),

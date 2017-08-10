@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt;
 use std::mem;
 
 use llvm::{LLVMAtomicOrdering, LLVMAtomicRMWBinOp};
@@ -6,7 +7,7 @@ use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
 use utils::{AsLLVMBool, unchecked_cstring};
-use value::{Instruction, ValueRef};
+use value::Instruction;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Fence<'a> {
@@ -43,19 +44,19 @@ impl<'a> InstructionBuilder for Fence<'a> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AtomicRMW {
+pub struct AtomicRMW<P, V> {
     op: u32, // TODO: LLVMAtomicRMWBinOp
-    ptr: ValueRef,
-    value: ValueRef,
+    ptr: P,
+    value: V,
     ordering: u32, // TODO: LLVMAtomicOrdering
     single_thread: bool,
 }
 
-impl AtomicRMW {
+impl<P, V> AtomicRMW<P, V> {
     pub fn new(
         op: LLVMAtomicRMWBinOp,
-        ptr: ValueRef,
-        value: ValueRef,
+        ptr: P,
+        value: V,
         ordering: LLVMAtomicOrdering,
         single_thread: bool,
     ) -> Self {
@@ -69,7 +70,11 @@ impl AtomicRMW {
     }
 }
 
-impl InstructionBuilder for AtomicRMW {
+impl<P, V> InstructionBuilder for AtomicRMW<P, V>
+where
+    P: InstructionBuilder + fmt::Debug,
+    V: InstructionBuilder + fmt::Debug,
+{
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -79,8 +84,8 @@ impl InstructionBuilder for AtomicRMW {
             LLVMBuildAtomicRMW(
                 builder.as_raw(),
                 mem::transmute(self.op),
-                self.ptr.as_raw(),
-                self.value.as_raw(),
+                self.ptr.emit_to(builder).into().as_raw(),
+                self.value.emit_to(builder).into().as_raw(),
                 mem::transmute(self.ordering),
                 self.single_thread.as_bool(),
             )
@@ -89,20 +94,20 @@ impl InstructionBuilder for AtomicRMW {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AtomicCmpXchg {
-    ptr: ValueRef,
-    cmp: ValueRef,
-    new: ValueRef,
+pub struct AtomicCmpXchg<P, C, N> {
+    ptr: P,
+    cmp: C,
+    new: N,
     success_ordering: u32, // TODO: LLVMAtomicOrdering
     failure_ordering: u32, // TODO: LLVMAtomicOrdering
     single_thread: bool,
 }
 
-impl AtomicCmpXchg {
+impl<P, C, N> AtomicCmpXchg<P, C, N> {
     pub fn new(
-        ptr: ValueRef,
-        cmp: ValueRef,
-        new: ValueRef,
+        ptr: P,
+        cmp: C,
+        new: N,
         success_ordering: LLVMAtomicOrdering,
         failure_ordering: LLVMAtomicOrdering,
         single_thread: bool,
@@ -118,7 +123,12 @@ impl AtomicCmpXchg {
     }
 }
 
-impl InstructionBuilder for AtomicCmpXchg {
+impl<P, C, N> InstructionBuilder for AtomicCmpXchg<P, C, N>
+where
+    P: InstructionBuilder + fmt::Debug,
+    C: InstructionBuilder + fmt::Debug,
+    N: InstructionBuilder + fmt::Debug,
+{
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -127,9 +137,9 @@ impl InstructionBuilder for AtomicCmpXchg {
         unsafe {
             LLVMBuildAtomicCmpXchg(
                 builder.as_raw(),
-                self.ptr.as_raw(),
-                self.cmp.as_raw(),
-                self.new.as_raw(),
+                self.ptr.emit_to(builder).into().as_raw(),
+                self.cmp.emit_to(builder).into().as_raw(),
+                self.new.emit_to(builder).into().as_raw(),
                 mem::transmute(self.success_ordering),
                 mem::transmute(self.failure_ordering),
                 self.single_thread.as_bool(),
@@ -191,8 +201,8 @@ macro_rules! atomic {
     (xchg $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
             ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXchg,
-            $ptr.into(),
-            $value.into(),
+            $ptr,
+            $value,
             atomic_ordering!($ordering),
             false
         )
@@ -200,8 +210,8 @@ macro_rules! atomic {
     (add $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
             ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAdd,
-            $ptr.into(),
-            $value.into(),
+            $ptr,
+            $value,
             atomic_ordering!($ordering),
             false
         )
@@ -209,8 +219,8 @@ macro_rules! atomic {
     (sub $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
             ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpSub,
-            $ptr.into(),
-            $value.into(),
+            $ptr,
+            $value,
             atomic_ordering!($ordering),
             false
         )
@@ -218,8 +228,8 @@ macro_rules! atomic {
     (and $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
             ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAnd,
-            $ptr.into(),
-            $value.into(),
+            $ptr,
+            $value,
             atomic_ordering!($ordering),
             false
         )
@@ -227,8 +237,8 @@ macro_rules! atomic {
     (nand $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
             ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpNand,
-            $ptr.into(),
-            $value.into(),
+            $ptr,
+            $value,
             atomic_ordering!($ordering),
             false
         )
@@ -236,8 +246,8 @@ macro_rules! atomic {
     (or $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
             ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpOr,
-            $ptr.into(),
-            $value.into(),
+            $ptr,
+            $value,
             atomic_ordering!($ordering),
             false
         )
@@ -245,8 +255,8 @@ macro_rules! atomic {
     (xor $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
             ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXor,
-            $ptr.into(),
-            $value.into(),
+            $ptr,
+            $value,
             atomic_ordering!($ordering),
             false
         )
@@ -254,8 +264,8 @@ macro_rules! atomic {
     (max $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
             ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpMax,
-            $ptr.into(),
-            $value.into(),
+            $ptr,
+            $value,
             atomic_ordering!($ordering),
             false
         )
@@ -263,8 +273,8 @@ macro_rules! atomic {
     (min $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
             ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpMin,
-            $ptr.into(),
-            $value.into(),
+            $ptr,
+            $value,
             atomic_ordering!($ordering),
             false
         )
@@ -272,8 +282,8 @@ macro_rules! atomic {
     (xor $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
             ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXor,
-            $ptr.into(),
-            $value.into(),
+            $ptr,
+            $value,
             atomic_ordering!($ordering),
             false
         )
@@ -281,8 +291,8 @@ macro_rules! atomic {
     (umax $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
             ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpUMax,
-            $ptr.into(),
-            $value.into(),
+            $ptr,
+            $value,
             atomic_ordering!($ordering),
             false
         )
@@ -290,17 +300,17 @@ macro_rules! atomic {
     (umin $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
             ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpUMin,
-            $ptr.into(),
-            $value.into(),
+            $ptr,
+            $value,
             atomic_ordering!($ordering),
             false
         )
     );
     (cmpxchg $ptr:expr, $cmp:expr, $new:expr; $success_ordering:ident $failure_ordering:ident) => (
         $crate::insts::AtomicCmpXchg::new(
-            $ptr.into(),
-            $cmp.into(),
-            $new.into(),
+            $ptr,
+            $cmp,
+            $new,
             atomic_ordering!($success_ordering),
             atomic_ordering!($failure_ordering),
             false
@@ -334,7 +344,7 @@ mod tests {
         let i64_t = context.int64_t();
         let p_i64_t = i64_t.ptr_t();
 
-        let function_type = FunctionType::new(context.void_t(), &[p_i64_t.into()], false);
+        let function_type = FunctionType::new(context.void_t(), types![p_i64_t], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);

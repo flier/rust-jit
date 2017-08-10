@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt;
 
 use llvm::core::*;
 use llvm::prelude::*;
@@ -9,8 +10,8 @@ use value::{Instruction, ValueRef};
 
 /// an instruction for type-safe pointer arithmetic to access elements of arrays and structs
 #[derive(Clone, Debug, PartialEq)]
-pub struct GetElementPtr<'a> {
-    ptr: ValueRef,
+pub struct GetElementPtr<'a, P> {
+    ptr: P,
     gep: GEP,
     name: Cow<'a, str>,
 }
@@ -22,8 +23,8 @@ enum GEP {
     Struct(u32),
 }
 
-impl<'a> GetElementPtr<'a> {
-    pub fn new(ptr: ValueRef, indices: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
+impl<'a, P> GetElementPtr<'a, P> {
+    pub fn new(ptr: P, indices: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
         GetElementPtr {
             ptr,
             gep: GEP::Indices(indices),
@@ -31,7 +32,7 @@ impl<'a> GetElementPtr<'a> {
         }
     }
 
-    pub fn in_bounds(ptr: ValueRef, indices: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
+    pub fn in_bounds(ptr: P, indices: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
         GetElementPtr {
             ptr,
             gep: GEP::InBounds(indices),
@@ -39,7 +40,7 @@ impl<'a> GetElementPtr<'a> {
         }
     }
 
-    pub fn in_struct(ptr: ValueRef, index: u32, name: Cow<'a, str>) -> Self {
+    pub fn in_struct(ptr: P, index: u32, name: Cow<'a, str>) -> Self {
         GetElementPtr {
             ptr,
             gep: GEP::Struct(index),
@@ -48,7 +49,10 @@ impl<'a> GetElementPtr<'a> {
     }
 }
 
-impl<'a> InstructionBuilder for GetElementPtr<'a> {
+impl<'a, P> InstructionBuilder for GetElementPtr<'a, P>
+where
+    P: InstructionBuilder + fmt::Debug,
+{
     type Target = GetElementPtrInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -71,7 +75,7 @@ impl<'a> InstructionBuilder for GetElementPtr<'a> {
 
                     gep(
                         builder.as_raw(),
-                        self.ptr.as_raw(),
+                        self.ptr.emit_to(builder).into().as_raw(),
                         indices.as_mut_ptr(),
                         indices.len() as u32,
                         unchecked_cstring(self.name.clone()).as_ptr(),
@@ -80,7 +84,7 @@ impl<'a> InstructionBuilder for GetElementPtr<'a> {
                 GEP::Struct(index) => {
                     LLVMBuildStructGEP(
                         builder.as_raw(),
-                        self.ptr.as_raw(),
+                        self.ptr.emit_to(builder).into().as_raw(),
                         index,
                         unchecked_cstring(self.name.clone()).as_ptr(),
                     )
@@ -130,10 +134,10 @@ impl GetElementPtrInst {
 #[macro_export]
 macro_rules! gep {
     ($ptr:expr, $( $index:expr ),* ; $name:expr) => ({
-        $crate::insts::GetElementPtr::new($ptr.into(), vec![ $( $index.into() ),* ], $name.into())
+        $crate::insts::GetElementPtr::new($ptr, vec![ $( $index.into() ),* ], $name.into())
     });
     (inbounds $ptr:expr, $( $index:expr ),* ; $name:expr) => ({
-        $crate::insts::GetElementPtr::in_bounds($ptr.into(), vec![ $( $index.into() ),* ], $name.into())
+        $crate::insts::GetElementPtr::in_bounds($ptr, vec![ $( $index.into() ),* ], $name.into())
     });
 
     ($ptr:expr, $( $index:expr ),*) => ({
@@ -147,7 +151,7 @@ macro_rules! gep {
 #[macro_export]
 macro_rules! struct_gep {
     ($struct_ptr:expr, $index:expr ; $name:expr) => ({
-        $crate::insts::GetElementPtr::in_struct($struct_ptr.into(), $index, $name.into())
+        $crate::insts::GetElementPtr::in_struct($struct_ptr, $index, $name.into())
     });
     ($struct_ptr:expr, $index:expr) => ({
         struct_gep!($struct_ptr, $index; "struct_gep")
@@ -177,8 +181,8 @@ mod tests {
         let vector_t = i64_t.vector_t(4);
         let struct_t = context.named_struct_t("struct", &[i32_t, i64_t, vector_t.into()], false);
 
-        let p_array = alloca!(array_t; "p_array").emit_to(&builder);
-        let p_vector = alloca!(vector_t; "p_vector").emit_to(&builder);
+        let p_array = alloca!(array_t; "p_array");
+        let p_vector = alloca!(vector_t; "p_vector");
         let p_struct = alloca!(struct_t; "p_struct").emit_to(&builder);
 
         assert_eq!(

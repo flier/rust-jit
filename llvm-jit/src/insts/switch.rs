@@ -1,3 +1,4 @@
+use std::fmt;
 use std::ptr;
 
 use llvm::core::*;
@@ -10,14 +11,14 @@ use value::{AsValueRef, Instruction, ValueRef};
 /// Create a switch instruction with the specified value, default dest,
 /// and with a hint for the number of cases that will be added (for efficient allocation).
 #[derive(Clone, Debug, PartialEq)]
-pub struct Switch {
-    v: ValueRef,
+pub struct Switch<V> {
+    v: V,
     dest: Option<BasicBlock>,
     cases: Vec<(ValueRef, BasicBlock)>,
 }
 
-impl Switch {
-    pub fn on(v: ValueRef) -> Self {
+impl<V> Switch<V> {
+    pub fn on(v: V) -> Self {
         Switch {
             v: v,
             dest: None,
@@ -37,7 +38,10 @@ impl Switch {
     }
 }
 
-impl InstructionBuilder for Switch {
+impl<V> InstructionBuilder for Switch<V>
+where
+    V: InstructionBuilder + fmt::Debug,
+{
     type Target = SwitchInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -46,7 +50,7 @@ impl InstructionBuilder for Switch {
         let switch: SwitchInst = unsafe {
             LLVMBuildSwitch(
                 builder.as_raw(),
-                self.v.as_raw(),
+                self.v.emit_to(builder).into().as_raw(),
                 self.dest.map_or(ptr::null_mut(), |bb| bb.as_raw()),
                 self.cases.len() as u32,
             )
@@ -87,13 +91,13 @@ impl SwitchInst {
 #[macro_export]
 macro_rules! switch {
     ($cond:expr; _ => $default:expr , $( $on:expr => $dest:expr ),*) => ({
-        $crate::insts::Switch::on($cond.into()).default($default) $( .case($on.into(), $dest) )*
+        $crate::insts::Switch::on($cond).default($default) $( .case($on.into(), $dest) )*
     });
     ($cond:expr; _ => $default:expr) => ({
-        $crate::insts::Switch::on($cond.into()).default($default)
+        $crate::insts::Switch::on($cond).default($default)
     });
     ($cond:expr; $( $on:expr => $dest:expr ),*) => ({
-        $crate::insts::Switch::on($cond.into()) $( .case($on.into(), $dest) )*
+        $crate::insts::Switch::on($cond) $( .case($on.into(), $dest) )*
     });
 }
 

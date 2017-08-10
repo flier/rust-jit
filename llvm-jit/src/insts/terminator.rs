@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt;
 use std::ptr;
 
 use llvm::core::*;
@@ -113,36 +114,36 @@ macro_rules! landing_pad {
 
 /// The `resume` instruction is a terminator instruction that has no successors.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Resume(ValueRef);
+pub struct Resume<V>(V);
 
-impl Resume {
-    pub fn new(result: ValueRef) -> Self {
+impl<V> Resume<V> {
+    pub fn new(result: V) -> Self {
         Resume(result)
     }
 }
 
-impl InstructionBuilder for Resume {
+impl<V> InstructionBuilder for Resume<V>
+where
+    V: InstructionBuilder + fmt::Debug,
+{
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe { LLVMBuildResume(builder.as_raw(), self.0.as_raw()) }.into()
+        unsafe { LLVMBuildResume(builder.as_raw(), self.0.emit_to(builder).into().as_raw()) }.into()
     }
 }
 
 /// The `resume` instruction is a terminator instruction that has no successors.
-pub fn resume<R>(result: R) -> Resume
-where
-    R: Into<ValueRef>,
-{
-    Resume::new(result.into())
+pub fn resume<V>(result: V) -> Resume<V> {
+    Resume::new(result)
 }
 
 #[macro_export]
 macro_rules! resume {
     ($result:expr) => (
-        $crate::insts::Resume::new($result.into())
+        $crate::insts::Resume::new($result)
     )
 }
 
@@ -186,7 +187,10 @@ mod tests {
         let i64_t = context.int64_t();
 
         assert_eq!(
-            resume(i64_t.uint(123)).emit_to(&builder).to_string().trim(),
+            resume!(i64_t.uint(123))
+                .emit_to(&builder)
+                .to_string()
+                .trim(),
             "resume i64 123"
         );
         assert_eq!(

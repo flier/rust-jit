@@ -1,21 +1,22 @@
 use std::borrow::Cow;
+use std::fmt;
 
 use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
 use utils::unchecked_cstring;
-use value::{Instruction, ValueRef};
+use value::Instruction;
 
 /// This instruction extracts a struct member or array element value from an aggregate value.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExtractValue<'a> {
-    aggregate: ValueRef,
+pub struct ExtractValue<'a, T> {
+    aggregate: T,
     index: u32,
     name: Cow<'a, str>,
 }
 
-impl<'a> ExtractValue<'a> {
-    pub fn new(aggregate: ValueRef, index: u32, name: Cow<'a, str>) -> Self {
+impl<'a, T> ExtractValue<'a, T> {
+    pub fn new(aggregate: T, index: u32, name: Cow<'a, str>) -> Self {
         ExtractValue {
             aggregate,
             index,
@@ -24,7 +25,10 @@ impl<'a> ExtractValue<'a> {
     }
 }
 
-impl<'a> InstructionBuilder for ExtractValue<'a> {
+impl<'a, T> InstructionBuilder for ExtractValue<'a, T>
+where
+    T: InstructionBuilder + fmt::Debug,
+{
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -33,7 +37,7 @@ impl<'a> InstructionBuilder for ExtractValue<'a> {
         unsafe {
             LLVMBuildExtractValue(
                 builder.as_raw(),
-                self.aggregate.as_raw(),
+                self.aggregate.emit_to(builder).into().as_raw(),
                 self.index,
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
@@ -42,18 +46,18 @@ impl<'a> InstructionBuilder for ExtractValue<'a> {
 }
 
 /// The `extractvalue` instruction extracts the value of a member field from an aggregate value.
-pub fn extract_value<'a, V: Into<ValueRef>, N: Into<Cow<'a, str>>>(
-    aggregate: V,
+pub fn extract_value<'a, T, N: Into<Cow<'a, str>>>(
+    aggregate: T,
     index: u32,
     name: N,
-) -> ExtractValue<'a> {
-    ExtractValue::new(aggregate.into(), index, name.into())
+) -> ExtractValue<'a, T> {
+    ExtractValue::new(aggregate, index, name.into())
 }
 
 #[macro_export]
 macro_rules! extract_value {
     ($aggregate:expr, $index:expr; $name:expr) => (
-        $crate::insts::ExtractValue::new($aggregate.into(), $index as u32, $name.into())
+        $crate::insts::ExtractValue::new($aggregate, $index as u32, $name.into())
     );
     ($aggregate:expr, $index:expr) => {
         extract_value!($aggregate, $index; "extract_value")
@@ -62,15 +66,15 @@ macro_rules! extract_value {
 
 /// This instruction inserts a struct field of array element value into an aggregate value.
 #[derive(Clone, Debug, PartialEq)]
-pub struct InsertValue<'a> {
-    aggregate: ValueRef,
-    element: ValueRef,
+pub struct InsertValue<'a, T, E> {
+    aggregate: T,
+    element: E,
     index: u32,
     name: Cow<'a, str>,
 }
 
-impl<'a> InsertValue<'a> {
-    pub fn new(aggregate: ValueRef, element: ValueRef, index: u32, name: Cow<'a, str>) -> Self {
+impl<'a, T, E> InsertValue<'a, T, E> {
+    pub fn new(aggregate: T, element: E, index: u32, name: Cow<'a, str>) -> Self {
         InsertValue {
             aggregate,
             element,
@@ -80,7 +84,11 @@ impl<'a> InsertValue<'a> {
     }
 }
 
-impl<'a> InstructionBuilder for InsertValue<'a> {
+impl<'a, T, E> InstructionBuilder for InsertValue<'a, T, E>
+where
+    T: InstructionBuilder + fmt::Debug,
+    E: InstructionBuilder + fmt::Debug,
+{
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -89,8 +97,8 @@ impl<'a> InstructionBuilder for InsertValue<'a> {
         unsafe {
             LLVMBuildInsertValue(
                 builder.as_raw(),
-                self.aggregate.as_raw(),
-                self.element.as_raw(),
+                self.aggregate.emit_to(builder).into().as_raw(),
+                self.element.emit_to(builder).into().as_raw(),
                 self.index,
                 unchecked_cstring(self.name.clone()).as_ptr(),
             )
@@ -99,19 +107,19 @@ impl<'a> InstructionBuilder for InsertValue<'a> {
 }
 
 /// The `insertvalue` instruction inserts a value into a member field in an aggregate value.
-pub fn insert_value<'a, V: Into<ValueRef>, T: Into<ValueRef>, N: Into<Cow<'a, str>>>(
-    aggregate: V,
-    element: T,
+pub fn insert_value<'a, T, E, N: Into<Cow<'a, str>>>(
+    aggregate: T,
+    element: E,
     index: u32,
     name: N,
-) -> InsertValue<'a> {
-    InsertValue::new(aggregate.into(), element.into(), index, name.into())
+) -> InsertValue<'a, T, E> {
+    InsertValue::new(aggregate, element, index, name.into())
 }
 
 #[macro_export]
 macro_rules! insert_value {
     ($aggregate:expr, $element:expr, $index:expr; $name:expr) => (
-        $crate::insts::InsertValue::new($aggregate.into(), $element.into(), $index as u32, $name.into())
+        $crate::insts::InsertValue::new($aggregate, $element, $index as u32, $name.into())
     );
     ($aggregate:expr, $element:expr, $index:expr) => {
         insert_value!($aggregate, $element, $index; "extract_value")
