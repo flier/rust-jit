@@ -64,7 +64,7 @@ mod lexer {
                 Token::Number(numberStr.parse().unwrap())
             } else if c == '#' {
                 // Comment until end of line.
-                let mut iter = iter.skip_while(|&c| c != '\n' || c != '\r');
+                let mut iter = iter.skip_while(|&c| c != '\n' && c != '\r');
 
                 gettok(&mut iter)
             } else {
