@@ -47,7 +47,7 @@ pub use self::atomic::{AtomicCmpXchg, AtomicRMW, Fence};
 pub use self::binop::*;
 pub use self::br::{Br, BranchInst, CondBr, IndirectBr};
 pub use self::builder::{IRBuilder, InstructionBuilder, Position};
-pub use self::call::{Call, CallConv, CallInst, CallSite};
+pub use self::call::{Call, CallConv, CallInst, CallSite, call};
 pub use self::cast::*;
 pub use self::cmp::{FCmp, FCmpInst, ICmp, ICmpInst};
 pub use self::gep::{GetElementPtr, GetElementPtrInst};

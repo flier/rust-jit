@@ -118,10 +118,19 @@ impl CallInst {
     }
 }
 
+pub fn call<'a, F, A, N>(func: F, args: A, name: N) -> Call<'a>
+where
+    F: Into<Function>,
+    A: AsRef<[ValueRef]>,
+    N: Into<Cow<'a, str>>,
+{
+    Call::new(func.into(), args.as_ref().to_vec(), name.into())
+}
+
 #[macro_export]
 macro_rules! call {
     ($func:expr, $( $arg:expr ),*; $name:expr) => ({
-        $crate::insts::Call::new($func.into(), vec![ $( $arg.into() ),* ], $name.into())
+        $crate::insts::call($func, vec![ $( $arg.into() ),* ], $name)
     });
     ($func:expr, $( $arg:expr ),*) => ({
         call!($func, $( $arg ),*; "call")
