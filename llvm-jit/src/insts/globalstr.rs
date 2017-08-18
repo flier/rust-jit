@@ -50,10 +50,10 @@ where
 #[macro_export]
 macro_rules! global_str {
     ($s:expr; $name:expr) => (
-        $crate::insts::global_str($s.into(), $name)
+        $crate::insts::global_str($s, $name)
     );
     ($s:expr) => {
-        $crate::insts::global_str($s.into(), "")
+        $crate::insts::global_str($s, "")
     }
 }
 
@@ -99,10 +99,10 @@ where
 #[macro_export]
 macro_rules! global_str_ptr {
     ($s:expr; $name:expr) => (
-        $crate::insts::global_str_ptr::new($s, $name)
+        $crate::insts::global_str_ptr($s, $name)
     );
     ($s:expr) => {
-        $crate::insts::global_str_ptr::new($s, "")
+        $crate::insts::global_str_ptr($s, "")
     }
 }
 
@@ -124,7 +124,7 @@ mod tests {
         builder.position_at_end(bb);
 
         assert_eq!(
-            global_str("global_str", "global_str")
+            global_str!("global_str"; "global_str")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -132,7 +132,7 @@ mod tests {
         );
 
         assert_eq!(
-            global_str_ptr("global_str_ptr", "global_str_ptr")
+            global_str_ptr!("global_str_ptr"; "global_str_ptr")
                 .emit_to(&builder)
                 .to_string()
                 .trim(),

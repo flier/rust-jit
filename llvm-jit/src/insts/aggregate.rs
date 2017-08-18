@@ -57,7 +57,7 @@ pub fn extract_value<'a, T, N: Into<Cow<'a, str>>>(
 #[macro_export]
 macro_rules! extract_value {
     ($aggregate:expr, $index:expr; $name:expr) => (
-        $crate::insts::extract_value($aggregate, $index as u32, $name.into())
+        $crate::insts::extract_value($aggregate, $index as u32, $name)
     );
     ($aggregate:expr, $index:expr) => {
         extract_value!($aggregate, $index; "extract_value")
@@ -119,16 +119,15 @@ pub fn insert_value<'a, T, E, N: Into<Cow<'a, str>>>(
 #[macro_export]
 macro_rules! insert_value {
     ($aggregate:expr, $element:expr, $index:expr; $name:expr) => (
-        $crate::insts::insert_value($aggregate, $element, $index as u32, $name.into())
+        $crate::insts::insert_value($aggregate, $element, $index as u32, $name)
     );
     ($aggregate:expr, $element:expr, $index:expr) => {
-        insert_value!($aggregate, $element, $index; "extract_value")
+        insert_value!($aggregate, $element, $index; "insert_value")
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use insts::*;
     use prelude::*;
 
@@ -152,7 +151,7 @@ mod tests {
         let arg1_struct = function.get_param(1).unwrap();
 
         assert_eq!(
-            extract_value(arg0_array, 1, "extract_value")
+            extract_value!(arg0_array, 1)
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -160,7 +159,7 @@ mod tests {
         );
 
         assert_eq!(
-            extract_value(arg1_struct, 1, "extract_value")
+            extract_value!(arg1_struct, 1)
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -168,7 +167,7 @@ mod tests {
         );
 
         assert_eq!(
-            insert_value(arg0_array, i64_t.int(123), 1, "insert_value")
+            insert_value!(arg0_array, i64_t.int(123), 1)
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
@@ -176,7 +175,7 @@ mod tests {
         );
 
         assert_eq!(
-            insert_value(arg1_struct, i64_t.int(123), 1, "insert_value")
+            insert_value!(arg1_struct, i64_t.int(123), 1)
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
