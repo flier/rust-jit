@@ -622,6 +622,7 @@ mod codegen {
 
     impl ast::Expr for ast::VariableExpr {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
+            // Look this variable up in the function.
             gen.named_values.get(&self.name).map(|v| *v).ok_or_else(
                 || {
                     ErrorKind::UnknownVariable(self.name.clone()).into()
@@ -643,8 +644,9 @@ mod codegen {
                     ast::BinOp::Sub => sub!(lhs, rhs; "subtmp").emit_to(&gen.builder),
                     ast::BinOp::Mul => mul!(lhs, rhs; "multmp").emit_to(&gen.builder),
                     ast::BinOp::LessThen => {
-                        uitofp!(fcmp!(ult lhs, rhs; "cmptmp"), f64_t; "booltmp")
-                            .emit_to(&gen.builder)
+                        let lhs = fcmp!(ult lhs, rhs; "cmptmp");
+                        // Convert bool 0/1 to double 0.0 or 1.0
+                        uitofp!(lhs, f64_t; "booltmp").emit_to(&gen.builder)
                     }
                 }.into(),
             )
@@ -653,7 +655,9 @@ mod codegen {
 
     impl ast::Expr for ast::CallExpr {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
+            // Look up the name in the global module table.
             if let Some(func) = gen.module.get_function(&self.callee) {
+                // If argument mismatch error.
                 if self.args.len() != func.param_count() {
                     bail!(ErrorKind::IncorrectArguments(
                         self.args.len(),
@@ -676,11 +680,13 @@ mod codegen {
 
     impl ast::Expr for ast::Prototype {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
+            // Make the function type:  double(double,double) etc.
             let f64_t = gen.context.double_t();
             let doubles = vec![f64_t; self.args.len()];
             let func_t = FunctionType::new(f64_t, &doubles, false);
             let func = gen.module.add_function(&self.name, func_t);
 
+            // Set names for all arguments.
             for (name, arg) in self.args.iter().zip(func.params()) {
                 arg.set_name(name);
             }
@@ -691,11 +697,22 @@ mod codegen {
 
     impl ast::Expr for ast::Function {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
-            if let Some(func) = gen.module.get_function(&self.proto.name) {
-                func.delete();
-            }
+            // First, check for an existing function from a previous 'extern' declaration.
+            let func = gen.module.get_function(&self.proto.name).and_then(|func| {
+                if !func.is_empty() {
+                    // overwrite the exists function with same name
+                    func.delete();
 
-            let func: Function = self.proto.codegen(gen)?.into();
+                    None
+                } else {
+                    Some(func)
+                }
+            });
+            let func = if let Some(func) = func {
+                func
+            } else {
+                self.proto.codegen(gen)?.into()
+            };
 
             // Create a new basic block to start insertion into.
             let bb = func.append_basic_block_in_context("entry", &gen.context);
@@ -710,8 +727,10 @@ mod codegen {
 
             let ret_val = self.body.codegen(gen)?;
 
+            // Finish off the function.
             ret!(ret_val).emit_to(&gen.builder);
 
+            // Validate the generated code, checking for consistency.
             //func.verify()?;
 
             Ok(func.into())
@@ -727,7 +746,7 @@ use errors::Result;
 use lexer::Token;
 
 //===----------------------------------------------------------------------===//
-// Top-Level parsing
+// Top-Level parsing and JIT Driver
 //===----------------------------------------------------------------------===//
 
 impl<I> parser::Parser<I>
