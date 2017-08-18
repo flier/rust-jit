@@ -211,40 +211,40 @@ mod ast {
     /// Expr - Base class for all expression nodes.
     pub trait Expr: fmt::Debug {}
 
-    /// Number - Expression class for numeric literals like "1.0".
+    /// NumberExpr - Expression class for numeric literals like "1.0".
     #[derive(Debug)]
-    pub struct Number {
+    pub struct NumberExpr {
         pub val: f64,
     }
 
-    impl Expr for Number {}
+    impl Expr for NumberExpr {}
 
-    /// Variable - Expression class for referencing a variable, like "a".
+    /// VariableExpr - Expression class for referencing a variable, like "a".
     #[derive(Debug)]
-    pub struct Variable {
+    pub struct VariableExpr {
         pub name: String,
     }
 
-    impl Expr for Variable {}
+    impl Expr for VariableExpr {}
 
-    /// Binary - Expression class for a binary operator.
+    /// BinaryExpr - Expression class for a binary operator.
     #[derive(Debug)]
-    pub struct Binary {
+    pub struct BinaryExpr {
         pub op: BinOp,
         pub lhs: Box<Expr>,
         pub rhs: Box<Expr>,
     }
 
-    impl Expr for Binary {}
+    impl Expr for BinaryExpr {}
 
-    /// Call - Expression class for function calls.
+    /// CallExpr - Expression class for function calls.
     #[derive(Debug)]
-    pub struct Call {
+    pub struct CallExpr {
         pub callee: String,
         pub args: Vec<Box<Expr>>,
     }
 
-    impl Expr for Call {}
+    impl Expr for CallExpr {}
 
     /// Prototype - This class represents the "prototype" for a function,
     /// which captures its name, and its argument names (thus implicitly the number
@@ -323,7 +323,7 @@ mod parser {
                 Token::Number(val) => {
                     self.next_token(); // consume the number
 
-                    Ok(Box::new(ast::Number { val }))
+                    Ok(Box::new(ast::NumberExpr { val }))
                 }
                 ref token => {
                     bail!(ErrorKind::UnexpectedToken(
@@ -410,9 +410,9 @@ mod parser {
                         }
                     }
 
-                    Ok(Box::new(ast::Call { callee: name, args }))
+                    Ok(Box::new(ast::CallExpr { callee: name, args }))
                 }
-                _ => Ok(Box::new(ast::Variable { name: name.clone() })),
+                _ => Ok(Box::new(ast::VariableExpr { name: name.clone() })),
             }
         }
 
@@ -467,7 +467,7 @@ mod parser {
                     rhs = self.parse_bin_op_rhs(tok_prec + 1, rhs)?;
                 }
 
-                lhs = Box::new(ast::Binary { op, lhs, rhs })
+                lhs = Box::new(ast::BinaryExpr { op, lhs, rhs })
             }
         }
 
