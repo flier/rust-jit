@@ -152,10 +152,10 @@ where
 /// They can only be given `acquire`, `release`, `acq_rel`, and `seq_cst` orderings.
 #[macro_export]
 macro_rules! fence_ordering {
-    (acquire) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquire);
-    (release) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingRelease);
-    (acq_rel) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquireRelease);
-    (seq_cst) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingSequentiallyConsistent);
+    (acquire) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquire);
+    (release) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingRelease);
+    (acq_rel) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquireRelease);
+    (seq_cst) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingSequentiallyConsistent);
     ($ordering:ident) => ("`fence` instruction can only be given acquire, release, acq_rel, and seq_cst orderings.");
 }
 
@@ -186,13 +186,13 @@ macro_rules! fence {
 
 #[macro_export]
 macro_rules! atomic_ordering {
-    (not_atomic) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingNotAtomic);
-    (unordered) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingUnordered);
-    (monotonic) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingMonotonic);
-    (acquire) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquire);
-    (release) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingRelease);
-    (acq_rel) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquireRelease);
-    (seq_cst) => (::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingSequentiallyConsistent);
+    (not_atomic) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingNotAtomic);
+    (unordered) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingUnordered);
+    (monotonic) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingMonotonic);
+    (acquire) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquire);
+    (release) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingRelease);
+    (acq_rel) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquireRelease);
+    (seq_cst) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingSequentiallyConsistent);
     ($ordering:ident) => ("unknown atomic ordering");
 }
 
@@ -200,7 +200,7 @@ macro_rules! atomic_ordering {
 macro_rules! atomic {
     (xchg $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
-            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXchg,
+            $crate::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXchg,
             $ptr,
             $value,
             atomic_ordering!($ordering),
@@ -209,7 +209,7 @@ macro_rules! atomic {
     );
     (add $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
-            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAdd,
+            $crate::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAdd,
             $ptr,
             $value,
             atomic_ordering!($ordering),
@@ -218,7 +218,7 @@ macro_rules! atomic {
     );
     (sub $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
-            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpSub,
+            $crate::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpSub,
             $ptr,
             $value,
             atomic_ordering!($ordering),
@@ -227,7 +227,7 @@ macro_rules! atomic {
     );
     (and $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
-            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAnd,
+            $crate::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAnd,
             $ptr,
             $value,
             atomic_ordering!($ordering),
@@ -236,7 +236,7 @@ macro_rules! atomic {
     );
     (nand $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
-            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpNand,
+            $crate::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpNand,
             $ptr,
             $value,
             atomic_ordering!($ordering),
@@ -245,7 +245,7 @@ macro_rules! atomic {
     );
     (or $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
-            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpOr,
+            $crate::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpOr,
             $ptr,
             $value,
             atomic_ordering!($ordering),
@@ -254,7 +254,7 @@ macro_rules! atomic {
     );
     (xor $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
-            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXor,
+            $crate::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXor,
             $ptr,
             $value,
             atomic_ordering!($ordering),
@@ -263,7 +263,7 @@ macro_rules! atomic {
     );
     (max $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
-            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpMax,
+            $crate::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpMax,
             $ptr,
             $value,
             atomic_ordering!($ordering),
@@ -272,7 +272,7 @@ macro_rules! atomic {
     );
     (min $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
-            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpMin,
+            $crate::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpMin,
             $ptr,
             $value,
             atomic_ordering!($ordering),
@@ -281,7 +281,7 @@ macro_rules! atomic {
     );
     (xor $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
-            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXor,
+            $crate::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXor,
             $ptr,
             $value,
             atomic_ordering!($ordering),
@@ -290,7 +290,7 @@ macro_rules! atomic {
     );
     (umax $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
-            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpUMax,
+            $crate::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpUMax,
             $ptr,
             $value,
             atomic_ordering!($ordering),
@@ -299,7 +299,7 @@ macro_rules! atomic {
     );
     (umin $ptr:expr, $value:expr; $ordering:ident) => (
         $crate::insts::AtomicRMW::new(
-            ::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpUMin,
+            $crate::llvm::LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpUMin,
             $ptr,
             $value,
             atomic_ordering!($ordering),

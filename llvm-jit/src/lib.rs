@@ -14,7 +14,12 @@ extern crate lazy_static;
 extern crate bitflags;
 extern crate hexplay;
 extern crate libc;
-extern crate llvm_sys as llvm;
+extern crate llvm_sys;
+
+#[doc(hidden)]
+pub mod llvm {
+    pub use llvm_sys::*;
+}
 
 #[cfg(test)]
 extern crate pretty_env_logger;
