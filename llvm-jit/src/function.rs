@@ -135,6 +135,11 @@ impl Function {
         block
     }
 
+    /// Obtain the count of parameters
+    pub fn param_count(&self) -> usize {
+        unsafe { LLVMCountParams(self.as_raw()) as usize }
+    }
+
     /// Obtain an iterator to the parameters in a function.
     pub fn params(&self) -> ParamIter {
         ParamIter::new(self.as_raw())
