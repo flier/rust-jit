@@ -286,6 +286,12 @@ macro_rules! inherit_from {
             }
         }
 
+        impl ::std::convert::From<$parent> for $ty {
+            fn from(f: $parent) -> Self {
+                $ty::from_raw(f.as_raw())
+            }
+        }
+
         impl ::std::convert::From<$raw> for $ty {
             fn from(f: $raw) -> Self {
                 $ty::from_raw(f)
