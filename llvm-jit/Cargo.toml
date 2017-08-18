@@ -6,31 +6,6 @@ authors = ["Flier Lu <flier.lu@gmail.com>"]
 [lib]
 doctest = false
 
-[[example]]
-name = "how-to-use-jit"
-path = "examples/how-to-use-jit.rs"
-
-[[example]]
-name = "module-maker"
-path = "examples/module-maker.rs"
-
-[[example]]
-name = "nop-function"
-path = "examples/nop-function.rs"
-
-[[example]]
-name = "jit-function"
-path = "examples/jit-function.rs"
-
-[[example]]
-name = "parallel-jit"
-path = "examples/parallel-jit.rs"
-
-[[example]]
-name = "kaleidoscope-chapter2"
-path = "examples/kaleidoscope/chapter2.rs"
-test = false
-
 [dependencies]
 log = "0.3"
 error-chain = "0.10"

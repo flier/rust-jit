@@ -27,8 +27,6 @@ mod errors {
 //===----------------------------------------------------------------------===//
 
 mod lexer {
-    use std::fmt;
-
     // The lexer returns tokens [0-255] if it is an unknown character, otherwise one
     // of these for known things.
     #[derive(Clone, Debug, PartialEq)]
@@ -311,21 +309,22 @@ mod parser {
         }
 
         /// Get the precedence of the pending binary operator token.
-        fn get_tok_precedence(&self) -> Result<i32> {
+        fn get_tok_precedence(&self) -> Option<i32> {
             if let Some(op) = self.cur_token.as_bin_op() {
-                Ok(op as i32)
+                Some(op as i32)
             } else {
-                bail!(ErrorKind::UnexpectedToken(
-                    "Expected `<`, `+`, `-` or `*`".into(),
-                    self.cur_token.clone(),
-                ));
+                None
             }
         }
 
         /// numberexpr ::= number
         fn parse_number_expr(&mut self) -> Result<Box<ast::Expr>> {
             match self.cur_token {
-                Token::Number(val) => Ok(Box::new(ast::Number { val })),
+                Token::Number(val) => {
+                    self.next_token(); // consume the number
+
+                    Ok(Box::new(ast::Number { val }))
+                }
                 ref token => {
                     bail!(ErrorKind::UnexpectedToken(
                         "Expected `number`".into(),
@@ -339,10 +338,16 @@ mod parser {
         fn parse_paren_expr(&mut self) -> Result<Box<ast::Expr>> {
             match self.cur_token {
                 Token::Character('(') => {
+                    self.next_token(); // eat (.
+
                     let expr = self.parse_expression();
 
-                    match *self.next_token() {
-                        Token::Character(')') => expr,
+                    match self.cur_token {
+                        Token::Character(')') => {
+                            self.next_token(); // eat ).
+
+                            expr
+                        }
                         ref token => {
                             bail!(ErrorKind::UnexpectedToken(
                                 "Expected `)`".into(),
@@ -374,16 +379,28 @@ mod parser {
                 }
             };
 
-            match *self.next_token() {
+            self.next_token(); // eat identifier.
+
+            match self.cur_token {
                 Token::Character('(') => {
+                    self.next_token(); // eat (
+
                     let mut args = vec![];
 
                     loop {
                         args.push(self.parse_expression()?);
 
-                        match *self.next_token() {
-                            Token::Character(')') => break,
-                            Token::Character(',') => {}
+                        match self.cur_token {
+                            Token::Character(')') => {
+                                self.next_token(); // Eat the ')'.
+
+                                break;
+                            }
+                            Token::Character(',') => {
+                                self.next_token(); // Eat the ','.
+
+                                continue;
+                            }
                             ref token => {
                                 bail!(ErrorKind::UnexpectedToken(
                                     "Expected `)` or `,` in argument list".into(),
@@ -426,7 +443,7 @@ mod parser {
         ) -> Result<Box<ast::Expr>> {
             // If this is a binop, find its precedence.
             loop {
-                let tok_prec = self.get_tok_precedence()?;
+                let tok_prec = self.get_tok_precedence().unwrap_or(-1);
 
                 // If this is a binop that binds at least as tightly as the current binop,
                 // consume it, otherwise we are done.
@@ -437,12 +454,14 @@ mod parser {
                 // Okay, we know this is a binop.
                 let op = self.cur_token.as_bin_op().unwrap();
 
+                self.next_token(); // eat binop
+
                 // Okay, we know this is a binop.
                 let mut rhs = self.parse_primary()?;
 
                 // If BinOp binds less tightly with RHS than the operator after RHS,
                 // let the pending operator take RHS as its LHS.
-                let next_prec = self.get_tok_precedence()?;
+                let next_prec = self.get_tok_precedence().unwrap_or(-1);
 
                 if tok_prec < next_prec {
                     rhs = self.parse_bin_op_rhs(tok_prec + 1, rhs)?;
@@ -474,8 +493,10 @@ mod parser {
                 }
             };
 
-            match *self.next_token() {
-                Token::Character('(') => {}
+            match *self.next_token() {  // Eat the `id`
+                Token::Character('(') => {
+                    // ignore it
+                }
                 ref token => {
                     bail!(ErrorKind::UnexpectedToken(
                         "Expected `(` in prototype".into(),
@@ -491,7 +512,9 @@ mod parser {
             }
 
             match self.cur_token {
-                Token::Character(')') => {}
+                Token::Character(')') => {
+                    self.next_token(); // eat ')'.
+                }
                 ref token => {
                     bail!(ErrorKind::UnexpectedToken(
                         "Expected `)` in prototype".into(),
@@ -506,7 +529,9 @@ mod parser {
         /// definition ::= 'def' prototype expression
         pub fn parse_definition(&mut self) -> Result<ast::Function> {
             match self.cur_token {
-                Token::Def => {}
+                Token::Def => {
+                    self.next_token(); // eat def.
+                }
                 ref token => {
                     bail!(ErrorKind::UnexpectedToken(
                         "Expected `def` in definition".into(),
@@ -536,6 +561,7 @@ mod parser {
 
         /// external ::= 'extern' prototype
         pub fn parse_extern(&mut self) -> Result<ast::Prototype> {
+            self.next_token(); // eat extern.
             self.parse_prototype()
         }
     }
