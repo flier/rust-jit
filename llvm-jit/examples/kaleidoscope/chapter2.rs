@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate log;
+extern crate pretty_env_logger;
 #[macro_use]
 extern crate error_chain;
 extern crate rustyline;
@@ -26,6 +27,8 @@ mod errors {
 //===----------------------------------------------------------------------===//
 
 mod lexer {
+    use std::fmt;
+
     // The lexer returns tokens [0-255] if it is an unknown character, otherwise one
     // of these for known things.
     #[derive(Clone, Debug, PartialEq)]
@@ -40,40 +43,140 @@ mod lexer {
         Identifier(String),
         Number(f64),
         Character(char),
+        Comment(String),
     }
 
-    /// gettok - Return the next token from standard input.
-    pub fn gettok<I: Iterator<Item = char>>(iter: &mut I) -> Token {
-        // Skip any whitespace.
-        let mut iter = iter.skip_while(|c| c.is_whitespace()).peekable();
+    pub struct Lexer<I: Iterator> {
+        iter: Backable<I>,
+    }
 
-        if let Some(&c) = iter.peek() {
-            if c.is_alphabetic() {
-                // identifier: [a-zA-Z][a-zA-Z0-9]*
-                let identifierStr: String = iter.take_while(|c| c.is_alphanumeric()).collect();
+    impl<I: Iterator> Lexer<I> {
+        pub fn new(iter: I) -> Self {
+            Lexer { iter: iter.backable() }
+        }
+    }
 
-                match identifierStr.as_str() {
-                    "def" => Token::Def,
-                    "extern" => Token::Extern,
-                    _ => Token::Identifier(identifierStr),
-                }
-            } else if c.is_digit(10) || c == '.' {
-                // number: [0-9.]+
-                let numberStr: String = iter.take_while(|&c| c.is_digit(10) || c == '.').collect();
+    impl<I> Iterator for Lexer<I>
+    where
+        I: Iterator<Item = char>,
+    {
+        type Item = Token;
 
-                Token::Number(numberStr.parse().unwrap())
-            } else if c == '#' {
-                // Comment until end of line.
-                let mut iter = iter.skip_while(|&c| c != '\n' && c != '\r');
-
-                gettok(&mut iter)
-            } else {
-                // Otherwise, just return the character as its ascii value.
-                Token::Character(iter.next().unwrap())
+        fn next(&mut self) -> Option<Self::Item> {
+            match self.gettok() {
+                Token::Eof => None,
+                token => Some(token),
             }
-        } else {
-            // Check for end of file.  Don't eat the EOF.
-            Token::Eof
+        }
+    }
+
+    impl<I> Lexer<I>
+    where
+        I: Iterator<Item = char>,
+    {
+        /// gettok - Return the next token from standard input.
+        pub fn gettok(&mut self) -> Token {
+            // Skip any whitespace.
+            let c = self.iter.by_ref().skip_while(|c| c.is_whitespace()).next();
+
+            if let Some(c) = c {
+                if c.is_alphabetic() {
+                    self.iter.step_back();
+
+                    // identifier: [a-zA-Z][a-zA-Z0-9]*
+                    let s: String = self.iter
+                        .by_ref()
+                        .take_while(|c| c.is_alphanumeric())
+                        .collect();
+
+                    self.iter.step_back();
+
+                    match s.as_str() {
+                        "def" => Token::Def,
+                        "extern" => Token::Extern,
+                        _ => Token::Identifier(s),
+                    }
+                } else if c.is_digit(10) || c == '.' {
+                    self.iter.step_back();
+
+                    // number: [0-9.]+
+                    let s: String = self.iter
+                        .by_ref()
+                        .take_while(|&c| c.is_digit(10) || c == '.')
+                        .collect();
+
+                    self.iter.step_back();
+
+                    Token::Number(s.parse().unwrap())
+                } else if c == '#' {
+                    // Comment until end of line.
+                    let s: String = self.iter
+                        .by_ref()
+                        .take_while(|&c| c != '\n' && c != '\r')
+                        .collect();
+
+                    Token::Comment(s.to_owned())
+                } else {
+                    // Otherwise, just return the character as its ascii value.
+                    Token::Character(c)
+                }
+            } else {
+                // Check for end of file.  Don't eat the EOF.
+                Token::Eof
+            }
+        }
+    }
+
+    trait BackableIterator<I: Iterator> {
+        fn backable(self) -> Backable<I>;
+    }
+
+    impl<I: Iterator> BackableIterator<I> for I {
+        fn backable(self) -> Backable<I> {
+            Backable::new(self)
+        }
+    }
+
+    struct Backable<I: Iterator> {
+        iter: I,
+        front: Option<Option<I::Item>>,
+        back: Option<Option<I::Item>>,
+    }
+
+    impl<I: Iterator> Backable<I> {
+        pub fn new(iter: I) -> Backable<I> {
+            Backable {
+                iter,
+                front: None,
+                back: None,
+            }
+        }
+
+        pub fn step_back(&mut self) {
+            if self.back.is_some() {
+                self.front = self.back.take();
+            }
+        }
+    }
+
+    impl<I: Iterator> Iterator for Backable<I>
+    where
+        I::Item: Clone,
+    {
+        type Item = I::Item;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            if let Some(item) = self.front.take() {
+                item
+            } else {
+                self.back = Some(self.iter.next());
+
+                if let Some(ref item) = self.back {
+                    item.clone()
+                } else {
+                    None
+                }
+            }
         }
     }
 }
@@ -173,20 +276,23 @@ mod ast {
 mod parser {
     use ast;
     use errors::{ErrorKind, Result};
-    use lexer::{self, Token};
+    use lexer::{Lexer, Token};
 
     pub struct Parser<I>
     where
-        I: Iterator<Item = char>,
+        I: Iterator,
     {
-        iter: I,
+        lexer: Lexer<I>,
         /// the current token the parser is looking at.
         cur_token: Token,
     }
 
-    pub fn new<I: Iterator<Item = char>>(iter: I) -> Parser<I> {
+    pub fn new<I>(iter: I) -> Parser<I>
+    where
+        I: Iterator,
+    {
         Parser {
-            iter: iter,
+            lexer: Lexer::new(iter),
             cur_token: Token::Eof,
         }
     }
@@ -197,9 +303,9 @@ mod parser {
     {
         /// reads another token from the lexer and updates `cur_token` with its results.
         pub fn next_token(&mut self) -> &Token {
-            self.cur_token = lexer::gettok(&mut self.iter);
+            self.cur_token = self.lexer.next().unwrap_or(Token::Eof);
 
-            trace!("current token: {:?}", self.cur_token);
+            trace!("parsed token: {:?}", self.cur_token);
 
             &self.cur_token
         }
@@ -435,11 +541,13 @@ mod parser {
     }
 }
 
+use std::process;
+
+use lexer::Token;
+
 //===----------------------------------------------------------------------===//
 // Top-Level parsing
 //===----------------------------------------------------------------------===//
-
-use lexer::Token;
 
 impl<I> parser::Parser<I>
 where
@@ -480,29 +588,52 @@ where
 }
 
 fn main() {
+    pretty_env_logger::init().unwrap();
+
     let mut rl = rustyline::Editor::<()>::new();
 
     // Run the main "interpreter loop" now.
     loop {
         match rl.readline("ready> ") {
-            Ok(line) => {
-                let mut parser = parser::new(line.chars());
+            Ok(ref line) => {
+                let code = {
+                    let line = line.trim();
+                    let mut lines: Vec<String> = vec![line.to_owned()];
+
+                    while !line.ends_with(";") {
+                        match rl.readline("") {
+                            Ok(line) => lines.push(line),
+                            Err(rustyline::error::ReadlineError::Interrupted) |
+                            Err(rustyline::error::ReadlineError::Eof) => process::exit(0),
+                            Err(err) => {
+                                error!("fail to read line, {}", err);
+
+                                break;
+                            }
+                        }
+                    }
+
+                    lines.join("\n")
+                };
+
+                debug!("parsing code: {}", code);
+
+                let mut parser = parser::new(code.chars());
 
                 loop {
-                    /// top ::= definition | external | expression | ';'
-                    match *parser.next_token() {
+                    // top ::= definition | external | expression | ';'
+                    match parser.next_token().clone() {
                         Token::Def => parser.handle_definition(),
                         Token::Extern => parser.handle_extern(),
                         Token::Eof => break,
-                        Token::Character(';') => {
-                            trace!("ignore top-level semicolons.")
-                        }
+                        Token::Character(';') => trace!("ignore top-level semicolons."),
+                        Token::Comment(ref comment) => trace!("ignore comment: {}", comment),
                         _ => parser.handle_top_level_expression(),
                     }
                 }
             }
             Err(rustyline::error::ReadlineError::Interrupted) |
-            Err(rustyline::error::ReadlineError::Eof) => break,
+            Err(rustyline::error::ReadlineError::Eof) => process::exit(0),
             Err(err) => {
                 error!("fail to read line, {}", err);
 
