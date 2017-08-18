@@ -74,9 +74,14 @@ impl FunctionType {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Function(ValueRef);
 
-inherit_value_ref!(Function);
+inherit_from!(Function, ValueRef, LLVMValueRef);
 
 impl Function {
+    /// Obtain the count of basic blocks in a function.
+    pub fn basic_block_count(&self) -> usize {
+        unsafe { LLVMCountBasicBlocks(self.as_raw()) as usize }
+    }
+
     /// Obtain an iterator to the basic blocks in a function.
     pub fn basic_blocks(&self) -> BasicBlockIter {
         BasicBlockIter::new(self.as_raw())
