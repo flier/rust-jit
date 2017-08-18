@@ -77,6 +77,10 @@ pub struct Function(ValueRef);
 inherit_from!(Function, ValueRef, LLVMValueRef);
 
 impl Function {
+    pub fn is_empty(&self) -> bool {
+        self.basic_block_count() == 0
+    }
+
     /// Obtain the count of basic blocks in a function.
     pub fn basic_block_count(&self) -> usize {
         unsafe { LLVMCountBasicBlocks(self.as_raw()) as usize }
