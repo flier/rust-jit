@@ -625,11 +625,17 @@ impl<'a> Lines<'a> {
     }
 
     fn read_line(&mut self, first: bool) -> rustyline::Result<String> {
-        self.rl.readline(if first {
-            &self.prompt.0
-        } else {
-            &self.prompt.1
-        })
+        self.rl
+            .readline(if first {
+                &self.prompt.0
+            } else {
+                &self.prompt.1
+            })
+            .map(|line| {
+                self.rl.add_history_entry(&line);
+
+                line
+            })
     }
 }
 
