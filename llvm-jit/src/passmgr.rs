@@ -472,7 +472,7 @@ impl FunctionPassManager {
     }
 
     /// Executes all of the function passes scheduled in the function pass manager on the provided function.
-    pub fn run(&self, func: Function) -> bool {
+    pub fn run(&self, func: &Function) -> bool {
         unsafe { LLVMRunFunctionPassManager(self.as_raw(), func.as_raw()) }.as_bool()
     }
 
