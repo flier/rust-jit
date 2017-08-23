@@ -34,6 +34,10 @@ impl Module {
         Module(State::Borrowed(m))
     }
 
+    pub fn borrow(&self) -> Self {
+        self.as_raw().into()
+    }
+
     pub fn as_raw(&self) -> LLVMModuleRef {
         match self.0 {
             State::Owned(m) |

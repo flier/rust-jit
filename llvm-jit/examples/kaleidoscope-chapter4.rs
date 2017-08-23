@@ -290,6 +290,8 @@ mod parser {
     use errors::{ErrorKind, Result};
     use lexer::{Lexer, Token};
 
+    pub const ANNO_EXPR: &str = "__anon_expr";
+
     pub struct Parser<I>
     where
         I: Iterator,
@@ -566,7 +568,7 @@ mod parser {
 
             Ok(ast::Function {
                 proto: ast::Prototype {
-                    name: "__anon_expr".into(),
+                    name: ANNO_EXPR.into(),
                     args: vec![],
                 },
                 body: expr,
@@ -595,37 +597,43 @@ mod codegen {
     use ast;
     use errors::{ErrorKind, Result};
 
-    pub struct CodeGenerator {
-        pub context: Context,
+    pub struct CodeGenerator<'a> {
+        pub context: &'a Context,
         pub module: Module,
         pub builder: IRBuilder,
         pub passmgr: jit::FunctionPassManager,
         pub named_values: HashMap<String, ValueRef>,
     }
 
-    pub fn new(name: &str) -> CodeGenerator {
+    impl<'a> CodeGenerator<'a> {
+        fn create_pass_manager(module: &Module) -> jit::FunctionPassManager {
+            // Create a new pass manager attached to it.
+            let passmgr = jit::FunctionPassManager::for_module(&module);
+
+            // Do simple "peephole" optimizations and bit-twiddling optzns.
+            passmgr.add(jit::Pass::InstructionCombining);
+            // Reassociate expressions.
+            passmgr.add(jit::Pass::Reassociate);
+            // Eliminate Common SubExpressions.
+            passmgr.add(jit::Pass::GVN);
+            // Simplify the control flow graph (deleting unreachable blocks, etc).
+            passmgr.add(jit::Pass::CFGSimplification);
+
+            passmgr.init();
+
+            passmgr
+        }
+    }
+
+    pub fn new<'a>(context: &'a Context, name: &str) -> CodeGenerator<'a> {
         // Open a new module.
-        let context = Context::new();
         let module = context.create_module(name);
-        let builder = context.create_builder();
-        // Create a new pass manager attached to it.
-        let passmgr = jit::FunctionPassManager::for_module(&module);
-
-        // Do simple "peephole" optimizations and bit-twiddling optzns.
-        passmgr.add(jit::Pass::InstructionCombining);
-        // Reassociate expressions.
-        passmgr.add(jit::Pass::Reassociate);
-        // Eliminate Common SubExpressions.
-        passmgr.add(jit::Pass::GVN);
-        // Simplify the control flow graph (deleting unreachable blocks, etc).
-        passmgr.add(jit::Pass::CFGSimplification);
-
-        passmgr.init();
+        let passmgr = CodeGenerator::create_pass_manager(&module);
 
         CodeGenerator {
             context,
             module,
-            builder,
+            builder: context.create_builder(),
             passmgr,
             named_values: HashMap::new(),
         }
@@ -757,6 +765,10 @@ mod codegen {
     }
 }
 
+use std::collections::HashMap;
+use std::mem;
+use std::os::raw::c_void;
+
 use jit::prelude::*;
 
 use ast::Expr;
@@ -772,52 +784,134 @@ impl<I> parser::Parser<I>
 where
     I: Iterator<Item = char>,
 {
-    fn handle_definition(&mut self, gen: &mut CodeGenerator) -> Result<ValueRef> {
-        self.parse_definition().and_then(|func| {
+    fn handle_definition(
+        &mut self,
+        mut gen: CodeGenerator,
+        engine: &mut KaleidoscopeJIT,
+    ) -> Result<ValueRef> {
+        self.parse_definition().and_then(move |func| {
             println!("parsed a function difinition: {:?}", func);
 
-            let ir = func.codegen(gen)?;
+            let ir = func.codegen(&mut gen)?;
 
             println!("read function definition:\n{}", ir);
 
+            engine.add_module(gen.module);
+
             Ok(ir)
         })
     }
 
-    fn handle_extern(&mut self, gen: &mut CodeGenerator) -> Result<ValueRef> {
+    fn handle_extern(
+        &mut self,
+        mut gen: CodeGenerator,
+        engine: &mut KaleidoscopeJIT,
+    ) -> Result<ValueRef> {
         self.parse_extern().and_then(|proto| {
             println!("parsed a extern prototype: {:?}", proto);
 
-            let ir = proto.codegen(gen)?;
+            let ir = proto.codegen(&mut gen)?;
 
             println!("read extern:\n{}", ir);
 
+            engine.add_prototype(proto);
+
             Ok(ir)
         })
     }
 
-    fn handle_top_level_expression(&mut self, gen: &mut CodeGenerator) -> Result<ValueRef> {
-        self.parse_top_level_expr().and_then(|func| {
+    fn handle_top_level_expression(
+        &mut self,
+        mut gen: CodeGenerator,
+        engine: &mut KaleidoscopeJIT,
+    ) -> Result<ValueRef> {
+        self.parse_top_level_expr().and_then(move |func| {
             println!("parsed a top-level expr: {:?}", func);
 
-            let ir = func.codegen(gen)?;
+            let ir = func.codegen(&mut gen)?;
 
             println!("read top-level expression:\n{}", ir);
 
+            // JIT the module containing the anonymous expression,
+            // keeping a handle so we can free it later.
+            if let Some(module) = engine.add_module(gen.module) {
+                // Search the JIT for the __anon_expr symbol.
+                if let Some(func) = module.get_function(parser::ANNO_EXPR) {
+                    // Get the symbol's address and cast it to the right type
+                    // (takes no arguments, returns a double) so we can call it as a native function.
+                    let fp: extern fn () -> f64 = unsafe { mem::transmute(engine.get_address(func)) };
+
+                    println!("Evaluated to: {}", fp());
+                }
+
+                // Delete the anonymous expression module from the JIT.
+                engine.remove_module(module);
+            }
+
             Ok(ir)
         })
     }
 
-    fn handle_top(&mut self, gen: &mut CodeGenerator) -> Result<Parsed> {
+    fn handle_top(&mut self, gen: CodeGenerator, engine: &mut KaleidoscopeJIT) -> Result<Parsed> {
         // top ::= definition | external | expression | ';'
         match self.next_token().clone() {
-            Token::Def => Ok(Parsed::Code(self.handle_definition(gen)?)),
-            Token::Extern => Ok(Parsed::Code(self.handle_extern(gen)?)),
+            Token::Def => Ok(Parsed::Code(self.handle_definition(gen, engine)?)),
+            Token::Extern => Ok(Parsed::Code(self.handle_extern(gen, engine)?)),
             Token::Eof => Ok(Parsed::ToEnd),
             token @ Token::Character(';') |
             token @ Token::Comment(_) => Ok(Parsed::Skipped(token)),
-            _ => Ok(Parsed::Code(self.handle_top_level_expression(gen)?)),
+            _ => Ok(Parsed::Code(self.handle_top_level_expression(gen, engine)?)),
         }
+    }
+}
+
+struct KaleidoscopeJIT {
+    engine: jit::ExecutionEngine,
+    modules: Vec<Module>,
+    protos: HashMap<String, ast::Prototype>,
+}
+
+impl KaleidoscopeJIT {
+    pub fn new(context: &Context) -> Result<KaleidoscopeJIT> {
+        jit::target::NativeTarget::init().unwrap();
+        jit::target::NativeAsmParser::init().unwrap();
+        jit::target::NativeAsmPrinter::init().unwrap();
+
+        jit::MCJITCompiler::link_in();
+
+        let module = context.create_module("my cool jit");
+        let engine = ExecutionEngine::for_module(module)?;
+
+        Ok(KaleidoscopeJIT {
+            engine,
+            modules: vec![],
+            protos: HashMap::new(),
+        })
+    }
+
+    pub fn add_module(&mut self, module: Module) -> Option<Module> {
+        self.modules.push(self.engine.add_module(module));
+        self.modules.last().map(|m| m.borrow())
+    }
+
+    pub fn remove_module(&mut self, module: Module) -> bool {
+        self.engine
+            .remove_module(module)
+            .ok()
+            .and_then(|module| {
+                self.modules.iter().position(|m| *m == module).map(|idx| {
+                    self.modules.remove(idx)
+                })
+            })
+            .is_some()
+    }
+
+    pub fn add_prototype(&mut self, proto: ast::Prototype) -> Option<ast::Prototype> {
+        self.protos.insert(proto.name.clone(), proto)
+    }
+
+    pub fn get_address(&self, func: Function) -> *mut c_void {
+        self.engine.get_ptr_to_global(func)
     }
 }
 
@@ -904,8 +998,8 @@ impl<'a> Iterator for Lines<'a> {
 fn main() {
     pretty_env_logger::init().unwrap();
 
-    // Make the module, which holds all the code.
-    let mut gen = codegen::new("my cool jit");
+    let context = Context::new();
+    let mut engine = KaleidoscopeJIT::new(&context).expect("create JIT compiler");
 
     for code in Lines::new() {
         debug!("parsing code: {}", code);
@@ -914,7 +1008,7 @@ fn main() {
 
         // Run the main "interpreter loop" now.
         loop {
-            match parser.handle_top(&mut gen) {
+            match parser.handle_top(codegen::new(&context, "my cool jit"), &mut engine) {
                 Ok(Parsed::ToEnd) => {
                     break;
                 }
@@ -928,7 +1022,4 @@ fn main() {
             }
         }
     }
-
-    // Print out all of the generated code.
-    println!("module:\n{}", gen.module);
 }
