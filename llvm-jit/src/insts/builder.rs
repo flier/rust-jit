@@ -5,7 +5,8 @@ use llvm::prelude::*;
 
 use block::BasicBlock;
 use context::{Context, GlobalContext};
-use value::{AsValueRef, Instruction, ValueRef};
+use utils::{AsRaw, FromRaw};
+use value::{Instruction, ValueRef};
 
 pub trait InstructionBuilder {
     type Target: Into<ValueRef>;
@@ -45,7 +46,7 @@ impl Drop for IRBuilder {
 
 impl IRBuilder {
     pub fn insert_block(&self) -> Option<BasicBlock> {
-        unsafe { LLVMGetInsertBlock(self.0).as_mut() }.map(|block| BasicBlock::from_raw(block))
+        unsafe { LLVMGetInsertBlock(self.0) }.wrap()
     }
 
     pub fn clear_insertion_position(&self) {

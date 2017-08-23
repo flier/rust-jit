@@ -8,7 +8,7 @@ use llvm::prelude::*;
 use constant::Constant;
 use function::Function;
 use module::Module;
-use utils::{AsBool, AsLLVMBool, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, AsRaw, FromRaw, unchecked_cstring};
 use value::{AsValueRef, ValueRef};
 
 pub type Linkage = LLVMLinkage;
@@ -91,7 +91,7 @@ impl GlobalVar {
     }
 
     pub fn initializer(&self) -> Option<Constant> {
-        unsafe { LLVMGetInitializer(self.as_raw()).as_mut() }.map(|var| Constant::from_raw(var))
+        unsafe { LLVMGetInitializer(self.as_raw()) }.wrap()
     }
 
     pub fn set_initializer<C: Into<Constant>>(&self, initializer: C) -> &Self {

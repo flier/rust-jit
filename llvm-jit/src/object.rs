@@ -5,7 +5,7 @@ use std::slice;
 use llvm::object::*;
 
 use membuf::MemoryBuffer;
-use utils::AsBool;
+use utils::{AsBool, AsRaw};
 
 #[derive(Debug)]
 pub struct ObjectFile(LLVMObjectFileRef);
@@ -123,11 +123,15 @@ impl From<LLVMSectionIteratorRef> for Section {
     }
 }
 
-impl Section {
-    fn as_raw(&self) -> LLVMSectionIteratorRef {
+impl AsRaw for Section {
+    type RawType = LLVMSectionIteratorRef;
+
+    fn as_raw(&self) -> Self::RawType {
         self.0
     }
+}
 
+impl Section {
     pub fn name(&self) -> Cow<str> {
         unsafe { CStr::from_ptr(LLVMGetSectionName(self.0)).to_string_lossy() }
     }
@@ -172,14 +176,18 @@ impl From<LLVMSymbolIteratorRef> for Symbol {
     }
 }
 
-impl Symbol {
-    fn as_raw(&self) -> LLVMSymbolIteratorRef {
+impl AsRaw for Symbol {
+    type RawType = LLVMSymbolIteratorRef;
+
+    fn as_raw(&self) -> Self::RawType {
         match *self {
             Symbol::Owned(iter) |
             Symbol::Borrowed(iter) => iter,
         }
     }
+}
 
+impl Symbol {
     pub fn name(&self) -> Cow<str> {
         unsafe { CStr::from_ptr(LLVMGetSymbolName(self.as_raw())).to_string_lossy() }
     }

@@ -12,8 +12,8 @@ use errors::Result;
 use function::Function;
 use function::FunctionType;
 use global::GlobalVar;
-use types::{AsTypeRef, TypeRef};
-use utils::{AsRaw, AsResult, DisposableMessage, from_unchecked_cstr, unchecked_cstring};
+use types::TypeRef;
+use utils::{AsRaw, AsResult, DisposableMessage, FromRaw, from_unchecked_cstr, unchecked_cstring};
 use value::ValueRef;
 
 pub type AddressSpace = u32;
@@ -115,8 +115,7 @@ impl Module {
     /// Obtain a Type from a module by its registered name.
     pub fn get_type<S: AsRef<str>>(&self, name: S) -> Option<TypeRef> {
         let cname = unchecked_cstring(name);
-        let t = unsafe { LLVMGetTypeByName(self.as_raw(), cname.as_ptr()).as_mut() }
-            .map(|t| TypeRef::from_raw(t));
+        let t = unsafe { LLVMGetTypeByName(self.as_raw(), cname.as_ptr()) }.wrap();
 
         if let Some(t) = t {
             trace!(
@@ -142,7 +141,7 @@ impl Module {
             LLVMGetNamedMetadataOperands(self.as_raw(), cname.as_ptr(), operands.as_mut_ptr())
         };
 
-        operands.into_iter().map(ValueRef::from_raw).collect()
+        operands.into_iter().map(|v| v.into()).collect()
     }
 
     pub fn add_named_operand<S: AsRef<str>, V: AsRef<ValueRef>>(&self, name: S, v: V) {
@@ -193,8 +192,7 @@ impl Module {
     /// Obtain a Function value from a Module by its name.
     pub fn get_function<S: AsRef<str>>(&self, name: S) -> Option<Function> {
         let cname = unchecked_cstring(name);
-        let func = unsafe { LLVMGetNamedFunction(self.as_raw(), cname.as_ptr()).as_mut() }
-            .map(|f| Function::from_raw(f));
+        let func = unsafe { LLVMGetNamedFunction(self.as_raw(), cname.as_ptr()) }.wrap();
 
         if let Some(f) = func {
             trace!(
@@ -269,8 +267,7 @@ impl Module {
     pub fn get_global_var<S: AsRef<str>>(&self, name: S) -> Option<GlobalVar> {
         let cname = unchecked_cstring(name);
 
-        unsafe { LLVMGetNamedGlobal(self.as_raw(), cname.as_ptr()).as_mut() }
-            .map(|var| GlobalVar::from_raw(var))
+        unsafe { LLVMGetNamedGlobal(self.as_raw(), cname.as_ptr()) }.wrap()
     }
 
     /// Obtain an iterator to the global variables in a module.
@@ -283,14 +280,14 @@ impl_iter!(
     FuncIter,
     LLVMGetFirstFunction | LLVMGetLastFunction[LLVMModuleRef],
     LLVMGetNextFunction | LLVMGetPreviousFunction[LLVMValueRef],
-    Function::from_raw
+    Function
 );
 
 impl_iter!(
     GlobalVarIter,
     LLVMGetFirstGlobal | LLVMGetLastGlobal[LLVMModuleRef],
     LLVMGetNextGlobal | LLVMGetPreviousGlobal[LLVMValueRef],
-    GlobalVar::from_raw
+    GlobalVar
 );
 
 impl Drop for Module {

@@ -5,7 +5,8 @@ use llvm::prelude::*;
 
 use block::BasicBlock;
 use insts::{IRBuilder, InstructionBuilder};
-use value::{AsValueRef, Instruction, ValueRef};
+use utils::AsRaw;
+use value::{Instruction, ValueRef};
 
 /// Create a 'ret void' instruction.
 #[derive(Clone, Debug, PartialEq)]

@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::ffi::CStr;
 use std::fmt;
-use std::ops::Deref;
 use std::ptr;
 
 use llvm::*;
@@ -11,7 +10,7 @@ use llvm::prelude::*;
 use constant::ConstantInt;
 use context::{Context, GlobalContext};
 use module::AddressSpace;
-use utils::{AsBool, AsLLVMBool, DisposableMessage, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, AsRaw, DisposableMessage, FromRaw, unchecked_cstring};
 use value::ValueRef;
 
 #[macro_export]
@@ -37,18 +36,12 @@ macro_rules! inherit_type_ref {
 
 pub type TypeKind = LLVMTypeKind;
 
-pub trait AsTypeRef {
-    /// Extracts the raw typedef reference.
-    fn as_raw(&self) -> LLVMTypeRef;
-}
+pub trait AsTypeRef: AsRaw<RawType = LLVMTypeRef> {}
 
 impl<T> AsTypeRef for T
 where
-    T: Deref<Target = TypeRef>,
+    T: AsRaw<RawType = LLVMTypeRef>,
 {
-    fn as_raw(&self) -> LLVMTypeRef {
-        self.deref().as_raw()
-    }
 }
 
 impl TypeRef {
@@ -389,8 +382,7 @@ impl StructType {
         if index >= self.element_count() {
             None
         } else {
-            unsafe { LLVMStructGetTypeAtIndex(self.as_raw(), index as u32).as_mut() }
-                .map(|t| TypeRef::from_raw(t))
+            unsafe { LLVMStructGetTypeAtIndex(self.as_raw(), index as u32) }.wrap()
         }
     }
 

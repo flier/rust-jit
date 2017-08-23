@@ -4,7 +4,7 @@ use std::fmt;
 use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::unchecked_cstring;
+use utils::{AsRaw, unchecked_cstring};
 use value::Instruction;
 
 /// This instruction extracts a struct member or array element value from an aggregate value.

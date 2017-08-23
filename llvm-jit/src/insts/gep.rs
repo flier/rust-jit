@@ -5,7 +5,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsBool, AsLLVMBool, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, AsRaw, unchecked_cstring};
 use value::{Instruction, ValueRef};
 
 /// an instruction for type-safe pointer arithmetic to access elements of arrays and structs

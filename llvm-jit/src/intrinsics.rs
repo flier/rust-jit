@@ -2,6 +2,7 @@ use llvm::core::*;
 
 use function::Function;
 use module::Module;
+use utils::AsRaw;
 
 pub type Intrinsic = Function;
 pub type IntrinsicId = u32;

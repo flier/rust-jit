@@ -7,8 +7,8 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::unchecked_cstring;
-use value::{AsValueRef, Instruction, ValueRef};
+use utils::{AsRaw, unchecked_cstring};
+use value::{Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ICmp<'a, L, R> {

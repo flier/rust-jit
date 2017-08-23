@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::ffi::CStr;
 use std::fmt;
-use std::ops::Deref;
 
 use llvm::*;
 use llvm::core::*;
@@ -10,7 +9,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use constant::Constant;
 use types::TypeRef;
-use utils::{AsBool, DisposableMessage, unchecked_cstring};
+use utils::{AsBool, AsRaw, DisposableMessage, FromRaw, unchecked_cstring};
 
 #[macro_export]
 macro_rules! values {
@@ -36,18 +35,12 @@ macro_rules! inherit_value_ref {
     );
 }
 
-pub trait AsValueRef {
-    /// Extracts the raw typedef reference.
-    fn as_raw(&self) -> LLVMValueRef;
-}
+pub trait AsValueRef: AsRaw<RawType = LLVMValueRef> {}
 
 impl<T> AsValueRef for T
 where
-    T: Deref<Target = ValueRef>,
+    T: AsRaw<RawType = LLVMValueRef>,
 {
-    fn as_raw(&self) -> LLVMValueRef {
-        self.deref().as_raw()
-    }
 }
 
 pub type ValueKind = LLVMValueKind;
@@ -121,7 +114,7 @@ impl ValueRef {
 
     /// Convert a `ValueRef` to an `BasicBlock` instance.
     pub fn as_basic_block(&self) -> Option<BasicBlock> {
-        unsafe { LLVMValueAsBasicBlock(self.0).as_mut() }.map(|block| BasicBlock::from_raw(block))
+        unsafe { LLVMValueAsBasicBlock(self.0) }.wrap()
     }
 }
 
@@ -195,12 +188,11 @@ impl Instruction {
 
     /// Obtain the instruction that occurs after the one specified.
     pub fn next(&self) -> Option<Instruction> {
-        unsafe { LLVMGetNextInstruction(self.as_raw()).as_mut() }.map(|v| Instruction::from_raw(v))
+        unsafe { LLVMGetNextInstruction(self.as_raw()) }.wrap()
     }
 
     /// Obtain the instruction that occurred before this one.
     pub fn previous(&self) -> Option<Instruction> {
-        unsafe { LLVMGetPreviousInstruction(self.as_raw()).as_mut() }
-            .map(|v| Instruction::from_raw(v))
+        unsafe { LLVMGetPreviousInstruction(self.as_raw()) }.wrap()
     }
 }

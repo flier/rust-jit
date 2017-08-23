@@ -12,7 +12,7 @@ use global::GlobalValue;
 use module::Module;
 use target::{TargetData, TargetMachine};
 use types::TypeRef;
-use utils::{AsLLVMBool, AsMutPtr, AsRaw, AsResult, IntoRaw, unchecked_cstring};
+use utils::{AsLLVMBool, AsMutPtr, AsRaw, AsResult, FromRaw, IntoRaw, unchecked_cstring};
 
 /// Deallocate and destroy all `ManagedStatic` variables.
 pub fn shutdown() {
@@ -155,8 +155,8 @@ impl MCJITMemoryManager {
                 alloc_data,
                 free,
                 destroy,
-            ).as_mut()
-        }.map(|mm| MCJITMemoryManager::from_raw(mm))
+            )
+        }.wrap()
     }
 
     /// Consumes the wrapper, returning the wrapped raw pointer.

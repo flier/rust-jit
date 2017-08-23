@@ -7,7 +7,7 @@ use llvm::prelude::*;
 
 use function::Function;
 use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsBool, AsLLVMBool, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, AsRaw, unchecked_cstring};
 use value::{AsValueRef, Instruction, ValueRef};
 
 /// This instruction is designed to operate as a standard `call` instruction in most regards.

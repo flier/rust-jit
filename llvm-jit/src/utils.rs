@@ -12,12 +12,14 @@ use llvm::prelude::*;
 pub trait AsRaw {
     type RawType;
 
+    /// Extracts the wrapped raw reference.
     fn as_raw(&self) -> Self::RawType;
 }
 
 pub trait IntoRaw {
     type RawType;
 
+    /// Consumer the wrapper, returning the wrapped raw reference.
     fn into_raw(self) -> Self::RawType;
 }
 
@@ -28,6 +30,27 @@ impl<T: AsRaw> IntoRaw for T {
         let raw = self.as_raw();
         mem::forget(self);
         raw
+    }
+}
+
+pub trait FromRaw<T>
+where
+    T: From<Self>,
+    Self: Sized,
+{
+    fn wrap(self) -> Option<T>;
+}
+
+impl<P, T> FromRaw<T> for *mut P
+where
+    T: From<*mut P>,
+{
+    fn wrap(self) -> Option<T> {
+        if self.is_null() {
+            None
+        } else {
+            Some(self.into())
+        }
     }
 }
 
@@ -217,19 +240,15 @@ macro_rules! inherit_from {
         }
 
         impl ::std::convert::From<$raw> for $ty {
-            fn from(f: $raw) -> Self {
-                $ty::from_raw(f)
+            fn from(p: $raw) -> Self {
+                $ty(p)
             }
         }
 
-        impl $ty {
-            /// Wrap a raw reference.
-            pub fn from_raw(v: $raw) -> Self {
-                $ty(v.into())
-            }
+        impl $crate::utils::AsRaw for $ty {
+            type RawType = $raw;
 
-            /// Extracts the raw reference.
-            pub fn as_raw(&self) -> $raw {
+            fn as_raw(&self) -> Self::RawType {
                 self.0
             }
         }
@@ -252,7 +271,7 @@ macro_rules! inherit_from {
 
         impl ::std::convert::From<$ty> for $parent {
             fn from(f: $ty) -> Self {
-                f.0
+                f.0.into()
             }
         }
 
@@ -277,6 +296,14 @@ macro_rules! inherit_from {
         impl ::std::convert::From<$raw> for $ty {
             fn from(f: $raw) -> Self {
                 $ty::from_raw(f)
+            }
+        }
+
+        impl $crate::utils::AsRaw for $ty {
+            type RawType = $raw;
+
+            fn as_raw(&self) -> Self::RawType {
+                self.0.as_raw()
             }
         }
 
@@ -321,6 +348,14 @@ macro_rules! inherit_from {
             }
         }
 
+        impl $crate::utils::AsRaw for $ty {
+            type RawType = $raw;
+
+            fn as_raw(&self) -> Self::RawType {
+                self.0.as_raw()
+            }
+        }
+
         impl $ty {
             /// Wrap a raw $ty reference.
             pub fn from_raw(v: $raw) -> Self {
@@ -331,7 +366,7 @@ macro_rules! inherit_from {
 }
 
 macro_rules! impl_iter {
-    ($name:ident, $first:path [ $list:ty ], $next:path [ $item:ty ], $type:ident :: $ctor:ident) => {
+    ($name:ident, $first:path [ $list:ty ], $next:path [ $item:ty ], $type:ident) => {
         pub struct $name {
             list: Option<$list>,
             item: Option<$item>,
@@ -367,7 +402,7 @@ macro_rules! impl_iter {
                         Some(next)
                     };
 
-                    self.item.map($type :: $ctor)
+                    self.item.map(|item| item.into())
                 } else {
                     None
                 }
@@ -378,7 +413,7 @@ macro_rules! impl_iter {
         $name:ident,
         $first:path | $last:path [ $list:ty ],
         $next:path | $previous:path [ $item:ty ],
-        $type:ident :: $ctor:ident
+        $type:ident
     ) => {
         pub struct $name {
             list: Option<$list>,
@@ -417,7 +452,7 @@ macro_rules! impl_iter {
                         Some(next)
                     };
 
-                    self.next.map($type :: $ctor)
+                    self.next.map(|next| next.into())
                 } else {
                     None
                 }
@@ -443,7 +478,7 @@ macro_rules! impl_iter {
                         Some(back)
                     };
 
-                    self.back.map($type :: $ctor)
+                    self.back.map(|back| back.into())
                 } else {
                     None
                 }

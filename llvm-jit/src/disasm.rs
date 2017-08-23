@@ -6,7 +6,7 @@ use libc;
 use llvm::disassembler::*;
 
 use errors::Result;
-use utils::{AsMutPtr, unchecked_cstring};
+use utils::{AsMutPtr, AsRaw, unchecked_cstring};
 
 bitflags! {
     pub struct DisasmOptions: u64 {

@@ -8,8 +8,8 @@ use llvm::prelude::*;
 use function::Function;
 use insts::{IRBuilder, InstructionBuilder};
 use types::TypeRef;
-use utils::{AsLLVMBool, unchecked_cstring};
-use value::{AsValueRef, Instruction, ValueRef};
+use utils::{AsLLVMBool, AsRaw, unchecked_cstring};
+use value::{Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LandingPad<'a> {

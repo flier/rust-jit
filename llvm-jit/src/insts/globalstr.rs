@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::unchecked_cstring;
+use utils::{AsRaw, unchecked_cstring};
 use value::Instruction;
 
 /// Make a new global variable with an initializer that has array of i8 type

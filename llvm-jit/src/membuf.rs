@@ -7,7 +7,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use errors::Result;
-use utils::{AsLLVMBool, AsResult, DisposableMessage, unchecked_cstring};
+use utils::{AsLLVMBool, AsRaw, AsResult, DisposableMessage, unchecked_cstring};
 
 #[derive(Debug)]
 pub struct MemoryBuffer(LLVMMemoryBufferRef);

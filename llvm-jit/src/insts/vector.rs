@@ -4,7 +4,7 @@ use std::fmt;
 use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::unchecked_cstring;
+use utils::{AsRaw, unchecked_cstring};
 use value::Instruction;
 
 /// This instruction extracts a single (scalar) element from a `VectorType` value

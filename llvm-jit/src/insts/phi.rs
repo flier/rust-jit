@@ -6,8 +6,8 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use insts::{IRBuilder, InstructionBuilder};
 use types::TypeRef;
-use utils::unchecked_cstring;
-use value::{AsValueRef, Instruction, ValueRef};
+use utils::{AsRaw, unchecked_cstring};
+use value::{Instruction, ValueRef};
 
 /// The `phi` instruction is used to implement the φ node in the SSA graph representing the function.
 #[derive(Clone, Debug, PartialEq)]

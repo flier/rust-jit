@@ -6,7 +6,7 @@ use llvm::{LLVMAtomicOrdering, LLVMAtomicRMWBinOp};
 use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsLLVMBool, unchecked_cstring};
+use utils::{AsLLVMBool, AsRaw, unchecked_cstring};
 use value::Instruction;
 
 #[derive(Clone, Debug, PartialEq)]

@@ -7,7 +7,7 @@ use llvm::prelude::*;
 use context::Context;
 use function::Function;
 use insts::TerminatorInst;
-use utils::unchecked_cstring;
+use utils::{AsRaw, FromRaw, unchecked_cstring};
 use value::{BlockAddress, Instruction, ValueRef};
 
 /// Basic Block
@@ -39,7 +39,7 @@ impl BasicBlock {
 
     /// Obtain the terminator instruction for a basic block.
     pub fn terminator(&self) -> Option<TerminatorInst> {
-        unsafe { LLVMGetBasicBlockTerminator(self.0).as_mut() }.map(|v| TerminatorInst::from_raw(v))
+        unsafe { LLVMGetBasicBlockTerminator(self.0) }.wrap()
     }
 
     /// Convert a basic block instance to a value type.
@@ -135,7 +135,7 @@ impl_iter!(
     InstrIter,
     LLVMGetFirstInstruction | LLVMGetLastInstruction[LLVMBasicBlockRef],
     LLVMGetNextInstruction | LLVMGetPreviousInstruction[LLVMValueRef],
-    Instruction::from_raw
+    Instruction
 );
 
 #[cfg(test)]

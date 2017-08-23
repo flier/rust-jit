@@ -6,7 +6,7 @@ use llvm::prelude::*;
 
 use context::Context;
 use types::{StructType, TypeRef};
-use utils::{AsBool, AsLLVMBool, from_unchecked_cstr, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, AsRaw, FromRaw, from_unchecked_cstr, unchecked_cstring};
 use value::{AsValueRef, ValueRef};
 
 pub trait AsConstant: AsValueRef {
@@ -256,8 +256,7 @@ impl ToConstantStruct for StructType {
 pub trait ConstantDataSequential: AsValueRef {
     /// Get an element at specified index as a constant.
     fn element(&self, index: usize) -> Option<Constant> {
-        unsafe { LLVMGetElementAsConstant(self.as_raw(), index as u32).as_mut() }
-            .map(|element| Constant::from_raw(element))
+        unsafe { LLVMGetElementAsConstant(self.as_raw(), index as u32) }.wrap()
     }
 }
 

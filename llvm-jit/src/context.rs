@@ -3,6 +3,8 @@ use std::ops::Deref;
 use llvm::core::*;
 use llvm::prelude::*;
 
+use utils::AsRaw;
+
 /// Contexts are execution states for the core LLVM IR system.
 #[derive(Debug)]
 pub struct Context(State);
@@ -12,6 +14,18 @@ enum State {
     Owned(LLVMContextRef),
     Global(LLVMContextRef),
     Borrowed(LLVMContextRef),
+}
+
+impl AsRaw for Context {
+    type RawType = LLVMContextRef;
+
+    fn as_raw(&self) -> Self::RawType {
+        match self.0 {
+            State::Owned(context) |
+            State::Global(context) |
+            State::Borrowed(context) => context,
+        }
+    }
 }
 
 impl Default for Context {
@@ -28,7 +42,7 @@ impl PartialEq<Context> for Context {
 
 impl From<LLVMContextRef> for Context {
     fn from(context: LLVMContextRef) -> Self {
-        Self::from_raw(context)
+        Context(State::Borrowed(context))
     }
 }
 
@@ -59,20 +73,6 @@ impl Context {
         trace!("obtain global Context({:?})", context);
 
         GlobalContext(Context(State::Global(context)))
-    }
-
-    /// Wrap a raw context reference.
-    pub fn from_raw(context: LLVMContextRef) -> Self {
-        Context(State::Borrowed(context))
-    }
-
-    /// Extracts the raw context reference.
-    pub fn as_raw(&self) -> LLVMContextRef {
-        match self.0 {
-            State::Owned(context) |
-            State::Global(context) |
-            State::Borrowed(context) => context,
-        }
     }
 
     /// Borrow a reference to the context.

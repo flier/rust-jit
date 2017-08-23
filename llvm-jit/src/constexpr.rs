@@ -4,8 +4,8 @@ use llvm::prelude::*;
 
 use constant::{AsConstant, Constant, ConstantInt, ConstantVector};
 use types::TypeRef;
-use utils::{AsLLVMBool, unchecked_cstring};
-use value::{AsValueRef, ValueRef};
+use utils::{AsLLVMBool, AsRaw, unchecked_cstring};
+use value::ValueRef;
 
 pub trait ConstantExpr {
     fn neg(&self) -> Constant;

@@ -6,7 +6,7 @@ use llvm::prelude::*;
 
 use block::BasicBlock;
 use insts::{IRBuilder, InstructionBuilder};
-use utils::AsBool;
+use utils::{AsBool, AsRaw, FromRaw};
 use value::{AsValueRef, Instruction, ValueRef};
 
 /// Create an unconditional `br label X` instruction.
@@ -151,7 +151,7 @@ impl BranchInst {
 
     /// Return the condition of a branch instruction.
     pub fn get_cond(&self) -> Option<ValueRef> {
-        unsafe { LLVMGetCondition(self.as_raw()).as_mut() }.map(|v| ValueRef::from_raw(v))
+        unsafe { LLVMGetCondition(self.as_raw()) }.wrap()
     }
 
     /// Set the condition of a branch instruction.

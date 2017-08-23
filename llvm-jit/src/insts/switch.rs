@@ -6,7 +6,8 @@ use llvm::prelude::*;
 
 use block::BasicBlock;
 use insts::{IRBuilder, InstructionBuilder};
-use value::{AsValueRef, Instruction, ValueRef};
+use utils::AsRaw;
+use value::{Instruction, ValueRef};
 
 /// Create a switch instruction with the specified value, default dest,
 /// and with a hint for the number of cases that will be added (for efficient allocation).

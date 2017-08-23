@@ -1,5 +1,7 @@
 use llvm::core::*;
 
+use utils::AsRaw;
+
 macro_rules! define_binary_operator {
     ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
         #[doc=$comment]

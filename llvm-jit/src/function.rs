@@ -6,7 +6,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use context::Context;
 use types::TypeRef;
-use utils::{AsBool, unchecked_cstring};
+use utils::{AsBool, AsRaw, FromRaw, unchecked_cstring};
 use value::ValueRef;
 
 /// Structure to represent function types.
@@ -66,7 +66,7 @@ impl FunctionType {
 
         unsafe { LLVMGetParamTypes(self.as_raw(), params.as_mut_ptr()) };
 
-        params.into_iter().map(TypeRef::from_raw).collect()
+        params.into_iter().map(|p| p.into()).collect()
     }
 }
 
@@ -98,13 +98,12 @@ impl Function {
 
         unsafe { LLVMGetBasicBlocks(self.as_raw(), blocks.as_mut_ptr()) };
 
-        blocks.into_iter().map(BasicBlock::from_raw).collect()
+        blocks.into_iter().map(|bb| bb.into()).collect()
     }
 
     /// Obtain the basic block that corresponds to the entry point of a function.
     pub fn entry(&self) -> Option<BasicBlock> {
-        unsafe { LLVMGetEntryBasicBlock(self.as_raw()).as_mut() }
-            .map(|entry| BasicBlock::from_raw(entry))
+        unsafe { LLVMGetEntryBasicBlock(self.as_raw()) }.wrap()
     }
 
     /// Append a basic block to the end of a function using the global context.
@@ -161,7 +160,7 @@ impl Function {
 
         unsafe { LLVMGetParams(self.as_raw(), params.as_mut_ptr()) };
 
-        params.into_iter().map(ValueRef::from_raw).collect()
+        params.into_iter().map(|p| p.into()).collect()
     }
 
     /// Obtain the parameter at the specified index.
@@ -171,9 +170,7 @@ impl Function {
         if index >= count {
             None
         } else {
-            unsafe { LLVMGetParam(self.as_raw(), index).as_mut() }.map(
-                |param| ValueRef::from_raw(param),
-            )
+            unsafe { LLVMGetParam(self.as_raw(), index) }.wrap()
         }
     }
 
@@ -202,14 +199,14 @@ impl_iter!(
     BasicBlockIter,
     LLVMGetFirstBasicBlock | LLVMGetLastBasicBlock[LLVMValueRef],
     LLVMGetNextBasicBlock | LLVMGetPreviousBasicBlock[LLVMBasicBlockRef],
-    BasicBlock::from_raw
+    BasicBlock
 );
 
 impl_iter!(
     ParamIter,
     LLVMGetFirstParam | LLVMGetLastParam[LLVMValueRef],
     LLVMGetNextParam | LLVMGetPreviousParam[LLVMValueRef],
-    ValueRef::from_raw
+    ValueRef
 );
 
 #[cfg(test)]

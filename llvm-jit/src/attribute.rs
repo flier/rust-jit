@@ -10,7 +10,7 @@ use llvm::prelude::*;
 use context::Context;
 use function::Function;
 use insts::CallSite;
-use utils::{AsBool, from_unchecked_cstr, unchecked_cstring};
+use utils::{AsBool, AsRaw, from_unchecked_cstr, unchecked_cstring};
 
 pub type AttributeIndex = LLVMAttributeIndex;
 
@@ -338,7 +338,7 @@ impl AttributeGroups for Function {
             )
         };
 
-        attrs.into_iter().map(Attribute::from_raw).collect()
+        attrs.into_iter().map(|attr| attr.into()).collect()
     }
 
     fn get_enum_attribute(&self, kind: AttributeKind) -> EnumAttribute {
@@ -396,7 +396,7 @@ impl<T: CallSite> AttributeGroups for T {
             LLVMGetCallSiteAttributes(self.as_raw(), LLVMAttributeReturnIndex, attrs.as_mut_ptr())
         };
 
-        attrs.into_iter().map(Attribute::from_raw).collect()
+        attrs.into_iter().map(|attr| attr.into()).collect()
     }
 
     fn get_enum_attribute(&self, kind: AttributeKind) -> EnumAttribute {

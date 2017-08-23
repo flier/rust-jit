@@ -4,7 +4,7 @@ use std::fmt;
 use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::unchecked_cstring;
+use utils::{AsRaw, unchecked_cstring};
 use value::Instruction;
 
 /// The `select` instruction is used to choose one value based on a condition, without IR-level branching.
