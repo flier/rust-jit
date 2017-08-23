@@ -74,11 +74,6 @@ impl Context {
 
         GlobalContext(Context(State::Global(context)))
     }
-
-    /// Borrow a reference to the context.
-    pub fn borrow(&self) -> Context {
-        self.as_raw().into()
-    }
 }
 
 #[derive(Debug, PartialEq)]
