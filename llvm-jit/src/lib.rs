@@ -79,6 +79,7 @@ pub use intrinsics::{Intrinsic, IntrinsicId};
 pub use membuf::MemoryBuffer;
 pub use module::{AddressSpace, Module};
 pub use object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
+pub use orc::{JITStack, LazyCompileCallback, SymbolResolver, ModuleHandle, TargetAddress};
 pub use passmgr::{FunctionPassManager, Pass, PassManager, PassManagerBuilder, PassRegistry};
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
                 TypeKind, TypeRef, VectorType};
