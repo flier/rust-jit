@@ -5,7 +5,7 @@ use llvm::analysis::*;
 use errors::Result;
 use function::Function;
 use module::Module;
-use utils::{AsResult, DisposableMessage};
+use utils::{AsRaw, AsResult, DisposableMessage};
 
 impl Module {
     /// Verify that a module is valid, taking the specified action if not.

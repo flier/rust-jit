@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
+use std::mem;
 use std::ptr;
 use std::slice;
 
@@ -7,6 +8,28 @@ use libc;
 
 use llvm::core::LLVMDisposeMessage;
 use llvm::prelude::*;
+
+pub trait AsRaw {
+    type RawType;
+
+    fn as_raw(&self) -> Self::RawType;
+}
+
+pub trait IntoRaw {
+    type RawType;
+
+    fn into_raw(self) -> Self::RawType;
+}
+
+impl<T: AsRaw> IntoRaw for T {
+    type RawType = T::RawType;
+
+    fn into_raw(self) -> Self::RawType {
+        let raw = self.as_raw();
+        mem::forget(self);
+        raw
+    }
+}
 
 pub const TRUE: LLVMBool = 1;
 pub const FALSE: LLVMBool = 0;

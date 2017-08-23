@@ -12,7 +12,7 @@ use global::GlobalValue;
 use module::Module;
 use target::{TargetData, TargetMachine};
 use types::TypeRef;
-use utils::{AsLLVMBool, AsMutPtr, AsResult, unchecked_cstring};
+use utils::{AsLLVMBool, AsMutPtr, AsRaw, AsResult, IntoRaw, unchecked_cstring};
 
 /// Deallocate and destroy all `ManagedStatic` variables.
 pub fn shutdown() {

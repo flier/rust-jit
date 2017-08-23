@@ -57,6 +57,7 @@ pub mod insts;
 mod block;
 mod passmgr;
 mod engine;
+mod orc;
 pub mod target;
 mod analysis;
 mod disasm;
@@ -104,5 +105,6 @@ pub mod prelude {
     pub use intrinsics::Intrinsics;
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType,
                     ToPointerType, ToStructType, ToVectorType};
+    pub use utils::{AsRaw, IntoRaw};
     pub use value::AsValueRef;
 }

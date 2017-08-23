@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::ffi::CStr;
 use std::fmt;
-use std::mem;
 use std::path::Path;
 use std::ptr;
 
@@ -14,7 +13,7 @@ use function::Function;
 use function::FunctionType;
 use global::GlobalVar;
 use types::{AsTypeRef, TypeRef};
-use utils::{AsResult, DisposableMessage, from_unchecked_cstr, unchecked_cstring};
+use utils::{AsRaw, AsResult, DisposableMessage, from_unchecked_cstr, unchecked_cstring};
 use value::ValueRef;
 
 pub type AddressSpace = u32;
@@ -29,26 +28,20 @@ pub enum State {
     Borrowed(LLVMModuleRef),
 }
 
-impl Module {
-    pub fn from_faw(m: LLVMModuleRef) -> Self {
-        Module(State::Borrowed(m))
-    }
+impl AsRaw for Module {
+    type RawType = LLVMModuleRef;
 
-    pub fn borrow(&self) -> Self {
-        self.as_raw().into()
-    }
-
-    pub fn as_raw(&self) -> LLVMModuleRef {
+    fn as_raw(&self) -> Self::RawType {
         match self.0 {
             State::Owned(m) |
             State::Borrowed(m) => m,
         }
     }
+}
 
-    pub fn into_raw(self) -> LLVMModuleRef {
-        let raw = self.as_raw();
-        mem::forget(self);
-        raw
+impl Module {
+    pub fn borrow(&self) -> Self {
+        self.as_raw().into()
     }
 
     /// Obtain the context to which this module is associated.
@@ -320,7 +313,7 @@ impl Clone for Module {
 
 impl From<LLVMModuleRef> for Module {
     fn from(m: LLVMModuleRef) -> Self {
-        Module::from_faw(m)
+        Module(State::Borrowed(m))
     }
 }
 

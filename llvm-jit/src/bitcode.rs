@@ -12,7 +12,7 @@ use context::{Context, GlobalContext};
 use errors::Result;
 use membuf::MemoryBuffer;
 use module::Module;
-use utils::AsResult;
+use utils::{AsRaw, AsResult};
 
 impl GlobalContext {
     /// Parse the specified bitcode file, returning the module.

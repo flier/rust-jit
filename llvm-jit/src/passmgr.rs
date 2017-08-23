@@ -9,7 +9,7 @@ use llvm::transforms::vectorize::*;
 
 use function::Function;
 use module::Module;
-use utils::{AsBool, AsLLVMBool};
+use utils::{AsBool, AsLLVMBool, AsRaw};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Pass {

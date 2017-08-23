@@ -11,7 +11,7 @@ use errors::Result;
 use global::GlobalVar;
 use module::{AddressSpace, Module};
 use types::{AsTypeRef, StructType, TypeRef};
-use utils::{AsBool, AsResult, DisposableMessage, unchecked_cstring};
+use utils::{AsBool, AsRaw, AsResult, DisposableMessage, unchecked_cstring};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Target(LLVMTargetRef);
