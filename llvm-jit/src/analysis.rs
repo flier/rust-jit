@@ -5,7 +5,7 @@ use llvm::analysis::*;
 use errors::Result;
 use function::Function;
 use module::Module;
-use utils::{AsBool, AsResult, DisposableMessage};
+use utils::{AsResult, DisposableMessage};
 
 impl Module {
     /// Verify that a module is valid, taking the specified action if not.
@@ -37,7 +37,7 @@ impl Function {
                 self.as_raw(),
                 LLVMVerifierFailureAction::LLVMReturnStatusAction,
             )
-        }.as_bool()
+        }.is_ok()
         {
             Ok(())
         } else {

@@ -657,9 +657,9 @@ mod codegen {
 
             Ok(
                 match self.op {
-                    ast::BinOp::Add => add!(lhs, rhs; "addtmp").emit_to(&gen.builder),
-                    ast::BinOp::Sub => sub!(lhs, rhs; "subtmp").emit_to(&gen.builder),
-                    ast::BinOp::Mul => mul!(lhs, rhs; "multmp").emit_to(&gen.builder),
+                    ast::BinOp::Add => fadd!(lhs, rhs; "addtmp").emit_to(&gen.builder),
+                    ast::BinOp::Sub => fsub!(lhs, rhs; "subtmp").emit_to(&gen.builder),
+                    ast::BinOp::Mul => fmul!(lhs, rhs; "multmp").emit_to(&gen.builder),
                     ast::BinOp::LessThen => {
                         let lhs = fcmp!(ult lhs, rhs; "cmptmp");
                         // Convert bool 0/1 to double 0.0 or 1.0
