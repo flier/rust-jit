@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::ffi::CStr;
 
 use llvm::*;
 use llvm::core::*;
@@ -8,7 +7,7 @@ use llvm::prelude::*;
 use constant::Constant;
 use function::Function;
 use module::Module;
-use utils::{AsBool, AsLLVMBool, AsRaw, FromRaw};
+use utils::{AsBool, AsLLVMBool, AsRaw, FromRaw, UncheckedCStr};
 use value::{AsValueRef, ValueRef};
 
 pub type Linkage = LLVMLinkage;
@@ -37,11 +36,7 @@ pub trait GlobalValue: AsValueRef {
     }
 
     fn section(&self) -> Option<Cow<str>> {
-        unsafe {
-            LLVMGetSection(self.as_raw()).as_ref().map(|s| {
-                CStr::from_ptr(s).to_string_lossy()
-            })
-        }
+        unsafe { LLVMGetSection(self.as_raw()).as_ref() }.map(|s| s.as_str())
     }
 
     fn set_section(&self, section: &str) -> &Self {

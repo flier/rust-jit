@@ -1,4 +1,3 @@
-use std::ffi::CStr;
 use std::io::{Cursor, Seek, SeekFrom};
 use std::mem;
 
@@ -6,7 +5,7 @@ use libc;
 use llvm::disassembler::*;
 
 use errors::Result;
-use utils::{AsMutPtr, AsRaw};
+use utils::{AsMutPtr, AsRaw, UncheckedCStr};
 
 bitflags! {
     pub struct DisasmOptions: u64 {
@@ -130,15 +129,13 @@ impl Disasm {
         };
 
         if size > 0 {
-            let inst = unsafe { CStr::from_ptr(buf.as_ptr() as *const i8) }
-                .to_str()?
-                .to_owned();
+            let inst = (buf.as_ptr() as *const i8).as_str();
 
             cur.seek(SeekFrom::Current(size as i64))?;
 
             trace!("found {} bytes instruction: {}", size, inst);
 
-            Ok(inst)
+            Ok(inst.into())
         } else {
             bail!("fail to disassemble instruction");
         }

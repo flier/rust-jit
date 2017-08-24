@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::fmt;
 use std::path::Path;
 use std::ptr;
@@ -13,7 +12,7 @@ use function::Function;
 use function::FunctionType;
 use global::GlobalVar;
 use types::TypeRef;
-use utils::{AsRaw, AsResult, DisposableMessage, FromRaw, from_unchecked_cstr};
+use utils::{AsRaw, AsResult, DisposableMessage, FromRaw, UncheckedCStr, from_unchecked_cstr};
 use value::ValueRef;
 
 pub type AddressSpace = u32;
@@ -68,7 +67,7 @@ impl Module {
 
     /// Obtain the data layout for a module.
     pub fn data_layout_str(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetDataLayoutStr(self.as_raw())).to_string_lossy() }
+        unsafe { LLVMGetDataLayoutStr(self.as_raw()) }.as_str()
     }
 
     /// Set the data layout for a module.
@@ -78,7 +77,7 @@ impl Module {
 
     /// Obtain the target triple for a module.
     pub fn target_triple(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetTarget(self.as_raw())).to_string_lossy() }
+        unsafe { LLVMGetTarget(self.as_raw()) }.as_str()
     }
 
     /// Set the target triple for a module.

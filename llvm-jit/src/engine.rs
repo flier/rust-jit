@@ -1,4 +1,4 @@
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::mem;
 use std::ptr;
 
@@ -12,7 +12,8 @@ use global::GlobalValue;
 use module::Module;
 use target::{TargetData, TargetMachine};
 use types::TypeRef;
-use utils::{AsLLVMBool, AsMutPtr, AsRaw, AsResult, DisposableMessage, FromRaw, IntoRaw};
+use utils::{AsLLVMBool, AsMutPtr, AsRaw, AsResult, DisposableMessage, FromRaw, IntoRaw,
+            UncheckedCStr};
 
 /// Deallocate and destroy all `ManagedStatic` variables.
 pub fn shutdown() {
@@ -357,13 +358,11 @@ impl ExecutionEngine {
     pub fn remove_module(&self, module: Module) -> Result<Module> {
         let module = module.into_raw();
         let mut out = ptr::null_mut();
-        let mut err = ptr::null_mut();
+        let mut err = DisposableMessage::new();
 
         unsafe { LLVMRemoveModule(self.0, module, &mut out, &mut err) }
             .ok_or_else(|| {
-                format!("fail to remove {:?}, {}", module, unsafe {
-                    CStr::from_ptr(err).to_string_lossy()
-                }).into()
+                format!("fail to remove {:?}, {}", module, err.into_string()).into()
             })
             .map(|_| {
                 trace!("remove Module({:?}) from {:?}", module, self);
@@ -693,7 +692,7 @@ mod tests {
             "allocate {} bytes (align to {}) code section `{}` #{} @ {:?}",
             size,
             alignment,
-            unsafe { CStr::from_ptr(section_name).to_string_lossy() },
+            section_name.as_str(),
             section_id,
             p,
         );
@@ -725,7 +724,7 @@ mod tests {
             } else {
                 "writable"
             },
-            unsafe { CStr::from_ptr(section_name).to_string_lossy() },
+            section_name.as_str(),
             section_id,
             p,
         );

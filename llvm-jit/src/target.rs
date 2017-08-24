@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::fmt;
 use std::path::Path;
 use std::ptr;
@@ -14,7 +13,7 @@ use global::GlobalVar;
 use membuf::MemoryBuffer;
 use module::{AddressSpace, Module};
 use types::{AsTypeRef, StructType, TypeRef};
-use utils::{AsBool, AsLLVMBool, AsRaw, AsResult, DisposableMessage};
+use utils::{AsBool, AsLLVMBool, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
 
 pub type CodeGenFileType = LLVMCodeGenFileType;
 
@@ -52,12 +51,12 @@ impl Target {
 
     /// Returns the name of a target.
     pub fn name(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetTargetName(self.as_raw())) }.to_string_lossy()
+        unsafe { LLVMGetTargetName(self.as_raw()) }.as_str()
     }
 
     /// Returns the description  of a target.
     pub fn description(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetTargetDescription(self.as_raw())) }.to_string_lossy()
+        unsafe { LLVMGetTargetDescription(self.as_raw()) }.as_str()
     }
 
     /// Returns if the target has a JIT

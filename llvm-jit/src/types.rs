@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::fmt;
 use std::ptr;
 
@@ -10,7 +9,7 @@ use llvm::prelude::*;
 use constant::ConstantInt;
 use context::{Context, GlobalContext};
 use module::AddressSpace;
-use utils::{AsBool, AsLLVMBool, AsRaw, DisposableMessage, FromRaw};
+use utils::{AsBool, AsLLVMBool, AsRaw, DisposableMessage, FromRaw, UncheckedCStr};
 use value::ValueRef;
 
 #[macro_export]
@@ -336,11 +335,7 @@ impl StructType {
 
     /// Obtain the name of a structure.
     pub fn name(&self) -> Option<Cow<str>> {
-        unsafe {
-            LLVMGetStructName(self.as_raw()).as_ref().map(|name| {
-                CStr::from_ptr(name).to_string_lossy()
-            })
-        }
+        unsafe { LLVMGetStructName(self.as_raw()).as_ref() }.map(|name| name.as_str())
     }
 
     /// Set the contents of a structure type.

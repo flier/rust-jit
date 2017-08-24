@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::ffi::CStr;
 
 use llvm::core::*;
 use llvm::prelude::*;
@@ -7,7 +6,7 @@ use llvm::prelude::*;
 use context::Context;
 use function::Function;
 use insts::TerminatorInst;
-use utils::{AsRaw, FromRaw};
+use utils::{AsRaw, FromRaw, UncheckedCStr};
 use value::{BlockAddress, Instruction, ValueRef};
 
 /// Basic Block
@@ -24,7 +23,7 @@ inherit_from!(BasicBlock, LLVMBasicBlockRef);
 impl BasicBlock {
     /// Obtain the string name of a basic block.
     pub fn name(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetBasicBlockName(self.0)).to_string_lossy() }
+        unsafe { LLVMGetBasicBlockName(self.0) }.as_str()
     }
 
     /// Obtain the function to which a basic block belongs.

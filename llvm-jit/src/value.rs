@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::fmt;
 
 use llvm::*;
@@ -9,7 +8,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use constant::Constant;
 use types::TypeRef;
-use utils::{AsBool, AsRaw, DisposableMessage, FromRaw};
+use utils::{AsBool, AsRaw, DisposableMessage, FromRaw, UncheckedCStr};
 
 #[macro_export]
 macro_rules! values {
@@ -68,11 +67,7 @@ impl ValueRef {
 
     /// Obtain the string name of a value.
     pub fn name(&self) -> Option<Cow<str>> {
-        unsafe {
-            LLVMGetValueName(self.0).as_ref().map(|name| {
-                CStr::from_ptr(name).to_string_lossy()
-            })
-        }
+        unsafe { LLVMGetValueName(self.0).as_ref() }.map(|name| name.as_str())
     }
 
     /// Set the string name of a value.

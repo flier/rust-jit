@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::ptr;
 
 use libc::c_void;
@@ -10,7 +9,7 @@ use llvm::prelude::LLVMModuleRef;
 use llvm::target_machine::LLVMTargetMachineRef;
 
 use errors::Result;
-use utils::{AsMutPtr, AsRaw};
+use utils::{AsMutPtr, AsRaw, UncheckedCStr};
 
 pub type TargetAddress = LLVMOrcTargetAddress;
 pub type LazyCompileCallback = LLVMOrcLazyCompileCallbackFn;
@@ -39,22 +38,20 @@ impl JITStack {
 
     /// Get the error message for the most recent error (if any).
     pub fn err_msg(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMOrcGetErrorMsg(self.as_raw())).to_string_lossy() }
+        unsafe { LLVMOrcGetErrorMsg(self.as_raw()) }.as_str()
     }
 
     /// Mangle the given symbol.
     pub fn mangled_symbol<S: AsRef<str>>(&self, symbol: S) -> String {
         let mut mangled = ptr::null_mut();
 
-        unsafe {
-            LLVMOrcGetMangledSymbol(self.as_raw(), &mut mangled, cstr!(symbol.as_ref()));
+        unsafe { LLVMOrcGetMangledSymbol(self.as_raw(), &mut mangled, cstr!(symbol.as_ref())) }
 
-            let s = String::from(CStr::from_ptr(mangled).to_string_lossy());
+        let s = mangled.as_str().into();
 
-            LLVMOrcDisposeMangledSymbol(mangled);
+        unsafe { LLVMOrcDisposeMangledSymbol(mangled) }
 
-            s
-        }
+        s
     }
 
     /// Create a lazy compile callback.

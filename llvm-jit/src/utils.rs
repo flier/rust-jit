@@ -221,6 +221,36 @@ pub fn from_unchecked_cstr<'a>(p: *const u8, len: usize) -> Cow<'a, str> {
     unsafe { CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(p, len)).to_string_lossy() }
 }
 
+pub trait UncheckedCStr<'a> {
+    fn as_str(self) -> Cow<'a, str>;
+}
+
+impl<'a> UncheckedCStr<'a> for *const libc::c_char {
+    fn as_str(self) -> Cow<'a, str> {
+        if self.is_null() {
+            "".into()
+        } else {
+            unsafe { ::std::ffi::CStr::from_ptr(self) }.to_string_lossy()
+        }
+    }
+}
+
+impl<'a> UncheckedCStr<'a> for *mut libc::c_char {
+    fn as_str(self) -> Cow<'a, str> {
+        if self.is_null() {
+            "".into()
+        } else {
+            unsafe { ::std::ffi::CStr::from_ptr(self) }.to_string_lossy()
+        }
+    }
+}
+
+impl<'a> UncheckedCStr<'a> for &'a libc::c_char {
+    fn as_str(self) -> Cow<'a, str> {
+        unsafe { ::std::ffi::CStr::from_ptr(self) }.to_string_lossy()
+    }
+}
+
 pub trait DisposableMessage {
     fn new() -> Self;
 
@@ -234,9 +264,13 @@ impl DisposableMessage for *mut libc::c_char {
 
     fn into_string(self) -> String {
         unsafe {
-            let s = CStr::from_ptr(self).to_string_lossy().into();
-            LLVMDisposeMessage(self);
-            s
+            if self.is_null() {
+                String::default()
+            } else {
+                let s = CStr::from_ptr(self).to_string_lossy().into();
+                LLVMDisposeMessage(self);
+                s
+            }
         }
     }
 }

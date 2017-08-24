@@ -1,11 +1,10 @@
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::slice;
 
 use llvm::object::*;
 
 use membuf::MemoryBuffer;
-use utils::{AsBool, AsRaw};
+use utils::{AsBool, AsRaw, UncheckedCStr};
 
 #[derive(Debug)]
 pub struct ObjectFile(LLVMObjectFileRef);
@@ -133,7 +132,7 @@ impl AsRaw for Section {
 
 impl Section {
     pub fn name(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetSectionName(self.0)).to_string_lossy() }
+        unsafe { LLVMGetSectionName(self.0) }.as_str()
     }
 
     pub fn size(&self) -> usize {
@@ -189,7 +188,7 @@ impl AsRaw for Symbol {
 
 impl Symbol {
     pub fn name(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetSymbolName(self.as_raw())).to_string_lossy() }
+        unsafe { LLVMGetSymbolName(self.as_raw()) }.as_str()
     }
 
     pub fn size(&self) -> usize {
@@ -223,11 +222,11 @@ impl Relocation {
     }
 
     pub fn type_name(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetRelocationTypeName(self.0)).to_string_lossy() }
+        unsafe { LLVMGetRelocationTypeName(self.0) }.as_str()
     }
 
     pub fn value_str(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetRelocationValueString(self.0)).to_string_lossy() }
+        unsafe { LLVMGetRelocationValueString(self.0) }.as_str()
     }
 }
 
