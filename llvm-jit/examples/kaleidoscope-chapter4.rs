@@ -4,6 +4,8 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate error_chain;
 extern crate rustyline;
+extern crate libc;
+extern crate llvm_sys as llvm;
 #[macro_use]
 extern crate llvm_jit as jit;
 
@@ -766,10 +768,11 @@ mod codegen {
 }
 
 use std::collections::HashMap;
+use std::ffi::CStr;
 use std::mem;
-use std::os::raw::c_void;
 
 use jit::prelude::*;
+use jit::target::*;
 
 use ast::Expr;
 use codegen::CodeGenerator;
@@ -834,19 +837,19 @@ where
 
             // JIT the module containing the anonymous expression,
             // keeping a handle so we can free it later.
-            if let Some(module) = engine.add_module(gen.module) {
-                // Search the JIT for the __anon_expr symbol.
-                if let Some(func) = module.get_function(parser::ANNO_EXPR) {
-                    // Get the symbol's address and cast it to the right type
-                    // (takes no arguments, returns a double) so we can call it as a native function.
-                    let fp: extern fn () -> f64 = unsafe { mem::transmute(engine.get_address(func)) };
+            let handle = engine.add_module(gen.module);
 
-                    println!("Evaluated to: {}", fp());
-                }
+            // Search the JIT for the __anon_expr symbol.
+            let addr = engine.find_symbol(parser::ANNO_EXPR).unwrap();
 
-                // Delete the anonymous expression module from the JIT.
-                engine.remove_module(module);
-            }
+            // Get the symbol's address and cast it to the right type
+            // (takes no arguments, returns a double) so we can call it as a native function.
+            let fp: extern "C" fn() -> f64 = unsafe { mem::transmute(addr) };
+
+            println!("Evaluated to: {}", fp());
+
+            // Delete the anonymous expression module from the JIT.
+            engine.remove_module(handle);
 
             Ok(ir)
         })
@@ -866,53 +869,78 @@ where
 }
 
 struct KaleidoscopeJIT {
-    engine: jit::ExecutionEngine,
-    modules: Vec<Module>,
+    engine: jit::JITStack,
+    modules: Vec<jit::ModuleHandle>,
     protos: HashMap<String, ast::Prototype>,
+    symbols: HashMap<String, jit::TargetAddress>,
 }
 
 impl KaleidoscopeJIT {
-    pub fn new(context: &Context) -> Result<KaleidoscopeJIT> {
-        jit::target::NativeTarget::init().unwrap();
-        jit::target::NativeAsmParser::init().unwrap();
-        jit::target::NativeAsmPrinter::init().unwrap();
+    pub fn new(target_machine: &TargetMachine) -> Result<KaleidoscopeJIT> {
+        NativeTarget::init().unwrap();
+        NativeAsmParser::init().unwrap();
+        NativeAsmPrinter::init().unwrap();
 
         jit::MCJITCompiler::link_in();
 
-        let module = context.create_module("my cool jit");
-        let engine = ExecutionEngine::for_module(module)?;
+        let engine = jit::JITStack::new(target_machine);
 
         Ok(KaleidoscopeJIT {
+            target_machine,
             engine,
-            modules: vec![],
+            modules: Vec::new(),
             protos: HashMap::new(),
+            symbols: HashMap::new(),
         })
     }
 
-    pub fn add_module(&mut self, module: Module) -> Option<Module> {
-        self.modules.push(self.engine.add_module(module));
-        self.modules.last().map(|m| m.borrow())
+    pub fn add_module(&mut self, module: Module) -> jit::ModuleHandle {
+        let ctx = self as *mut KaleidoscopeJIT;
+        let handle = self.engine.add_eagerly_compiled_ir::<()>(
+            module,
+            None, //Some(symbol_resolver_callback),
+            None, //Some(unsafe { &mut *ctx }),
+        );
+
+        self.modules.push(handle);
+
+        handle
     }
 
-    pub fn remove_module(&mut self, module: Module) -> bool {
-        self.engine
-            .remove_module(module)
-            .ok()
-            .and_then(|module| {
-                self.modules.iter().position(|m| *m == module).map(|idx| {
-                    self.modules.remove(idx)
-                })
-            })
+    pub fn remove_module(&mut self, handle: jit::ModuleHandle) -> bool {
+        self.modules
+            .iter()
+            .position(|&h| h == handle)
+            .map(|pos| self.modules.remove(pos))
+            .map(|handle| self.engine.remove_module(handle))
             .is_some()
+    }
+
+    pub fn find_symbol<S: AsRef<str>>(&self, symbol: S) -> Option<jit::TargetAddress> {
+        let symbol = symbol.as_ref();
+
+        self.engine.get_symbol_address(symbol).or_else(|| {
+            let addr = self.symbols.get(symbol).cloned();
+
+            trace!("got symbol `{}` from symbol tables @ {:?}", symbol, addr);
+
+            addr
+        })
     }
 
     pub fn add_prototype(&mut self, proto: ast::Prototype) -> Option<ast::Prototype> {
         self.protos.insert(proto.name.clone(), proto)
     }
+}
 
-    pub fn get_address(&self, func: Function) -> *mut c_void {
-        self.engine.get_ptr_to_global(func)
-    }
+extern "C" fn symbol_resolver_callback(
+    symbol: *const libc::c_char,
+    ctx: *mut libc::c_void,
+) -> jit::TargetAddress {
+    let jit: &KaleidoscopeJIT = unsafe { &*(ctx as *const KaleidoscopeJIT) };
+    let symbol = unsafe { CStr::from_ptr(symbol) }.to_string_lossy();
+
+    jit.find_symbol(symbol).unwrap_or(0)
 }
 
 enum Parsed {
@@ -999,7 +1027,9 @@ fn main() {
     pretty_env_logger::init().unwrap();
 
     let context = Context::new();
-    let mut engine = KaleidoscopeJIT::new(&context).expect("create JIT compiler");
+
+    let target_machine = TargetMachine::default();
+    let mut engine = KaleidoscopeJIT::new(&target_machine).expect("create JIT compiler");
 
     for code in Lines::new() {
         debug!("parsing code: {}", code);

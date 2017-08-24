@@ -1,15 +1,16 @@
 use std::borrow::Cow;
+use std::mem;
 use std::ptr;
 
 use libc::c_void;
 
-use llvm::object::LLVMObjectFileRef;
 use llvm::orc::*;
-use llvm::prelude::LLVMModuleRef;
-use llvm::target_machine::LLVMTargetMachineRef;
 
 use errors::Result;
-use utils::{AsMutPtr, AsRaw, UncheckedCStr};
+use module::Module;
+use object::ObjectFile;
+use target::TargetMachine;
+use utils::{AsMutPtr, AsRaw, IntoRaw, UncheckedCStr};
 
 pub type TargetAddress = LLVMOrcTargetAddress;
 pub type LazyCompileCallback = LLVMOrcLazyCompileCallbackFn;
@@ -23,17 +24,20 @@ inherit_from!(JITStack, LLVMOrcJITStackRef);
 
 impl Drop for JITStack {
     fn drop(&mut self) {
+        trace!("drop {:?}", self);
+
         unsafe { LLVMOrcDisposeInstance(self.as_raw()) }
     }
 }
 
 impl JITStack {
     /// Create an ORC JIT stack.
-    pub fn new<T>(tm: T) -> Self
-    where
-        T: AsRaw<RawType = LLVMTargetMachineRef>,
-    {
-        unsafe { LLVMOrcCreateInstance(tm.as_raw()) }.into()
+    pub fn new(tm: &TargetMachine) -> Self {
+        let stack = unsafe { LLVMOrcCreateInstance(tm.as_raw()) }.into();
+
+        trace!("create {:?} for {:?}", stack, tm);
+
+        stack
     }
 
     /// Get the error message for the most recent error (if any).
@@ -42,14 +46,17 @@ impl JITStack {
     }
 
     /// Mangle the given symbol.
-    pub fn mangled_symbol<S: AsRef<str>>(&self, symbol: S) -> String {
+    pub fn get_mangled_symbol<S: AsRef<str>>(&self, symbol: S) -> String {
+        let symbol = symbol.as_ref();
         let mut mangled = ptr::null_mut();
 
-        unsafe { LLVMOrcGetMangledSymbol(self.as_raw(), &mut mangled, cstr!(symbol.as_ref())) }
+        unsafe { LLVMOrcGetMangledSymbol(self.as_raw(), &mut mangled, cstr!(symbol)) }
 
         let s = mangled.as_str().into();
 
         unsafe { LLVMOrcDisposeMangledSymbol(mangled) }
+
+        trace!("symbol `{}` mangled to `{}`", symbol, s);
 
         s
     }
@@ -57,13 +64,15 @@ impl JITStack {
     /// Create a lazy compile callback.
     pub fn create_lazy_compile_callback<T>(
         &self,
-        callback: LLVMOrcLazyCompileCallbackFn,
+        callback: Option<LLVMOrcLazyCompileCallbackFn>,
         ctx: Option<&mut T>,
     ) -> TargetAddress {
+        trace!("create lazy compile callback @ {:?}", callback);
+
         unsafe {
             LLVMOrcCreateLazyCompileCallback(
                 self.as_raw(),
-                callback,
+                callback.unwrap_or(mem::zeroed()),
                 ctx.as_mut_ptr() as *mut c_void,
             )
         }
@@ -103,77 +112,105 @@ impl JITStack {
     }
 
     /// Add a module to be eagerly compiled.
-    pub fn add_eagerly_compiled_ir<M, T>(
+    pub fn add_eagerly_compiled_ir<T>(
         &self,
-        module: M,
-        resolver: SymbolResolver,
+        module: Module,
+        resolver: Option<SymbolResolver>,
         ctx: Option<&mut T>,
-    ) -> ModuleHandle
-    where
-        M: AsRaw<RawType = LLVMModuleRef>,
-    {
-        unsafe {
+    ) -> ModuleHandle {
+        let module = module.into_raw();
+        let handle = unsafe {
             LLVMOrcAddEagerlyCompiledIR(
                 self.as_raw(),
-                module.as_raw(),
-                resolver,
+                module,
+                mem::transmute(resolver),
                 ctx.as_mut_ptr() as *mut c_void,
             )
-        }
+        };
+
+        trace!(
+            "add eagerly compiled module {:?}, resolver = {:?}, handle = {}",
+            module,
+            resolver,
+            handle
+        );
+
+        handle
     }
 
-    /// Add a module to be eagerly compiled.
-    pub fn add_lazily_compiled_ir<M, T>(
+    /// Add a module to be lazily compiled.
+    pub fn add_lazily_compiled_ir<T>(
         &self,
-        module: M,
-        resolver: SymbolResolver,
+        module: Module,
+        resolver: Option<SymbolResolver>,
         ctx: Option<&mut T>,
-    ) -> ModuleHandle
-    where
-        M: AsRaw<RawType = LLVMModuleRef>,
-    {
-        unsafe {
+    ) -> ModuleHandle {
+        let module = module.into_raw();
+        let handle = unsafe {
             LLVMOrcAddLazilyCompiledIR(
                 self.as_raw(),
-                module.as_raw(),
-                resolver,
+                module,
+                mem::transmute(resolver),
                 ctx.as_mut_ptr() as *mut c_void,
             )
-        }
+        };
+
+        trace!(
+            "add lazily compiled module {:?}, resolver = {:?}, handle = {}",
+            module,
+            resolver,
+            handle,
+        );
+
+        handle
     }
 
     /// Add an object file.
-    pub fn add_object_file<O, T>(
+    pub fn add_object_file<T>(
         &self,
-        obj: O,
-        resolver: SymbolResolver,
+        obj: ObjectFile,
+        resolver: Option<SymbolResolver>,
         ctx: Option<&mut T>,
-    ) -> ModuleHandle
-    where
-        O: AsRaw<RawType = LLVMObjectFileRef>,
-    {
-        unsafe {
+    ) -> ModuleHandle {
+        let obj = obj.into_raw();
+        let handle = unsafe {
             LLVMOrcAddObjectFile(
                 self.as_raw(),
-                obj.as_raw(),
-                resolver,
+                obj,
+                mem::transmute(resolver),
                 ctx.as_mut_ptr() as *mut c_void,
             )
-        }
+        };
+
+        trace!(
+            "add object file {:?}, resolver = {:?}, handle = {}",
+            obj,
+            resolver,
+            handle,
+        );
+
+        handle
     }
 
     /// Remove a module set from the JIT.
     pub fn remove_module(&self, handle: ModuleHandle) {
-        unsafe { LLVMRemoveModule(self.as_raw(), handle) }
+        trace!("remove #{} module", handle);
+
+        unsafe { LLVMOrcRemoveModule(self.as_raw(), handle) }
     }
 
     /// Get symbol address from JIT instance.
-    pub fn get_symbol_address<S: AsRef<str>>(&self, symbol: S) -> TargetAddress {
+    pub fn get_symbol_address<S: AsRef<str>>(&self, symbol: S) -> Option<TargetAddress> {
         let symbol = symbol.as_ref();
         let addr = unsafe { LLVMOrcGetSymbolAddress(self.as_raw(), cstr!(symbol)) };
 
-        trace!("got symbol `{}` address @ {}", symbol, addr);
+        trace!("get symbol `{}` from JIT engine @ 0x{:08x}", symbol, addr);
 
-        addr
+        if addr == 0 { None } else { Some(addr) }
     }
+}
+
+extern "C" {
+    /// Remove a module set from the JIT.
+    pub fn LLVMOrcRemoveModule(JITStack: LLVMOrcJITStackRef, H: LLVMOrcModuleHandle);
 }
