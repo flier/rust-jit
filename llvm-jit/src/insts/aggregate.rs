@@ -4,7 +4,7 @@ use std::fmt;
 use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsRaw, unchecked_cstring};
+use utils::AsRaw;
 use value::Instruction;
 
 /// This instruction extracts a struct member or array element value from an aggregate value.
@@ -39,7 +39,7 @@ where
                 builder.as_raw(),
                 self.aggregate.emit_to(builder).into().as_raw(),
                 self.index,
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into()
     }
@@ -100,7 +100,7 @@ where
                 self.aggregate.emit_to(builder).into().as_raw(),
                 self.element.emit_to(builder).into().as_raw(),
                 self.index,
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into()
     }

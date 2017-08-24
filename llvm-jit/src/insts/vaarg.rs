@@ -5,7 +5,7 @@ use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
 use types::TypeRef;
-use utils::{AsRaw, unchecked_cstring};
+use utils::AsRaw;
 use value::Instruction;
 
 /// The `va_arg` instruction is used to access arguments passed through the “variable argument” area of a function call. It is used to implement the `va_arg` macro in C.
@@ -36,7 +36,7 @@ where
                 builder.as_raw(),
                 self.args.emit_to(builder).into().as_raw(),
                 self.ty.as_raw(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into()
     }

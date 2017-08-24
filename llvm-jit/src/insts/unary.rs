@@ -30,7 +30,7 @@ macro_rules! define_unary_instruction {
                     $func(
                         builder.as_raw(),
                         self.value.emit_to(builder).into().as_raw(),
-                        $crate::utils::unchecked_cstring(self.name.clone()).as_ptr(),
+                        cstr!(self.name),
                     )
                 }.into()
             }

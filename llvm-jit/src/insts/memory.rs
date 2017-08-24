@@ -6,7 +6,7 @@ use llvm::prelude::*;
 
 use insts::{IRBuilder, InstructionBuilder};
 use types::TypeRef;
-use utils::{AsRaw, unchecked_cstring};
+use utils::AsRaw;
 use value::{Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -48,14 +48,10 @@ where
                     builder.as_raw(),
                     self.ty.as_raw(),
                     size.emit_to(builder).into().as_raw(),
-                    unchecked_cstring(self.name.clone()).as_ptr(),
+                    cstr!(self.name),
                 )
             } else {
-                LLVMBuildMalloc(
-                    builder.as_raw(),
-                    self.ty.as_raw(),
-                    unchecked_cstring(self.name.clone()).as_ptr(),
-                )
+                LLVMBuildMalloc(builder.as_raw(), self.ty.as_raw(), cstr!(self.name))
             }
         }.into()
     }
@@ -118,14 +114,10 @@ where
                     builder.as_raw(),
                     self.ty.as_raw(),
                     size.emit_to(builder).into().as_raw(),
-                    unchecked_cstring(self.name.clone()).as_ptr(),
+                    cstr!(self.name),
                 )
             } else {
-                LLVMBuildAlloca(
-                    builder.as_raw(),
-                    self.ty.as_raw(),
-                    unchecked_cstring(self.name.clone()).as_ptr(),
-                )
+                LLVMBuildAlloca(builder.as_raw(), self.ty.as_raw(), cstr!(self.name))
             }
         }.into()
     }
@@ -223,7 +215,7 @@ where
             LLVMBuildLoad(
                 builder.as_raw(),
                 self.ptr.emit_to(builder).into().as_raw(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into()
     }

@@ -14,7 +14,7 @@ use global::GlobalVar;
 use membuf::MemoryBuffer;
 use module::{AddressSpace, Module};
 use types::{AsTypeRef, StructType, TypeRef};
-use utils::{AsBool, AsLLVMBool, AsRaw, AsResult, DisposableMessage, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, AsRaw, AsResult, DisposableMessage};
 
 pub type CodeGenFileType = LLVMCodeGenFileType;
 
@@ -31,19 +31,17 @@ impl Default for Target {
 
 impl Target {
     /// Finds the target corresponding to the given name
-    pub fn from_name<S: AsRef<str>>(s: S) -> Option<Target> {
-        unsafe { LLVMGetTargetFromName(unchecked_cstring(s).as_ptr()).as_mut() }
-            .map(|target| Target(target))
+    pub fn from_name<S: AsRef<str>>(name: S) -> Option<Target> {
+        unsafe { LLVMGetTargetFromName(cstr!(name.as_ref())).as_mut() }.map(|target| Target(target))
     }
 
     /// Finds the target corresponding to the given triple
-    pub fn from_triple<S: AsRef<str>>(s: S) -> Result<Target> {
+    pub fn from_triple<S: AsRef<str>>(triple: S) -> Result<Target> {
         let mut target = ptr::null_mut();
         let mut msg = ptr::null_mut();
 
-        if unsafe {
-            LLVMGetTargetFromTriple(unchecked_cstring(s).as_ptr(), &mut target, &mut msg)
-        }.is_ok()
+        if unsafe { LLVMGetTargetFromTriple(cstr!(triple.as_ref()), &mut target, &mut msg) }
+            .is_ok()
         {
             Ok(Target(target))
         } else {
@@ -135,9 +133,9 @@ impl TargetMachine {
         TargetMachine(unsafe {
             LLVMCreateTargetMachine(
                 target.0,
-                unchecked_cstring(triple).as_ptr(),
-                unchecked_cstring(cpu).as_ptr(),
-                unchecked_cstring(feature).as_ptr(),
+                cstr!(triple),
+                cstr!(cpu),
+                cstr!(feature),
                 opt_level,
                 reloc_mode,
                 code_model,
@@ -187,7 +185,7 @@ impl TargetMachine {
             LLVMTargetMachineEmitToFile(
                 self.as_raw(),
                 module.as_raw(),
-                cpath!(path),
+                cpath!(path.as_ref()) as *mut i8,
                 codegen,
                 &mut err,
             )
@@ -258,7 +256,7 @@ impl fmt::Display for TargetData {
 impl TargetData {
     /// Creates target data from a target layout string.
     pub fn create<S: AsRef<str>>(s: S) -> Self {
-        unsafe { LLVMCreateTargetData(unchecked_cstring(s).as_ptr()) }.into()
+        unsafe { LLVMCreateTargetData(cstr!(s.as_ref())) }.into()
     }
 
     /// Returns the byte order of a target, either `LLVMBigEndian` or `LLVMLittleEndian`.

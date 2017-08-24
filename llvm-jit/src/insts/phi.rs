@@ -6,7 +6,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use insts::{IRBuilder, InstructionBuilder};
 use types::TypeRef;
-use utils::{AsRaw, unchecked_cstring};
+use utils::AsRaw;
 use value::{Instruction, ValueRef};
 
 /// The `phi` instruction is used to implement the φ node in the SSA graph representing the function.
@@ -38,13 +38,8 @@ impl<'a> InstructionBuilder for Phi<'a> {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        let phi: PhiNode = unsafe {
-            LLVMBuildPhi(
-                builder.as_raw(),
-                self.ty.as_raw(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
-            )
-        }.into();
+        let phi: PhiNode =
+            unsafe { LLVMBuildPhi(builder.as_raw(), self.ty.as_raw(), cstr!(self.name)) }.into();
 
         let (mut values, mut blocks) = self.incomings.iter().fold(
             (Vec::new(), Vec::new()),

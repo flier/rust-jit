@@ -10,7 +10,7 @@ use llvm::prelude::LLVMModuleRef;
 use llvm::target_machine::LLVMTargetMachineRef;
 
 use errors::Result;
-use utils::{AsMutPtr, AsRaw, unchecked_cstring};
+use utils::{AsMutPtr, AsRaw};
 
 pub type TargetAddress = LLVMOrcTargetAddress;
 pub type LazyCompileCallback = LLVMOrcLazyCompileCallbackFn;
@@ -47,11 +47,7 @@ impl JITStack {
         let mut mangled = ptr::null_mut();
 
         unsafe {
-            LLVMOrcGetMangledSymbol(
-                self.as_raw(),
-                &mut mangled,
-                unchecked_cstring(symbol).as_ptr(),
-            );
+            LLVMOrcGetMangledSymbol(self.as_raw(), &mut mangled, cstr!(symbol.as_ref()));
 
             let s = String::from(CStr::from_ptr(mangled).to_string_lossy());
 
@@ -78,8 +74,12 @@ impl JITStack {
 
     /// Create a named indirect call stub.
     pub fn create_indirect_stub<S: AsRef<str>>(&self, name: S, addr: TargetAddress) -> Result<()> {
+        let name = name.as_ref();
+
+        trace!("create indirect stub `{}` @ {}", name, addr);
+
         self.check_error_code(unsafe {
-            LLVMOrcCreateIndirectStub(self.as_raw(), unchecked_cstring(name).as_ptr(), addr)
+            LLVMOrcCreateIndirectStub(self.as_raw(), cstr!(name), addr)
         })
     }
 
@@ -89,8 +89,12 @@ impl JITStack {
         name: S,
         addr: TargetAddress,
     ) -> Result<()> {
+        let name = name.as_ref();
+
+        trace!("set indirect stub `{}` pointer to {}", name, addr);
+
         self.check_error_code(unsafe {
-            LLVMOrcSetIndirectStubPointer(self.as_raw(), unchecked_cstring(name).as_ptr(), addr)
+            LLVMOrcSetIndirectStubPointer(self.as_raw(), cstr!(name), addr)
         })
     }
 
@@ -168,6 +172,11 @@ impl JITStack {
 
     /// Get symbol address from JIT instance.
     pub fn get_symbol_address<S: AsRef<str>>(&self, symbol: S) -> TargetAddress {
-        unsafe { LLVMOrcGetSymbolAddress(self.as_raw(), unchecked_cstring(symbol).as_ptr()) }
+        let symbol = symbol.as_ref();
+        let addr = unsafe { LLVMOrcGetSymbolAddress(self.as_raw(), cstr!(symbol)) };
+
+        trace!("got symbol `{}` address @ {}", symbol, addr);
+
+        addr
     }
 }

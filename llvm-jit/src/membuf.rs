@@ -7,7 +7,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use errors::Result;
-use utils::{AsLLVMBool, AsRaw, AsResult, DisposableMessage, unchecked_cstring};
+use utils::{AsLLVMBool, AsRaw, AsResult, DisposableMessage};
 
 #[derive(Debug)]
 pub struct MemoryBuffer(LLVMMemoryBufferRef);
@@ -67,7 +67,7 @@ impl MemoryBuffer {
             LLVMCreateMemoryBufferWithMemoryRange(
                 data.as_ptr() as *const i8,
                 data.len(),
-                unchecked_cstring(name).as_ptr(),
+                cstr!(name),
                 false.as_bool(),
             )
         }.into()
@@ -79,7 +79,7 @@ impl MemoryBuffer {
             LLVMCreateMemoryBufferWithMemoryRangeCopy(
                 data.as_ptr() as *const i8,
                 data.len(),
-                unchecked_cstring(name).as_ptr(),
+                cstr!(name),
             )
         }.into()
     }

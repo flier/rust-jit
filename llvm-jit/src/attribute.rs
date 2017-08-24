@@ -10,7 +10,7 @@ use llvm::prelude::*;
 use context::Context;
 use function::Function;
 use insts::CallSite;
-use utils::{AsBool, AsRaw, from_unchecked_cstr, unchecked_cstring};
+use utils::{AsBool, AsRaw, from_unchecked_cstr};
 
 pub type AttributeIndex = LLVMAttributeIndex;
 
@@ -303,14 +303,12 @@ impl Context {
 
 impl Function {
     /// Add a target-dependent attribute to a function
-    pub fn add_target_dependent_attribute(&self, kind: &str, value: &str) {
-        unsafe {
-            LLVMAddTargetDependentFunctionAttr(
-                self.as_raw(),
-                unchecked_cstring(kind).as_ptr(),
-                unchecked_cstring(value).as_ptr(),
-            )
-        }
+    pub fn add_target_dependent_attribute<K, V>(&self, kind: K, value: V)
+    where
+        K: AsRef<str>,
+        V: AsRef<str>,
+    {
+        unsafe { LLVMAddTargetDependentFunctionAttr(self.as_raw(), cstr!(kind), cstr!(value)) }
     }
 }
 

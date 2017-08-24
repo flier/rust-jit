@@ -7,7 +7,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use function::Function;
 use insts::{CallSite, IRBuilder, InstructionBuilder};
-use utils::{AsRaw, unchecked_cstring};
+use utils::AsRaw;
 use value::{Instruction, ValueRef};
 
 /// This instruction is designed to operate as a standard `call` instruction in most regards.
@@ -68,7 +68,7 @@ impl<'a> InstructionBuilder for Invoke<'a> {
                 args.len() as u32,
                 self.then.map_or(ptr::null_mut(), |bb| bb.as_raw()),
                 self.unwind.map_or(ptr::null_mut(), |bb| bb.as_raw()),
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into()
     }

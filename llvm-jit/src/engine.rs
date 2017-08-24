@@ -12,7 +12,7 @@ use global::GlobalValue;
 use module::Module;
 use target::{TargetData, TargetMachine};
 use types::TypeRef;
-use utils::{AsLLVMBool, AsMutPtr, AsRaw, AsResult, FromRaw, IntoRaw, unchecked_cstring};
+use utils::{AsLLVMBool, AsMutPtr, AsRaw, AsResult, FromRaw, IntoRaw};
 
 /// Deallocate and destroy all `ManagedStatic` variables.
 pub fn shutdown() {
@@ -374,26 +374,17 @@ impl ExecutionEngine {
     ///
     /// This is very slow operation and shouldn't be used for general code.
     pub fn find_function<S: AsRef<str>>(&self, name: S) -> Option<Function> {
-        let cname = unchecked_cstring(name);
+        let name = name.as_ref();
         let mut func = ptr::null_mut();
 
-        if unsafe { LLVMFindFunction(self.0, cname.as_ptr(), &mut func) }.is_ok() {
+        if unsafe { LLVMFindFunction(self.0, cstr!(name), &mut func) }.is_ok() {
             let f = func.into();
 
-            trace!(
-                "found `{}` function in {:?}: {:?}",
-                cname.to_string_lossy(),
-                self,
-                f
-            );
+            trace!("found `{}` function in {:?}: {:?}", name, self, f);
 
             Some(f)
         } else {
-            trace!(
-                "not found `{}` function in {:?}",
-                cname.to_string_lossy(),
-                self
-            );
+            trace!("not found `{}` function in {:?}", name, self);
 
             None
         }
@@ -429,21 +420,17 @@ impl ExecutionEngine {
     ///
     /// This may involve code generation.
     pub fn get_global_value_address<S: AsRef<str>>(&self, name: S) -> Option<u64> {
-        let cname = unchecked_cstring(name);
-        let addr = unsafe { LLVMGetGlobalValueAddress(self.0, cname.as_ptr()) };
+        let name = name.as_ref();
+        let addr = unsafe { LLVMGetGlobalValueAddress(self.0, cstr!(name)) };
 
         if addr == 0 {
-            trace!(
-                "not found `{}` global value in {:?}",
-                cname.to_string_lossy(),
-                self
-            );
+            trace!("not found `{}` global value in {:?}", name, self);
 
             None
         } else {
             trace!(
                 "found `{}` global value in {:?}, Address({:?})",
-                cname.to_string_lossy(),
+                name,
                 self,
                 addr as *const u8
             );
@@ -456,21 +443,17 @@ impl ExecutionEngine {
     ///
     /// This may involve code generation.
     pub fn get_function_address<S: AsRef<str>>(&self, name: S) -> Option<u64> {
-        let cname = unchecked_cstring(name);
-        let addr = unsafe { LLVMGetFunctionAddress(self.0, cname.as_ptr()) };
+        let name = name.as_ref();
+        let addr = unsafe { LLVMGetFunctionAddress(self.0, cstr!(name)) };
 
         if addr == 0 {
-            trace!(
-                "not found `{}` function address in {:?}",
-                cname.to_string_lossy(),
-                self
-            );
+            trace!("not found `{}` function address in {:?}", name, self);
 
             None
         } else {
             trace!(
                 "found `{}` function address in {:?}: Address({:p})",
-                cname.to_string_lossy(),
+                name,
                 self,
                 addr as *const u8
             );

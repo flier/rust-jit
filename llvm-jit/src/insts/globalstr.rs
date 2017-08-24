@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsRaw, unchecked_cstring};
+use utils::AsRaw;
 use value::Instruction;
 
 /// Make a new global variable with an initializer that has array of i8 type
@@ -28,13 +28,7 @@ impl<'a> InstructionBuilder for GlobalString<'a> {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe {
-            LLVMBuildGlobalString(
-                builder.as_raw(),
-                unchecked_cstring(self.s.clone()).as_ptr(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
-            )
-        }.into()
+        unsafe { LLVMBuildGlobalString(builder.as_raw(), cstr!(self.s), cstr!(self.name)) }.into()
     }
 }
 
@@ -76,13 +70,8 @@ impl<'a> InstructionBuilder for GlobalStringPtr<'a> {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe {
-            LLVMBuildGlobalStringPtr(
-                builder.as_raw(),
-                unchecked_cstring(self.s.clone()).as_ptr(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
-            )
-        }.into()
+        unsafe { LLVMBuildGlobalStringPtr(builder.as_raw(), cstr!(self.s), cstr!(self.name)) }
+            .into()
     }
 }
 

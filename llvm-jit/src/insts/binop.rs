@@ -34,7 +34,7 @@ macro_rules! define_binary_operator {
                         builder.as_raw(),
                         self.lhs.emit_to(builder).into().as_raw(),
                         self.rhs.emit_to(builder).into().as_raw(),
-                        $crate::utils::unchecked_cstring(self.name.clone()).as_ptr(),
+                        cstr!(self.name),
                     )
                 }.into()
             }

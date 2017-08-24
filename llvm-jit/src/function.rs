@@ -6,7 +6,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use context::Context;
 use types::TypeRef;
-use utils::{AsBool, AsRaw, FromRaw, unchecked_cstring};
+use utils::{AsBool, AsRaw, FromRaw};
 use value::ValueRef;
 
 /// Structure to represent function types.
@@ -108,13 +108,13 @@ impl Function {
 
     /// Append a basic block to the end of a function using the global context.
     pub fn append_basic_block<S: AsRef<str>>(&self, name: S) -> BasicBlock {
-        let cname = unchecked_cstring(name);
-        let block = unsafe { LLVMAppendBasicBlock(self.as_raw(), cname.as_ptr()) }.into();
+        let name = name.as_ref();
+        let block = unsafe { LLVMAppendBasicBlock(self.as_raw(), cstr!(name)) }.into();
 
         trace!(
             "{:?} create `{}` block in the global context: {:?}",
             self,
-            cname.to_string_lossy(),
+            name,
             block
         );
 
@@ -127,15 +127,15 @@ impl Function {
         name: S,
         context: &Context,
     ) -> BasicBlock {
-        let cname = unchecked_cstring(name);
+        let name = name.as_ref();
         let block = unsafe {
-            LLVMAppendBasicBlockInContext(context.as_raw(), self.as_raw(), cname.as_ptr())
+            LLVMAppendBasicBlockInContext(context.as_raw(), self.as_raw(), cstr!(name))
         }.into();
 
         trace!(
             "{:?} create `{}` block in {:?}: {:?}",
             self,
-            cname.to_string_lossy(),
+            name,
             context,
             block,
         );

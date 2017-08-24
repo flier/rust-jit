@@ -6,7 +6,7 @@ use llvm::prelude::*;
 
 use context::Context;
 use types::{StructType, TypeRef};
-use utils::{AsBool, AsLLVMBool, AsRaw, FromRaw, from_unchecked_cstr, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, AsRaw, FromRaw, from_unchecked_cstr};
 use value::{AsValueRef, ValueRef};
 
 pub trait AsConstant: AsValueRef {
@@ -121,10 +121,10 @@ impl ConstantInts for TypeRef {
     }
 
     fn int_of_string<S: AsRef<str>>(&self, s: S, radix: u8) -> ConstantInt {
-        let len = s.as_ref().len();
-        let s = unchecked_cstring(s);
+        let s = s.as_ref();
 
-        unsafe { LLVMConstIntOfStringAndSize(self.as_raw(), s.as_ptr(), len as u32, radix) }.into()
+        unsafe { LLVMConstIntOfStringAndSize(self.as_raw(), cstr!(s), s.len() as u32, radix) }
+            .into()
     }
 }
 
@@ -156,10 +156,9 @@ impl ConstantFPs for TypeRef {
     }
 
     fn real_of_string<S: AsRef<str>>(&self, s: S) -> ConstantFP {
-        let len = s.as_ref().len();
-        let s = unchecked_cstring(s);
+        let s = s.as_ref();
 
-        unsafe { LLVMConstRealOfStringAndSize(self.as_raw(), s.as_ptr(), len as u32) }.into()
+        unsafe { LLVMConstRealOfStringAndSize(self.as_raw(), cstr!(s), s.len() as u32) }.into()
     }
 }
 
@@ -171,10 +170,9 @@ impl_constant!(ConstantString, Constant);
 impl ConstantString {
     /// Create a ConstantString with string content in the global context.
     pub fn str<S: AsRef<str>>(s: S) -> ConstantString {
-        let len = s.as_ref().len();
-        let buf = unchecked_cstring(s);
+        let s = s.as_ref();
 
-        unsafe { LLVMConstString(buf.as_ptr(), len as u32, 0) }.into()
+        unsafe { LLVMConstString(cstr!(s), s.len() as u32, 0) }.into()
     }
 
     /// Returns true if the specified constant is an array of i8.
@@ -201,10 +199,9 @@ pub trait ConstantStrings {
 
 impl ConstantStrings for Context {
     fn str<S: AsRef<str>>(&self, s: S) -> ConstantString {
-        let len = s.as_ref().len();
-        let buf = unchecked_cstring(s);
+        let s = s.as_ref();
 
-        unsafe { LLVMConstStringInContext(self.as_raw(), buf.as_ptr(), len as u32, 0) }.into()
+        unsafe { LLVMConstStringInContext(self.as_raw(), cstr!(s), s.len() as u32, 0) }.into()
     }
 }
 

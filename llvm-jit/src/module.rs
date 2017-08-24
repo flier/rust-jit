@@ -13,7 +13,7 @@ use function::Function;
 use function::FunctionType;
 use global::GlobalVar;
 use types::TypeRef;
-use utils::{AsRaw, AsResult, DisposableMessage, FromRaw, from_unchecked_cstr, unchecked_cstring};
+use utils::{AsRaw, AsResult, DisposableMessage, FromRaw, from_unchecked_cstr};
 use value::ValueRef;
 
 pub type AddressSpace = u32;
@@ -61,9 +61,9 @@ impl Module {
 
     /// Set the identifier of a module to a string Ident with length Len.
     pub fn set_name<S: AsRef<str>>(&self, name: S) {
-        let len = name.as_ref().len();
-        let cname = unchecked_cstring(name);
-        unsafe { LLVMSetModuleIdentifier(self.as_raw(), cname.as_ptr(), len) }
+        let name = name.as_ref();
+
+        unsafe { LLVMSetModuleIdentifier(self.as_raw(), cstr!(name), name.len()) }
     }
 
     /// Obtain the data layout for a module.
@@ -73,8 +73,7 @@ impl Module {
 
     /// Set the data layout for a module.
     pub fn set_data_layout_str<S: AsRef<str>>(&self, name: S) {
-        let cname = unchecked_cstring(name);
-        unsafe { LLVMSetDataLayout(self.as_raw(), cname.as_ptr()) }
+        unsafe { LLVMSetDataLayout(self.as_raw(), cstr!(name.as_ref())) }
     }
 
     /// Obtain the target triple for a module.
@@ -84,8 +83,7 @@ impl Module {
 
     /// Set the target triple for a module.
     pub fn set_target_triple<S: AsRef<str>>(&self, triple: S) {
-        let ctriple = unchecked_cstring(triple);
-        unsafe { LLVMSetTarget(self.as_raw(), ctriple.as_ptr()) }
+        unsafe { LLVMSetTarget(self.as_raw(), cstr!(triple.as_ref())) }
     }
 
     /// Dump a representation of a module to stderr.
@@ -95,17 +93,17 @@ impl Module {
 
     /// Print a representation of a module to a file.
     pub fn print_to_file<P: AsRef<Path>>(&self, filename: P) -> Result<()> {
-        let cfilename = unchecked_cstring(filename.as_ref().to_string_lossy());
+        let filename = filename.as_ref();
         let mut err = ptr::null_mut();
 
         unsafe {
-            if LLVMPrintModuleToFile(self.as_raw(), cfilename.as_ptr(), &mut err).is_ok() {
+            if LLVMPrintModuleToFile(self.as_raw(), cpath!(filename), &mut err).is_ok() {
                 Ok(())
             } else {
                 bail!(format!(
-                    "fail to print {:?} to file `{}`, {}",
+                    "fail to print {:?} to file `{:?}`, {}",
                     self,
-                    cfilename.to_string_lossy(),
+                    filename,
                     CStr::from_ptr(err).to_string_lossy()
                 ))
             }
@@ -114,43 +112,32 @@ impl Module {
 
     /// Obtain a Type from a module by its registered name.
     pub fn get_type<S: AsRef<str>>(&self, name: S) -> Option<TypeRef> {
-        let cname = unchecked_cstring(name);
-        let t = unsafe { LLVMGetTypeByName(self.as_raw(), cname.as_ptr()) }.wrap();
+        let name = name.as_ref();
+        let t = unsafe { LLVMGetTypeByName(self.as_raw(), cstr!(name)) }.wrap();
 
         if let Some(t) = t {
-            trace!(
-                "found `{}` type in {:?}: {:?}",
-                cname.to_string_lossy(),
-                self,
-                t
-            );
+            trace!("found `{}` type in {:?}: {:?}", name, self, t);
         } else {
-            trace!("not found `{}` type in {:?}", cname.to_string_lossy(), self);
+            trace!("not found `{}` type in {:?}", name, self);
         }
 
         t
     }
 
     pub fn get_named_operands<S: AsRef<str>>(&self, name: S) -> Vec<ValueRef> {
-        let cname = unchecked_cstring(name);
-        let count = unsafe { LLVMGetNamedMetadataNumOperands(self.as_raw(), cname.as_ptr()) };
+        let name = name.as_ref();
+        let count = unsafe { LLVMGetNamedMetadataNumOperands(self.as_raw(), cstr!(name)) };
 
         let mut operands = vec![ptr::null_mut(); count as usize];
 
-        unsafe {
-            LLVMGetNamedMetadataOperands(self.as_raw(), cname.as_ptr(), operands.as_mut_ptr())
-        };
+        unsafe { LLVMGetNamedMetadataOperands(self.as_raw(), cstr!(name), operands.as_mut_ptr()) };
 
         operands.into_iter().map(|v| v.into()).collect()
     }
 
     pub fn add_named_operand<S: AsRef<str>, V: AsRef<ValueRef>>(&self, name: S, v: V) {
         unsafe {
-            LLVMAddNamedMetadataOperand(
-                self.as_raw(),
-                unchecked_cstring(name).as_ptr(),
-                v.as_ref().as_raw(),
-            )
+            LLVMAddNamedMetadataOperand(self.as_raw(), cstr!(name.as_ref()), v.as_ref().as_raw())
         }
     }
 
@@ -175,12 +162,12 @@ impl Module {
 
     /// Add a function to a module under a specified name.
     pub fn add_function<S: AsRef<str>>(&self, name: S, func_type: FunctionType) -> Function {
-        let cname = unchecked_cstring(name);
-        let func = unsafe { LLVMAddFunction(self.as_raw(), cname.as_ptr(), func_type.as_raw()) };
+        let name = name.as_ref();
+        let func = unsafe { LLVMAddFunction(self.as_raw(), cstr!(name), func_type.as_raw()) };
 
         trace!(
             "add function `{}`: {:?} to {:?}: Function({:?})",
-            cname.to_string_lossy(),
+            name,
             func_type,
             self,
             func,
@@ -191,22 +178,13 @@ impl Module {
 
     /// Obtain a Function value from a Module by its name.
     pub fn get_function<S: AsRef<str>>(&self, name: S) -> Option<Function> {
-        let cname = unchecked_cstring(name);
-        let func = unsafe { LLVMGetNamedFunction(self.as_raw(), cname.as_ptr()) }.wrap();
+        let name = name.as_ref();
+        let func = unsafe { LLVMGetNamedFunction(self.as_raw(), cstr!(name)) }.wrap();
 
         if let Some(f) = func {
-            trace!(
-                "found `{}` function in {:?}: {:?}",
-                cname.to_string_lossy(),
-                self,
-                f
-            );
+            trace!("found `{}` function in {:?}: {:?}", name, self, f);
         } else {
-            trace!(
-                "not found `{}` function in {:?}",
-                cname.to_string_lossy(),
-                self
-            );
+            trace!("not found `{}` function in {:?}", name, self);
         }
 
         func
@@ -223,14 +201,14 @@ impl Module {
         S: AsRef<str>,
         T: Into<TypeRef>,
     {
-        let cname = unchecked_cstring(name);
+        let name = name.as_ref();
         let ty = ty.into();
 
-        let var = unsafe { LLVMAddGlobal(self.as_raw(), ty.as_raw(), cname.as_ptr()) };
+        let var = unsafe { LLVMAddGlobal(self.as_raw(), ty.as_raw(), cstr!(name)) };
 
         trace!(
             "add global var `{}`: {:?} to {:?}: ValueRef({:?})",
-            cname.to_string_lossy(),
+            name,
             ty,
             self,
             var,
@@ -246,15 +224,14 @@ impl Module {
         ty: TypeRef,
         address_space: AddressSpace,
     ) -> GlobalVar {
-        let cname = unchecked_cstring(name);
-
+        let name = name.as_ref();
         let var = unsafe {
-            LLVMAddGlobalInAddressSpace(self.as_raw(), ty.as_raw(), cname.as_ptr(), address_space)
+            LLVMAddGlobalInAddressSpace(self.as_raw(), ty.as_raw(), cstr!(name), address_space)
         };
 
         trace!(
             "add global var `{}`: {:?} to {:?}: ValueRef({:?})",
-            cname.to_string_lossy(),
+            name,
             ty,
             self,
             var,
@@ -265,9 +242,7 @@ impl Module {
 
     /// Obtain a global variable value from a Module by its name.
     pub fn get_global_var<S: AsRef<str>>(&self, name: S) -> Option<GlobalVar> {
-        let cname = unchecked_cstring(name);
-
-        unsafe { LLVMGetNamedGlobal(self.as_raw(), cname.as_ptr()) }.wrap()
+        unsafe { LLVMGetNamedGlobal(self.as_raw(), cstr!(name.as_ref())) }.wrap()
     }
 
     /// Obtain an iterator to the global variables in a module.
@@ -339,12 +314,12 @@ impl fmt::Display for Module {
 impl Context {
     /// Create a new, empty module in a specific context.
     pub fn create_module<S: AsRef<str>>(&self, name: S) -> Module {
-        let cname = unchecked_cstring(name);
-        let module = unsafe { LLVMModuleCreateWithNameInContext(cname.as_ptr(), self.as_raw()) };
+        let name = name.as_ref();
+        let module = unsafe { LLVMModuleCreateWithNameInContext(cstr!(name), self.as_raw()) };
 
         trace!(
             "create `{}` module in {:?}: Module({:?})",
-            cname.to_string_lossy(),
+            name,
             self,
             module,
         );
@@ -356,12 +331,12 @@ impl Context {
 impl GlobalContext {
     /// Create a new, empty module in the global context.
     pub fn create_module<S: AsRef<str>>(name: S) -> Module {
-        let cname = unchecked_cstring(name);
-        let module = unsafe { LLVMModuleCreateWithName(cname.as_ptr()) };
+        let name = name.as_ref();
+        let module = unsafe { LLVMModuleCreateWithName(cstr!(name)) };
 
         trace!(
             "create `{}` module in global context: Module({:?})",
-            cname.to_string_lossy(),
+            name,
             module
         );
 

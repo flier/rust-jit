@@ -8,7 +8,7 @@ use llvm::prelude::*;
 use function::Function;
 use insts::{IRBuilder, InstructionBuilder};
 use types::TypeRef;
-use utils::{AsLLVMBool, AsRaw, unchecked_cstring};
+use utils::{AsLLVMBool, AsRaw};
 use value::{Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -65,7 +65,7 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
                 self.result_ty.as_raw(),
                 self.personality_fn.map_or(ptr::null_mut(), |f| f.as_raw()),
                 clauses.len() as u32,
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into();
 

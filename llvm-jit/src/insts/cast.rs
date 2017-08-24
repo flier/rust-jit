@@ -32,7 +32,7 @@ macro_rules! define_cast_instruction {
                         builder.as_raw(),
                         self.value.emit_to(builder).into().as_raw(),
                         self.dest_ty.as_raw(),
-                        $crate::utils::unchecked_cstring(self.name.clone()).as_ptr(),
+                        cstr!(self.name),
                     )
                 }.into()
             }

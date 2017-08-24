@@ -8,7 +8,7 @@ use llvm::prelude::*;
 use constant::Constant;
 use function::Function;
 use module::Module;
-use utils::{AsBool, AsLLVMBool, AsRaw, FromRaw, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, AsRaw, FromRaw};
 use value::{AsValueRef, ValueRef};
 
 pub type Linkage = LLVMLinkage;
@@ -45,7 +45,7 @@ pub trait GlobalValue: AsValueRef {
     }
 
     fn set_section(&self, section: &str) -> &Self {
-        unsafe { LLVMSetSection(self.as_raw(), unchecked_cstring(section).as_ptr()) };
+        unsafe { LLVMSetSection(self.as_raw(), cstr!(section)) };
         self
     }
 

@@ -219,13 +219,13 @@ pub fn unchecked_cstring<S: AsRef<str>>(s: S) -> CString {
 
 macro_rules! cstr {
     ($s:expr) => (
-        unchecked_cstring($s.as_ref()).as_ptr() as *mut i8
+        $crate::utils::unchecked_cstring($s).as_ptr()
     )
 }
 
 macro_rules! cpath {
     ($s:expr) => (
-        unchecked_cstring($s.as_ref().to_string_lossy().as_ref()).as_ptr() as *mut i8
+        $crate::utils::unchecked_cstring($s.to_string_lossy().as_ref()).as_ptr()
     )
 }
 

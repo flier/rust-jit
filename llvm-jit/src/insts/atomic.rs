@@ -6,7 +6,7 @@ use llvm::{LLVMAtomicOrdering, LLVMAtomicRMWBinOp};
 use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsLLVMBool, AsRaw, unchecked_cstring};
+use utils::{AsLLVMBool, AsRaw};
 use value::Instruction;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -37,7 +37,7 @@ impl<'a> InstructionBuilder for Fence<'a> {
                 builder.as_raw(),
                 mem::transmute(self.ordering),
                 self.single_thread.as_bool(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into()
     }

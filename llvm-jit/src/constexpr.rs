@@ -4,7 +4,7 @@ use llvm::prelude::*;
 
 use constant::{AsConstant, Constant, ConstantInt, ConstantVector};
 use types::TypeRef;
-use utils::{AsLLVMBool, AsRaw, unchecked_cstring};
+use utils::{AsLLVMBool, AsRaw};
 use value::ValueRef;
 
 pub trait ConstantExpr {
@@ -397,8 +397,8 @@ impl TypeRef {
         unsafe {
             LLVMConstInlineAsm(
                 self.as_raw(),
-                unchecked_cstring(asm).as_ptr(),
-                unchecked_cstring(constraints).as_ptr(),
+                cstr!(asm),
+                cstr!(constraints),
                 has_side_effects.as_bool(),
                 is_align_stack.as_bool(),
             )

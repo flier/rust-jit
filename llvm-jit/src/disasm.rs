@@ -6,7 +6,7 @@ use libc;
 use llvm::disassembler::*;
 
 use errors::Result;
-use utils::{AsMutPtr, AsRaw, unchecked_cstring};
+use utils::{AsMutPtr, AsRaw};
 
 bitflags! {
     pub struct DisasmOptions: u64 {
@@ -42,7 +42,7 @@ impl Disasm {
     ) -> Self {
         unsafe {
             LLVMCreateDisasm(
-                unchecked_cstring(triple_name).as_ptr(),
+                cstr!(triple_name),
                 data.as_mut_ptr() as *mut libc::c_void,
                 tag_type,
                 mem::transmute(get_op_info),
@@ -61,8 +61,8 @@ impl Disasm {
     ) -> Self {
         unsafe {
             LLVMCreateDisasmCPU(
-                unchecked_cstring(triple_name).as_ptr(),
-                unchecked_cstring(cpu).as_ptr(),
+                cstr!(triple_name),
+                cstr!(cpu),
                 data.as_mut_ptr() as *mut libc::c_void,
                 tag_type,
                 mem::transmute(get_op_info),
@@ -82,9 +82,9 @@ impl Disasm {
     ) -> Self {
         unsafe {
             LLVMCreateDisasmCPUFeatures(
-                unchecked_cstring(triple_name).as_ptr(),
-                unchecked_cstring(cpu).as_ptr(),
-                unchecked_cstring(features).as_ptr(),
+                cstr!(triple_name),
+                cstr!(cpu),
+                cstr!(features),
                 data.as_mut_ptr() as *mut libc::c_void,
                 tag_type,
                 mem::transmute(get_op_info),

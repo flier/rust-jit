@@ -4,7 +4,7 @@ use std::fmt;
 use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsRaw, unchecked_cstring};
+use utils::AsRaw;
 use value::Instruction;
 
 /// The `select` instruction is used to choose one value based on a condition, without IR-level branching.
@@ -50,7 +50,7 @@ where
                 self.cond.emit_to(builder).into().as_raw(),
                 self.then.emit_to(builder).into().as_raw(),
                 self.or_else.emit_to(builder).into().as_raw(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into()
     }

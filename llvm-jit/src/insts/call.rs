@@ -7,7 +7,7 @@ use llvm::prelude::*;
 
 use function::Function;
 use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsBool, AsLLVMBool, AsRaw, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, AsRaw};
 use value::{AsValueRef, Instruction, ValueRef};
 
 /// This instruction is designed to operate as a standard `call` instruction in most regards.
@@ -65,7 +65,7 @@ impl<'a> InstructionBuilder for Call<'a> {
                 self.func.as_raw(),
                 args.as_mut_ptr(),
                 args.len() as u32,
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into();
 

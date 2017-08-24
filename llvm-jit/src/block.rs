@@ -7,7 +7,7 @@ use llvm::prelude::*;
 use context::Context;
 use function::Function;
 use insts::TerminatorInst;
-use utils::{AsRaw, FromRaw, unchecked_cstring};
+use utils::{AsRaw, FromRaw};
 use value::{BlockAddress, Instruction, ValueRef};
 
 /// Basic Block
@@ -79,14 +79,14 @@ impl BasicBlock {
         name: S,
         context: &Context,
     ) -> BasicBlock {
-        let cname = unchecked_cstring(name);
+        let name = name.as_ref();
         let block = unsafe {
-            LLVMInsertBasicBlockInContext(context.as_raw(), self.as_raw(), cname.as_ptr())
+            LLVMInsertBasicBlockInContext(context.as_raw(), self.as_raw(), cstr!(name))
         }.into();
 
         trace!(
             "insert `{}` block before {:?} in {:?}: {:?}",
-            cname.to_string_lossy(),
+            name,
             self,
             context,
             block,
@@ -99,12 +99,12 @@ impl BasicBlock {
     ///
     /// The function to add to is determined by the function of the passed basic block.
     pub fn insert_before<S: AsRef<str>>(&self, name: S) -> BasicBlock {
-        let cname = unchecked_cstring(name);
-        let block = unsafe { LLVMInsertBasicBlock(self.as_raw(), cname.as_ptr()) }.into();
+        let name = name.as_ref();
+        let block = unsafe { LLVMInsertBasicBlock(self.as_raw(), cstr!(name)) }.into();
 
         trace!(
             "insert `{}` block before {:?} in the global context: {:?}",
-            cname.to_string_lossy(),
+            name,
             self,
             block,
         );

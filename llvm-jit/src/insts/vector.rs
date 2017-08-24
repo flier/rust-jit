@@ -4,7 +4,7 @@ use std::fmt;
 use llvm::core::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsRaw, unchecked_cstring};
+use utils::AsRaw;
 use value::Instruction;
 
 /// This instruction extracts a single (scalar) element from a `VectorType` value
@@ -40,7 +40,7 @@ where
                 builder.as_raw(),
                 self.vector.emit_to(builder).into().as_raw(),
                 self.index.emit_to(builder).into().as_raw(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into()
     }
@@ -101,7 +101,7 @@ where
                 self.vector.emit_to(builder).into().as_raw(),
                 self.element.emit_to(builder).into().as_raw(),
                 self.index.emit_to(builder).into().as_raw(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into()
     }
@@ -166,7 +166,7 @@ where
                 self.v1.emit_to(builder).into().as_raw(),
                 self.v2.emit_to(builder).into().as_raw(),
                 self.mask.emit_to(builder).into().as_raw(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into()
     }

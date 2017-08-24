@@ -9,7 +9,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use constant::Constant;
 use types::TypeRef;
-use utils::{AsBool, AsRaw, DisposableMessage, FromRaw, unchecked_cstring};
+use utils::{AsBool, AsRaw, DisposableMessage, FromRaw};
 
 #[macro_export]
 macro_rules! values {
@@ -77,9 +77,7 @@ impl ValueRef {
 
     /// Set the string name of a value.
     pub fn set_name<S: AsRef<str>>(&self, name: S) -> &Self {
-        let cname = unchecked_cstring(name);
-
-        unsafe { LLVMSetValueName(self.0, cname.as_ptr()) };
+        unsafe { LLVMSetValueName(self.0, cstr!(name.as_ref())) };
 
         self
     }

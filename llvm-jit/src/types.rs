@@ -10,7 +10,7 @@ use llvm::prelude::*;
 use constant::ConstantInt;
 use context::{Context, GlobalContext};
 use module::AddressSpace;
-use utils::{AsBool, AsLLVMBool, AsRaw, DisposableMessage, FromRaw, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, AsRaw, DisposableMessage, FromRaw};
 use value::ValueRef;
 
 #[macro_export]
@@ -436,16 +436,10 @@ impl ToStructType for Context {
     }
 
     fn empty_struct_t<S: AsRef<str>>(&self, name: S) -> StructType {
-        let cname = unchecked_cstring(name);
+        let name = name.as_ref();
+        let ty = unsafe { LLVMStructCreateNamed(self.as_raw(), cstr!(name)) }.into();
 
-        let ty = unsafe { LLVMStructCreateNamed(self.as_raw(), cname.as_ptr()) }.into();
-
-        trace!(
-            "created `{}` structure in {:?}: {:?}",
-            cname.to_string_lossy(),
-            self,
-            ty
-        );
+        trace!("created `{}` structure in {:?}: {:?}", name, self, ty);
 
         ty
     }

@@ -5,7 +5,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsBool, AsLLVMBool, AsRaw, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, AsRaw};
 use value::{Instruction, ValueRef};
 
 /// an instruction for type-safe pointer arithmetic to access elements of arrays and structs
@@ -78,7 +78,7 @@ where
                         self.ptr.emit_to(builder).into().as_raw(),
                         indices.as_mut_ptr(),
                         indices.len() as u32,
-                        unchecked_cstring(self.name.clone()).as_ptr(),
+                        cstr!(self.name),
                     )
                 }
                 GEP::Struct(index) => {
@@ -86,7 +86,7 @@ where
                         builder.as_raw(),
                         self.ptr.emit_to(builder).into().as_raw(),
                         index,
-                        unchecked_cstring(self.name.clone()).as_ptr(),
+                        cstr!(self.name),
                     )
                 }
             }

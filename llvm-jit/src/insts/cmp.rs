@@ -7,7 +7,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsRaw, unchecked_cstring};
+use utils::AsRaw;
 use value::{Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -85,7 +85,7 @@ where
                 mem::transmute(self.op),
                 self.lhs.emit_to(builder).into().as_raw(),
                 self.rhs.emit_to(builder).into().as_raw(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into()
     }
@@ -194,7 +194,7 @@ where
                 mem::transmute(self.op),
                 self.lhs.emit_to(builder).into().as_raw(),
                 self.rhs.emit_to(builder).into().as_raw(),
-                unchecked_cstring(self.name.clone()).as_ptr(),
+                cstr!(self.name),
             )
         }.into()
     }
