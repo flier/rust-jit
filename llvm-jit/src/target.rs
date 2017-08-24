@@ -15,6 +15,9 @@ use module::{AddressSpace, Module};
 use types::{AsTypeRef, StructType, TypeRef};
 use utils::{AsBool, AsLLVMBool, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
 
+pub type CodeGenOptLevel = LLVMCodeGenOptLevel;
+pub type RelocMode = LLVMRelocMode;
+pub type CodeModel = LLVMCodeModel;
 pub type CodeGenFileType = LLVMCodeGenFileType;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -115,15 +118,32 @@ impl Drop for TargetMachine {
     }
 }
 
+impl Default for TargetMachine {
+    fn default() -> Self {
+        let target = Target::default();
+        let triple = Target::default_triple();
+
+        TargetMachine::new(
+            &target,
+            &triple,
+            "",
+            "",
+            LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
+            LLVMRelocMode::LLVMRelocDefault,
+            LLVMCodeModel::LLVMCodeModelJITDefault,
+        )
+    }
+}
+
 impl TargetMachine {
     pub fn new(
         target: &Target,
         triple: &str,
         cpu: &str,
         feature: &str,
-        opt_level: LLVMCodeGenOptLevel,
-        reloc_mode: LLVMRelocMode,
-        code_model: LLVMCodeModel,
+        opt_level: CodeGenOptLevel,
+        reloc_mode: RelocMode,
+        code_model: CodeModel,
     ) -> Self {
         TargetMachine(unsafe {
             LLVMCreateTargetMachine(
