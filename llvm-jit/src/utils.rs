@@ -108,54 +108,16 @@ impl AsLLVMBool for bool {
 /// In general, `true`/`false` map to `Some(_)`/`None` and `Ok(_)`/`Err(_)` respectively.
 pub trait Boolinator: AsBool + Sized {
     /// If this value is `true`, returns `Some(())`; `None` otherwise.
-    fn as_option(self) -> Option<()>;
-
-    /// If this value is `true`, returns `Some(some)`; `None` otherwise.
-    fn as_some<T>(self, some: T) -> Option<T>;
-
-    /// If this value is `true`, returns `Some(some())`; `None` otherwise.
-    fn as_some_from<T, F>(self, some: F) -> Option<T>
-    where
-        F: FnOnce() -> T;
-
-    /// If this value is `true`, returns `opt`; `None` otherwise.
-    fn and_option<T>(self, opt: Option<T>) -> Option<T>;
-
-    /// If this value is `true`, returns `opt()`; `None` otherwise.
-    fn and_option_from<T, F>(self, opt: F) -> Option<T>
-    where
-        F: FnOnce() -> Option<T>;
-
-    /// If this value is `true`, returns `Ok(ok)`; `Err(err)` otherwise.
-    fn as_result<T, E>(self, ok: T, err: E) -> Result<T, E>;
-
-    /// If this value is `true`, returns `Ok(ok())`; `Err(err())` otherwise.
-    fn as_result_from<T, E, F, G>(self, ok: F, err: G) -> Result<T, E>
-    where
-        F: FnOnce() -> T,
-        G: FnOnce() -> E;
-
-    /// If this value is `true`, returns `Ok(())`; `Err(err)` otherwise.
-    fn ok_or<E>(self, err: E) -> Result<(), E>;
-
-    /// If this value is `true`, returns `Ok(())`; `Err(err())` otherwise.
-    fn ok_or_else<E, G>(self, err: G) -> Result<(), E>
-    where
-        G: FnOnce() -> E;
-
-    /// If this value is `true`, panics with `msg`; does nothing otherwise.
-    fn expect(self, msg: &str);
-}
-
-impl Boolinator for LLVMBool {
     fn as_option(self) -> Option<()> {
         if self.as_bool() { Some(()) } else { None }
     }
 
+    /// If this value is `true`, returns `Some(some)`; `None` otherwise.
     fn as_some<T>(self, some: T) -> Option<T> {
         if self.as_bool() { Some(some) } else { None }
     }
 
+    /// If this value is `true`, returns `Some(some())`; `None` otherwise.
     fn as_some_from<T, F>(self, some: F) -> Option<T>
     where
         F: FnOnce() -> T,
@@ -163,10 +125,12 @@ impl Boolinator for LLVMBool {
         if self.as_bool() { Some(some()) } else { None }
     }
 
+    /// If this value is `true`, returns `opt`; `None` otherwise.
     fn and_option<T>(self, opt: Option<T>) -> Option<T> {
         self.as_option().and(opt)
     }
 
+    /// If this value is `true`, returns `opt()`; `None` otherwise.
     fn and_option_from<T, F>(self, opt: F) -> Option<T>
     where
         F: FnOnce() -> Option<T>,
@@ -174,10 +138,12 @@ impl Boolinator for LLVMBool {
         self.as_option().and(opt())
     }
 
+    /// If this value is `true`, returns `Ok(ok)`; `Err(err)` otherwise.
     fn as_result<T, E>(self, ok: T, err: E) -> Result<T, E> {
         if self.as_bool() { Ok(ok) } else { Err(err) }
     }
 
+    /// If this value is `true`, returns `Ok(ok())`; `Err(err())` otherwise.
     fn as_result_from<T, E, F, G>(self, ok: F, err: G) -> Result<T, E>
     where
         F: FnOnce() -> T,
@@ -186,10 +152,12 @@ impl Boolinator for LLVMBool {
         if self.as_bool() { Ok(ok()) } else { Err(err()) }
     }
 
+    /// If this value is `true`, returns `Ok(())`; `Err(err)` otherwise.
     fn ok_or<E>(self, err: E) -> Result<(), E> {
         if self.as_bool() { Ok(()) } else { Err(err) }
     }
 
+    /// If this value is `true`, returns `Ok(())`; `Err(err())` otherwise.
     fn ok_or_else<E, G>(self, err: G) -> Result<(), E>
     where
         G: FnOnce() -> E,
@@ -197,9 +165,25 @@ impl Boolinator for LLVMBool {
         if self.as_bool() { Ok(()) } else { Err(err()) }
     }
 
+    /// If this value is `true`, panics with `msg`; does nothing otherwise.
     fn expect(self, msg: &str) {
         if self.as_bool() {
             panic!("{}", msg)
+        }
+    }
+}
+
+impl<T: AsBool> Boolinator for T {}
+
+pub trait AsPtr<T> {
+    fn as_ptr(self) -> *const T;
+}
+
+impl<'a, T> AsPtr<T> for Option<&'a T> {
+    fn as_ptr(self) -> *const T {
+        match self {
+            Some(value) => value as *const T,
+            None => ptr::null(),
         }
     }
 }
