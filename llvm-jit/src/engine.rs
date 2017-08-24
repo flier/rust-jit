@@ -84,14 +84,14 @@ impl Interpreter {
     pub fn for_module(module: Module) -> Result<Self> {
         let module = module.into_raw();
         let mut engine = ptr::null_mut();
-        let mut err = ptr::null_mut();
+        let mut err = DisposableMessage::new();
 
         unsafe { LLVMCreateInterpreterForModule(&mut engine, module, &mut err) }
             .ok_or_else(|| {
                 format!(
                     "fail to create interpreter for Module({:?}), {}",
                     module,
-                    err.to_string()
+                    err.into_string()
                 ).into()
             })
             .map(|_| {
@@ -111,14 +111,14 @@ impl JITCompiler {
     pub fn for_module(module: Module, opt_level: u32) -> Result<Self> {
         let module = module.into_raw();
         let mut engine = ptr::null_mut();
-        let mut err = ptr::null_mut();
+        let mut err = DisposableMessage::new();
 
         unsafe { LLVMCreateJITCompilerForModule(&mut engine, module, opt_level, &mut err) }
             .ok_or_else(|| {
                 format!(
                     "fail to create JITCompiler for Module({:?}), {}",
                     module,
-                    err.to_string()
+                    err.into_string()
                 ).into()
             })
             .map(|_| {
@@ -198,7 +198,7 @@ impl MCJITCompiler {
     pub fn for_module(module: Module, mut options: MCJITCompilerOptions) -> Result<Self> {
         let module = module.into_raw();
         let mut engine = ptr::null_mut();
-        let mut err = ptr::null_mut();
+        let mut err = DisposableMessage::new();
 
         unsafe {
             LLVMCreateMCJITCompilerForModule(
@@ -212,7 +212,7 @@ impl MCJITCompiler {
             format!(
                 "fail to create MCJITCompiler for Module({:?}), {}",
                 module,
-                err.to_string()
+                err.into_string()
             ).into()
         })
             .map(|_| {
@@ -248,14 +248,14 @@ impl ExecutionEngine {
     pub fn for_module(module: Module) -> Result<Self> {
         let module = module.into_raw();
         let mut engine = ptr::null_mut();
-        let mut err = ptr::null_mut();
+        let mut err = DisposableMessage::new();
 
         unsafe { LLVMCreateExecutionEngineForModule(&mut engine, module, &mut err) }
             .ok_or_else(|| {
                 format!(
                     "fail to create execution engine for Module({:?}), {}",
                     module,
-                    err.to_string()
+                    err.into_string()
                 ).into()
             })
             .map(|_| {

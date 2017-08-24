@@ -31,14 +31,14 @@ impl MemoryBuffer {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path = CString::new(path.as_ref().to_string_lossy().as_bytes())?;
         let mut buf = ptr::null_mut();
-        let mut msg = ptr::null_mut();
+        let mut msg = DisposableMessage::new();
 
         unsafe { LLVMCreateMemoryBufferWithContentsOfFile(path.as_ptr(), &mut buf, &mut msg) }
             .ok_or_else(|| {
                 format!(
                 "fail to create memory buffer from file {}, {}",
                 path.to_string_lossy(),
-                msg.to_string(),
+                msg.into_string(),
             ).into()
             })
             .map(|_| buf.into())
@@ -47,13 +47,13 @@ impl MemoryBuffer {
     /// Read all of stdin into a MemoryBuffer, and return it.
     pub fn from_stdin() -> Result<Self> {
         let mut buf = ptr::null_mut();
-        let mut msg = ptr::null_mut();
+        let mut msg = DisposableMessage::new();
 
         unsafe { LLVMCreateMemoryBufferWithSTDIN(&mut buf, &mut msg) }
             .ok_or_else(|| {
                 format!(
                 "fail to create memory buffer from STDIN, {}",
-                msg.to_string(),
+                msg.into_string(),
             ).into()
             })
             .map(|_| buf.into())

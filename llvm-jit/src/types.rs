@@ -87,7 +87,7 @@ impl fmt::Display for TypeRef {
         write!(
             f,
             "{}",
-            unsafe { LLVMPrintTypeToString(self.0) }.to_string()
+            unsafe { LLVMPrintTypeToString(self.0) }.into_string()
         )
     }
 }

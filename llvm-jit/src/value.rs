@@ -121,7 +121,7 @@ impl fmt::Display for ValueRef {
         write!(
             f,
             "{}",
-            unsafe { LLVMPrintValueToString(self.0) }.to_string()
+            unsafe { LLVMPrintValueToString(self.0) }.into_string()
         )
     }
 }

@@ -222,11 +222,17 @@ pub fn from_unchecked_cstr<'a>(p: *const u8, len: usize) -> Cow<'a, str> {
 }
 
 pub trait DisposableMessage {
-    fn to_string(self) -> String;
+    fn new() -> Self;
+
+    fn into_string(self) -> String;
 }
 
 impl DisposableMessage for *mut libc::c_char {
-    fn to_string(self) -> String {
+    fn new() -> Self {
+        ptr::null_mut()
+    }
+
+    fn into_string(self) -> String {
         unsafe {
             let s = CStr::from_ptr(self).to_string_lossy().into();
             LLVMDisposeMessage(self);

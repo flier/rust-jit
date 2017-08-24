@@ -18,11 +18,11 @@ impl GlobalContext {
     /// Parse the specified bitcode file, returning the module.
     pub fn parse_bitcode(buf: &MemoryBuffer) -> Result<Module> {
         let mut module = ptr::null_mut();
-        let mut msg = ptr::null_mut();
+        let mut msg = DisposableMessage::new();
 
         unsafe { LLVMParseBitcode(buf.as_raw(), &mut module, &mut msg) }
             .ok_or_else(|| {
-                format!("fail to parse bitcode, {}", msg.to_string()).into()
+                format!("fail to parse bitcode, {}", msg.into_string()).into()
             })
             .map(|_| module.into())
     }
@@ -30,11 +30,11 @@ impl GlobalContext {
     /// Read the header of the specified bitcode buffer and prepare for lazy deserialization of function bodies.
     pub fn get_bitcode_module(buf: MemoryBuffer) -> Result<Module> {
         let mut module = ptr::null_mut();
-        let mut msg = ptr::null_mut();
+        let mut msg = DisposableMessage::new();
 
         unsafe { LLVMGetBitcodeModule(buf.into_raw(), &mut module, &mut msg) }
             .ok_or_else(|| {
-                format!("fail to get bitcode module, {}", msg.to_string()).into()
+                format!("fail to get bitcode module, {}", msg.into_string()).into()
             })
             .map(|_| module.into())
     }
@@ -44,11 +44,11 @@ impl Context {
     /// Read LLVM IR from a memory buffer and convert it to an in-memory Module.
     pub fn parse_ir(&self, buf: MemoryBuffer) -> Result<Module> {
         let mut module = ptr::null_mut();
-        let mut msg = ptr::null_mut();
+        let mut msg = DisposableMessage::new();
 
         unsafe { LLVMParseIRInContext(self.as_raw(), buf.into_raw(), &mut module, &mut msg) }
             .ok_or_else(|| {
-                format!("fail to parse IR code, {}", msg.to_string()).into()
+                format!("fail to parse IR code, {}", msg.into_string()).into()
             })
             .map(|_| module.into())
     }
@@ -56,11 +56,11 @@ impl Context {
     /// Parse the specified bitcode file, returning the module.
     pub fn parse_bitcode(&self, buf: &MemoryBuffer) -> Result<Module> {
         let mut module = ptr::null_mut();
-        let mut msg = ptr::null_mut();
+        let mut msg = DisposableMessage::new();
 
         unsafe { LLVMParseBitcodeInContext(self.as_raw(), buf.as_raw(), &mut module, &mut msg) }
             .ok_or_else(|| {
-                format!("fail to parse bitcode, {}", msg.to_string()).into()
+                format!("fail to parse bitcode, {}", msg.into_string()).into()
             })
             .map(|_| module.into())
     }
@@ -68,12 +68,12 @@ impl Context {
     /// Read the header of the specified bitcode buffer and prepare for lazy deserialization of function bodies.
     pub fn get_bitcode_module(&self, buf: MemoryBuffer) -> Result<Module> {
         let mut module = ptr::null_mut();
-        let mut msg = ptr::null_mut();
+        let mut msg = DisposableMessage::new();
 
         unsafe {
             LLVMGetBitcodeModuleInContext(self.as_raw(), buf.into_raw(), &mut module, &mut msg)
                 .ok_or_else(|| {
-                    format!("fail to get bitcode module, {}", msg.to_string()).into()
+                    format!("fail to get bitcode module, {}", msg.into_string()).into()
                 })
                 .map(|_| module.into())
         }

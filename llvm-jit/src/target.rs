@@ -38,16 +38,16 @@ impl Target {
     /// Finds the target corresponding to the given triple
     pub fn from_triple<S: AsRef<str>>(triple: S) -> Result<Target> {
         let mut target = ptr::null_mut();
-        let mut msg = ptr::null_mut();
+        let mut msg = DisposableMessage::new();
 
         unsafe { LLVMGetTargetFromTriple(cstr!(triple.as_ref()), &mut target, &mut msg) }
-            .ok_or_else(|| msg.to_string().into())
+            .ok_or_else(|| msg.into_string().into())
             .map(|_| target.into())
     }
 
     /// Get a triple for the host machine as a string.
     pub fn default_triple() -> String {
-        unsafe { LLVMGetDefaultTargetTriple() }.to_string()
+        unsafe { LLVMGetDefaultTargetTriple() }.into_string()
     }
 
     /// Returns the name of a target.
@@ -146,17 +146,17 @@ impl TargetMachine {
 
     /// Returns the triple used creating this target machine.
     pub fn triple(&self) -> String {
-        unsafe { LLVMGetTargetMachineTriple(self.as_raw()) }.to_string()
+        unsafe { LLVMGetTargetMachineTriple(self.as_raw()) }.into_string()
     }
 
     /// Returns the cpu used creating this target machine.
     pub fn cpu(&self) -> String {
-        unsafe { LLVMGetTargetMachineCPU(self.as_raw()) }.to_string()
+        unsafe { LLVMGetTargetMachineCPU(self.as_raw()) }.into_string()
     }
 
     /// Returns the feature string used creating this target machine.
     pub fn feature(&self) -> String {
-        unsafe { LLVMGetTargetMachineFeatureString(self.as_raw()) }.to_string()
+        unsafe { LLVMGetTargetMachineFeatureString(self.as_raw()) }.into_string()
     }
 
     /// Create a DataLayout based on the targetMachine.
@@ -175,7 +175,7 @@ impl TargetMachine {
         M: AsRaw<RawType = LLVMModuleRef>,
         P: AsRef<Path>,
     {
-        let mut err = ptr::null_mut();
+        let mut err = DisposableMessage::new();
 
         unsafe {
             LLVMTargetMachineEmitToFile(
@@ -186,7 +186,7 @@ impl TargetMachine {
                 &mut err,
             )
         }.ok_or_else(|| {
-            ErrorKind::Msg(format!("fail to emit to file, {}", err.to_string())).into()
+            ErrorKind::Msg(format!("fail to emit to file, {}", err.into_string())).into()
         })
     }
 
@@ -199,7 +199,7 @@ impl TargetMachine {
     where
         M: AsRaw<RawType = LLVMModuleRef>,
     {
-        let mut err = ptr::null_mut();
+        let mut err = DisposableMessage::new();
         let mut buf = ptr::null_mut();
 
         unsafe {
@@ -213,7 +213,7 @@ impl TargetMachine {
         }.ok_or_else(|| {
             ErrorKind::Msg(format!(
                 "fail to emit to memory buffer, {}",
-                err.to_string()
+                err.into_string()
             )).into()
         })
             .map(|_| buf.into())
@@ -244,7 +244,7 @@ impl fmt::Display for TargetData {
         write!(
             f,
             "{}",
-            unsafe { LLVMCopyStringRepOfTargetData(self.as_raw()) }.to_string()
+            unsafe { LLVMCopyStringRepOfTargetData(self.as_raw()) }.into_string()
         )
     }
 }

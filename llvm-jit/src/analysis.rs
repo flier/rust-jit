@@ -1,5 +1,3 @@
-use std::ptr;
-
 use llvm::analysis::*;
 
 use errors::Result;
@@ -10,7 +8,7 @@ use utils::{AsRaw, AsResult, DisposableMessage};
 impl Module {
     /// Verify that a module is valid, taking the specified action if not.
     pub fn verify(&self) -> Result<()> {
-        let mut msg = ptr::null_mut();
+        let mut msg = DisposableMessage::new();
 
         unsafe {
             LLVMVerifyModule(
@@ -19,7 +17,7 @@ impl Module {
                 &mut msg,
             )
         }.ok_or_else(|| {
-            format!("verify {:?} failed, {}", self, msg.to_string()).into()
+            format!("verify {:?} failed, {}", self, msg.into_string()).into()
         })
     }
 }

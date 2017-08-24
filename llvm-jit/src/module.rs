@@ -94,14 +94,14 @@ impl Module {
     /// Print a representation of a module to a file.
     pub fn print_to_file<P: AsRef<Path>>(&self, filename: P) -> Result<()> {
         let filename = filename.as_ref();
-        let mut err = ptr::null_mut();
+        let mut err = DisposableMessage::new();
 
         unsafe { LLVMPrintModuleToFile(self.as_raw(), cpath!(filename), &mut err) }.ok_or_else(|| {
             format!(
                 "fail to print {:?} to file `{:?}`, {}",
                 self,
                 filename,
-                err.to_string()
+                err.into_string()
             ).into()
         })
     }
@@ -302,7 +302,7 @@ impl fmt::Display for Module {
         write!(
             f,
             "{}",
-            unsafe { LLVMPrintModuleToString(self.as_raw()) }.to_string()
+            unsafe { LLVMPrintModuleToString(self.as_raw()) }.into_string()
         )
     }
 }
