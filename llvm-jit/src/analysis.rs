@@ -12,18 +12,15 @@ impl Module {
     pub fn verify(&self) -> Result<()> {
         let mut msg = ptr::null_mut();
 
-        if unsafe {
+        unsafe {
             LLVMVerifyModule(
                 self.as_raw(),
                 LLVMVerifierFailureAction::LLVMReturnStatusAction,
                 &mut msg,
             )
-        }.is_ok()
-        {
-            Ok(())
-        } else {
-            bail!(format!("verify {:?} failed, {}", self, msg.to_string()))
-        }
+        }.ok_or_else(|| {
+            format!("verify {:?} failed, {}", self, msg.to_string()).into()
+        })
     }
 }
 
@@ -32,17 +29,12 @@ impl Function {
     ///
     /// Useful for debugging.
     pub fn verify(&self) -> Result<()> {
-        if unsafe {
+        unsafe {
             LLVMVerifyFunction(
                 self.as_raw(),
                 LLVMVerifierFailureAction::LLVMReturnStatusAction,
             )
-        }.is_ok()
-        {
-            Ok(())
-        } else {
-            bail!(format!("verify {:?} failed", self))
-        }
+        }.ok_or_else(|| format!("verify {:?} failed", self).into())
     }
 
     /// Open a ghostview window displaying the CFG of the given function.

@@ -12,7 +12,7 @@ use global::GlobalValue;
 use module::Module;
 use target::{TargetData, TargetMachine};
 use types::TypeRef;
-use utils::{AsLLVMBool, AsMutPtr, AsRaw, AsResult, FromRaw, IntoRaw};
+use utils::{AsLLVMBool, AsMutPtr, AsRaw, AsResult, DisposableMessage, FromRaw, IntoRaw};
 
 /// Deallocate and destroy all `ManagedStatic` variables.
 pub fn shutdown() {
@@ -82,23 +82,23 @@ impl Interpreter {
     }
 
     pub fn for_module(module: Module) -> Result<Self> {
-        unsafe {
-            let module = module.into_raw();
-            let mut engine = mem::uninitialized();
-            let mut err = mem::zeroed();
+        let module = module.into_raw();
+        let mut engine = ptr::null_mut();
+        let mut err = ptr::null_mut();
 
-            if LLVMCreateInterpreterForModule(&mut engine, module, &mut err).is_ok() {
-                trace!("create Interpreter({:?}) for Module({:?})", engine, module);
-
-                Ok(Interpreter(ExecutionEngine(engine)))
-            } else {
-                bail!(format!(
+        unsafe { LLVMCreateInterpreterForModule(&mut engine, module, &mut err) }
+            .ok_or_else(|| {
+                format!(
                     "fail to create interpreter for Module({:?}), {}",
                     module,
-                    CStr::from_ptr(err).to_string_lossy()
-                ))
-            }
-        }
+                    err.to_string()
+                ).into()
+            })
+            .map(|_| {
+                trace!("create Interpreter({:?}) for Module({:?})", engine, module);
+
+                Interpreter(ExecutionEngine(engine))
+            })
     }
 }
 
@@ -109,23 +109,23 @@ inherit_from!(JITCompiler, ExecutionEngine, LLVMExecutionEngineRef);
 
 impl JITCompiler {
     pub fn for_module(module: Module, opt_level: u32) -> Result<Self> {
-        unsafe {
-            let module = module.into_raw();
-            let mut engine = mem::uninitialized();
-            let mut err = mem::zeroed();
+        let module = module.into_raw();
+        let mut engine = ptr::null_mut();
+        let mut err = ptr::null_mut();
 
-            if LLVMCreateJITCompilerForModule(&mut engine, module, opt_level, &mut err).is_ok() {
-                trace!("create JITCompiler({:?}) for Module({:?})", engine, module);
-
-                Ok(JITCompiler(ExecutionEngine(engine)))
-            } else {
-                bail!(format!(
+        unsafe { LLVMCreateJITCompilerForModule(&mut engine, module, opt_level, &mut err) }
+            .ok_or_else(|| {
+                format!(
                     "fail to create JITCompiler for Module({:?}), {}",
                     module,
-                    CStr::from_ptr(err).to_string_lossy()
-                ))
-            }
-        }
+                    err.to_string()
+                ).into()
+            })
+            .map(|_| {
+                trace!("create JITCompiler({:?}) for Module({:?})", engine, module);
+
+                JITCompiler(ExecutionEngine(engine))
+            })
     }
 }
 
@@ -196,34 +196,34 @@ impl MCJITCompiler {
     }
 
     pub fn for_module(module: Module, mut options: MCJITCompilerOptions) -> Result<Self> {
-        unsafe {
-            let module = module.into_raw();
-            let mut engine = mem::uninitialized();
-            let mut err = mem::zeroed();
+        let module = module.into_raw();
+        let mut engine = ptr::null_mut();
+        let mut err = ptr::null_mut();
 
-            if LLVMCreateMCJITCompilerForModule(
+        unsafe {
+            LLVMCreateMCJITCompilerForModule(
                 &mut engine,
                 module,
                 &mut options.0,
                 mem::size_of::<LLVMMCJITCompilerOptions>(),
                 &mut err,
-            ).is_ok()
-            {
+            )
+        }.ok_or_else(|| {
+            format!(
+                "fail to create MCJITCompiler for Module({:?}), {}",
+                module,
+                err.to_string()
+            ).into()
+        })
+            .map(|_| {
                 trace!(
                     "create MCJITCompiler({:?}) for Module({:?})",
                     engine,
                     module
                 );
 
-                Ok(MCJITCompiler(ExecutionEngine(engine)))
-            } else {
-                bail!(format!(
-                    "fail to create MCJITCompiler for Module({:?}), {}",
-                    module,
-                    CStr::from_ptr(err).to_string_lossy()
-                ))
-            }
-        }
+                MCJITCompiler(ExecutionEngine(engine))
+            })
     }
 }
 
@@ -231,10 +231,10 @@ impl MCJITCompiler {
 #[derive(Debug)]
 pub struct ExecutionEngine(LLVMExecutionEngineRef);
 
+inherit_from!(ExecutionEngine, LLVMExecutionEngineRef);
+
 unsafe impl Send for ExecutionEngine {}
 unsafe impl Sync for ExecutionEngine {}
-
-inherit_from!(ExecutionEngine, LLVMExecutionEngineRef);
 
 impl Drop for ExecutionEngine {
     fn drop(&mut self) {
@@ -246,27 +246,27 @@ impl Drop for ExecutionEngine {
 
 impl ExecutionEngine {
     pub fn for_module(module: Module) -> Result<Self> {
-        unsafe {
-            let module = module.into_raw();
-            let mut engine = mem::uninitialized();
-            let mut err = mem::zeroed();
+        let module = module.into_raw();
+        let mut engine = ptr::null_mut();
+        let mut err = ptr::null_mut();
 
-            if LLVMCreateExecutionEngineForModule(&mut engine, module, &mut err).is_ok() {
+        unsafe { LLVMCreateExecutionEngineForModule(&mut engine, module, &mut err) }
+            .ok_or_else(|| {
+                format!(
+                    "fail to create execution engine for Module({:?}), {}",
+                    module,
+                    err.to_string()
+                ).into()
+            })
+            .map(|_| {
                 trace!(
                     "create ExecutionEngine({:?}) for Module({:?})",
                     engine,
                     module
                 );
 
-                Ok(ExecutionEngine(engine))
-            } else {
-                bail!(format!(
-                    "fail to create execution engine for Module({:?}), {}",
-                    module,
-                    CStr::from_ptr(err).to_string_lossy()
-                ))
-            }
-        }
+                engine.into()
+            })
     }
 
     /// This method is used to execute all of the static constructors for a program.
@@ -359,15 +359,17 @@ impl ExecutionEngine {
         let mut out = ptr::null_mut();
         let mut err = ptr::null_mut();
 
-        if unsafe { LLVMRemoveModule(self.0, module, &mut out, &mut err) }.is_ok() {
-            trace!("remove Module({:?}) from {:?}", module, self);
+        unsafe { LLVMRemoveModule(self.0, module, &mut out, &mut err) }
+            .ok_or_else(|| {
+                format!("fail to remove {:?}, {}", module, unsafe {
+                    CStr::from_ptr(err).to_string_lossy()
+                }).into()
+            })
+            .map(|_| {
+                trace!("remove Module({:?}) from {:?}", module, self);
 
-            Ok(module.into())
-        } else {
-            bail!(format!("fail to remove {:?}, {}", module, unsafe {
-                CStr::from_ptr(err).to_string_lossy()
-            }))
-        }
+                module.into()
+            })
     }
 
     /// Search all of the active modules to find the function that defines `FnName`.
@@ -377,17 +379,20 @@ impl ExecutionEngine {
         let name = name.as_ref();
         let mut func = ptr::null_mut();
 
-        if unsafe { LLVMFindFunction(self.0, cstr!(name), &mut func) }.is_ok() {
-            let f = func.into();
+        unsafe { LLVMFindFunction(self.0, cstr!(name), &mut func) }
+            .ok()
+            .map(|_| {
+                let f = func.into();
 
-            trace!("found `{}` function in {:?}: {:?}", name, self, f);
+                trace!("found `{}` function in {:?}: {:?}", name, self, f);
 
-            Some(f)
-        } else {
-            trace!("not found `{}` function in {:?}", name, self);
+                f
+            })
+            .or_else(|| {
+                trace!("not found `{}` function in {:?}", name, self);
 
-            None
-        }
+                None
+            })
     }
 
     pub fn target_data(&self) -> TargetData {

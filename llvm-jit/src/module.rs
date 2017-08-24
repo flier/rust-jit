@@ -96,18 +96,14 @@ impl Module {
         let filename = filename.as_ref();
         let mut err = ptr::null_mut();
 
-        unsafe {
-            if LLVMPrintModuleToFile(self.as_raw(), cpath!(filename), &mut err).is_ok() {
-                Ok(())
-            } else {
-                bail!(format!(
-                    "fail to print {:?} to file `{:?}`, {}",
-                    self,
-                    filename,
-                    CStr::from_ptr(err).to_string_lossy()
-                ))
-            }
-        }
+        unsafe { LLVMPrintModuleToFile(self.as_raw(), cpath!(filename), &mut err) }.ok_or_else(|| {
+            format!(
+                "fail to print {:?} to file `{:?}`, {}",
+                self,
+                filename,
+                err.to_string()
+            ).into()
+        })
     }
 
     /// Obtain a Type from a module by its registered name.

@@ -33,17 +33,15 @@ impl MemoryBuffer {
         let mut buf = ptr::null_mut();
         let mut msg = ptr::null_mut();
 
-        if unsafe { LLVMCreateMemoryBufferWithContentsOfFile(path.as_ptr(), &mut buf, &mut msg) }
-            .is_ok()
-        {
-            Ok(buf.into())
-        } else {
-            bail!(format!(
+        unsafe { LLVMCreateMemoryBufferWithContentsOfFile(path.as_ptr(), &mut buf, &mut msg) }
+            .ok_or_else(|| {
+                format!(
                 "fail to create memory buffer from file {}, {}",
                 path.to_string_lossy(),
                 msg.to_string(),
-            ))
-        }
+            ).into()
+            })
+            .map(|_| buf.into())
     }
 
     /// Read all of stdin into a MemoryBuffer, and return it.
@@ -51,14 +49,14 @@ impl MemoryBuffer {
         let mut buf = ptr::null_mut();
         let mut msg = ptr::null_mut();
 
-        if unsafe { LLVMCreateMemoryBufferWithSTDIN(&mut buf, &mut msg) }.is_ok() {
-            Ok(buf.into())
-        } else {
-            bail!(format!(
+        unsafe { LLVMCreateMemoryBufferWithSTDIN(&mut buf, &mut msg) }
+            .ok_or_else(|| {
+                format!(
                 "fail to create memory buffer from STDIN, {}",
                 msg.to_string(),
-            ))
-        }
+            ).into()
+            })
+            .map(|_| buf.into())
     }
 
     /// Open the specified memory range as a MemoryBuffer.

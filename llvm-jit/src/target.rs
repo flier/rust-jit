@@ -40,13 +40,9 @@ impl Target {
         let mut target = ptr::null_mut();
         let mut msg = ptr::null_mut();
 
-        if unsafe { LLVMGetTargetFromTriple(cstr!(triple.as_ref()), &mut target, &mut msg) }
-            .is_ok()
-        {
-            Ok(Target(target))
-        } else {
-            bail!(msg.to_string())
-        }
+        unsafe { LLVMGetTargetFromTriple(cstr!(triple.as_ref()), &mut target, &mut msg) }
+            .ok_or_else(|| msg.to_string().into())
+            .map(|_| target.into())
     }
 
     /// Get a triple for the host machine as a string.

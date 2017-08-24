@@ -71,6 +71,10 @@ impl AsBool for LLVMBool {
 pub trait AsResult: Sized {
     fn is_ok(self) -> bool;
 
+    fn ok(self) -> Option<()> {
+        if self.is_ok() { Some(()) } else { None }
+    }
+
     fn ok_or<E>(self, err: E) -> Result<(), E> {
         if self.is_ok() { Ok(()) } else { Err(err) }
     }
