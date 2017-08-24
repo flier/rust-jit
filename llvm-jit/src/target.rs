@@ -1,17 +1,22 @@
 use std::borrow::Cow;
 use std::ffi::CStr;
 use std::fmt;
+use std::path::Path;
 use std::ptr;
 
+use llvm::prelude::*;
 use llvm::target::*;
 use llvm::target_machine::*;
 
 use context::Context;
-use errors::Result;
+use errors::{ErrorKind, Result};
 use global::GlobalVar;
+use membuf::MemoryBuffer;
 use module::{AddressSpace, Module};
 use types::{AsTypeRef, StructType, TypeRef};
-use utils::{AsBool, AsRaw, AsResult, DisposableMessage, unchecked_cstring};
+use utils::{AsBool, AsLLVMBool, AsRaw, AsResult, DisposableMessage, unchecked_cstring};
+
+pub type CodeGenFileType = LLVMCodeGenFileType;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Target(LLVMTargetRef);
@@ -20,7 +25,7 @@ inherit_from!(Target, LLVMTargetRef);
 
 impl Default for Target {
     fn default() -> Self {
-        Target::from_triple(Target::default_triple_string()).unwrap()
+        Target::from_triple(Target::default_triple()).unwrap()
     }
 }
 
@@ -47,33 +52,33 @@ impl Target {
     }
 
     /// Get a triple for the host machine as a string.
-    pub fn default_triple_string() -> String {
+    pub fn default_triple() -> String {
         unsafe { LLVMGetDefaultTargetTriple() }.to_string()
     }
 
     /// Returns the name of a target.
     pub fn name(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetTargetName(self.0)) }.to_string_lossy()
+        unsafe { CStr::from_ptr(LLVMGetTargetName(self.as_raw())) }.to_string_lossy()
     }
 
     /// Returns the description  of a target.
     pub fn description(&self) -> Cow<str> {
-        unsafe { CStr::from_ptr(LLVMGetTargetDescription(self.0)) }.to_string_lossy()
+        unsafe { CStr::from_ptr(LLVMGetTargetDescription(self.as_raw())) }.to_string_lossy()
     }
 
     /// Returns if the target has a JIT
     pub fn has_jit(&self) -> bool {
-        unsafe { LLVMTargetHasJIT(self.0) }.as_bool()
+        unsafe { LLVMTargetHasJIT(self.as_raw()) }.as_bool()
     }
 
     /// Returns if the target has a TargetMachine associated
     pub fn has_target_machine(&self) -> bool {
-        unsafe { LLVMTargetHasTargetMachine(self.0) }.as_bool()
+        unsafe { LLVMTargetHasTargetMachine(self.as_raw()) }.as_bool()
     }
 
     /// Returns if the target as an ASM backend (required for emitting output)
     pub fn has_asm_backend(&self) -> bool {
-        unsafe { LLVMTargetHasAsmBackend(self.0) }.as_bool()
+        unsafe { LLVMTargetHasAsmBackend(self.as_raw()) }.as_bool()
     }
 }
 
@@ -113,7 +118,7 @@ inherit_from!(TargetMachine, LLVMTargetMachineRef);
 
 impl Drop for TargetMachine {
     fn drop(&mut self) {
-        unsafe { LLVMDisposeTargetMachine(self.0) }
+        unsafe { LLVMDisposeTargetMachine(self.as_raw()) }
     }
 }
 
@@ -142,27 +147,90 @@ impl TargetMachine {
 
     /// Returns the Target used in a TargetMachine
     pub fn target(&self) -> Target {
-        Target(unsafe { LLVMGetTargetMachineTarget(self.0) })
+        unsafe { LLVMGetTargetMachineTarget(self.as_raw()) }.into()
     }
 
     /// Returns the triple used creating this target machine.
     pub fn triple(&self) -> String {
-        unsafe { LLVMGetTargetMachineTriple(self.0) }.to_string()
+        unsafe { LLVMGetTargetMachineTriple(self.as_raw()) }.to_string()
     }
 
     /// Returns the cpu used creating this target machine.
     pub fn cpu(&self) -> String {
-        unsafe { LLVMGetTargetMachineCPU(self.0) }.to_string()
+        unsafe { LLVMGetTargetMachineCPU(self.as_raw()) }.to_string()
     }
 
     /// Returns the feature string used creating this target machine.
     pub fn feature(&self) -> String {
-        unsafe { LLVMGetTargetMachineFeatureString(self.0) }.to_string()
+        unsafe { LLVMGetTargetMachineFeatureString(self.as_raw()) }.to_string()
     }
 
     /// Create a DataLayout based on the targetMachine.
     pub fn create_data_layout(&self) -> TargetData {
-        TargetData::from_machine(self)
+        TargetData(unsafe { LLVMCreateTargetDataLayout(self.as_raw()) })
+    }
+
+    /// Set the target machine's ASM verbosity.
+    pub fn set_asm_verbosity(&self, verbose: bool) {
+        unsafe { LLVMSetTargetMachineAsmVerbosity(self.as_raw(), verbose.as_bool()) }
+    }
+
+    /// Emits an asm or object file for the given module to the filename.
+    pub fn emit_to_file<M, P>(&self, module: M, path: P, codegen: CodeGenFileType) -> Result<()>
+    where
+        M: AsRaw<RawType = LLVMModuleRef>,
+        P: AsRef<Path>,
+    {
+        let mut err = ptr::null_mut();
+
+        unsafe {
+            LLVMTargetMachineEmitToFile(
+                self.as_raw(),
+                module.as_raw(),
+                cpath!(path),
+                codegen,
+                &mut err,
+            )
+        }.ok_or_else(|| {
+            ErrorKind::Msg(format!("fail to emit to file, {}", err.to_string())).into()
+        })
+    }
+
+    /// Emits an asm or object file for the given module to the filename.
+    pub fn emit_to_memory_buffer<M>(
+        &self,
+        module: M,
+        codegen: CodeGenFileType,
+    ) -> Result<MemoryBuffer>
+    where
+        M: AsRaw<RawType = LLVMModuleRef>,
+    {
+        let mut err = ptr::null_mut();
+        let mut buf = ptr::null_mut();
+
+        unsafe {
+            LLVMTargetMachineEmitToMemoryBuffer(
+                self.as_raw(),
+                module.as_raw(),
+                codegen,
+                &mut err,
+                &mut buf,
+            )
+        }.ok_or_else(|| {
+            ErrorKind::Msg(format!(
+                "fail to emit to memory buffer, {}",
+                err.to_string()
+            )).into()
+        })
+            .map(|_| buf.into())
+    }
+
+    /// Adds the target-specific analysis passes to the pass manager.
+    pub fn add_analysis_passes<P>(&self, passmgr: P)
+    where
+        P: AsRaw<RawType = LLVMPassManagerRef>,
+    {
+        unsafe { LLVMAddAnalysisPasses(self.as_raw(), passmgr.as_raw()) }
     }
 }
 
@@ -173,7 +241,7 @@ inherit_from!(TargetData, LLVMTargetDataRef);
 
 impl Drop for TargetData {
     fn drop(&mut self) {
-        unsafe { LLVMDisposeTargetData(self.0) }
+        unsafe { LLVMDisposeTargetData(self.as_raw()) }
     }
 }
 
@@ -182,16 +250,12 @@ impl fmt::Display for TargetData {
         write!(
             f,
             "{}",
-            unsafe { LLVMCopyStringRepOfTargetData(self.0) }.to_string()
+            unsafe { LLVMCopyStringRepOfTargetData(self.as_raw()) }.to_string()
         )
     }
 }
 
 impl TargetData {
-    pub fn from_machine(machine: &TargetMachine) -> Self {
-        TargetData(unsafe { LLVMCreateTargetDataLayout(machine.0) })
-    }
-
     /// Creates target data from a target layout string.
     pub fn create<S: AsRef<str>>(s: S) -> Self {
         unsafe { LLVMCreateTargetData(unchecked_cstring(s).as_ptr()) }.into()
@@ -199,39 +263,39 @@ impl TargetData {
 
     /// Returns the byte order of a target, either `LLVMBigEndian` or `LLVMLittleEndian`.
     pub fn byte_order(&self) -> LLVMByteOrdering {
-        unsafe { LLVMByteOrder(self.0) }
+        unsafe { LLVMByteOrder(self.as_raw()) }
     }
 
     /// Returns the pointer size in bytes for a target.
     pub fn pointer_size(&self) -> usize {
-        unsafe { LLVMPointerSize(self.0) as usize }
+        unsafe { LLVMPointerSize(self.as_raw()) as usize }
     }
 
     /// Returns the pointer size in bytes for a target for a specified address space.
     pub fn pointer_size_for_address_space(&self, address_space: AddressSpace) -> usize {
-        unsafe { LLVMPointerSizeForAS(self.0, address_space) as usize }
+        unsafe { LLVMPointerSizeForAS(self.as_raw(), address_space) as usize }
     }
 
     /// Returns the integer type that is the same size as a pointer on a target.
     pub fn pointer_type(&self) -> TypeRef {
-        unsafe { LLVMIntPtrType(self.0) }.into()
+        unsafe { LLVMIntPtrType(self.as_raw()) }.into()
     }
 
     /// Returns the integer type that is the same size as a pointer on a target.
     pub fn int_ptr_type(&self) -> TypeRef {
-        unsafe { LLVMIntPtrType(self.0) }.into()
+        unsafe { LLVMIntPtrType(self.as_raw()) }.into()
     }
 
     /// Returns the integer type that is the same size as a pointer on a target.
     ///
     /// This version allows the address space to be specified.
     pub fn int_ptr_type_for_address_space(&self, address_space: AddressSpace) -> TypeRef {
-        unsafe { LLVMIntPtrTypeForAS(self.0, address_space) }.into()
+        unsafe { LLVMIntPtrTypeForAS(self.as_raw(), address_space) }.into()
     }
 
     /// Returns the integer type that is the same size as a pointer on a target.
     pub fn int_ptr_type_in_context(&self, context: &Context) -> TypeRef {
-        unsafe { LLVMIntPtrTypeInContext(context.as_raw(), self.0) }.into()
+        unsafe { LLVMIntPtrTypeInContext(context.as_raw(), self.as_raw()) }.into()
     }
 
     /// Returns the integer type that is the same size as a pointer on a target.
@@ -242,52 +306,53 @@ impl TargetData {
         context: &Context,
         address_space: AddressSpace,
     ) -> TypeRef {
-        unsafe { LLVMIntPtrTypeForASInContext(context.as_raw(), self.0, address_space) }.into()
+        unsafe { LLVMIntPtrTypeForASInContext(context.as_raw(), self.as_raw(), address_space) }
+            .into()
     }
 
     /// Computes the size of a type in bits for a target.
     pub fn size_of_type_in_bits<T: AsTypeRef>(&self, ty: T) -> usize {
-        unsafe { LLVMSizeOfTypeInBits(self.0, ty.as_raw()) as usize }
+        unsafe { LLVMSizeOfTypeInBits(self.as_raw(), ty.as_raw()) as usize }
     }
 
     /// Computes the storage size of a type in bytes for a target.
     pub fn storage_size_of_type<T: AsTypeRef>(&self, ty: T) -> usize {
-        unsafe { LLVMStoreSizeOfType(self.0, ty.as_raw()) as usize }
+        unsafe { LLVMStoreSizeOfType(self.as_raw(), ty.as_raw()) as usize }
     }
 
     /// Computes the ABI size of a type in bytes for a target.
     pub fn abi_size_of_type<T: AsTypeRef>(&self, ty: T) -> usize {
-        unsafe { LLVMABISizeOfType(self.0, ty.as_raw()) as usize }
+        unsafe { LLVMABISizeOfType(self.as_raw(), ty.as_raw()) as usize }
     }
 
     /// Computes the ABI alignment of a type in bytes for a target.
     pub fn abi_alignment_of_type<T: AsTypeRef>(&self, ty: T) -> usize {
-        unsafe { LLVMABIAlignmentOfType(self.0, ty.as_raw()) as usize }
+        unsafe { LLVMABIAlignmentOfType(self.as_raw(), ty.as_raw()) as usize }
     }
 
     /// Computes the call frame alignment of a type in bytes for a target.
     pub fn call_frame_alignment_of_type<T: AsTypeRef>(&self, ty: T) -> usize {
-        unsafe { LLVMCallFrameAlignmentOfType(self.0, ty.as_raw()) as usize }
+        unsafe { LLVMCallFrameAlignmentOfType(self.as_raw(), ty.as_raw()) as usize }
     }
 
     /// Computes the preferred alignment of a type in bytes for a target.
     pub fn preferred_alignment_of_type<T: AsTypeRef>(&self, ty: T) -> usize {
-        unsafe { LLVMPreferredAlignmentOfType(self.0, ty.as_raw()) as usize }
+        unsafe { LLVMPreferredAlignmentOfType(self.as_raw(), ty.as_raw()) as usize }
     }
 
     /// Computes the preferred alignment of a global variable in bytes for a target.
     pub fn preferred_alignment_of_global(&self, var: GlobalVar) -> usize {
-        unsafe { LLVMPreferredAlignmentOfGlobal(self.0, var.as_raw()) as usize }
+        unsafe { LLVMPreferredAlignmentOfGlobal(self.as_raw(), var.as_raw()) as usize }
     }
 
     /// Computes the structure element that contains the byte offset for a target.
     pub fn element_at_offset(&self, ty: StructType, offset: usize) -> u32 {
-        unsafe { LLVMElementAtOffset(self.0, ty.as_raw(), offset as u64) as u32 }
+        unsafe { LLVMElementAtOffset(self.as_raw(), ty.as_raw(), offset as u64) as u32 }
     }
 
     /// Computes the byte offset of the indexed struct element for a target.
     pub fn offset_of_element(&self, ty: StructType, element: u32) -> usize {
-        unsafe { LLVMOffsetOfElement(self.0, ty.as_raw(), element) as usize }
+        unsafe { LLVMOffsetOfElement(self.as_raw(), ty.as_raw(), element) as usize }
     }
 }
 

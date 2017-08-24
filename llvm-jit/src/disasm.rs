@@ -188,7 +188,7 @@ mod tests {
         NativeDisassembler::init().unwrap();
         NativeAsmPrinter::init().unwrap();
 
-        let triple = Target::default_triple_string();
+        let triple = Target::default_triple();
         let disasm = Disasm::new::<()>(&triple, 0, None, None, None);
 
         let mut cur = Cursor::new(vec![
@@ -226,7 +226,7 @@ mod tests {
         NativeDisassembler::init().unwrap();
         NativeAsmPrinter::init().unwrap();
 
-        let triple = Target::default_triple_string();
+        let triple = Target::default_triple();
         let disasm = Disasm::new::<()>(&triple, 0, None, None, None);
 
         let insts = vec![0x48, 0x8d, 0x05, 0xd1, 0xff, 0xff, 0xff];

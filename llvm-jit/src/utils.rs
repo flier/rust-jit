@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::mem;
 use std::ptr;
+use std::result::Result;
 use std::slice;
 
 use libc;
@@ -67,8 +68,19 @@ impl AsBool for LLVMBool {
     }
 }
 
-pub trait AsResult {
+pub trait AsResult: Sized {
     fn is_ok(self) -> bool;
+
+    fn ok_or<E>(self, err: E) -> Result<(), E> {
+        if self.is_ok() { Ok(()) } else { Err(err) }
+    }
+
+    fn ok_or_else<E, F>(self, err: F) -> Result<(), E>
+    where
+        F: FnOnce() -> E,
+    {
+        if self.is_ok() { Ok(()) } else { Err(err()) }
+    }
 }
 
 impl AsResult for LLVMBool {
@@ -203,6 +215,18 @@ impl<'a, T> AsMutPtr<T> for Option<&'a mut T> {
 
 pub fn unchecked_cstring<S: AsRef<str>>(s: S) -> CString {
     unsafe { CString::from_vec_unchecked(s.as_ref().as_bytes().to_vec()) }
+}
+
+macro_rules! cstr {
+    ($s:expr) => (
+        unchecked_cstring($s.as_ref()).as_ptr() as *mut i8
+    )
+}
+
+macro_rules! cpath {
+    ($s:expr) => (
+        unchecked_cstring($s.as_ref().to_string_lossy().as_ref()).as_ptr() as *mut i8
+    )
 }
 
 pub fn from_unchecked_cstr<'a>(p: *const u8, len: usize) -> Cow<'a, str> {
