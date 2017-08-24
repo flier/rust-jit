@@ -1,4 +1,3 @@
-use std::ffi::CString;
 use std::path::Path;
 use std::ptr;
 use std::slice;
@@ -29,15 +28,15 @@ impl Clone for MemoryBuffer {
 impl MemoryBuffer {
     /// Open the specified file as a MemoryBuffer.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let path = CString::new(path.as_ref().to_string_lossy().as_bytes())?;
+        let path = path.as_ref();
         let mut buf = ptr::null_mut();
         let mut msg = DisposableMessage::new();
 
-        unsafe { LLVMCreateMemoryBufferWithContentsOfFile(path.as_ptr(), &mut buf, &mut msg) }
+        unsafe { LLVMCreateMemoryBufferWithContentsOfFile(cpath!(path), &mut buf, &mut msg) }
             .ok_or_else(|| {
                 format!(
-                "fail to create memory buffer from file {}, {}",
-                path.to_string_lossy(),
+                "fail to create memory buffer from file {:?}, {}",
+                path,
                 msg.into_string(),
             ).into()
             })

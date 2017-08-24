@@ -1,6 +1,5 @@
 #![allow(deprecated)]
 
-use std::ffi::CString;
 use std::path::Path;
 use std::ptr;
 
@@ -83,12 +82,12 @@ impl Context {
 impl Module {
     ///  Write a module to the specified path.
     pub fn write_bitcode<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let path = CString::new(path.as_ref().to_string_lossy().as_bytes())?;
+        let path = path.as_ref();
 
-        if unsafe { LLVMWriteBitcodeToFile(self.as_raw(), path.as_ptr()) } == 0 {
+        if unsafe { LLVMWriteBitcodeToFile(self.as_raw(), cpath!(path)) } == 0 {
             Ok(())
         } else {
-            bail!("fail to write bitcode to file {}", path.to_string_lossy());
+            bail!("fail to write bitcode to file {:?}", path);
         }
     }
 

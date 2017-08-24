@@ -13,7 +13,7 @@ use module::Module;
 use target::{TargetData, TargetMachine};
 use types::TypeRef;
 use utils::{AsLLVMBool, AsMutPtr, AsRaw, AsResult, DisposableMessage, FromRaw, IntoRaw,
-            UncheckedCStr};
+            unchecked_cstring};
 
 /// Deallocate and destroy all `ManagedStatic` variables.
 pub fn shutdown() {
@@ -288,9 +288,7 @@ impl ExecutionEngine {
     /// starting up main with the specified rgc, argv, and envp parameters.
     pub fn run_function_as_main(&self, func: Function, args: &[&str], env_vars: &[&str]) -> i32 {
         let args = args.iter()
-            .map(|arg| unsafe {
-                CString::from_vec_unchecked(arg.as_bytes().to_vec())
-            })
+            .map(|arg| unchecked_cstring(arg))
             .collect::<Vec<CString>>();
 
         let mut argv = args.iter()
@@ -301,9 +299,7 @@ impl ExecutionEngine {
 
         let env_vars = env_vars
             .iter()
-            .map(|var| unsafe {
-                CString::from_vec_unchecked(var.as_bytes().to_vec())
-            })
+            .map(|var| unchecked_cstring(var))
             .collect::<Vec<CString>>();
 
         let mut environ = env_vars
