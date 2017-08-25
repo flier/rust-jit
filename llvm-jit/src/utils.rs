@@ -47,11 +47,7 @@ where
     T: From<*mut P>,
 {
     fn wrap(self) -> Option<T> {
-        if self.is_null() {
-            None
-        } else {
-            Some(self.into())
-        }
+        unsafe { self.as_mut().map(|p| (p as *mut P).into()) }
     }
 }
 

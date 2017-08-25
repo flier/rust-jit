@@ -37,10 +37,12 @@ impl Symbols {
     /// This function will search through all previously loaded dynamic libraries for the symbol.
     pub fn search<S: AsRef<str>, T>(symbol: S) -> Option<*const c_void> {
         let symbol = symbol.as_ref();
-        let addr = unsafe { LLVMSearchForAddressOfSymbol(cstr!(symbol)) };
+        let addr = unsafe { LLVMSearchForAddressOfSymbol(cstr!(symbol)).as_ref() }
+            .map(|p| p as *const c_void);
+
 
         trace!("got symbol `{}` @ {:?}", symbol, addr);
 
-        if addr.is_null() { None } else { Some(addr) }
+        addr
     }
 }
