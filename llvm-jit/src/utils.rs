@@ -192,6 +192,12 @@ pub trait AsMutPtr<T> {
     fn as_mut_ptr(self) -> *mut T;
 }
 
+impl<T> AsMutPtr<T> for *mut T {
+    fn as_mut_ptr(self) -> *mut T {
+        self
+    }
+}
+
 impl<'a, T> AsMutPtr<T> for Option<&'a mut T> {
     fn as_mut_ptr(self) -> *mut T {
         match self {

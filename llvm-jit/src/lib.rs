@@ -58,6 +58,7 @@ mod block;
 mod passmgr;
 mod engine;
 mod orc;
+mod symbols;
 pub mod target;
 mod analysis;
 mod disasm;
@@ -79,8 +80,9 @@ pub use intrinsics::{Intrinsic, IntrinsicId};
 pub use membuf::MemoryBuffer;
 pub use module::{AddressSpace, Module};
 pub use object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
-pub use orc::{JITStack, LazyCompileCallback, SymbolResolver, ModuleHandle, TargetAddress};
+pub use orc::{JITStack, LazyCompileCallback, ModuleHandle, SymbolResolver, TargetAddress};
 pub use passmgr::{FunctionPassManager, Pass, PassManager, PassManagerBuilder, PassRegistry};
+pub use symbols::Symbols;
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
                 TypeKind, TypeRef, VectorType};
 pub use value::{BlockAddress, Instruction, Opcode, ValueKind, ValueRef};
