@@ -8,7 +8,7 @@ use llvm::target::*;
 use llvm::target_machine::*;
 
 use context::Context;
-use errors::{ErrorKind, Result};
+use errors::Result;
 use global::GlobalVar;
 use membuf::MemoryBuffer;
 use module::{AddressSpace, Module};
@@ -228,7 +228,7 @@ impl TargetMachine {
                 &mut err,
             )
         }.ok_or_else(|| {
-            ErrorKind::Msg(format!("fail to emit to file, {}", err.into_string())).into()
+            format!("fail to emit to file, {}", err.into_string()).into()
         })
     }
 
@@ -253,10 +253,7 @@ impl TargetMachine {
                 &mut buf,
             )
         }.ok_or_else(|| {
-            ErrorKind::Msg(format!(
-                "fail to emit to memory buffer, {}",
-                err.into_string()
-            )).into()
+            format!("fail to emit to memory buffer, {}", err.into_string()).into()
         })
             .map(|_| buf.into())
     }
