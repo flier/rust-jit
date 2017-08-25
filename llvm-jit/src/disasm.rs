@@ -1,7 +1,6 @@
 use std::io::{Cursor, Seek, SeekFrom};
 use std::mem;
 
-use libc;
 use llvm::disassembler::*;
 
 use errors::Result;
@@ -42,7 +41,7 @@ impl Disasm {
         unsafe {
             LLVMCreateDisasm(
                 cstr!(triple_name),
-                data.as_mut_ptr() as *mut libc::c_void,
+                data.as_mut_ptr(),
                 tag_type,
                 mem::transmute(get_op_info),
                 mem::transmute(symbol_lookup),
@@ -62,7 +61,7 @@ impl Disasm {
             LLVMCreateDisasmCPU(
                 cstr!(triple_name),
                 cstr!(cpu),
-                data.as_mut_ptr() as *mut libc::c_void,
+                data.as_mut_ptr(),
                 tag_type,
                 mem::transmute(get_op_info),
                 mem::transmute(symbol_lookup),
@@ -84,7 +83,7 @@ impl Disasm {
                 cstr!(triple_name),
                 cstr!(cpu),
                 cstr!(features),
-                data.as_mut_ptr() as *mut libc::c_void,
+                data.as_mut_ptr(),
                 tag_type,
                 mem::transmute(get_op_info),
                 mem::transmute(symbol_lookup),
@@ -122,7 +121,7 @@ impl Disasm {
                     bytes.as_ptr() as *mut u8,
                     bytes.len() as u64,
                     pc,
-                    buf.as_mut_ptr() as *mut i8,
+                    buf.as_mut_ptr(),
                     buf.len(),
                 )
             }

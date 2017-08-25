@@ -27,7 +27,7 @@ impl Symbols {
     /// These symbols are searched before any libraries.
     pub fn add<S: AsRef<str>, P: AsMutPtr<T>, T>(symbol: S, value: P) {
         let symbol = symbol.as_ref();
-        let addr = value.as_mut_ptr() as *mut c_void;
+        let addr = value.as_mut_ptr();
 
         trace!("add symbol `{}` @ {:?}", symbol, addr);
 

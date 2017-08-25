@@ -195,8 +195,7 @@ impl AttributeKind {
     pub fn get<S: AsRef<str>>(name: S) -> Option<Self> {
         let name = name.as_ref();
 
-        let kind =
-            unsafe { LLVMGetEnumAttributeKindForName(name.as_ptr() as *const i8, name.len()) };
+        let kind = unsafe { LLVMGetEnumAttributeKindForName(cstr!(name), name.len()) };
 
         if kind == 0 { None } else { Some(kind.into()) }
     }

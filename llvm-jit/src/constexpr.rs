@@ -421,7 +421,6 @@ mod tests {
 
         let b = bool_t.int(1);
         let i = i64_t.int(123);
-        let u = i64_t.uint(123);
         let f = f64_t.real(123.0);
 
         let bv = bool_t.vector_t(4).vector_of(types![

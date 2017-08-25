@@ -151,7 +151,7 @@ impl MCJITMemoryManager {
     ) -> Option<Self> {
         unsafe {
             LLVMCreateSimpleMCJITMemoryManager(
-                data.as_mut_ptr() as *mut libc::c_void,
+                data.as_mut_ptr(),
                 alloc_code,
                 alloc_data,
                 free,

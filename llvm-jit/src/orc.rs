@@ -2,8 +2,6 @@ use std::borrow::Cow;
 use std::mem;
 use std::ptr;
 
-use libc::c_void;
-
 use llvm::orc::*;
 
 use errors::Result;
@@ -73,7 +71,7 @@ impl JITStack {
             LLVMOrcCreateLazyCompileCallback(
                 self.as_raw(),
                 callback.unwrap_or(mem::zeroed()),
-                ctx.as_mut_ptr() as *mut c_void,
+                ctx.as_mut_ptr(),
             )
         }
     }
@@ -124,7 +122,7 @@ impl JITStack {
                 self.as_raw(),
                 module,
                 mem::transmute(resolver),
-                ctx.as_mut_ptr() as *mut c_void,
+                ctx.as_mut_ptr(),
             )
         };
 
@@ -151,7 +149,7 @@ impl JITStack {
                 self.as_raw(),
                 module,
                 mem::transmute(resolver),
-                ctx.as_mut_ptr() as *mut c_void,
+                ctx.as_mut_ptr(),
             )
         };
 
@@ -178,7 +176,7 @@ impl JITStack {
                 self.as_raw(),
                 obj,
                 mem::transmute(resolver),
-                ctx.as_mut_ptr() as *mut c_void,
+                ctx.as_mut_ptr(),
             )
         };
 
