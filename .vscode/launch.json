@@ -1,7 +1,7 @@
 {
     "version": "0.2.0",
     "configurations": [{
-        "name": "(lldb) Launch",
+        "name": "(lldb) kaleidoscope-chapter4",
         "type": "cppdbg",
         "request": "launch",
         "program": "${workspaceRoot}/target/debug/examples/kaleidoscope-chapter4",
