@@ -405,7 +405,7 @@ impl ExecutionEngine {
     /// that want to have an LLVM global overlay existing data in memory.
     /// Values to be mapped should be named, and have external or weak linkage.
     /// Mappings are automatically removed when their GlobalValue is destroyed.
-    pub fn add_global_mapping<V: GlobalValue, T>(&self, var: V, addr: *mut T) {
+    pub fn add_global_mapping<V: GlobalValue, T>(&self, var: V, addr: *const T) {
         unsafe { LLVMAddGlobalMapping(self.as_raw(), var.as_raw(), addr as *mut libc::c_void) }
     }
 
@@ -476,7 +476,7 @@ mod tests {
     use prelude::*;
     use target::{NativeAsmPrinter, NativeTarget};
     use types::*;
-    use utils::AsBool;
+    use utils::{AsBool, UncheckedCStr};
 
     #[test]
     fn generic_value() {
