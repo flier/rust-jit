@@ -176,32 +176,51 @@ pub trait Boolinator: AsBool + Sized {
 impl<T: AsBool> Boolinator for T {}
 
 pub trait AsPtr<T> {
-    fn as_ptr(self) -> *const T;
+    fn as_ptr<P>(self) -> *const P;
+}
+
+
+impl<T> AsPtr<T> for *const T {
+    fn as_ptr<P>(self) -> *const P {
+        self as *const P
+    }
+}
+
+impl<'a, T> AsPtr<T> for &'a T {
+    fn as_ptr<P>(self) -> *const P {
+        self as *const T as *const P
+    }
 }
 
 impl<'a, T> AsPtr<T> for Option<&'a T> {
-    fn as_ptr(self) -> *const T {
+    fn as_ptr<P>(self) -> *const P {
         match self {
-            Some(value) => value as *const T,
+            Some(value) => value as *const T as *const P,
             None => ptr::null(),
         }
     }
 }
 
 pub trait AsMutPtr<T> {
-    fn as_mut_ptr(self) -> *mut T;
+    fn as_mut_ptr<P>(self) -> *mut P;
 }
 
 impl<T> AsMutPtr<T> for *mut T {
-    fn as_mut_ptr(self) -> *mut T {
-        self
+    fn as_mut_ptr<P>(self) -> *mut P {
+        self as *mut P
+    }
+}
+
+impl<'a, T> AsMutPtr<T> for &'a mut T {
+    fn as_mut_ptr<P>(self) -> *mut P {
+        self as *mut T as *mut P
     }
 }
 
 impl<'a, T> AsMutPtr<T> for Option<&'a mut T> {
-    fn as_mut_ptr(self) -> *mut T {
+    fn as_mut_ptr<P>(self) -> *mut P {
         match self {
-            Some(value) => value as *mut T,
+            Some(value) => value as *mut T as *mut P,
             None => ptr::null_mut(),
         }
     }
