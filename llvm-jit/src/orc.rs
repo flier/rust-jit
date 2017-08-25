@@ -209,8 +209,3 @@ impl JITStack {
         if addr == 0 { None } else { Some(addr) }
     }
 }
-
-extern "C" {
-    /// Remove a module set from the JIT.
-    pub fn LLVMOrcRemoveModule(JITStack: LLVMOrcJITStackRef, H: LLVMOrcModuleHandle);
-}
