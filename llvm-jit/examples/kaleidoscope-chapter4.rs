@@ -786,10 +786,13 @@ mod codegen {
 }
 
 use std::cell::RefCell;
+use std::char;
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::mem;
 use std::rc::Rc;
+
+use libc::c_void;
 
 use jit::prelude::*;
 use jit::target::*;
@@ -892,7 +895,6 @@ struct KaleidoscopeJIT {
     pub engine: jit::JITStack,
     pub modules: Vec<jit::ModuleHandle>,
     pub protos: Rc<RefCell<HashMap<String, ast::Prototype>>>,
-    pub symbols: HashMap<String, jit::TargetAddress>,
 }
 
 impl KaleidoscopeJIT {
@@ -903,7 +905,6 @@ impl KaleidoscopeJIT {
             engine,
             modules: Vec::new(),
             protos: Rc::new(RefCell::new(HashMap::new())),
-            symbols: HashMap::new(),
         })
     }
 
@@ -929,18 +930,36 @@ impl KaleidoscopeJIT {
             .is_some()
     }
 
+    pub fn add_symbol<S: AsRef<str>>(&self, symbol: S, addr: Option<ExternFn>) {
+        let name = self.engine.get_mangled_symbol(symbol);
+        let addr: *const c_void = unsafe { mem::transmute(addr) };
+
+        jit::Symbols::add_symbol(name, addr)
+    }
+
     pub fn find_symbol<S: AsRef<str>>(&self, symbol: S) -> Option<jit::TargetAddress> {
         let symbol = symbol.as_ref();
 
-        self.engine.get_symbol_address(symbol).or_else(|| {
-            let addr = self.symbols.get(symbol).cloned();
+        trace!("finding symbol `{}`", symbol);
 
-            trace!("got symbol `{}` from symbol tables @ {:?}", symbol, addr);
+        self.engine
+            .get_symbol_address(symbol)
+            .map(|addr| {
+                trace!("got symbol `{}` from JIT engine @ {:?}", symbol, addr);
 
-            addr
-        })
+                addr
+            })
+            .or_else(|| {
+                jit::Symbols::search_for_address(&symbol).map(|p: *const c_void| {
+                    trace!("got symbol `{}` @ {:?}", symbol, p);
+
+                    unsafe { mem::transmute(p) }
+                })
+            })
     }
 }
+
+pub type ExternFn = extern "C" fn(f64) -> f64;
 
 extern "C" fn symbol_resolver_callback(
     symbol: *const libc::c_char,
@@ -948,6 +967,8 @@ extern "C" fn symbol_resolver_callback(
 ) -> jit::TargetAddress {
     let jit: &KaleidoscopeJIT = unsafe { &*(ctx as *const KaleidoscopeJIT) };
     let symbol = unsafe { CStr::from_ptr(symbol) }.to_string_lossy();
+
+    trace!("resolving symbol `{}`", symbol);
 
     jit.find_symbol(symbol).unwrap_or(0)
 }
@@ -1032,6 +1053,26 @@ impl<'a> Iterator for Lines<'a> {
     }
 }
 
+//===----------------------------------------------------------------------===//
+// "Library" functions that can be "extern'd" from user code.
+//===----------------------------------------------------------------------===//
+
+/// putchard - putchar that takes a double and returns 0.
+extern "C" fn putchard(x: f64) -> f64 {
+    print!("{}", char::from_u32(x as u32).unwrap_or_default());
+    0.0
+}
+
+/// printd - printf that takes a double prints it as "%f\n", returning 0.
+extern "C" fn printd(x: f64) -> f64 {
+    println!("{}", x);
+    0.0
+}
+
+//===----------------------------------------------------------------------===//
+// Main driver code.
+//===----------------------------------------------------------------------===//
+
 fn main() {
     pretty_env_logger::init().unwrap();
 
@@ -1045,6 +1086,9 @@ fn main() {
 
     let target_machine = TargetMachine::default();
     let mut engine = KaleidoscopeJIT::new(&target_machine).expect("create JIT compiler");
+
+    engine.add_symbol("putchard", Some(putchard));
+    engine.add_symbol("printd", Some(printd));
 
     for code in Lines::new() {
         debug!("parsing code: {}", code);

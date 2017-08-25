@@ -200,10 +200,13 @@ impl JITStack {
     /// Get symbol address from JIT instance.
     pub fn get_symbol_address<S: AsRef<str>>(&self, symbol: S) -> Option<TargetAddress> {
         let symbol = symbol.as_ref();
-        let addr = unsafe { LLVMOrcGetSymbolAddress(self.as_raw(), cstr!(symbol)) };
+        match unsafe { LLVMOrcGetSymbolAddress(self.as_raw(), cstr!(symbol)) } {
+            0 => None,
+            addr => {
+                trace!("got symbol `{}` from JIT engine @ {:?}", symbol, addr);
 
-        trace!("get symbol `{}` from JIT engine @ 0x{:08x}", symbol, addr);
-
-        if addr == 0 { None } else { Some(addr) }
+                Some(addr)
+            }
+        }
     }
 }

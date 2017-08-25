@@ -4,7 +4,7 @@ use libc::c_void;
 use llvm::support::*;
 
 use errors::Result;
-use utils::{AsMutPtr, AsResult};
+use utils::{AsPtr, AsResult};
 
 pub struct Symbols {}
 
@@ -25,9 +25,9 @@ impl Symbols {
     /// This functions permanently adds the symbol with the value.
     ///
     /// These symbols are searched before any libraries.
-    pub fn add<S: AsRef<str>, P: AsMutPtr<T>, T>(symbol: S, value: P) {
+    pub fn add_symbol<S: AsRef<str>, P: AsPtr<T>, T>(symbol: S, value: P) {
         let symbol = symbol.as_ref();
-        let addr = value.as_mut_ptr();
+        let addr = value.as_ptr() as *const c_void as *mut c_void;
 
         trace!("add symbol `{}` @ {:?}", symbol, addr);
 
@@ -35,14 +35,15 @@ impl Symbols {
     }
 
     /// This function will search through all previously loaded dynamic libraries for the symbol.
-    pub fn search<S: AsRef<str>, T>(symbol: S) -> Option<*const c_void> {
+    pub fn search_for_address<S: AsRef<str>, P>(symbol: S) -> Option<*const P> {
         let symbol = symbol.as_ref();
-        let addr = unsafe { LLVMSearchForAddressOfSymbol(cstr!(symbol)).as_ref() }
-            .map(|p| p as *const c_void);
 
+        unsafe { LLVMSearchForAddressOfSymbol(cstr!(symbol)).as_ref() }.map(|p| {
+            let p = p as *const c_void as *const P;
 
-        trace!("got symbol `{}` @ {:?}", symbol, addr);
+            trace!("got symbol `{}` from dynamic library @ {:?}", symbol, p);
 
-        addr
+            p
+        })
     }
 }
