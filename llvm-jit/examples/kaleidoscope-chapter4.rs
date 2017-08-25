@@ -877,16 +877,9 @@ struct KaleidoscopeJIT {
 
 impl KaleidoscopeJIT {
     pub fn new(target_machine: &TargetMachine) -> Result<KaleidoscopeJIT> {
-        NativeTarget::init().unwrap();
-        NativeAsmParser::init().unwrap();
-        NativeAsmPrinter::init().unwrap();
-
-        jit::MCJITCompiler::link_in();
-
         let engine = jit::JITStack::new(target_machine);
 
         Ok(KaleidoscopeJIT {
-            target_machine,
             engine,
             modules: Vec::new(),
             protos: HashMap::new(),
@@ -896,10 +889,10 @@ impl KaleidoscopeJIT {
 
     pub fn add_module(&mut self, module: Module) -> jit::ModuleHandle {
         let ctx = self as *mut KaleidoscopeJIT;
-        let handle = self.engine.add_eagerly_compiled_ir::<()>(
+        let handle = self.engine.add_eagerly_compiled_ir(
             module,
-            None, //Some(symbol_resolver_callback),
-            None, //Some(unsafe { &mut *ctx }),
+            Some(symbol_resolver_callback),
+            Some(unsafe { &mut *ctx }),
         );
 
         self.modules.push(handle);
@@ -1025,6 +1018,12 @@ impl<'a> Iterator for Lines<'a> {
 
 fn main() {
     pretty_env_logger::init().unwrap();
+
+    NativeTarget::init().unwrap();
+    NativeAsmParser::init().unwrap();
+    NativeAsmPrinter::init().unwrap();
+
+    jit::MCJITCompiler::link_in();
 
     let context = Context::new();
 
