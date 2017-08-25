@@ -269,7 +269,7 @@ mod ast {
     /// Prototype - This class represents the "prototype" for a function,
     /// which captures its name, and its argument names (thus implicitly the number
     /// of arguments the function takes).
-    #[derive(Debug)]
+    #[derive(Clone, Debug)]
     pub struct Prototype {
         pub name: String,
         pub args: Vec<String>,
@@ -590,13 +590,15 @@ mod parser {
 //===----------------------------------------------------------------------===//
 
 mod codegen {
+    use std::cell::RefCell;
     use std::collections::HashMap;
+    use std::rc::Rc;
 
     use jit;
     use jit::insts::*;
     use jit::prelude::*;
 
-    use ast;
+    use ast::{self, Expr};
     use errors::{ErrorKind, Result};
 
     pub struct CodeGenerator<'a> {
@@ -605,6 +607,7 @@ mod codegen {
         pub builder: IRBuilder,
         pub passmgr: jit::FunctionPassManager,
         pub named_values: HashMap<String, ValueRef>,
+        pub protos: Rc<RefCell<HashMap<String, ast::Prototype>>>,
     }
 
     impl<'a> CodeGenerator<'a> {
@@ -625,9 +628,29 @@ mod codegen {
 
             passmgr
         }
+
+        fn get_function(&mut self, name: &str) -> Option<Function> {
+            // First, check for an existing function from a previous 'extern' declaration.
+            self.module.get_function(name).or_else(|| {
+                // If not, check whether we can codegen the declaration from some existing prototype.
+                let proto = self.protos.borrow().get(name).cloned();
+
+                proto.map(
+                    |proto| {
+                        trace!("found prototype `{}`", name);
+
+                        proto.codegen(self).unwrap().into()
+                    }
+                )
+            })
+        }
     }
 
-    pub fn new<'a>(context: &'a Context, name: &str) -> CodeGenerator<'a> {
+    pub fn new<'a>(
+        context: &'a Context,
+        name: &str,
+        protos: Rc<RefCell<HashMap<String, ast::Prototype>>>,
+    ) -> CodeGenerator<'a> {
         // Open a new module.
         let module = context.create_module(name);
         let passmgr = CodeGenerator::create_pass_manager(&module);
@@ -638,6 +661,7 @@ mod codegen {
             builder: context.create_builder(),
             passmgr,
             named_values: HashMap::new(),
+            protos,
         }
     }
 
@@ -683,7 +707,7 @@ mod codegen {
     impl ast::Expr for ast::CallExpr {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             // Look up the name in the global module table.
-            if let Some(func) = gen.module.get_function(&self.callee) {
+            if let Some(func) = gen.get_function(&self.callee) {
                 // If argument mismatch error.
                 if self.args.len() != func.param_count() {
                     bail!(ErrorKind::IncorrectArguments(
@@ -724,21 +748,15 @@ mod codegen {
 
     impl ast::Expr for ast::Function {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
-            // First, check for an existing function from a previous 'extern' declaration.
-            let func = gen.module.get_function(&self.proto.name).and_then(|func| {
-                if !func.is_empty() {
-                    // overwrite the exists function with same name
-                    func.delete();
+            gen.protos.borrow_mut().insert(
+                self.proto.name.clone(),
+                self.proto.clone(),
+            );
 
-                    None
-                } else {
-                    Some(func)
-                }
-            });
-            let func = if let Some(func) = func {
+            let func = if let Some(func) = gen.get_function(&self.proto.name) {
                 func
             } else {
-                self.proto.codegen(gen)?.into()
+                bail!("not found `{}` function", self.proto.name)
             };
 
             // Create a new basic block to start insertion into.
@@ -767,9 +785,11 @@ mod codegen {
     }
 }
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::mem;
+use std::rc::Rc;
 
 use jit::prelude::*;
 use jit::target::*;
@@ -808,7 +828,7 @@ where
     fn handle_extern(
         &mut self,
         mut gen: CodeGenerator,
-        engine: &mut KaleidoscopeJIT,
+        _engine: &mut KaleidoscopeJIT,
     ) -> Result<ValueRef> {
         self.parse_extern().and_then(|proto| {
             println!("parsed a extern prototype: {:?}", proto);
@@ -817,7 +837,7 @@ where
 
             println!("read extern:\n{}", ir);
 
-            engine.add_prototype(proto);
+            gen.protos.borrow_mut().insert(proto.name.clone(), proto);
 
             Ok(ir)
         })
@@ -869,10 +889,10 @@ where
 }
 
 struct KaleidoscopeJIT {
-    engine: jit::JITStack,
-    modules: Vec<jit::ModuleHandle>,
-    protos: HashMap<String, ast::Prototype>,
-    symbols: HashMap<String, jit::TargetAddress>,
+    pub engine: jit::JITStack,
+    pub modules: Vec<jit::ModuleHandle>,
+    pub protos: Rc<RefCell<HashMap<String, ast::Prototype>>>,
+    pub symbols: HashMap<String, jit::TargetAddress>,
 }
 
 impl KaleidoscopeJIT {
@@ -882,7 +902,7 @@ impl KaleidoscopeJIT {
         Ok(KaleidoscopeJIT {
             engine,
             modules: Vec::new(),
-            protos: HashMap::new(),
+            protos: Rc::new(RefCell::new(HashMap::new())),
             symbols: HashMap::new(),
         })
     }
@@ -919,10 +939,6 @@ impl KaleidoscopeJIT {
 
             addr
         })
-    }
-
-    pub fn add_prototype(&mut self, proto: ast::Prototype) -> Option<ast::Prototype> {
-        self.protos.insert(proto.name.clone(), proto)
     }
 }
 
@@ -1037,7 +1053,10 @@ fn main() {
 
         // Run the main "interpreter loop" now.
         loop {
-            match parser.handle_top(codegen::new(&context, "my cool jit"), &mut engine) {
+            match parser.handle_top(
+                codegen::new(&context, "my cool jit", engine.protos.clone()),
+                &mut engine,
+            ) {
                 Ok(Parsed::ToEnd) => {
                     break;
                 }
