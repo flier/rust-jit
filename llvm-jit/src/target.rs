@@ -34,17 +34,31 @@ impl Default for Target {
 impl Target {
     /// Finds the target corresponding to the given name
     pub fn from_name<S: AsRef<str>>(name: S) -> Option<Target> {
-        unsafe { LLVMGetTargetFromName(cstr!(name.as_ref())).as_mut() }.map(|target| Target(target))
+        let name = name.as_ref();
+        unsafe { LLVMGetTargetFromName(cstr!(name)).as_mut() }.map(|target| {
+            let target = Target(target);
+
+            debug!("create target for name `{}`: {:?}", name, target);
+
+            target
+        })
     }
 
     /// Finds the target corresponding to the given triple
     pub fn from_triple<S: AsRef<str>>(triple: S) -> Result<Target> {
+        let triple = triple.as_ref();
         let mut target = ptr::null_mut();
         let mut msg = DisposableMessage::new();
 
-        unsafe { LLVMGetTargetFromTriple(cstr!(triple.as_ref()), &mut target, &mut msg) }
+        unsafe { LLVMGetTargetFromTriple(cstr!(triple), &mut target, &mut msg) }
             .ok_or_else(|| msg.into_string().into())
-            .map(|_| target.into())
+            .map(|_| {
+                let target = target.into();
+
+                debug!("create target for triple `{}`: {:?}", triple, target);
+
+                target
+            })
     }
 
     /// Get a triple for the host machine as a string.
@@ -145,7 +159,7 @@ impl TargetMachine {
         reloc_mode: RelocMode,
         code_model: CodeModel,
     ) -> Self {
-        TargetMachine(unsafe {
+        let tm = TargetMachine(unsafe {
             LLVMCreateTargetMachine(
                 target.0,
                 cstr!(triple),
@@ -155,7 +169,16 @@ impl TargetMachine {
                 reloc_mode,
                 code_model,
             )
-        })
+        });
+
+        trace!(
+            "create target machine for target `{}` ({}): {:?}",
+            target.name(),
+            target.description(),
+            tm
+        );
+
+        tm
     }
 
     /// Returns the Target used in a TargetMachine
