@@ -598,9 +598,9 @@ mod codegen {
 
             // Create blocks for the then and else cases.
             // Insert the 'then' block at the end of the function.
-            let then_bb = func.append_basic_block_in_context("then", &gen.context);
-            let else_bb = func.append_basic_block_in_context("else", &gen.context);
-            let merge_bb = func.append_basic_block_in_context("ifcont", &gen.context);
+            let then_bb = func.append_basic_block_in_context("then", gen.context);
+            let else_bb = func.append_basic_block_in_context("else", gen.context);
+            let merge_bb = func.append_basic_block_in_context("ifcont", gen.context);
 
             gen.builder <<= br!(cond => then_bb, _ => else_bb);
 
@@ -636,7 +636,72 @@ mod codegen {
 
     impl ast::Expr for ast::ForExpr {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
-            unimplemented!()
+            let f64_t = gen.context.double_t();
+
+            // Emit the start code first, without 'variable' in scope.
+            let start = self.start.codegen(gen)?;
+
+            // Make the new basic block for the loop header, inserting after current block.
+            let preheader_bb = gen.builder.insert_block().unwrap();
+            let func = preheader_bb.parent();
+            let loop_bb = func.append_basic_block_in_context("loop", gen.context);
+
+            // Insert an explicit fall through from the current block to the LoopBB.
+            gen.builder <<= br!(loop_bb);
+
+            // Start insertion in LoopBB.
+            gen.builder.position_at_end(loop_bb);
+
+            // Start the PHI node with an entry for Start.
+            let var = phi!(f64_t, start => preheader_bb; self.var_name.clone())
+                .emit_to(&gen.builder);
+
+            // Within the loop, the variable is defined equal to the PHI node.
+            // If it shadows an existing variable, we have to restore it, so save it now.
+            let old_value = gen.named_values.insert(self.var_name.clone(), var.into());
+
+            // Emit the body of the loop.
+            // This, like any other expr, can change the current BB.
+            // Note that we ignore the value computed by the body, but don't allow an error.
+            self.body.codegen(gen)?;
+
+            // Emit the step value.
+            let step_val = if let Some(ref step) = self.step {
+                step.codegen(gen)?
+            } else {
+                f64_t.real(1.0).into()
+            };
+
+            let next_val = fadd!(var, step_val; "nextvar").emit_to(&gen.builder);
+
+            // Compute the end condition.
+            let end_val = self.end.codegen(gen)?;
+
+            // Convert condition to a bool by comparing non-equal to 0.0.
+            let end_cond = fcmp!(ONE end_val, f64_t.real(0.0); "loopcond");
+
+            // Create the "after loop" block and insert it.
+            let loop_end_bb = gen.builder.insert_block().unwrap();
+            let after_bb = func.append_basic_block_in_context("afterloop", gen.context);
+
+            // Insert the conditional branch into the end of LoopEndBB.
+            gen.builder <<= br!(end_cond => loop_bb, _ => after_bb);
+
+            // Any new code will be inserted in AfterBB.
+            gen.builder.position_at_end(after_bb);
+
+            // Add a new entry to the PHI node for the backedge.
+            var.add_incomings(&[(next_val.into(), loop_end_bb)]);
+
+            // Restore the unshadowed variable.
+            if let Some(value) = old_value {
+                gen.named_values.insert(self.var_name.clone(), value);
+            } else {
+                gen.named_values.remove(&self.var_name);
+            }
+
+            // for expr always returns 0.0.
+            Ok(f64_t.null().into())
         }
     }
 
@@ -686,10 +751,12 @@ mod codegen {
             // Finish off the function.
             gen.builder <<= ret!(ret_val);
 
-            gen.passmgr.run(&func);
-
             // Validate the generated code, checking for consistency.
-            func.verify()?;
+            if func.verify().is_err() {
+                gen.module.verify()?;
+            }
+
+            gen.passmgr.run(&func);
 
             Ok(func.into())
         }

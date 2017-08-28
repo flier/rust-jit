@@ -46,7 +46,9 @@ impl<'a> Iterator for Lines<'a> {
             let first_line = self.line.is_empty() || self.line.as_str().trim().ends_with(";");
 
             match self.read_line(first_line) {
-                Ok(line) => {
+                Ok(mut line) => {
+                    line.push('\n');
+
                     self.line = line;
                     self.pos = 0;
                 }
