@@ -4,23 +4,10 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate error_chain;
 extern crate rustyline;
+extern crate llvm_jit as jit;
 
-mod errors {
-    use lexer::Token;
-
-    error_chain!{
-        foreign_links {
-
-        }
-
-        errors {
-            UnexpectedToken(msg: String, token: Token) {
-                description("unexpected token")
-                display("{}, but got unexpected token: '{:?}'", msg, token)
-            }
-        }
-    }
-}
+mod errors;
+mod lines;
 
 //===----------------------------------------------------------------------===//
 // Lexer
@@ -614,8 +601,6 @@ where
 //===----------------------------------------------------------------------===//
 // Main driver code.
 //===----------------------------------------------------------------------===//
-
-mod lines;
 
 fn main() {
     pretty_env_logger::init().unwrap();

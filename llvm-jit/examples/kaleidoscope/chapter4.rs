@@ -9,40 +9,8 @@ extern crate llvm_sys as llvm;
 #[macro_use]
 extern crate llvm_jit as jit;
 
-mod errors {
-    use jit;
-
-    use lexer::Token;
-
-    error_chain!{
-        foreign_links {
-
-        }
-
-        links {
-            Jit(jit::errors::Error, jit::errors::ErrorKind);
-        }
-
-        errors {
-            UnexpectedToken(msg: String, token: Token) {
-                description("unexpected token")
-                display("{}, but got unexpected token: '{:?}'", msg, token)
-            }
-            UnknownVariable(name: String) {
-                description("unknown variable")
-                display("unknown variable: {}", name)
-            }
-            UnknownFunction(name: String) {
-                description("unknown function")
-                display("unknown function: {}", name)
-            }
-            IncorrectArguments(passed: usize, expected: usize) {
-                description("incorrect arguments passed")
-                display("incorrect arguments, passed {}, expected {}", passed, expected)
-            }
-        }
-    }
-}
+mod errors;
+mod lines;
 
 //===----------------------------------------------------------------------===//
 // Lexer
@@ -998,8 +966,6 @@ extern "C" fn printd(x: f64) -> f64 {
 //===----------------------------------------------------------------------===//
 // Main driver code.
 //===----------------------------------------------------------------------===//
-
-mod lines;
 
 fn main() {
     pretty_env_logger::init().unwrap();
