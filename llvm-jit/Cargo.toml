@@ -25,3 +25,30 @@ matches = "0.1"
 hamcrest = "*"
 crossbeam = "0.3"
 rustyline = "1.0"
+
+[[example]]
+name = "nop-function"
+
+[[example]]
+name = "jit-function"
+
+[[example]]
+name = "how-to-use-jit"
+
+[[example]]
+name = "parallel-jit"
+
+[[example]]
+name = "module-maker"
+
+[[example]]
+name = "kaleidoscope-chapter2"
+path = "examples/kaleidoscope/chapter2.rs"
+
+[[example]]
+name = "kaleidoscope-chapter3"
+path = "examples/kaleidoscope/chapter3.rs"
+
+[[example]]
+name = "kaleidoscope-chapter4"
+path = "examples/kaleidoscope/chapter4.rs"
