@@ -110,11 +110,11 @@ impl PhiNode {
 
 #[macro_export]
 macro_rules! phi {
-    ( $ty:expr, $([ $value:expr, $block:expr ])* ; $name:expr ) => ({
+    ( $ty:expr, $( $value:expr => $block:expr ),* ; $name:expr ) => ({
         $crate::insts::Phi::new($ty.into(), $name.into()) $( .add_incoming( $value.into(), $block.into() ) )*
     });
-    ( $ty:expr, $([ $value:expr, $block:expr ])* ) => ({
-        phi!( $ty, $([ $value, $block ])* ; "phi" )
+    ( $ty:expr, $( $value:expr => $block:expr ),* ) => ({
+        phi!( $ty, $( $value => $block ),* ; "phi" )
     })
 }
 
@@ -140,7 +140,7 @@ mod tests {
         let bb_loop = function.append_basic_block_in_context("Loop", &context);
         builder.position(Position::AtEnd(bb_loop));
 
-        let indvar = phi!(i64_t, [i64_t.int(0), bb_loop_header]; "indvar").emit_to(&builder);
+        let indvar = phi!(i64_t, i64_t.int(0) => bb_loop_header; "indvar").emit_to(&builder);
         let nextindvar = add(indvar, i64_t.int(1), "nextindvar").emit_to(&builder);
 
         br!(bb_loop).emit_to(&builder);

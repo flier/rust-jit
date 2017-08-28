@@ -611,7 +611,48 @@ mod codegen {
 
     impl ast::Expr for ast::IfExpr {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
-            unimplemented!()
+            let f64_t = gen.context.double_t();
+
+            // Convert condition to a bool by comparing non-equal to 0.0.
+            let cond = fcmp!(one self.cond.codegen(gen)?, f64_t.real(0.0));
+
+            let func = gen.builder.insert_block().unwrap().parent();
+
+            // Create blocks for the then and else cases.
+            // Insert the 'then' block at the end of the function.
+            let then_bb = func.append_basic_block_in_context("then", &gen.context);
+            let else_bb = func.append_basic_block_in_context("else", &gen.context);
+            let merge_bb = func.append_basic_block_in_context("ifcont", &gen.context);
+
+            gen.builder <<= br!(cond => then_bb, _ => else_bb);
+
+            // Emit then value.
+            gen.builder.position_at_end(then_bb);
+
+            let then = self.then.codegen(gen)?;
+
+            gen.builder <<= br!(merge_bb);
+
+            // Codegen of 'Then' can change the current block, update ThenBB for the PHI.
+            let then_bb = gen.builder.insert_block().unwrap();
+
+            // Emit else block.
+            gen.builder.position_at_end(else_bb);
+
+            let or_else = self.or_else.codegen(gen)?;
+
+            gen.builder <<= br!(merge_bb);
+
+            // codegen of 'Else' can change the current block, update ElseBB for the PHI.
+            let else_bb = gen.builder.insert_block().unwrap();
+
+            // Emit merge block.
+            gen.builder.position_at_end(merge_bb);
+
+            let pn = phi!(f64_t, then => then_bb, or_else => else_bb; "iftmp")
+                .emit_to(&gen.builder);
+
+            Ok(pn.into())
         }
     }
 
@@ -659,7 +700,7 @@ mod codegen {
             let ret_val = self.body.codegen(gen)?;
 
             // Finish off the function.
-            ret!(ret_val).emit_to(&gen.builder);
+            gen.builder <<= ret!(ret_val);
 
             gen.passmgr.run(&func);
 
