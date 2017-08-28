@@ -87,6 +87,16 @@ mod ast {
         pub or_else: Box<Expr>,
     }
 
+    /// ForExprAST - Expression class for for/in.
+    #[derive(Debug)]
+    pub struct ForExpr {
+        pub var_name: String,
+        pub start: Box<Expr>,
+        pub end: Box<Expr>,
+        pub step: Option<Box<Expr>>,
+        pub body: Box<Expr>,
+    }
+
     /// Prototype - This class represents the "prototype" for a function,
     /// which captures its name, and its argument names (thus implicitly the number
     /// of arguments the function takes).
@@ -313,6 +323,93 @@ mod parser {
             }))
         }
 
+        /// forexpr ::= 'for' identifier '=' expr ',' expr (',' expr)? 'in' expression
+        fn parse_for_expr(&mut self) -> Result<Box<ast::Expr>> {
+            match self.cur_token {
+                Token::For => {
+                    self.next_token(); // eat the for.
+                }
+                ref token => {
+                    bail!(ErrorKind::UnexpectedToken(
+                        "Expected `for`".into(),
+                        token.clone(),
+                    ));
+                }
+            }
+
+            let var_name = match self.cur_token {
+                Token::Identifier(ref name) => name.clone(),
+                ref token => {
+                    bail!(ErrorKind::UnexpectedToken(
+                        "Expected `identifier` after `for`".into(),
+                        token.clone(),
+                    ));
+                }
+            };
+
+            self.next_token(); // eat the identifier.
+
+            match self.cur_token {
+                Token::Character('=') => {
+                    self.next_token(); // eat the `=`.
+                }
+                ref token => {
+                    bail!(ErrorKind::UnexpectedToken(
+                        "Expected `=` after `for`".into(),
+                        token.clone(),
+                    ));
+                }
+            }
+
+            let start = self.parse_expression()?;
+
+            match self.cur_token {
+                Token::Character(',') => {
+                    self.next_token(); // eat the `,`.
+                }
+                ref token => {
+                    bail!(ErrorKind::UnexpectedToken(
+                        "Expected `,` after `for`".into(),
+                        token.clone(),
+                    ));
+                }
+            }
+
+            let end = self.parse_expression()?;
+
+            // The step value is optional.
+            let step = match self.cur_token {
+                Token::Character(',') => {
+                    self.next_token(); // eat the `,`.
+
+                    Some(self.parse_expression()?)
+                }
+                _ => None,
+            };
+
+            match self.cur_token {
+                Token::In => {
+                    self.next_token(); // eat the `in`.
+                }
+                ref token => {
+                    bail!(ErrorKind::UnexpectedToken(
+                        "Expected `in` after `for`".into(),
+                        token.clone(),
+                    ));
+                }
+            }
+
+            let body = self.parse_expression()?;
+
+            Ok(Box::new(ast::ForExpr {
+                var_name,
+                start,
+                end,
+                step,
+                body,
+            }))
+        }
+
         /// primary
         ///   ::= identifierexpr
         ///   ::= numberexpr
@@ -323,6 +420,7 @@ mod parser {
                 Token::Number(_) => self.parse_number_expr(),
                 Token::Character('(') => self.parse_paren_expr(),
                 Token::If => self.parse_if_expr(),
+                Token::For => self.parse_for_expr(),
                 ref token => {
                     bail!(ErrorKind::UnexpectedToken(
                         "Expected `identifier`, `number` or `(`".into(),
@@ -653,6 +751,12 @@ mod codegen {
                 .emit_to(&gen.builder);
 
             Ok(pn.into())
+        }
+    }
+
+    impl ast::Expr for ast::ForExpr {
+        fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
+            unimplemented!()
         }
     }
 

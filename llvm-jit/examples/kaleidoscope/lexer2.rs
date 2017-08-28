@@ -16,6 +16,8 @@ pub enum Token {
     If,
     Then,
     Else,
+    For,
+    In,
 
     // primary
     Identifier(String),
@@ -75,6 +77,8 @@ where
                     "if" => Token::If,
                     "then" => Token::Then,
                     "else" => Token::Else,
+                    "for" => Token::For,
+                    "in" => Token::In,
                     _ => Token::Identifier(s),
                 }
             } else if c.is_digit(10) || c == '.' {
