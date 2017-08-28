@@ -575,7 +575,7 @@ mod codegen {
                     ast::BinOp::Sub => fsub!(lhs, rhs; "subtmp").emit_to(&gen.builder),
                     ast::BinOp::Mul => fmul!(lhs, rhs; "multmp").emit_to(&gen.builder),
                     ast::BinOp::LessThen => {
-                        let lhs = fcmp!(ult lhs, rhs; "cmptmp");
+                        let lhs = fcmp!(ULT lhs, rhs; "cmptmp");
                         // Convert bool 0/1 to double 0.0 or 1.0
                         uitofp!(lhs, f64_t; "booltmp").emit_to(&gen.builder)
                     }
@@ -614,7 +614,7 @@ mod codegen {
             let f64_t = gen.context.double_t();
 
             // Convert condition to a bool by comparing non-equal to 0.0.
-            let cond = fcmp!(one self.cond.codegen(gen)?, f64_t.real(0.0));
+            let cond = fcmp!(ONE self.cond.codegen(gen)?, f64_t.real(0.0));
 
             let func = gen.builder.insert_block().unwrap().parent();
 
