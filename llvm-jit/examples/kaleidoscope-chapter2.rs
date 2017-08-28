@@ -611,98 +611,26 @@ where
     }
 }
 
-struct Lines<'a> {
-    rl: rustyline::Editor<()>,
-    prompt: (&'a str, &'a str),
-}
+//===----------------------------------------------------------------------===//
+// Main driver code.
+//===----------------------------------------------------------------------===//
 
-impl<'a> Lines<'a> {
-    pub fn new() -> Self {
-        Lines {
-            rl: rustyline::Editor::<()>::new(),
-            prompt: ("ready> ", "... "),
-        }
-    }
-
-    fn read_line(&mut self, first: bool) -> rustyline::Result<String> {
-        self.rl
-            .readline(if first {
-                &self.prompt.0
-            } else {
-                &self.prompt.1
-            })
-            .map(|line| {
-                self.rl.add_history_entry(&line);
-
-                line
-            })
-    }
-}
-
-impl<'a> Iterator for Lines<'a> {
-    type Item = String;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            match self.read_line(true) {
-                Ok(line) => {
-                    if line.as_str().trim().ends_with(";") {
-                        return Some(line);
-                    }
-
-                    let mut lines: Vec<String> = vec![line.to_owned()];
-
-                    loop {
-                        match self.read_line(false) {
-                            Ok(line) => {
-                                let finished = line.as_str().trim().ends_with(";");
-
-                                lines.push(line);
-
-                                if finished {
-                                    return Some(lines.join("\n"));
-                                }
-                            }
-                            Err(rustyline::error::ReadlineError::Interrupted) |
-                            Err(rustyline::error::ReadlineError::Eof) => return None,
-                            Err(err) => {
-                                error!("fail to read line, {}", err);
-
-                                return None;
-                            }
-                        }
-                    }
-                }
-                Err(rustyline::error::ReadlineError::Interrupted) |
-                Err(rustyline::error::ReadlineError::Eof) => return None,
-                Err(err) => {
-                    error!("fail to read line, {}", err);
-
-                    return None;
-                }
-            }
-        }
-    }
-}
+mod lines;
 
 fn main() {
     pretty_env_logger::init().unwrap();
 
-    for code in Lines::new() {
-        debug!("parsing code: {}", code);
+    let mut parser = parser::new(lines::Lines::new());
 
-        let mut parser = parser::new(code.chars());
-
-        loop {
-            // top ::= definition | external | expression | ';'
-            match parser.next_token().clone() {
-                Token::Def => parser.handle_definition(),
-                Token::Extern => parser.handle_extern(),
-                Token::Eof => break,
-                Token::Character(';') => trace!("ignore top-level semicolons."),
-                Token::Comment(ref comment) => trace!("ignore comment: {}", comment),
-                _ => parser.handle_top_level_expression(),
-            }
+    loop {
+        // top ::= definition | external | expression | ';'
+        match parser.next_token().clone() {
+            Token::Def => parser.handle_definition(),
+            Token::Extern => parser.handle_extern(),
+            Token::Eof => break,
+            Token::Character(';') => trace!("ignore top-level semicolons."),
+            Token::Comment(ref comment) => trace!("ignore comment: {}", comment),
+            _ => parser.handle_top_level_expression(),
         }
     }
 }

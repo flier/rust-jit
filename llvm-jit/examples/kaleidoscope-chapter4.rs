@@ -979,80 +979,6 @@ enum Parsed {
     Skipped(Token),
 }
 
-struct Lines<'a> {
-    rl: rustyline::Editor<()>,
-    prompt: (&'a str, &'a str),
-}
-
-impl<'a> Lines<'a> {
-    pub fn new() -> Self {
-        Lines {
-            rl: rustyline::Editor::<()>::new(),
-            prompt: ("ready> ", "... "),
-        }
-    }
-
-    fn read_line(&mut self, first: bool) -> rustyline::Result<String> {
-        self.rl
-            .readline(if first {
-                &self.prompt.0
-            } else {
-                &self.prompt.1
-            })
-            .map(|line| {
-                self.rl.add_history_entry(&line);
-
-                line
-            })
-    }
-}
-
-impl<'a> Iterator for Lines<'a> {
-    type Item = String;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            match self.read_line(true) {
-                Ok(line) => {
-                    if line.as_str().trim().ends_with(";") {
-                        return Some(line);
-                    }
-
-                    let mut lines: Vec<String> = vec![line.to_owned()];
-
-                    loop {
-                        match self.read_line(false) {
-                            Ok(line) => {
-                                let finished = line.as_str().trim().ends_with(";");
-
-                                lines.push(line);
-
-                                if finished {
-                                    return Some(lines.join("\n"));
-                                }
-                            }
-                            Err(rustyline::error::ReadlineError::Interrupted) |
-                            Err(rustyline::error::ReadlineError::Eof) => return None,
-                            Err(err) => {
-                                error!("fail to read line, {}", err);
-
-                                return None;
-                            }
-                        }
-                    }
-                }
-                Err(rustyline::error::ReadlineError::Interrupted) |
-                Err(rustyline::error::ReadlineError::Eof) => return None,
-                Err(err) => {
-                    error!("fail to read line, {}", err);
-
-                    return None;
-                }
-            }
-        }
-    }
-}
-
 //===----------------------------------------------------------------------===//
 // "Library" functions that can be "extern'd" from user code.
 //===----------------------------------------------------------------------===//
@@ -1073,6 +999,8 @@ extern "C" fn printd(x: f64) -> f64 {
 // Main driver code.
 //===----------------------------------------------------------------------===//
 
+mod lines;
+
 fn main() {
     pretty_env_logger::init().unwrap();
 
@@ -1090,27 +1018,23 @@ fn main() {
     engine.add_symbol("putchard", Some(putchard));
     engine.add_symbol("printd", Some(printd));
 
-    for code in Lines::new() {
-        debug!("parsing code: {}", code);
+    let mut parser = parser::new(lines::Lines::new());
 
-        let mut parser = parser::new(code.chars());
+    // Run the main "interpreter loop" now.
+    loop {
+        match parser.handle_top(
+            codegen::new(&context, "my cool jit", engine.protos.clone()),
+            &mut engine,
+        ) {
+            Ok(Parsed::ToEnd) => {
+                break;
+            }
+            Ok(Parsed::Skipped(token)) => trace!("skipped {:?}", token),
+            Ok(_) => {}
+            Err(err) => {
+                let token = parser.next_token();
 
-        // Run the main "interpreter loop" now.
-        loop {
-            match parser.handle_top(
-                codegen::new(&context, "my cool jit", engine.protos.clone()),
-                &mut engine,
-            ) {
-                Ok(Parsed::ToEnd) => {
-                    break;
-                }
-                Ok(Parsed::Skipped(token)) => trace!("skipped {:?}", token),
-                Ok(_) => {}
-                Err(err) => {
-                    let token = parser.next_token();
-
-                    println!("skip token {:?} for error recovery, {}", token, err);
-                }
+                println!("skip token {:?} for error recovery, {}", token, err);
             }
         }
     }
