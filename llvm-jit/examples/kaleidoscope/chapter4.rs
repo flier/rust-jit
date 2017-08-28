@@ -217,25 +217,32 @@ mod parser {
 
                     let mut args = vec![];
 
-                    loop {
-                        args.push(self.parse_expression()?);
+                    match self.cur_token {
+                        Token::Character(')') => {
+                            self.next_token(); // Eat the ')'.
+                        }
+                        _ => {
+                            loop {
+                                args.push(self.parse_expression()?);
 
-                        match self.cur_token {
-                            Token::Character(')') => {
-                                self.next_token(); // Eat the ')'.
+                                match self.cur_token {
+                                    Token::Character(')') => {
+                                        self.next_token(); // Eat the ')'.
 
-                                break;
-                            }
-                            Token::Character(',') => {
-                                self.next_token(); // Eat the ','.
+                                        break;
+                                    }
+                                    Token::Character(',') => {
+                                        self.next_token(); // Eat the ','.
 
-                                continue;
-                            }
-                            ref token => {
-                                bail!(ErrorKind::UnexpectedToken(
-                                    "Expected `)` or `,` in argument list".into(),
-                                    token.clone(),
-                                ));
+                                        continue;
+                                    }
+                                    ref token => {
+                                        bail!(ErrorKind::UnexpectedToken(
+                                            "Expected `)` or `,` in argument list".into(),
+                                            token.clone(),
+                                        ));
+                                    }
+                                }
                             }
                         }
                     }
