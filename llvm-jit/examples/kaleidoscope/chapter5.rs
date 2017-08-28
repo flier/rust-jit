@@ -144,6 +144,30 @@ mod parser {
         }
     }
 
+    macro_rules! match_token {
+        ($self_:ident, $token:pat => $code:block, $msg:expr) => {
+            match $self_.cur_token {
+                $token => $code,
+                ref token => bail!(ErrorKind::UnexpectedToken($msg.into(), token.clone()))
+            }
+        }
+    }
+
+    macro_rules! eat_token {
+        ($self_:ident, $token:pat => $code:block, $msg:expr) => {
+            match_token!($self_, $token => {
+                $self_.next_token();
+
+                $code
+            }, $msg)
+        };
+        ($self_:ident, $token:pat, $msg:expr) => {
+            match_token!($self_, $token => {
+                $self_.next_token();
+            }, $msg)
+        }
+    }
+
     impl<I> Parser<I>
     where
         I: Iterator<Item = char>,
@@ -168,65 +192,29 @@ mod parser {
 
         /// numberexpr ::= number
         fn parse_number_expr(&mut self) -> Result<Box<ast::Expr>> {
-            match self.cur_token {
-                Token::Number(val) => {
-                    self.next_token(); // consume the number
-
-                    Ok(Box::new(ast::NumberExpr { val }))
-                }
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `number`".into(),
-                        token.clone(),
-                    ));
-                }
-            }
+            eat_token!(self, Token::Number(val) => {
+                Ok(Box::new(ast::NumberExpr { val }))
+            }, "Expected `number`")
         }
 
         /// parenexpr ::= '(' expression ')'
         fn parse_paren_expr(&mut self) -> Result<Box<ast::Expr>> {
-            match self.cur_token {
-                Token::Character('(') => {
-                    self.next_token(); // eat (.
+            eat_token!(self, Token::Character('(') => {
+                let expr = self.parse_expression();
 
-                    let expr = self.parse_expression();
+                eat_token!(self, Token::Character(')'), "Expected `)`");
 
-                    match self.cur_token {
-                        Token::Character(')') => {
-                            self.next_token(); // eat ).
-
-                            expr
-                        }
-                        ref token => {
-                            bail!(ErrorKind::UnexpectedToken(
-                                "Expected `)`".into(),
-                                token.clone(),
-                            ));
-                        }
-                    }
-                }
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `(`".into(),
-                        token.clone(),
-                    ));
-                }
-            }
+                expr
+            }, "Expected `(`")
         }
 
         /// identifierexpr
         ///   ::= identifier
         ///   ::= identifier '(' expression* ')'
         fn parse_identifier_expr(&mut self) -> Result<Box<ast::Expr>> {
-            let name = match self.cur_token {
-                Token::Identifier(ref name) => name.clone(),
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `identifier`".into(),
-                        token.clone(),
-                    ));
-                }
-            };
+            let name = match_token!(self, Token::Identifier(ref name) => {
+                name.clone()
+            }, "Expected `identifier`");
 
             self.next_token(); // eat identifier.
 
@@ -274,45 +262,15 @@ mod parser {
 
         /// ifexpr ::= 'if' expression 'then' expression 'else' expression
         fn parse_if_expr(&mut self) -> Result<Box<ast::Expr>> {
-            match self.cur_token {
-                Token::If => {
-                    self.next_token(); // eat the if.
-                }
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `if`".into(),
-                        token.clone(),
-                    ));
-                }
-            }
+            eat_token!(self, Token::If, "Expected `if`");
 
             let cond = self.parse_expression()?;
 
-            match self.cur_token {
-                Token::Then => {
-                    self.next_token(); // eat the `then`
-                }
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `then`".into(),
-                        token.clone(),
-                    ));
-                }
-            }
+            eat_token!(self, Token::Then, "Expected `then`");
 
             let then = self.parse_expression()?;
 
-            match self.cur_token {
-                Token::Else => {
-                    self.next_token(); // eat the `else`
-                }
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `else`".into(),
-                        token.clone(),
-                    ));
-                }
-            }
+            eat_token!(self, Token::Else, "Expected `else`");
 
             let or_else = self.parse_expression()?;
 
@@ -325,55 +283,19 @@ mod parser {
 
         /// forexpr ::= 'for' identifier '=' expr ',' expr (',' expr)? 'in' expression
         fn parse_for_expr(&mut self) -> Result<Box<ast::Expr>> {
-            match self.cur_token {
-                Token::For => {
-                    self.next_token(); // eat the for.
-                }
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `for`".into(),
-                        token.clone(),
-                    ));
-                }
-            }
+            eat_token!(self, Token::For, "Expected `for`");
 
-            let var_name = match self.cur_token {
-                Token::Identifier(ref name) => name.clone(),
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `identifier` after `for`".into(),
-                        token.clone(),
-                    ));
-                }
-            };
+            let var_name = match_token!(self, Token::Identifier(ref name) => {
+                name.clone()
+            }, "Expected `identifier` after `for`");
 
             self.next_token(); // eat the identifier.
 
-            match self.cur_token {
-                Token::Character('=') => {
-                    self.next_token(); // eat the `=`.
-                }
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `=` after `for`".into(),
-                        token.clone(),
-                    ));
-                }
-            }
+            eat_token!(self, Token::Character('='), "Expected `=` after `for`");
 
             let start = self.parse_expression()?;
 
-            match self.cur_token {
-                Token::Character(',') => {
-                    self.next_token(); // eat the `,`.
-                }
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `,` after `for`".into(),
-                        token.clone(),
-                    ));
-                }
-            }
+            eat_token!(self, Token::Character(','), "Expected `,` after `for`");
 
             let end = self.parse_expression()?;
 
@@ -387,17 +309,7 @@ mod parser {
                 _ => None,
             };
 
-            match self.cur_token {
-                Token::In => {
-                    self.next_token(); // eat the `in`.
-                }
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `in` after `for`".into(),
-                        token.clone(),
-                    ));
-                }
-            }
+            eat_token!(self, Token::In, "Expected `in` after `for`");
 
             let body = self.parse_expression()?;
 
@@ -479,27 +391,15 @@ mod parser {
         /// prototype
         ///   ::= id '(' id* ')'
         fn parse_prototype(&mut self) -> Result<ast::Prototype> {
-            let name = match self.cur_token {
-                Token::Identifier(ref name) => name.clone(),
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected function name in prototype".into(),
-                        token.clone(),
-                    ))
-                }
-            };
+            let name = match_token!(self, Token::Identifier(ref name) => {
+                name.clone()
+            }, "Expected function name in prototype");
 
-            match *self.next_token() {  // Eat the `id`
-                Token::Character('(') => {
-                    // ignore it
-                }
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `(` in prototype".into(),
-                        token.clone(),
-                    ))
-                }
-            }
+            self.next_token(); // Eat the `id`
+
+            match_token!(self, Token::Character('(') => {
+                // ignore it
+            }, "Expected `(` in prototype");
 
             let mut args = vec![];
 
@@ -507,34 +407,14 @@ mod parser {
                 args.push(name.clone());
             }
 
-            match self.cur_token {
-                Token::Character(')') => {
-                    self.next_token(); // eat ')'.
-                }
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `)` in prototype".into(),
-                        token.clone(),
-                    ))
-                }
-            }
+            eat_token!(self, Token::Character(')'), "Expected `)` in prototype");
 
             Ok(ast::Prototype { name, args })
         }
 
         /// definition ::= 'def' prototype expression
         pub fn parse_definition(&mut self) -> Result<ast::Function> {
-            match self.cur_token {
-                Token::Def => {
-                    self.next_token(); // eat def.
-                }
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `def` in definition".into(),
-                        token.clone(),
-                    ))
-                }
-            }
+            eat_token!(self, Token::Def, "Expected `def` in definition");
 
             let proto = self.parse_prototype()?;
             let body = self.parse_expression()?;
@@ -1063,7 +943,12 @@ fn main() {
             Err(err) => {
                 let token = parser.next_token();
 
-                println!("skip token {:?} for error recovery, {}", token, err);
+                match *token {
+                    Token::Eof => break,
+                    _ => {
+                        println!("skip token {:?} for error recovery, {}", token, err);
+                    }
+                }
             }
         }
     }
