@@ -206,7 +206,7 @@ mod ast {
         Add,
         Sub,
         Mul,
-        Binary(char),
+        UserDefined(char),
     }
 
     impl Token {
@@ -216,7 +216,7 @@ mod ast {
                 Token::Character('+') => Some(BinOp::Add),
                 Token::Character('-') => Some(BinOp::Sub),
                 Token::Character('*') => Some(BinOp::Mul),
-                Token::Character(op) => Some(BinOp::Binary(op)),
+                Token::Character(op) => Some(BinOp::UserDefined(op)),
                 _ => None,
             }
         }
@@ -333,7 +333,6 @@ mod ast {
 //===----------------------------------------------------------------------===//
 
 mod parser {
-    use std::ascii::AsciiExt;
     use std::cell::RefCell;
     use std::collections::HashMap;
     use std::rc::Rc;
@@ -404,22 +403,18 @@ mod parser {
 
         /// Get the precedence of the pending binary operator token.
         fn get_tok_precedence(&self) -> Option<i32> {
-            if let Some(op) = self.cur_token.as_bin_op() {
-                match op {
-                    ast::BinOp::LessThen => Some(10),
-                    ast::BinOp::Add => Some(20),
-                    ast::BinOp::Sub => Some(20),
-                    ast::BinOp::Mul => Some(40),
-                    ast::BinOp::Binary(op) => {
-                        self.binop_precedences
-                            .borrow()
-                            .get(format!("binary{}", op).as_str())
-                            .map(|&v| v as i32)
-                    }
+            self.cur_token.as_bin_op().and_then(|op| match op {
+                ast::BinOp::LessThen => Some(10),
+                ast::BinOp::Add => Some(20),
+                ast::BinOp::Sub => Some(20),
+                ast::BinOp::Mul => Some(40),
+                ast::BinOp::UserDefined(op) => {
+                    self.binop_precedences
+                        .borrow()
+                        .get(format!("binary{}", op).as_str())
+                        .map(|&v| v as i32)
                 }
-            } else {
-                None
-            }
+            })
         }
 
         /// numberexpr ::= number
@@ -883,7 +878,7 @@ mod codegen {
                     // Convert bool 0/1 to double 0.0 or 1.0
                     uitofp!(lhs, f64_t; "booltmp").emit_to(&gen.builder).into()
                 }
-                ast::BinOp::Binary(op) => {
+                ast::BinOp::UserDefined(op) => {
                     // If it wasn't a builtin binary operator, it must be a user defined one.
                     if let Some(func) = gen.get_function(format!("binary{}", op).as_str()) {
                         // Emit a call to it.
