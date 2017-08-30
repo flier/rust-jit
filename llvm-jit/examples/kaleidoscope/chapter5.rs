@@ -247,6 +247,14 @@ mod ast {
     }
 
     /// IfExpr - Expression class for if/then/else.
+    ///
+    /// ```no_run
+    /// def fib(x)
+    ///     if x < 3 then
+    ///         1
+    ///     else
+    ///         fib(x-1)+fib(x-2);
+    /// ```
     #[derive(Debug)]
     pub struct IfExpr {
         pub cond: Box<Expr>,
@@ -255,6 +263,13 @@ mod ast {
     }
 
     /// ForExprAST - Expression class for for/in.
+    ///
+    /// ```no_run
+    /// extern putchard(char);
+    /// def printstar(n)
+    ///     for i = 1, i < n, 1.0 in
+    ///         putchard(42);  # ascii 42 = '*'
+    /// ```
     #[derive(Debug)]
     pub struct ForExpr {
         pub var_name: String,
