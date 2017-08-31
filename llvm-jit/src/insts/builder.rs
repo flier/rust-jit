@@ -1,4 +1,5 @@
 use std::ops;
+use std::ptr;
 
 use llvm::core::*;
 use llvm::prelude::*;
@@ -24,7 +25,7 @@ impl<T: Into<ValueRef>> InstructionBuilder for T {
 
 #[derive(Debug)]
 pub enum Position {
-    To(BasicBlock, Instruction),
+    To(BasicBlock, Option<Instruction>),
     Before(Instruction),
     AtEnd(BasicBlock),
 }
@@ -67,8 +68,14 @@ impl IRBuilder {
     }
 
     /// This specifies that created instructions should be inserted at the specified point.
-    pub fn position_to(&self, block: BasicBlock, instr: Instruction) {
-        unsafe { LLVMPositionBuilder(self.0, block.as_raw(), instr.as_raw()) }
+    pub fn position_to(&self, block: BasicBlock, instr: Option<Instruction>) {
+        unsafe {
+            LLVMPositionBuilder(
+                self.0,
+                block.as_raw(),
+                instr.map(|instr| instr.as_raw()).unwrap_or(ptr::null_mut()),
+            )
+        }
     }
 
     /// This specifies that created instructions should be inserted before the specified instruction.
