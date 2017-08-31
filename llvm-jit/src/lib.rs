@@ -22,8 +22,6 @@ pub mod llvm {
 }
 
 #[cfg(test)]
-extern crate pretty_env_logger;
-#[cfg(test)]
 extern crate tempfile;
 #[cfg(test)]
 extern crate mmap;

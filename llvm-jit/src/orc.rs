@@ -70,7 +70,7 @@ impl JITStack {
         unsafe {
             LLVMOrcCreateLazyCompileCallback(
                 self.as_raw(),
-                callback.unwrap_or(mem::zeroed()),
+                callback.unwrap_or_else(|| mem::zeroed()),
                 ctx.as_mut_ptr(),
             )
         }

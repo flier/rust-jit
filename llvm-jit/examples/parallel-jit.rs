@@ -15,7 +15,6 @@ extern crate pretty_env_logger;
 extern crate crossbeam;
 #[macro_use]
 extern crate llvm_jit as jit;
-extern crate llvm_sys as llvm;
 
 use std::sync::{Arc, Barrier};
 

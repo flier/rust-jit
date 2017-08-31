@@ -287,9 +287,7 @@ impl ExecutionEngine {
     /// This is a helper function which wraps runFunction to handle the common task of
     /// starting up main with the specified rgc, argv, and envp parameters.
     pub fn run_function_as_main(&self, func: Function, args: &[&str], env_vars: &[&str]) -> i32 {
-        let args = args.iter()
-            .map(|arg| unchecked_cstring(arg))
-            .collect::<Vec<CString>>();
+        let args = args.iter().map(unchecked_cstring).collect::<Vec<CString>>();
 
         let mut argv = args.iter()
             .map(|arg| arg.as_ptr())
@@ -299,7 +297,7 @@ impl ExecutionEngine {
 
         let env_vars = env_vars
             .iter()
-            .map(|var| unchecked_cstring(var))
+            .map(unchecked_cstring)
             .collect::<Vec<CString>>();
 
         let mut environ = env_vars
@@ -627,10 +625,10 @@ mod tests {
 
         let ee = ExecutionEngine::for_module(m).unwrap();
 
-        let mut v: i64 = 123;
+        let v: i64 = 123;
 
         {
-            ee.add_global_mapping(x, &mut v);
+            ee.add_global_mapping(x, &v);
         }
 
         assert_eq!(unsafe { ptr::read::<i64>(ee.get_ptr_to_global(x)) }, 123);

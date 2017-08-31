@@ -5,7 +5,6 @@ extern crate pretty_env_logger;
 extern crate error_chain;
 extern crate rustyline;
 extern crate libc;
-extern crate llvm_sys as llvm;
 #[macro_use]
 extern crate llvm_jit as jit;
 
@@ -304,20 +303,6 @@ mod ast {
         pub is_operator: bool,
         /// Precedence if a binary op.
         pub precedence: Option<isize>,
-    }
-
-    impl Prototype {
-        pub fn is_unary_op(&self) -> bool {
-            self.is_operator && self.args.len() == 1
-        }
-
-        pub fn is_binary_op(&self) -> bool {
-            self.is_operator && self.args.len() == 2
-        }
-
-        pub fn op(&self) -> Option<char> {
-            self.name.chars().next()
-        }
     }
 
     /// FunctionAST - This class represents a function definition itself.

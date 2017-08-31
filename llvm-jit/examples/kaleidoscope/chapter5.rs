@@ -5,7 +5,6 @@ extern crate pretty_env_logger;
 extern crate error_chain;
 extern crate rustyline;
 extern crate libc;
-extern crate llvm_sys as llvm;
 #[macro_use]
 extern crate llvm_jit as jit;
 
