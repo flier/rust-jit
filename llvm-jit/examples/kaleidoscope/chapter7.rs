@@ -3,6 +3,7 @@ extern crate log;
 extern crate pretty_env_logger;
 #[macro_use]
 extern crate error_chain;
+extern crate getopts;
 extern crate rustyline;
 extern crate libc;
 #[macro_use]
@@ -755,7 +756,7 @@ mod codegen {
         pub context: &'a Context,
         pub module: Module,
         pub builder: IRBuilder,
-        pub passmgr: jit::FunctionPassManager,
+        pub passmgr: Option<jit::FunctionPassManager>,
         pub named_values: HashMap<String, AllocaInst>,
         pub protos: Rc<RefCell<HashMap<String, ast::Prototype>>>,
         pub binop_precedences: Rc<RefCell<HashMap<String, isize>>>,
@@ -816,12 +817,17 @@ mod codegen {
     pub fn new<'a>(
         context: &'a Context,
         name: &str,
+        optimize: bool,
         protos: Rc<RefCell<HashMap<String, ast::Prototype>>>,
         binop_precedences: Rc<RefCell<HashMap<String, isize>>>,
     ) -> CodeGenerator<'a> {
         // Open a new module.
         let module = context.create_module(name);
-        let passmgr = CodeGenerator::create_pass_manager(&module);
+        let passmgr = if optimize {
+            Some(CodeGenerator::create_pass_manager(&module))
+        } else {
+            None
+        };
 
         CodeGenerator {
             context,
@@ -1127,7 +1133,9 @@ mod codegen {
                 gen.module.verify()?;
             }
 
-            gen.passmgr.run(&func);
+            if let Some(ref passmgr) = gen.passmgr {
+                passmgr.run(&func);
+            }
 
             Ok(func.into())
         }
@@ -1137,14 +1145,15 @@ mod codegen {
 use std::cell::RefCell;
 use std::char;
 use std::collections::HashMap;
+use std::env;
 use std::ffi::CStr;
 use std::mem;
 use std::rc::Rc;
 
-use libc::c_void;
-
+use getopts::{Matches, Options};
 use jit::prelude::*;
 use jit::target::*;
+use libc::c_void;
 
 use ast::Expr;
 use codegen::CodeGenerator;
@@ -1340,6 +1349,25 @@ extern "C" fn printd(x: f64) -> f64 {
 // Main driver code.
 //===----------------------------------------------------------------------===//
 
+fn parse_cmdline(program: &str, args: &[String]) -> Result<Option<Matches>> {
+    let mut opts = Options::new();
+
+    opts.optopt("o", "optimize", "set optimize", "ENABLE");
+    opts.optflag("h", "help", "print this help menu");
+
+    let matches = opts.parse(args)?;
+
+    if matches.opt_present("h") {
+        let brief = format!("Usage: {} FILE [options]", program);
+
+        print!("{}", opts.usage(&brief));
+
+        Ok(None)
+    } else {
+        Ok(Some(matches))
+    }
+}
+
 fn main() {
     pretty_env_logger::init().unwrap();
 
@@ -1349,40 +1377,49 @@ fn main() {
 
     jit::MCJITCompiler::link_in();
 
-    let context = Context::new();
+    let args: Vec<String> = env::args().collect();
+    let program = &args[0];
 
-    let target_machine = TargetMachine::default();
-    let mut engine = KaleidoscopeJIT::new(&target_machine).expect("create JIT compiler");
+    if let Some(opts) = parse_cmdline(program, &args[1..]).expect("parse command line") {
+        let context = Context::new();
 
-    engine.add_symbol("putchard", Some(putchard));
-    engine.add_symbol("printd", Some(printd));
+        let target_machine = TargetMachine::default();
+        let mut engine = KaleidoscopeJIT::new(&target_machine).expect("create JIT compiler");
 
-    let mut parser = parser::new(lines::Lines::new());
-    let binop_precedences = parser.binop_precedences.clone();
+        engine.add_symbol("putchard", Some(putchard));
+        engine.add_symbol("printd", Some(printd));
 
-    // Run the main "interpreter loop" now.
-    loop {
-        match parser.handle_top(
-            codegen::new(
-                &context,
-                "my cool jit",
-                engine.protos.clone(),
-                binop_precedences.clone(),
-            ),
-            &mut engine,
-        ) {
-            Ok(Parsed::ToEnd) => {
-                break;
-            }
-            Ok(Parsed::Skipped(token)) => trace!("skipped {:?}", token),
-            Ok(_) => {}
-            Err(err) => {
-                let token = parser.next_token();
+        let mut parser = parser::new(lines::Lines::new());
+        let optimize = opts.opt_str("o")
+            .map(|s| s.parse().expect("parse `optimize` option"))
+            .unwrap_or(true);
+        let binop_precedences = parser.binop_precedences.clone();
 
-                match *token {
-                    Token::Eof => break,
-                    _ => {
-                        println!("skip token {:?} for error recovery, {}", token, err);
+        // Run the main "interpreter loop" now.
+        loop {
+            match parser.handle_top(
+                codegen::new(
+                    &context,
+                    "my cool jit",
+                    optimize,
+                    engine.protos.clone(),
+                    binop_precedences.clone(),
+                ),
+                &mut engine,
+            ) {
+                Ok(Parsed::ToEnd) => {
+                    break;
+                }
+                Ok(Parsed::Skipped(token)) => trace!("skipped {:?}", token),
+                Ok(_) => {}
+                Err(err) => {
+                    let token = parser.next_token();
+
+                    match *token {
+                        Token::Eof => break,
+                        _ => {
+                            println!("skip token {:?} for error recovery, {}", token, err);
+                        }
                     }
                 }
             }

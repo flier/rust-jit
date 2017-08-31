@@ -2,6 +2,7 @@
 
 error_chain!{
     foreign_links {
+        Opts(::getopts::Fail);
     }
 
     links {
