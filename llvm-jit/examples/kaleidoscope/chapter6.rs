@@ -1299,9 +1299,14 @@ impl KaleidoscopeJIT {
             .get_symbol_address(symbol)
             .map(|addr| addr)
             .or_else(|| {
-                jit::Symbols::search_for_address(&symbol).map(
+                jit::Symbols::search_for_address(symbol).map(
                     |p: *const c_void| unsafe { mem::transmute(p) },
                 )
+            })
+            .or_else(|| {
+                trace!("missing symbol `{}`", symbol);
+
+                None
             })
     }
 }
@@ -1331,13 +1336,15 @@ enum Parsed {
 //===----------------------------------------------------------------------===//
 
 /// putchard - putchar that takes a double and returns 0.
-extern "C" fn putchard(x: f64) -> f64 {
+#[no_mangle]
+pub extern "C" fn putchard(x: f64) -> f64 {
     print!("{}", char::from_u32(x as u32).unwrap_or_default());
     0.0
 }
 
 /// printd - printf that takes a double prints it as "%f\n", returning 0.
-extern "C" fn printd(x: f64) -> f64 {
+#[no_mangle]
+pub extern "C" fn printd(x: f64) -> f64 {
     println!("{}", x);
     0.0
 }
