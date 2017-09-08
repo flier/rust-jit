@@ -4,10 +4,23 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate error_chain;
 extern crate rustyline;
-extern crate llvm_jit as jit;
 
-mod errors;
 mod lines;
+
+//===----------------------------------------------------------------------===//
+// errors
+//===----------------------------------------------------------------------===//
+
+mod errors {
+    error_chain!{
+        errors {
+            UnexpectedToken(msg: String, token: ::lexer::Token) {
+                description("unexpected token")
+                display("{}, but got unexpected token: '{:?}'", msg, token)
+            }
+        }
+    }
+}
 
 //===----------------------------------------------------------------------===//
 // Lexer
