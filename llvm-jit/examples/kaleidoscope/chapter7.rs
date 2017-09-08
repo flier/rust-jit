@@ -1033,11 +1033,13 @@ mod codegen {
                 // Assignment requires the LHS to be an identifier.
                 if let Some(var) = self.lhs.as_any().downcast_ref::<ast::VariableExpr>() {
                     // Codegen the RHS.
-                    let rhs = self.rhs.codegen(gen)?;
+                    let val = self.rhs.codegen(gen)?;
 
                     // Look up the name.
                     if let Some(var) = gen.named_values.get(&var.name) {
-                        Ok(store!(rhs, var.clone()).emit_to(&gen.builder).into())
+                        gen.builder <<= store!(val, var.clone());
+
+                        Ok(val.into())
                     } else {
                         bail!(ErrorKind::UnknownVariable(var.name.clone()))
                     }
@@ -1251,6 +1253,8 @@ mod codegen {
 
             let f64_t = gen.context.double_t();
 
+            let func = gen.builder.insert_block().unwrap().parent();
+
             let mut old_bindings = Vec::new();
 
             // Register all variables and emit their initializer.
@@ -1266,7 +1270,7 @@ mod codegen {
                     f64_t.real(0.0).into()
                 };
 
-                let alloca = alloca!(f64_t; var_name.as_str()).emit_to(&gen.builder);
+                let alloca = gen.create_entry_block_alloca(&func, var_name);
 
                 gen.builder <<= store!(init_val, alloca);
 
@@ -1363,6 +1367,8 @@ mod codegen {
 
             // Finish off the function.
             gen.builder <<= ret!(ret_val);
+
+            trace!("verify module:\n{}", gen.module);
 
             // Validate the generated code, checking for consistency.
             if func.verify().is_err() {
