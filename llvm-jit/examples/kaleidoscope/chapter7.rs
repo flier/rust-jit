@@ -1505,8 +1505,6 @@ impl KaleidoscopeJIT {
     pub fn new(target_machine: &TargetMachine) -> Result<KaleidoscopeJIT> {
         let engine = jit::JITStack::new(target_machine);
 
-        jit::Symbols::load_library(env::current_exe()?)?;
-
         Ok(KaleidoscopeJIT {
             engine,
             modules: Vec::new(),
