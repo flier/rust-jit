@@ -77,6 +77,9 @@ mod lexer {
         Number(f64),
         Character(char),
         Comment(String),
+
+        // var definition
+        Var,
     }
 
     pub struct Lexer<I: Iterator> {
@@ -134,6 +137,7 @@ mod lexer {
                         "in" => Token::In,
                         "binary" => Token::BinaryOp,
                         "unary" => Token::UnaryOp,
+                        "var" => Token::Var,
                         _ => Token::Identifier(s),
                     }
                 } else if c.is_digit(10) || c == '.' {
@@ -360,6 +364,13 @@ mod ast {
         pub body: Box<Expr>,
     }
 
+    /// VarExpr - Expression class for var/in
+    #[derive(Debug)]
+    pub struct VarExpr {
+        pub vars: Vec<(String, Option<Box<Expr>>)>,
+        pub body: Box<Expr>,
+    }
+
     /// Prototype - This class represents the "prototype" for a function,
     /// which captures its name, and its argument names (thus implicitly the number
     /// of arguments the function takes).
@@ -422,6 +433,9 @@ mod parser {
                 $( $token => $code, )*
                 ref token => bail!(ErrorKind::UnexpectedToken($msg.into(), token.clone()))
             }
+        };
+        ($self_:ident, $( $token:pat ),* | $msg:expr) => {
+            match_token!($self_, $( $token => {} ),* | $msg)
         }
     }
 
@@ -433,10 +447,10 @@ mod parser {
                 $code
             } ),* | $msg)
         };
-        ($self_:ident, $token:pat | $msg:expr) => {
-            match_token!($self_, $token => {
+        ($self_:ident, $( $token:pat ),* | $msg:expr) => {
+            match_token!($self_, $( $token => {
                 $self_.next_token();
-            } | $msg)
+            } ),* | $msg)
         }
     }
 
@@ -602,10 +616,58 @@ mod parser {
             }))
         }
 
+        /// varexpr ::= 'var' identifier ('=' expression)?
+        //                    (',' identifier ('=' expression)?)* 'in' expression
+        fn parse_var_expr(&mut self) -> Result<Box<ast::Expr>> {
+            eat_token!(self, Token::Var | "Expected `var`");
+
+            let mut vars = Vec::new();
+
+            // At least one variable name is required.
+            loop {
+                let var_name = match_token!(self, Token::Identifier(ref name) => {
+                    name.clone()
+                } | "Expected `identifier` after `var`");
+
+                self.next_token(); // eat the identifier.
+
+                // Read the optional initializer.
+                let var_init = match self.cur_token {
+                    Token::Character('=') => {
+                        self.next_token(); // eat the '='.
+
+                        Some(self.parse_expression()?)
+                    }
+                    _ => None,
+                };
+
+                vars.push((var_name, var_init));
+
+                match self.cur_token {
+                    Token::Character(',') => {
+                        self.next_token(); // eat the ','.
+                    }
+                    _ => break, // End of var list, exit loop.
+                }
+
+                match_token!(self, Token::Identifier(_) | "Expected `identifier` list after `var`");
+            }
+
+            // At this point, we have to have 'in'.
+            eat_token!(self, Token::In | "Expected 'in' keyword after 'var'");
+
+            let body = self.parse_expression()?;
+
+            Ok(Box::new(ast::VarExpr { vars, body }))
+        }
+
         /// primary
         ///   ::= identifierexpr
         ///   ::= numberexpr
         ///   ::= parenexpr
+        ///   ::= ifexpr
+        ///   ::= forexpr
+        ///   ::= varexpr
         fn parse_primary(&mut self) -> Result<Box<ast::Expr>> {
             match_token!(self,
                 Token::Identifier(_) => {
@@ -622,7 +684,11 @@ mod parser {
                 },
                 Token::For => {
                     self.parse_for_expr()
+                },
+                Token::Var => {
+                    self.parse_var_expr()
                 } | "Expected `identifier`, `number` or `(`")
+
         }
 
         /// unary
@@ -1172,6 +1238,53 @@ mod codegen {
 
             // for expr always returns 0.0.
             Ok(f64_t.null().into())
+        }
+    }
+
+    impl ast::Expr for ast::VarExpr {
+        fn as_any(&self) -> &Any {
+            self
+        }
+
+        fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
+            trace!("gen code for {:?}", self);
+
+            let f64_t = gen.context.double_t();
+
+            let mut old_bindings = Vec::new();
+
+            // Register all variables and emit their initializer.
+            for &(ref var_name, ref var_init) in &self.vars {
+                // Emit the initializer before adding the variable to scope,
+                // this prevents the initializer from referencing the variable itself,
+                // and permits stuff like this:
+                //  var a = 1 in
+                //    var a = a in ...   # refers to outer 'a'.
+                let init_val = if let Some(init) = var_init.as_ref() {
+                    init.codegen(gen)?
+                } else {
+                    f64_t.real(0.0).into()
+                };
+
+                let alloca = alloca!(f64_t; var_name.as_str()).emit_to(&gen.builder);
+
+                gen.builder <<= store!(init_val, alloca);
+
+                // Remember the old variable binding so that we can restore the binding when we unrecurse.
+                old_bindings.push(gen.named_values.insert(var_name.clone(), alloca));
+            }
+
+            // Codegen the body, now that all vars are in scope.
+            let body_val = self.body.codegen(gen)?;
+
+            // Pop all our variables from scope.
+            for (&(ref var_name, _), &old_binding) in self.vars.iter().zip(old_bindings.iter()) {
+                if let Some(value) = old_binding {
+                    gen.named_values.insert(var_name.clone(), value);
+                }
+            }
+
+            Ok(body_val.into())
         }
     }
 
