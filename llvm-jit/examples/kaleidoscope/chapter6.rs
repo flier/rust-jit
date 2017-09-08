@@ -275,12 +275,24 @@ mod ast {
         pub operand: Box<Expr>,
     }
 
+    impl UnaryExpr {
+        pub fn function_name(&self) -> String {
+            format!("unary{}", self.opcode)
+        }
+    }
+
     /// BinaryExpr - Expression class for a binary operator.
     #[derive(Debug)]
     pub struct BinaryExpr {
         pub op: BinOp,
         pub lhs: Box<Expr>,
         pub rhs: Box<Expr>,
+    }
+
+    impl BinaryExpr {
+        pub fn function_name(&self) -> String {
+            format!("binary{}", self.opcode)
+        }
     }
 
     /// CallExpr - Expression class for function calls.
@@ -818,7 +830,7 @@ mod codegen {
 
                 proto.map(
                     |proto| {
-                        trace!("found prototype `{}`", name);
+                        trace!("construct function base on prototype `{}`", name);
 
                         proto.codegen(self).unwrap().into()
                     }
@@ -867,12 +879,12 @@ mod codegen {
 
     impl ast::Expr for ast::UnaryExpr {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
-            if let Some(func) = gen.get_function(format!("unary{}", self.opcode).as_str()) {
+            if let Some(func) = gen.get_function(self.function_name().as_str()) {
                 let operand = self.operand.codegen(gen)?;
 
                 Ok(call!(func, operand; "unop").emit_to(&gen.builder).into())
             } else {
-                bail!(format!("Unknown unary operator: {}", self.opcode))
+                bail!(ErrorKind::UnknownFunction(self.function_name()))
             }
         }
     }
@@ -895,11 +907,11 @@ mod codegen {
                 }
                 ast::BinOp::UserDefined(op) => {
                     // If it wasn't a builtin binary operator, it must be a user defined one.
-                    if let Some(func) = gen.get_function(format!("binary{}", op).as_str()) {
+                    if let Some(func) = gen.get_function(self.function_name().as_str()) {
                         // Emit a call to it.
                         call!(func, lhs, rhs).emit_to(&gen.builder).into()
                     } else {
-                        bail!(format!("binary operator `{}` not found!", op))
+                        bail!(ErrorKind::UnknownFunction(self.function_name()))
                     }
                 }
             })
@@ -1076,7 +1088,7 @@ mod codegen {
             let func = if let Some(func) = gen.get_function(&self.proto.name) {
                 func
             } else {
-                bail!("not found `{}` function", self.proto.name)
+                bail!(ErrorKind::UnknownFunction(self.proto.name.clone()))
             };
 
             if let Some(precedence) = self.proto.precedence {

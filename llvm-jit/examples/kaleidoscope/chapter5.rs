@@ -706,7 +706,7 @@ mod codegen {
 
                 proto.map(
                     |proto| {
-                        trace!("found prototype `{}`", name);
+                        trace!("construct function base on prototype `{}`", name);
 
                         proto.codegen(self).unwrap().into()
                     }
@@ -943,7 +943,7 @@ mod codegen {
             let func = if let Some(func) = gen.get_function(&self.proto.name) {
                 func
             } else {
-                bail!("not found `{}` function", self.proto.name)
+                bail!(ErrorKind::UnknownFunction(self.proto.name.clone()))
             };
 
             // Create a new basic block to start insertion into.
