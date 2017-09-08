@@ -245,6 +245,21 @@ mod ast {
         UserDefined(char),
     }
 
+    impl fmt::Display for BinOp {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let op = match *self {
+                BinOp::Assignment => '=',
+                BinOp::LessThen => '<',
+                BinOp::Add => '+',
+                BinOp::Sub => '-',
+                BinOp::Mul => '*',
+                BinOp::UserDefined(op) => op,
+            };
+
+            write!(f, "{}", op)
+        }
+    }
+
     impl Token {
         pub fn as_bin_op(&self) -> Option<BinOp> {
             match *self {
@@ -301,7 +316,7 @@ mod ast {
 
     impl BinaryExpr {
         pub fn function_name(&self) -> String {
-            format!("binary{}", self.opcode)
+            format!("binary{}", self.op)
         }
     }
 
@@ -979,7 +994,7 @@ mod codegen {
                         // Convert bool 0/1 to double 0.0 or 1.0
                         uitofp!(lhs, f64_t; "booltmp").emit_to(&gen.builder).into()
                     }
-                    ast::BinOp::UserDefined(op) => {
+                    ast::BinOp::UserDefined(_) => {
                         // If it wasn't a builtin binary operator, it must be a user defined one.
                         if let Some(func) = gen.get_function(self.function_name().as_str()) {
                             // Emit a call to it.
