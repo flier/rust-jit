@@ -226,6 +226,7 @@ mod lexer {
 //===----------------------------------------------------------------------===//
 
 mod ast {
+    use std::any::Any;
     use std::fmt;
 
     use jit::prelude::*;
@@ -236,6 +237,7 @@ mod ast {
 
     #[derive(Debug, PartialEq)]
     pub enum BinOp {
+        Assignment,
         LessThen,
         Add,
         Sub,
@@ -246,6 +248,7 @@ mod ast {
     impl Token {
         pub fn as_bin_op(&self) -> Option<BinOp> {
             match *self {
+                Token::Character('=') => Some(BinOp::Assignment),
                 Token::Character('<') => Some(BinOp::LessThen),
                 Token::Character('+') => Some(BinOp::Add),
                 Token::Character('-') => Some(BinOp::Sub),
@@ -258,6 +261,8 @@ mod ast {
 
     /// Expr - Base class for all expression nodes.
     pub trait Expr: fmt::Debug {
+        fn as_any(&self) -> &Any;
+
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef>;
     }
 
@@ -280,12 +285,24 @@ mod ast {
         pub operand: Box<Expr>,
     }
 
+    impl UnaryExpr {
+        pub fn function_name(&self) -> String {
+            format!("unary{}", self.opcode)
+        }
+    }
+
     /// BinaryExpr - Expression class for a binary operator.
     #[derive(Debug)]
     pub struct BinaryExpr {
         pub op: BinOp,
         pub lhs: Box<Expr>,
         pub rhs: Box<Expr>,
+    }
+
+    impl BinaryExpr {
+        pub fn function_name(&self) -> String {
+            format!("binary{}", self.opcode)
+        }
     }
 
     /// CallExpr - Expression class for function calls.
@@ -424,6 +441,7 @@ mod parser {
         /// Get the precedence of the pending binary operator token.
         fn get_tok_precedence(&self) -> Option<i32> {
             self.cur_token.as_bin_op().and_then(|op| match op {
+                ast::BinOp::Assignment => Some(2),
                 ast::BinOp::LessThen => Some(10),
                 ast::BinOp::Add => Some(20),
                 ast::BinOp::Sub => Some(20),
@@ -775,6 +793,7 @@ mod parser {
 //===----------------------------------------------------------------------===//
 
 mod codegen {
+    use std::any::Any;
     use std::cell::RefCell;
     use std::collections::HashMap;
     use std::rc::Rc;
@@ -825,7 +844,7 @@ mod codegen {
 
                 proto.map(
                     |proto| {
-                        trace!("found prototype `{}`", name);
+                        trace!("construct function base on prototype `{}`", name);
 
                         proto.codegen(self).unwrap().into()
                     }
@@ -875,12 +894,20 @@ mod codegen {
     }
 
     impl ast::Expr for ast::NumberExpr {
+        fn as_any(&self) -> &Any {
+            self
+        }
+
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             Ok(gen.context.double_t().real(self.val).into())
         }
     }
 
     impl ast::Expr for ast::VariableExpr {
+        fn as_any(&self) -> &Any {
+            self
+        }
+
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             trace!("gen code for {:?}", self);
 
@@ -895,51 +922,82 @@ mod codegen {
     }
 
     impl ast::Expr for ast::UnaryExpr {
+        fn as_any(&self) -> &Any {
+            self
+        }
+
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             trace!("gen code for {:?}", self);
 
-            if let Some(func) = gen.get_function(format!("unary{}", self.opcode).as_str()) {
+            if let Some(func) = gen.get_function(self.function_name().as_str()) {
                 let operand = self.operand.codegen(gen)?;
 
                 Ok(call!(func, operand; "unop").emit_to(&gen.builder).into())
             } else {
-                bail!(format!("Unknown unary operator: {}", self.opcode))
+                bail!(ErrorKind::UnknownFunction(self.function_name()))
             }
         }
     }
 
     impl ast::Expr for ast::BinaryExpr {
+        fn as_any(&self) -> &Any {
+            self
+        }
+
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             trace!("gen code for {:?}", self);
 
-            let f64_t = gen.context.double_t();
+            // Special case '=' because we don't want to emit the LHS as an expression.
+            if self.op == ast::BinOp::Assignment {
+                // Assignment requires the LHS to be an identifier.
+                if let Some(var) = self.lhs.as_any().downcast_ref::<ast::VariableExpr>() {
+                    // Codegen the RHS.
+                    let rhs = self.rhs.codegen(gen)?;
 
-            let lhs = self.lhs.codegen(gen)?;
-            let rhs = self.rhs.codegen(gen)?;
-
-            Ok(match self.op {
-                ast::BinOp::Add => fadd!(lhs, rhs; "addtmp").emit_to(&gen.builder).into(),
-                ast::BinOp::Sub => fsub!(lhs, rhs; "subtmp").emit_to(&gen.builder).into(),
-                ast::BinOp::Mul => fmul!(lhs, rhs; "multmp").emit_to(&gen.builder).into(),
-                ast::BinOp::LessThen => {
-                    let lhs = fcmp!(ULT lhs, rhs; "cmptmp");
-                    // Convert bool 0/1 to double 0.0 or 1.0
-                    uitofp!(lhs, f64_t; "booltmp").emit_to(&gen.builder).into()
-                }
-                ast::BinOp::UserDefined(op) => {
-                    // If it wasn't a builtin binary operator, it must be a user defined one.
-                    if let Some(func) = gen.get_function(format!("binary{}", op).as_str()) {
-                        // Emit a call to it.
-                        call!(func, lhs, rhs).emit_to(&gen.builder).into()
+                    // Look up the name.
+                    if let Some(var) = gen.named_values.get(&var.name) {
+                        Ok(store!(rhs, var.clone()).emit_to(&gen.builder).into())
                     } else {
-                        bail!(format!("binary operator `{}` not found!", op))
+                        bail!(ErrorKind::UnknownVariable(var.name.clone()))
                     }
+                } else {
+                    bail!("destination of '=' must be a variable")
                 }
-            })
+            } else {
+                let f64_t = gen.context.double_t();
+
+                let lhs = self.lhs.codegen(gen)?;
+                let rhs = self.rhs.codegen(gen)?;
+
+                Ok(match self.op {
+                    ast::BinOp::Assignment => unreachable!(),
+                    ast::BinOp::Add => fadd!(lhs, rhs; "addtmp").emit_to(&gen.builder).into(),
+                    ast::BinOp::Sub => fsub!(lhs, rhs; "subtmp").emit_to(&gen.builder).into(),
+                    ast::BinOp::Mul => fmul!(lhs, rhs; "multmp").emit_to(&gen.builder).into(),
+                    ast::BinOp::LessThen => {
+                        let lhs = fcmp!(ULT lhs, rhs; "cmptmp");
+                        // Convert bool 0/1 to double 0.0 or 1.0
+                        uitofp!(lhs, f64_t; "booltmp").emit_to(&gen.builder).into()
+                    }
+                    ast::BinOp::UserDefined(op) => {
+                        // If it wasn't a builtin binary operator, it must be a user defined one.
+                        if let Some(func) = gen.get_function(self.function_name().as_str()) {
+                            // Emit a call to it.
+                            call!(func, lhs, rhs).emit_to(&gen.builder).into()
+                        } else {
+                            bail!(ErrorKind::UnknownFunction(self.function_name()))
+                        }
+                    }
+                })
+            }
         }
     }
 
     impl ast::Expr for ast::CallExpr {
+        fn as_any(&self) -> &Any {
+            self
+        }
+
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             trace!("gen code for {:?}", self);
 
@@ -967,6 +1025,10 @@ mod codegen {
     }
 
     impl ast::Expr for ast::IfExpr {
+        fn as_any(&self) -> &Any {
+            self
+        }
+
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             trace!("gen code for {:?}", self);
 
@@ -1016,6 +1078,10 @@ mod codegen {
     }
 
     impl ast::Expr for ast::ForExpr {
+        fn as_any(&self) -> &Any {
+            self
+        }
+
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             trace!("gen code for {:?}", self);
 
@@ -1095,6 +1161,10 @@ mod codegen {
     }
 
     impl ast::Expr for ast::Prototype {
+        fn as_any(&self) -> &Any {
+            self
+        }
+
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             trace!("gen code for {:?}", self);
 
@@ -1114,6 +1184,10 @@ mod codegen {
     }
 
     impl ast::Expr for ast::Function {
+        fn as_any(&self) -> &Any {
+            self
+        }
+
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             trace!("gen code for {:?}", self);
 
@@ -1125,7 +1199,7 @@ mod codegen {
             let func = if let Some(func) = gen.get_function(&self.proto.name) {
                 func
             } else {
-                bail!("not found `{}` function", self.proto.name)
+                bail!(ErrorKind::UnknownFunction(self.proto.name.clone()))
             };
 
             if let Some(precedence) = self.proto.precedence {
