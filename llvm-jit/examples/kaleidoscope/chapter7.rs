@@ -18,6 +18,8 @@ mod lines;
 mod errors {
     error_chain!{
         foreign_links {
+            Io(::std::io::Error);
+
             Opts(::getopts::Fail);
         }
 
@@ -1399,7 +1401,7 @@ use libc::c_void;
 
 use ast::Expr;
 use codegen::CodeGenerator;
-use errors::Result;
+use errors::{ErrorKind, Result};
 use lexer::Token;
 
 //===----------------------------------------------------------------------===//
@@ -1463,18 +1465,20 @@ where
             let handle = engine.add_module(gen.module);
 
             // Search the JIT for the __anon_expr symbol.
-            let addr = engine.find_symbol(parser::ANNO_EXPR).unwrap();
+            if let Some(addr) = engine.find_symbol(parser::ANNO_EXPR) {
+                // Get the symbol's address and cast it to the right type
+                // (takes no arguments, returns a double) so we can call it as a native function.
+                let fp: extern "C" fn() -> f64 = unsafe { mem::transmute(addr) };
 
-            // Get the symbol's address and cast it to the right type
-            // (takes no arguments, returns a double) so we can call it as a native function.
-            let fp: extern "C" fn() -> f64 = unsafe { mem::transmute(addr) };
+                println!("Evaluated to: {}", fp());
 
-            println!("Evaluated to: {}", fp());
+                // Delete the anonymous expression module from the JIT.
+                engine.remove_module(handle);
 
-            // Delete the anonymous expression module from the JIT.
-            engine.remove_module(handle);
-
-            Ok(ir)
+                Ok(ir)
+            } else {
+                bail!(ErrorKind::UnknownFunction(parser::ANNO_EXPR.to_owned()))
+            }
         })
     }
 
@@ -1500,6 +1504,8 @@ struct KaleidoscopeJIT {
 impl KaleidoscopeJIT {
     pub fn new(target_machine: &TargetMachine) -> Result<KaleidoscopeJIT> {
         let engine = jit::JITStack::new(target_machine);
+
+        jit::Symbols::load_library(env::current_exe()?)?;
 
         Ok(KaleidoscopeJIT {
             engine,
@@ -1544,9 +1550,14 @@ impl KaleidoscopeJIT {
             .get_symbol_address(symbol)
             .map(|addr| addr)
             .or_else(|| {
-                jit::Symbols::search_for_address(&symbol).map(
+                jit::Symbols::search_for_address(symbol).map(
                     |p: *const c_void| unsafe { mem::transmute(p) },
                 )
+            })
+            .or_else(|| {
+                trace!("missing symbol `{}`", symbol);
+
+                None
             })
     }
 }
@@ -1576,13 +1587,15 @@ enum Parsed {
 //===----------------------------------------------------------------------===//
 
 /// putchard - putchar that takes a double and returns 0.
-extern "C" fn putchard(x: f64) -> f64 {
+#[no_mangle]
+pub extern "C" fn putchard(x: f64) -> f64 {
     print!("{}", char::from_u32(x as u32).unwrap_or_default());
     0.0
 }
 
 /// printd - printf that takes a double prints it as "%f\n", returning 0.
-extern "C" fn printd(x: f64) -> f64 {
+#[no_mangle]
+pub extern "C" fn printd(x: f64) -> f64 {
     println!("{}", x);
     0.0
 }

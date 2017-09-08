@@ -4,7 +4,7 @@ use libc::c_void;
 use llvm::support::*;
 
 use errors::Result;
-use utils::{AsPtr, AsResult};
+use utils::{AsPtr, Boolinator};
 
 pub struct Symbols {}
 
@@ -29,7 +29,7 @@ impl Symbols {
         let symbol = symbol.as_ref();
         let addr = value.as_ptr() as *const c_void as *mut c_void;
 
-        trace!("add symbol `{}` @ {:?}", symbol, addr);
+        trace!("add symbol `{}` to the global symbols @ {:?}", symbol, addr);
 
         unsafe { LLVMAddSymbol(cstr!(symbol), addr) }
     }
@@ -38,10 +38,12 @@ impl Symbols {
     pub fn search_for_address<S: AsRef<str>, P>(symbol: S) -> Option<*const P> {
         let symbol = symbol.as_ref();
 
+        trace!("search symbol `{}` in the global symbols", symbol);
+
         unsafe { LLVMSearchForAddressOfSymbol(cstr!(symbol)).as_ref() }.map(|p| {
             let p = p as *const c_void as *const P;
 
-            trace!("got symbol `{}` from dynamic library @ {:?}", symbol, p);
+            trace!("got symbol `{}` from the global symbols @ {:?}", symbol, p);
 
             p
         })
