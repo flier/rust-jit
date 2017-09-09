@@ -65,3 +65,7 @@ path = "examples/kaleidoscope/chapter6.rs"
 [[example]]
 name = "kaleidoscope-chapter7"
 path = "examples/kaleidoscope/chapter7.rs"
+
+[[example]]
+name = "kaleidoscope-chapter8"
+path = "examples/kaleidoscope/chapter8.rs"
