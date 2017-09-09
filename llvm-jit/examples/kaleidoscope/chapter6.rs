@@ -594,6 +594,8 @@ mod parser {
         ///   ::= identifierexpr
         ///   ::= numberexpr
         ///   ::= parenexpr
+        ///   ::= ifexpr
+        ///   ::= forexpr
         fn parse_primary(&mut self) -> Result<Box<ast::Expr>> {
             match_token!(self,
                 Token::Identifier(_) => {
@@ -1009,7 +1011,7 @@ mod codegen {
             let f64_t = gen.context.double_t();
 
             // Emit the start code first, without 'variable' in scope.
-            let start = self.start.codegen(gen)?;
+            let start_val = self.start.codegen(gen)?;
 
             // Make the new basic block for the loop header, inserting after current block.
             let preheader_bb = gen.builder.insert_block().unwrap();
@@ -1023,7 +1025,7 @@ mod codegen {
             gen.builder.position_at_end(loop_bb);
 
             // Start the PHI node with an entry for Start.
-            let var = phi!(f64_t, start => preheader_bb; self.var_name.clone())
+            let var = phi!(f64_t, start_val => preheader_bb; self.var_name.clone())
                 .emit_to(&gen.builder);
 
             // Within the loop, the variable is defined equal to the PHI node.
@@ -1127,6 +1129,8 @@ mod codegen {
 
             // Finish off the function.
             gen.builder <<= ret!(ret_val);
+
+            trace!("verify module:\n{}", gen.module);
 
             // Validate the generated code, checking for consistency.
             if func.verify().is_err() {
