@@ -1,10 +1,12 @@
+use std::env;
 use std::path::Path;
+use std::ptr;
 
 use libc::c_void;
 use llvm::support::*;
 
 use errors::Result;
-use utils::{AsPtr, Boolinator};
+use utils::{AsBool, AsPtr};
 
 pub struct Symbols {}
 
@@ -18,8 +20,24 @@ impl Symbols {
 
         debug!("load library: {:?}", filename);
 
-        unsafe { LLVMLoadLibraryPermanently(cpath!(filename)) }
-            .ok_or_else(|| format!("fail to load library {:?}", filename).into())
+        if unsafe { LLVMLoadLibraryPermanently(cpath!(filename)) }.as_bool() {
+            bail!("fail to load library {:?}", filename)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// This function load’the host process itself, making its exported symbols available for execution.
+    pub fn load_current_exe() -> Result<()> {
+        let filename = env::current_exe()?;
+
+        debug!("load executable: {:?}", filename);
+
+        if unsafe { LLVMLoadLibraryPermanently(ptr::null()) }.as_bool() {
+            bail!("fail to load executable {:?}", filename)
+        } else {
+            Ok(())
+        }
     }
 
     /// This functions permanently adds the symbol with the value.
