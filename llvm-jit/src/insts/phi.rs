@@ -70,6 +70,14 @@ pub struct PhiNode(Instruction);
 inherit_from!(PhiNode, Instruction, ValueRef, LLVMValueRef);
 
 impl PhiNode {
+    pub fn add_incoming<V: Into<ValueRef>, B: Into<BasicBlock>>(
+        &self,
+        value: V,
+        block: B,
+    ) -> &Self {
+        self.add_incomings(&[(value.into(), block.into())])
+    }
+
     /// Add an incoming values to the end of a PHI list.
     pub fn add_incomings(&self, incomings: &[(ValueRef, BasicBlock)]) -> &Self {
         let (mut values, mut blocks) = incomings.iter().fold(
@@ -115,6 +123,12 @@ macro_rules! phi {
     });
     ( $ty:expr, $( $value:expr => $block:expr ),* ) => ({
         phi!( $ty, $( $value => $block ),* ; "phi" )
+    });
+    ( $ty:expr; $name:expr ) => ({
+        $crate::insts::Phi::new($ty.into(), $name.into())
+    });
+    ( $ty:expr ) => ({
+        phi!( $ty ; "phi" )
     })
 }
 
