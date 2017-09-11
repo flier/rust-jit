@@ -43,6 +43,9 @@ name = "parallel-jit"
 name = "module-maker"
 
 [[example]]
+name = "brainf"
+
+[[example]]
 name = "kaleidoscope-chapter2"
 path = "examples/kaleidoscope/chapter2.rs"
 
