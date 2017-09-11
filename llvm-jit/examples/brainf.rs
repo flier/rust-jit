@@ -53,6 +53,7 @@ use hexplay::HexViewBuilder;
 
 use jit::insts::*;
 use jit::prelude::*;
+use jit::target::*;
 
 error_chain! {
     foreign_links {
@@ -129,7 +130,7 @@ impl<'a> BrainF<'a> {
         }
     }
 
-    fn parse(&mut self, code: &str) -> Result<&Module> {
+    fn parse(&mut self, code: &str) -> Result<()> {
         self.gen_header()?;
 
         debug!("generated module header:\n{}", self.module);
@@ -143,9 +144,11 @@ impl<'a> BrainF<'a> {
 
         self.read_loop(&mut iter, None, None, None)?;
 
-        debug!("generated module body:\n{}", self.module);
+        debug!("generated module:\n{}", self.module);
 
-        Ok(&self.module)
+        self.module.verify()?;
+
+        Ok(())
     }
 
     fn gen_header(&mut self) -> Result<()> {
@@ -614,10 +617,23 @@ fn main() {
         //Read the BrainF program
         let context = Context::new();
         let mut brainf = BrainF::new(tape_size, compile_flags, &context);
-        let module = brainf.parse(&code).unwrap();
+
+        brainf.parse(&code).unwrap();
+
+        let module = brainf.module;
 
         //Write it out
         if opts.opt_present("jit") {
+            NativeTarget::init().unwrap();
+            NativeAsmPrinter::init().unwrap();
+
+            println!("------- Running JIT -------");
+
+            let brainf_func = module.get_function("brainf").unwrap();
+
+            let ee = ExecutionEngine::for_module(module).unwrap();
+
+            let _gv = ee.run_function(brainf_func, &[]);
         } else {
             //Get the output stream
             let output_filename =
