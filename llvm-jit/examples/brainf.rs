@@ -46,6 +46,7 @@ use std::env;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
+use std::ops::{Deref, DerefMut};
 use std::path::Path;
 
 use getopts::{Matches, Options};
@@ -76,6 +77,7 @@ bitflags! {
 const TAPER_REG: &str = "tape";
 const HEAD_REG: &str = "head";
 const LABEL: &str = "brainf";
+const MAIN: &str = "main";
 const TEST_REG: &str = "test";
 
 const DEFAULT_TAPE_SIZE: usize = 65536;
@@ -94,47 +96,53 @@ enum Symbol {
 }
 
 struct BrainF<'a> {
-    mem_total: usize,
     compile_flags: CompileFlags,
     context: &'a Context,
     module: Module,
-    ptr_arr: Option<Instruction>,
+    state: State,
+}
+
+struct State {
+    ptr_arr: Instruction,
     ptr_arrmax: Option<GetElementPtrInst>,
-    getchar_func: Option<Function>,
-    putchar_func: Option<Function>,
-    brainf_func: Option<Function>,
-    brain_bb: Option<BasicBlock>,
-    end_bb: Option<BasicBlock>,
+    getchar_func: Function,
+    putchar_func: Function,
+    brainf_func: Function,
+    brainf_bb: BasicBlock,
+    end_bb: BasicBlock,
     aberror_bb: Option<BasicBlock>,
-    cur_head: Option<Instruction>,
+    cur_head: Instruction,
+}
+
+impl<'a> Deref for BrainF<'a> {
+    type Target = State;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<'a> DerefMut for BrainF<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
 }
 
 impl<'a> BrainF<'a> {
     fn new(mem_total: usize, compile_flags: CompileFlags, context: &'a Context) -> BrainF<'a> {
-        let module = context.create_module("BrainF");
+        let (module, state) = Self::gen_module(mem_total, compile_flags, context);
+
+        debug!("generated module header:\n{}", module);
 
         BrainF {
-            mem_total,
             compile_flags,
             context,
             module,
-            ptr_arr: None,
-            ptr_arrmax: None,
-            getchar_func: None,
-            putchar_func: None,
-            brainf_func: None,
-            brain_bb: None,
-            end_bb: None,
-            aberror_bb: None,
-            cur_head: None,
+            state,
         }
     }
 
     fn parse(&mut self, code: &str) -> Result<()> {
-        self.gen_header()?;
-
-        debug!("generated module header:\n{}", self.module);
-
         debug!(
             "parsing code:\n{}",
             HexViewBuilder::new(code.as_bytes()).row_width(16).finish()
@@ -151,85 +159,73 @@ impl<'a> BrainF<'a> {
         Ok(())
     }
 
-    fn gen_header(&mut self) -> Result<()> {
-        let void_t = self.context.void_t();
-        let i1_t = self.context.int1_t();
-        let i8_t = self.context.int8_t();
-        let i32_t = self.context.int32_t();
+    fn gen_module(
+        mem_total: usize,
+        compile_flags: CompileFlags,
+        context: &'a Context,
+    ) -> (Module, State) {
+        let module = context.create_module("BrainF");
+
+        let void_t = context.void_t();
+        let i1_t = context.int1_t();
+        let i8_t = context.int8_t();
+        let i32_t = context.int32_t();
 
         //Function prototypes
 
         //declare void @llvm.memset.p0i8.i32(i8 *, i8, i32, i32, i1)
-        let memset_func = self.module.get_or_insert_function(
+        let memset_func = module.get_or_insert_function(
             "llvm.memset.p0i8.i32",
             void_t,
             types![i8_t.ptr_t(), i8_t, i32_t, i32_t, i1_t],
         );
 
         //declare i32 @getchar()
-        self.getchar_func = Some(self.module.get_or_insert_function(
-            "getchar",
-            i32_t,
-            types![],
-        ));
+        let getchar_func = module.get_or_insert_function("getchar", i32_t, types![]);
 
         //declare i32 @putchar(i32)
-        self.putchar_func = Some(self.module.get_or_insert_function(
-            "putchar",
-            i32_t,
-            types![i32_t],
-        ));
+        let putchar_func = module.get_or_insert_function("putchar", i32_t, types![i32_t]);
 
         //Function header
 
         //define void @brainf()
-        let brainf_func = self.module.get_or_insert_function(
-            "brainf",
-            void_t,
-            types![],
-        );
-        self.brainf_func = Some(brainf_func);
+        let brainf_func = module.get_or_insert_function("brainf", void_t, types![]);
 
-        let brainf_bb = brainf_func.append_basic_block_in_context(LABEL, &self.context);
-        self.brain_bb = Some(brainf_bb);
+        let brainf_bb = brainf_func.append_basic_block_in_context(LABEL, &context);
 
-        let mut builder = self.context.create_builder();
+        let mut builder = context.create_builder();
 
         builder.position_at_end(brainf_bb);
 
         //%arr = malloc i8, i32 %d
-        let ptr_arr = malloc!(i8_t, i32_t.int(self.mem_total as i64); "arr").emit_to(&builder);
-        self.ptr_arr = Some(ptr_arr);
+        let ptr_arr = malloc!(i8_t, i32_t.int(mem_total as i64); "arr").emit_to(&builder);
 
         //call void @llvm.memset.p0i8.i32(i8 *%arr, i8 0, i32 %d, i32 1, i1 0)
         builder <<= call!(
             memset_func,
             ptr_arr,
             i8_t.int(0),
-            i32_t.int(self.mem_total as i64),
+            i32_t.int(mem_total as i64),
             i32_t.int(1),
             i1_t.int(0)
         ).set_tail_call(false);
 
         //%arrmax = getelementptr i8 *%arr, i32 %d
-        if self.compile_flags.contains(FLAG_ARRAY_BOUNDS) {
-            self.ptr_arrmax = Some(
-                gep!(ptr_arr, i32_t.int(self.mem_total as i64); "arrmax")
-                    .emit_to(&builder),
-            );
-        }
+        let ptr_arrmax = if compile_flags.contains(FLAG_ARRAY_BOUNDS) {
+            Some(
+                gep!(ptr_arr, i32_t.int(mem_total as i64); "arrmax").emit_to(&builder),
+            )
+        } else {
+            None
+        };
 
         //%head.%d = getelementptr i8 *%arr, i32 %d
-        let cur_head = gep!(ptr_arr, i32_t.int(self.mem_total as i64 / 2); HEAD_REG)
-            .emit_to(&builder);
-        self.cur_head = Some(cur_head.into());
+        let cur_head = gep!(ptr_arr, i32_t.int(mem_total as i64 / 2); HEAD_REG).emit_to(&builder);
 
         //Function footer
 
         //brainf.end:
-        let end_bb =
-            brainf_func.append_basic_block_in_context(format!("{}.end", LABEL), &self.context);
-        self.end_bb = Some(end_bb);
+        let end_bb = brainf_func.append_basic_block_in_context(format!("{}.end", LABEL), &context);
 
         //call free(i8 *%arr)
         builder.position_at_end(end_bb);
@@ -240,28 +236,21 @@ impl<'a> BrainF<'a> {
         builder <<= ret!();
 
         //Error block for array out of bounds
-        if self.compile_flags.contains(FLAG_ARRAY_BOUNDS) {
+        let aberror_bb = if compile_flags.contains(FLAG_ARRAY_BOUNDS) {
             //@aberrormsg = internal constant [%d x i8] c"\00"
-            let msg = self.context.str("Error: The head has left the tape.");
+            let msg = context.str("Error: The head has left the tape.");
 
-            let aberror_msg = self.module.add_global_var("aberrormsg", msg.type_of());
+            let aberror_msg = module.add_global_var("aberrormsg", msg.type_of());
 
             aberror_msg.set_linkage(llvm::LLVMLinkage::LLVMInternalLinkage);
             aberror_msg.set_initializer(msg);
 
             //declare i32 @puts(i8 *)
-            let puts_func = self.module.get_or_insert_function(
-                "puts",
-                i32_t,
-                types![i8_t.ptr_t()],
-            );
+            let puts_func = module.get_or_insert_function("puts", i32_t, types![i8_t.ptr_t()]);
 
             //brainf.aberror:
-            let aberror_bb = brainf_func.append_basic_block_in_context(
-                format!("{}.aberror", LABEL),
-                &self.context,
-            );
-            self.aberror_bb = Some(aberror_bb);
+            let aberror_bb =
+                brainf_func.append_basic_block_in_context(format!("{}.aberror", LABEL), &context);
 
             builder.position_at_end(aberror_bb);
 
@@ -271,9 +260,26 @@ impl<'a> BrainF<'a> {
             builder <<= call!(puts_func, msg_ptr).set_tail_call(false);
 
             builder <<= br!(end_bb);
-        }
 
-        Ok(())
+            Some(aberror_bb)
+        } else {
+            None
+        };
+
+        (
+            module,
+            State {
+                ptr_arr,
+                ptr_arrmax,
+                getchar_func,
+                putchar_func,
+                brainf_func,
+                brainf_bb,
+                end_bb,
+                aberror_bb,
+                cur_head: cur_head.into(),
+            },
+        )
     }
 
     fn read_loop<I: Iterator<Item = u8>>(
@@ -293,7 +299,7 @@ impl<'a> BrainF<'a> {
 
         let mut builder = self.context.create_builder();
 
-        builder.position_at_end(self.brain_bb.unwrap());
+        builder.position_at_end(self.brainf_bb);
 
         while ![Symbol::Eof, Symbol::Endloop].contains(&cur_sym) {
             trace!("generate code for {:?}", cur_sym);
@@ -304,30 +310,30 @@ impl<'a> BrainF<'a> {
                 }
                 Symbol::Read => {
                     //%tape.%d = call i32 @getchar()
-                    let tape_0 = call!(self.getchar_func.unwrap(); TAPER_REG).set_tail_call(false);
+                    let tape_0 = call!(self.getchar_func; TAPER_REG).set_tail_call(false);
 
                     //%tape.%d = trunc i32 %tape.%d to i8
                     let tape_1 = trunc!(tape_0, i8_t; TAPER_REG);
 
                     //store i8 %tape.%d, i8 *%head.%d
-                    builder <<= store!(tape_1, self.cur_head.unwrap());
+                    builder <<= store!(tape_1, self.cur_head);
                 }
                 Symbol::Write => {
                     //%tape.%d = load i8 *%head.%d
-                    let tape_0 = load!(self.cur_head.unwrap(); TAPER_REG);
+                    let tape_0 = load!(self.cur_head; TAPER_REG);
 
                     //%tape.%d = sext i8 %tape.%d to i32
                     let tape_1 = sext!(tape_0, i32_t; TAPER_REG).emit_to(&builder);
 
                     //call i32 @putchar(i32 %tape.%d)
-                    builder <<= call!(self.putchar_func.unwrap(), tape_1).set_tail_call(false);
+                    builder <<= call!(self.putchar_func, tape_1).set_tail_call(false);
                 }
                 Symbol::Move => {
                     //%head.%d = getelementptr i8 *%head.%d, i32 %d
-                    let cur_head = gep!(self.cur_head.unwrap(), i32_t.int(cur_value); HEAD_REG)
+                    let cur_head = gep!(self.cur_head, i32_t.int(cur_value); HEAD_REG)
                         .emit_to(&builder);
 
-                    self.cur_head = Some(cur_head.into());
+                    self.cur_head = cur_head.into();
 
                     if self.compile_flags.contains(FLAG_ARRAY_BOUNDS) {
                         trace!("checking array bounds");
@@ -336,13 +342,13 @@ impl<'a> BrainF<'a> {
                         let test_0 = icmp!(UGE cur_head, self.ptr_arrmax.unwrap(); TEST_REG);
 
                         //%test.%d = icmp ult i8 *%head.%d, %arr
-                        let test_1 = icmp!(ULT cur_head, self.ptr_arr.unwrap(); TEST_REG);
+                        let test_1 = icmp!(ULT cur_head, self.ptr_arr; TEST_REG);
 
                         //%test.%d = or i1 %test.%d, %test.%d
                         let test_2 = or!(test_0, test_1; TEST_REG);
 
                         //br i1 %test.%d, label %main.%d, label %main.%d
-                        let next_bb = self.brainf_func.unwrap().append_basic_block_in_context(
+                        let next_bb = self.brainf_func.append_basic_block_in_context(
                             LABEL,
                             &self.context,
                         );
@@ -354,17 +360,17 @@ impl<'a> BrainF<'a> {
                 }
                 Symbol::Change => {
                     //%tape.%d = load i8 *%head.%d
-                    let tape_0 = load!(self.cur_head.unwrap(); TAPER_REG);
+                    let tape_0 = load!(self.cur_head; TAPER_REG);
 
                     //%tape.%d = add i8 %tape.%d, %d
                     let tape_1 = add!(tape_0, i8_t.int(cur_value); TAPER_REG);
 
                     //store i8 %tape.%d, i8 *%head.%d\n"
-                    builder <<= store!(tape_1, self.cur_head.unwrap());
+                    builder <<= store!(tape_1, self.cur_head);
                 }
                 Symbol::Loop => {
                     //br label %main.%d
-                    let test_bb = self.brainf_func.unwrap().append_basic_block_in_context(
+                    let test_bb = self.brainf_func.append_basic_block_in_context(
                         LABEL,
                         &self.context,
                     );
@@ -373,17 +379,17 @@ impl<'a> BrainF<'a> {
 
                     //main.%d:
                     let bb_0 = builder.insert_block().unwrap();
-                    let bb_1 = self.brainf_func.unwrap().append_basic_block_in_context(
+                    let bb_1 = self.brainf_func.append_basic_block_in_context(
                         LABEL,
                         &self.context,
                     );
                     builder.position_at_end(bb_1);
 
                     // Make part of PHI instruction now, wait until end of loop to finish
-                    let phi_0 = phi!(i8_t.ptr_t(), self.cur_head.unwrap() => bb_0; HEAD_REG)
+                    let phi_0 = phi!(i8_t.ptr_t(), self.cur_head => bb_0; HEAD_REG)
                         .emit_to(&builder);
 
-                    self.cur_head = Some(phi_0.into());
+                    self.cur_head = phi_0.into();
 
                     self.read_loop(iter, Some(phi_0), Some(bb_1), Some(test_bb))?;
                 }
@@ -501,7 +507,7 @@ impl<'a> BrainF<'a> {
             //%head.%d = phi i8 *[%head.%d, %main.%d], [%head.%d, %main.%d]
             //Finish phi made at beginning of loop
             phi.unwrap().add_incoming(
-                self.cur_head.unwrap(),
+                self.cur_head,
                 builder.insert_block().unwrap(),
             );
 
@@ -514,7 +520,7 @@ impl<'a> BrainF<'a> {
             let test_0 = icmp!(EQ tape_0, i8_t.int(0); TEST_REG);
 
             //br i1 %test.%d, label %main.%d, label %main.%d
-            let bb_0 = self.brainf_func.unwrap().append_basic_block_in_context(
+            let bb_0 = self.brainf_func.append_basic_block_in_context(
                 LABEL,
                 &self.context,
             );
@@ -529,14 +535,14 @@ impl<'a> BrainF<'a> {
             //%head.%d = phi i8 *[%head.%d, %main.%d]
             let phi_1 = phi!(i8_t.ptr_t(), head_0.unwrap() => test_bb.unwrap()).emit_to(&builder);
 
-            self.cur_head = Some(phi_1.into());
+            self.cur_head = phi_1.into();
         } else {
             if phi.is_some() {
                 bail!("Error: Missing ']'")
             }
 
             //End of the program, so go to return block
-            builder <<= br!(self.end_bb.unwrap());
+            builder <<= br!(self.end_bb);
         }
 
         Ok(())
