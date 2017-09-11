@@ -397,14 +397,6 @@ impl<'a> BrainF<'a> {
 
             while !terminated {
                 if let Some(c) = iter.next() {
-                    trace!(
-                        "cur_sym = {:?}, cur_value = {}, next_sym = {:?}, cur_token = `{}`",
-                        cur_sym,
-                        cur_value,
-                        next_sym,
-                        c as char
-                    );
-
                     match c {
                         b'+' | b'-' => {
                             let direction = if c == b'+' { 1 } else { -1 };
@@ -474,7 +466,9 @@ impl<'a> BrainF<'a> {
                             }
                             terminated = true;
                         }
-                        _ => bail!("Ignore other characters: `{}`", c),
+                        _ => {
+                            // trace!("Ignore other characters: `{}`", c)
+                        }
                     }
                 } else {
                     if cur_sym == Symbol::None {
