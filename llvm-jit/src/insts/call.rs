@@ -133,7 +133,7 @@ macro_rules! call {
         $crate::insts::call($func, vec![ $( $arg.into() ),* ], $name)
     });
     ($func:expr, $( $arg:expr ),*) => ({
-        call!($func, $( $arg ),*; "call")
+        call!($func, $( $arg ),*; "")
     });
 }
 
