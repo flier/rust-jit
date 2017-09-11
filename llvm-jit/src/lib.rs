@@ -107,5 +107,5 @@ pub mod prelude {
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType,
                     ToPointerType, ToStructType, ToVectorType};
     pub use utils::{AsRaw, IntoRaw};
-    pub use value::AsValueRef;
+    pub use value::{AsValueRef, Instruction};
 }
