@@ -78,12 +78,13 @@ pub use intrinsics::{Intrinsic, IntrinsicId};
 pub use membuf::MemoryBuffer;
 pub use module::{AddressSpace, Module};
 pub use object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
-pub use orc::{JITStack, LazyCompileCallback, ModuleHandle, SymbolResolver, TargetAddress};
+pub use orc::{JITStack, LazyCompileCallback, ModuleHandle, SharedModule, SharedObjectBuffer,
+              SymbolResolver, TargetAddress};
 pub use passmgr::{FunctionPassManager, Pass, PassManager, PassManagerBuilder, PassRegistry};
 pub use symbols::Symbols;
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
                 TypeKind, TypeRef, VectorType};
-pub use value::{BlockAddress, Instruction, Opcode, ValueKind, ValueRef};
+pub use value::{BlockAddress, Instruction, Metadata, Opcode, ValueKind, ValueRef};
 
 pub mod prelude {
     //! A prelude for writing LLVM JIT code.

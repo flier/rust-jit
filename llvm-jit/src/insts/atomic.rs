@@ -418,7 +418,7 @@ mod tests {
                 .emit_to(&builder)
                 .to_string()
                 .trim(),
-            "%fence_acq_rel = fence singlethread acq_rel"
+            "%fence_acq_rel = fence syncscope(\"singlethread\") acq_rel"
         );
 
         assert_eq!(

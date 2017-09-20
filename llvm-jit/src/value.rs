@@ -7,6 +7,7 @@ use llvm::prelude::*;
 
 use block::BasicBlock;
 use constant::Constant;
+use context::Context;
 use types::TypeRef;
 use utils::{AsBool, AsRaw, DisposableMessage, FromRaw, UncheckedCStr};
 
@@ -187,5 +188,22 @@ impl Instruction {
     /// Obtain the instruction that occurred before this one.
     pub fn previous(&self) -> Option<Instruction> {
         unsafe { LLVMGetPreviousInstruction(self.as_raw()) }.wrap()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Metadata(LLVMMetadataRef);
+
+inherit_from!(Metadata, LLVMMetadataRef);
+
+impl<T: AsRaw<RawType = LLVMValueRef>> From<T> for Metadata {
+    fn from(value: T) -> Self {
+        Metadata(unsafe { LLVMValueAsMetadata(value.as_raw()) })
+    }
+}
+
+impl Context {
+    pub fn as_value<T: AsRaw<RawType = LLVMMetadataRef>>(&self, metadata: T) -> ValueRef {
+        unsafe { LLVMMetadataAsValue(self.as_raw(), metadata.as_raw()) }.into()
     }
 }

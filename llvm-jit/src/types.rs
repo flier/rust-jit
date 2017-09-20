@@ -440,16 +440,26 @@ impl ToStructType for Context {
     }
 }
 
-pub trait SeqType: AsTypeRef {
+pub trait SequentialType: AsTypeRef {
     /// Obtain the type of elements within a sequential type.
     fn element_type(&self) -> TypeRef {
         TypeRef(unsafe { LLVMGetElementType(self.as_raw()) })
     }
+
+    /// Returns type's subtypes
+    fn subtypes(&self) -> Vec<TypeRef> {
+        let count = unsafe { LLVMGetNumContainedTypes(self.as_raw()) };
+        let mut subtypes = vec![ptr::null_mut(); count as usize];
+
+        unsafe { LLVMGetSubtypes(self.as_raw(), subtypes.as_mut_ptr()) }
+
+        subtypes.into_iter().map(|ty| ty.into()).collect()
+    }
 }
 
-impl SeqType for ArrayType {}
-impl SeqType for PointerType {}
-impl SeqType for VectorType {}
+impl SequentialType for ArrayType {}
+impl SequentialType for PointerType {}
+impl SequentialType for VectorType {}
 
 /// Structure to represent array types.
 #[derive(Clone, Copy, Debug, PartialEq)]

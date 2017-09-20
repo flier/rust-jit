@@ -1011,7 +1011,7 @@ where
 
             println!("read function definition:\n{}", ir);
 
-            engine.add_module(gen.module);
+            engine.add_module(gen.module)?;
 
             Ok(ir)
         })
@@ -1049,10 +1049,10 @@ where
 
             // JIT the module containing the anonymous expression,
             // keeping a handle so we can free it later.
-            let handle = engine.add_module(gen.module);
+            let handle = engine.add_module(gen.module)?;
 
             // Search the JIT for the __anon_expr symbol.
-            let addr = engine.find_symbol(parser::ANNO_EXPR).unwrap();
+            let addr = engine.find_symbol(parser::ANNO_EXPR)?.unwrap();
 
             // Get the symbol's address and cast it to the right type
             // (takes no arguments, returns a double) so we can call it as a native function.
@@ -1097,17 +1097,17 @@ impl KaleidoscopeJIT {
         })
     }
 
-    pub fn add_module(&mut self, module: Module) -> jit::ModuleHandle {
+    pub fn add_module(&mut self, module: Module) -> Result<jit::ModuleHandle> {
         let ctx = self as *mut KaleidoscopeJIT;
         let handle = self.engine.add_eagerly_compiled_ir(
             module,
             Some(symbol_resolver_callback),
             Some(unsafe { &mut *ctx }),
-        );
+        )?;
 
         self.modules.push(handle);
 
-        handle
+        Ok(handle)
     }
 
     pub fn remove_module(&mut self, handle: jit::ModuleHandle) -> bool {
@@ -1126,13 +1126,13 @@ impl KaleidoscopeJIT {
         jit::Symbols::add_symbol(name, addr)
     }
 
-    pub fn find_symbol<S: AsRef<str>>(&self, symbol: S) -> Option<jit::TargetAddress> {
+    pub fn find_symbol<S: AsRef<str>>(&self, symbol: S) -> Result<Option<jit::TargetAddress>> {
         let symbol = symbol.as_ref();
 
         trace!("finding symbol `{}`", symbol);
 
-        self.engine
-            .get_symbol_address(symbol)
+        let addr = self.engine
+            .get_symbol_address(symbol)?
             .map(|addr| {
                 trace!("got symbol `{}` from JIT engine @ {:?}", symbol, addr);
 
@@ -1144,7 +1144,9 @@ impl KaleidoscopeJIT {
 
                     unsafe { mem::transmute(p) }
                 })
-            })
+            });
+
+        Ok(addr)
     }
 }
 
@@ -1159,7 +1161,7 @@ extern "C" fn symbol_resolver_callback(
 
     trace!("resolving symbol `{}`", symbol);
 
-    jit.find_symbol(symbol).unwrap_or(0)
+    jit.find_symbol(symbol).unwrap().unwrap_or(0)
 }
 
 enum Parsed {

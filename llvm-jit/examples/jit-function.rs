@@ -40,7 +40,7 @@ fn main() {
     // Dump the module as IR to stdout.
     module.dump();
 
-    // may need to set `LLVM_SYS_40_FFI_WORKAROUND` when build `llvm-sys`
+    // may need to set `LLVM_SYS_50_FFI_WORKAROUND` when build `llvm-sys`
     //
     // see also: https://bitbucket.org/tari/llvm-sys.rs/issues/12/
 

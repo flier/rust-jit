@@ -123,21 +123,6 @@ pub enum Pass {
     /// such as reducing code size or making it harder to reverse engineer code.
     StripSymbols,
 
-    /// Basic-Block Vectorization¶
-    ///
-    /// This pass combines instructions inside basic blocks to form vector instructions.
-    /// It iterates over each basic block, attempting to pair compatible instructions,
-    /// repeating this process until no additional pairs are selected for vectorization.
-    /// When the outputs of some pair of compatible instructions are used
-    /// as inputs by some other pair of compatible instructions,
-    /// those pairs are part of a potential vectorization chain.
-    /// Instruction pairs are only fused into vector instructions
-    /// when they are part of a chain longer than some threshold length.
-    /// Moreover, the pass attempts to find the best possible chain for each pair of compatible instructions.
-    /// These heuristics are intended to prevent vectorization in cases
-    /// where it would not yield a performance increase of the resulting code.
-    BBVectorize,
-
     /// Create a loop vectorization pass.
     LoopVectorize,
 
@@ -166,6 +151,9 @@ pub enum Pass {
     ///
     /// Merge basic blocks, eliminate unreachable blocks, simplify terminator instructions, etc...
     CFGSimplification,
+
+    /// Like CFGSimplification, but may also convert switches to lookup tables.
+    LateCFGSimplification,
 
     /// Dead Store Elimination
     ///
@@ -385,7 +373,6 @@ impl PassManager {
             Pass::StripSymbols => unsafe { LLVMAddStripSymbolsPass(self.as_raw()) },
 
             // Vectorization transformations
-            Pass::BBVectorize => unsafe { LLVMAddBBVectorizePass(self.as_raw()) },
             Pass::LoopVectorize => unsafe { LLVMAddLoopVectorizePass(self.as_raw()) },
             Pass::SLPVectorizer => unsafe { LLVMAddSLPVectorizePass(self.as_raw()) },
 
@@ -396,6 +383,9 @@ impl PassManager {
                 LLVMAddAlignmentFromAssumptionsPass(self.as_raw())
             },
             Pass::CFGSimplification => unsafe { LLVMAddCFGSimplificationPass(self.as_raw()) },
+            Pass::LateCFGSimplification => unsafe {
+                LLVMAddLateCFGSimplificationPass(self.as_raw())
+            },
             Pass::DeadStoreElimination => unsafe { LLVMAddDeadStoreEliminationPass(self.as_raw()) },
             Pass::Scalarizer => unsafe { LLVMAddScalarizerPass(self.as_raw()) },
             Pass::MergedLoadStoreMotion => unsafe {
