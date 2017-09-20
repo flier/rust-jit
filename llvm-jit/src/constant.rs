@@ -5,7 +5,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use context::Context;
-use types::{StructType, TypeRef};
+use types::{IntegerType, StructType, TypeRef};
 use utils::{AsBool, AsLLVMBool, AsRaw, FromRaw, from_unchecked_cstr};
 use value::{AsValueRef, ValueRef};
 
@@ -109,7 +109,7 @@ pub trait ConstantInts {
     }
 }
 
-impl ConstantInts for TypeRef {
+impl ConstantInts for IntegerType {
     fn int_value(&self, n: u64, sign: bool) -> ConstantInt {
         unsafe { LLVMConstInt(self.as_raw(), n, sign.as_bool()) }.into()
     }
@@ -150,7 +150,7 @@ pub trait ConstantFPs {
     fn real_of_string<S: AsRef<str>>(&self, s: S) -> ConstantFP;
 }
 
-impl ConstantFPs for TypeRef {
+impl ConstantFPs for FloatingPointType {
     fn real(&self, n: f64) -> ConstantFP {
         unsafe { LLVMConstReal(self.as_raw(), n) }.into()
     }
