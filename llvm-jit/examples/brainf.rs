@@ -235,7 +235,7 @@ impl<'a> BrainF<'a> {
         builder <<= ret!();
 
         //Error block for array out of bounds
-        let aberror_bb = if compile_flags.contains(FLAG_ARRAY_BOUNDS) {
+        let aberror_bb = compile_flags.contains(FLAG_ARRAY_BOUNDS).as_some({
             //@aberrormsg = internal constant [%d x i8] c"\00"
             let msg = context.str("Error: The head has left the tape.");
 
@@ -260,10 +260,8 @@ impl<'a> BrainF<'a> {
 
             builder <<= br!(end_bb);
 
-            Some(aberror_bb)
-        } else {
-            None
-        };
+            aberror_bb
+        });
 
         (
             module,
@@ -303,6 +301,7 @@ impl<'a> BrainF<'a> {
         while ![Symbol::Eof, Symbol::Endloop].contains(&cur_sym) {
             trace!("generate code for {:?}", cur_sym);
 
+            // Write out commands
             match cur_sym {
                 Symbol::None => {
                     // Do nothing
@@ -329,19 +328,18 @@ impl<'a> BrainF<'a> {
                 }
                 Symbol::Move => {
                     //%head.%d = getelementptr i8 *%head.%d, i32 %d
-                    let cur_head = gep!(self.cur_head, i32_t.int(cur_value); HEAD_REG)
-                        .emit_to(&builder);
-
-                    self.cur_head = cur_head.into();
+                    self.cur_head = gep!(self.cur_head, i32_t.int(cur_value); HEAD_REG)
+                        .emit_to(&builder)
+                        .into();
 
                     if self.compile_flags.contains(FLAG_ARRAY_BOUNDS) {
                         trace!("checking array bounds");
 
                         //%test.%d = icmp uge i8 *%head.%d, %arrmax
-                        let test_0 = icmp!(UGE cur_head, self.ptr_arrmax.unwrap(); TEST_REG);
+                        let test_0 = icmp!(UGE self.cur_head, self.ptr_arrmax.unwrap(); TEST_REG);
 
                         //%test.%d = icmp ult i8 *%head.%d, %arr
-                        let test_1 = icmp!(ULT cur_head, self.ptr_arr; TEST_REG);
+                        let test_1 = icmp!(ULT self.cur_head, self.ptr_arr; TEST_REG);
 
                         //%test.%d = or i1 %test.%d, %test.%d
                         let test_2 = or!(test_0, test_1; TEST_REG);
@@ -354,6 +352,7 @@ impl<'a> BrainF<'a> {
 
                         builder <<= br!(test_2 => self.aberror_bb.unwrap(), _ => next_bb);
 
+                        //main.%d:
                         builder.position_at_end(next_bb);
                     }
                 }
