@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::ptr;
 
+use boolinator::Boolinator;
 use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
@@ -374,11 +375,9 @@ impl StructType {
 
     /// Get the type of the element at a given index in the structure.
     pub fn element_type(self, index: usize) -> Option<TypeRef> {
-        if index >= self.element_count() {
-            None
-        } else {
+        (index < self.element_count()).and_option_from(|| {
             unsafe { LLVMStructGetTypeAtIndex(self.as_raw(), index as u32) }.wrap()
-        }
+        })
     }
 
     /// Determine whether a structure is packed.

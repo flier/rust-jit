@@ -5,7 +5,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use context::Context;
-use types::{IntegerType, StructType, TypeRef};
+use types::{FloatingPointType, IntegerType, StructType, TypeRef};
 use utils::{AsBool, AsLLVMBool, AsRaw, FromRaw, from_unchecked_cstr};
 use value::{AsValueRef, ValueRef};
 

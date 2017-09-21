@@ -108,15 +108,8 @@ impl Module {
     /// Obtain a Type from a module by its registered name.
     pub fn get_type<S: AsRef<str>>(&self, name: S) -> Option<TypeRef> {
         let name = name.as_ref();
-        let t = unsafe { LLVMGetTypeByName(self.as_raw(), cstr!(name)) }.wrap();
 
-        if let Some(t) = t {
-            trace!("found `{}` type in {:?}: {:?}", name, self, t);
-        } else {
-            trace!("not found `{}` type in {:?}", name, self);
-        }
-
-        t
+        unsafe { LLVMGetTypeByName(self.as_raw(), cstr!(name)) }.wrap()
     }
 
     pub fn get_named_operands<S: AsRef<str>>(&self, name: S) -> Vec<ValueRef> {
@@ -174,15 +167,8 @@ impl Module {
     /// Obtain a Function value from a Module by its name.
     pub fn get_function<S: AsRef<str>>(&self, name: S) -> Option<Function> {
         let name = name.as_ref();
-        let func = unsafe { LLVMGetNamedFunction(self.as_raw(), cstr!(name)) }.wrap();
 
-        if let Some(f) = func {
-            trace!("found `{}` function in {:?}: {:?}", name, self, f);
-        } else {
-            trace!("not found `{}` function in {:?}", name, self);
-        }
-
-        func
+        unsafe { LLVMGetNamedFunction(self.as_raw(), cstr!(name)) }.wrap()
     }
 
     /// Obtain an iterator to the Function in a module.

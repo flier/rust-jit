@@ -2,6 +2,7 @@ use std::env;
 use std::path::Path;
 use std::ptr;
 
+use boolinator::Boolinator;
 use libc::c_void;
 use llvm::support::*;
 
@@ -20,11 +21,9 @@ impl Symbols {
 
         debug!("load library: {:?}", filename);
 
-        if unsafe { LLVMLoadLibraryPermanently(cpath!(filename)) }.as_bool() {
-            bail!("fail to load library {:?}", filename)
-        } else {
-            Ok(())
-        }
+        unsafe { LLVMLoadLibraryPermanently(cpath!(filename)) }
+            .as_bool()
+            .ok_or_else(|| format!("fail to load library {:?}", filename).into())
     }
 
     /// This function load’the host process itself, making its exported symbols available for execution.
@@ -33,11 +32,9 @@ impl Symbols {
 
         debug!("load executable: {:?}", filename);
 
-        if unsafe { LLVMLoadLibraryPermanently(ptr::null()) }.as_bool() {
-            bail!("fail to load executable {:?}", filename)
-        } else {
-            Ok(())
-        }
+        unsafe { LLVMLoadLibraryPermanently(ptr::null()) }
+            .as_bool()
+            .ok_or_else(|| format!("fail to load executable {:?}", filename).into())
     }
 
     /// This functions permanently adds the symbol with the value.

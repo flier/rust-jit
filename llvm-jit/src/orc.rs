@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ptr;
 
+use boolinator::Boolinator;
 use llvm::orc::*;
 use llvm::prelude::*;
 
@@ -236,6 +237,6 @@ impl JITStack {
 
         unsafe { LLVMOrcGetSymbolAddress(self.as_raw(), &mut addr, cstr!(symbol)) }
             .ok_or_else(|| self.err())
-            .map(|_| if addr == 0 { None } else { Some(addr) })
+            .map(|_| (addr != 0).as_some(addr))
     }
 }

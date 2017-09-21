@@ -3,6 +3,7 @@ use std::fmt;
 use std::path::Path;
 use std::ptr;
 
+use boolinator::Boolinator;
 use llvm::prelude::*;
 use llvm::target::*;
 use llvm::target_machine::*;
@@ -110,11 +111,9 @@ impl Iterator for TargetIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0 = unsafe {
-            if let Some(next) = self.0 {
-                LLVMGetNextTarget(next)
-            } else {
-                LLVMGetFirstTarget()
-            }.as_mut()
+            self.0
+                .map_or_else(|| LLVMGetFirstTarget(), |next| LLVMGetNextTarget(next))
+                .as_mut()
         }.map(|target| target as *mut LLVMTarget);
 
         self.0.map(Target)
@@ -416,11 +415,7 @@ macro_rules! define_target {
 
         impl $name {
             pub fn init() -> $crate::errors::Result<()> {
-                if unsafe { $init() } == 0 {
-                    Ok(())
-                } else {
-                    bail!($err)
-                }
+                (unsafe { $init() } == 0).ok_or_else(|| $err.into())
             }
         }
     };

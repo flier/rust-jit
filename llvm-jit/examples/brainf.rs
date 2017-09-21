@@ -38,6 +38,7 @@ extern crate error_chain;
 extern crate bitflags;
 extern crate getopts;
 extern crate hexplay;
+extern crate boolinator;
 #[macro_use]
 extern crate llvm_jit as jit;
 extern crate llvm_sys as llvm;
@@ -49,6 +50,7 @@ use std::io::prelude::*;
 use std::ops::{Deref, DerefMut};
 use std::path::Path;
 
+use boolinator::Boolinator;
 use getopts::{Matches, Options};
 use hexplay::HexViewBuilder;
 
@@ -77,7 +79,6 @@ bitflags! {
 const TAPER_REG: &str = "tape";
 const HEAD_REG: &str = "head";
 const LABEL: &str = "brainf";
-const MAIN: &str = "main";
 const TEST_REG: &str = "test";
 
 const DEFAULT_TAPE_SIZE: usize = 65536;
@@ -211,13 +212,11 @@ impl<'a> BrainF<'a> {
         ).set_tail_call(false);
 
         //%arrmax = getelementptr i8 *%arr, i32 %d
-        let ptr_arrmax = if compile_flags.contains(FLAG_ARRAY_BOUNDS) {
-            Some(
-                gep!(ptr_arr, i32_t.int(mem_total as i64); "arrmax").emit_to(&builder),
-            )
-        } else {
-            None
-        };
+        let ptr_arrmax = compile_flags.contains(FLAG_ARRAY_BOUNDS).as_option().map(
+            |_| {
+                gep!(ptr_arr, i32_t.int(mem_total as i64); "arrmax").emit_to(&builder)
+            },
+        );
 
         //%head.%d = getelementptr i8 *%arr, i32 %d
         let cur_head = gep!(ptr_arr, i32_t.int(mem_total as i64 / 2); HEAD_REG).emit_to(&builder);

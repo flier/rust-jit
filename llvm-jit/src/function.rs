@@ -1,5 +1,6 @@
 use std::ptr;
 
+use boolinator::Boolinator;
 use llvm::core::*;
 use llvm::prelude::*;
 
@@ -167,11 +168,7 @@ impl Function {
     pub fn get_param(&self, index: u32) -> Option<ValueRef> {
         let count = unsafe { LLVMCountParams(self.as_raw()) };
 
-        if index >= count {
-            None
-        } else {
-            unsafe { LLVMGetParam(self.as_raw(), index) }.wrap()
-        }
+        (index < count).and_option_from(|| unsafe { LLVMGetParam(self.as_raw(), index) }.wrap())
     }
 
     /// Remove a function from its containing module and deletes it.

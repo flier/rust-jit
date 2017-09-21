@@ -2,6 +2,7 @@ use std::ffi::CString;
 use std::mem;
 use std::ptr;
 
+use boolinator::Boolinator;
 use libc;
 use llvm::core::LLVMShutdown;
 use llvm::execution_engine::*;
@@ -421,20 +422,7 @@ impl ExecutionEngine {
         let name = name.as_ref();
         let addr = unsafe { LLVMGetGlobalValueAddress(self.0, cstr!(name)) };
 
-        if addr == 0 {
-            trace!("not found `{}` global value in {:?}", name, self);
-
-            None
-        } else {
-            trace!(
-                "found `{}` global value in {:?}, Address({:?})",
-                name,
-                self,
-                addr as *const u8
-            );
-
-            Some(addr)
-        }
+        (addr != 0).as_some(addr)
     }
 
     /// Return the address of the specified function.
@@ -444,20 +432,7 @@ impl ExecutionEngine {
         let name = name.as_ref();
         let addr = unsafe { LLVMGetFunctionAddress(self.0, cstr!(name)) };
 
-        if addr == 0 {
-            trace!("not found `{}` function address in {:?}", name, self);
-
-            None
-        } else {
-            trace!(
-                "found `{}` function address in {:?}: Address({:p})",
-                name,
-                self,
-                addr as *const u8
-            );
-
-            Some(addr)
-        }
+        (addr != 0).as_some(addr)
     }
 }
 
@@ -713,11 +688,7 @@ mod tests {
             "allocated {} bytes (align to {}) {} data section `{}` #{} @ {:?}",
             size,
             alignment,
-            if is_read_only.as_bool() {
-                "readonly"
-            } else {
-                "writable"
-            },
+            is_read_only.as_bool().as_some("readonly").unwrap_or("writable"),
             section_name.as_str(),
             section_id,
             p,

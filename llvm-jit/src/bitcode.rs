@@ -3,6 +3,8 @@
 use std::path::Path;
 use std::ptr;
 
+use boolinator::Boolinator;
+
 use llvm::bit_reader::*;
 use llvm::bit_writer::*;
 use llvm::ir_reader::*;
@@ -84,11 +86,9 @@ impl Module {
     pub fn write_bitcode<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let path = path.as_ref();
 
-        if unsafe { LLVMWriteBitcodeToFile(self.as_raw(), cpath!(path)) } == 0 {
-            Ok(())
-        } else {
-            bail!("fail to write bitcode to file {:?}", path);
-        }
+        (unsafe { LLVMWriteBitcodeToFile(self.as_raw(), cpath!(path)) } == 0).ok_or_else(|| {
+            format!("fail to write bitcode to file {:?}", path).into()
+        })
     }
 
     /// Writes a module to a new memory buffer.

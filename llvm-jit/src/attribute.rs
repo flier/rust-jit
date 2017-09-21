@@ -3,6 +3,8 @@
 use std::borrow::Cow;
 use std::ptr;
 
+use boolinator::Boolinator;
+
 use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
@@ -197,7 +199,7 @@ impl AttributeKind {
 
         let kind = unsafe { LLVMGetEnumAttributeKindForName(cstr!(name), name.len()) };
 
-        if kind == 0 { None } else { Some(kind.into()) }
+        (kind != 0).as_some(kind.into())
     }
 
     pub fn last() -> Self {

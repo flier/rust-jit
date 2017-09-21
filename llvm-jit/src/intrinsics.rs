@@ -1,5 +1,7 @@
 use llvm::core::*;
 
+use boolinator::Boolinator;
+
 use function::Function;
 use module::Module;
 use utils::AsRaw;
@@ -13,7 +15,7 @@ impl Function {
     pub fn intrinsic_id(&self) -> Option<IntrinsicId> {
         let id = unsafe { LLVMGetIntrinsicID(self.as_raw()) };
 
-        if id == NOT_INTRINSIC { None } else { Some(id) }
+        (id != NOT_INTRINSIC).as_some(id)
     }
 }
 

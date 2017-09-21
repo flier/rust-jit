@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::fmt;
 
+use boolinator::Boolinator;
 use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
@@ -84,11 +85,7 @@ impl ValueRef {
     }
 
     pub fn as_constant(&self) -> Option<Constant> {
-        if self.is_constant() {
-            Some(self.as_raw().into())
-        } else {
-            None
-        }
+        self.is_constant().as_some(self.as_raw().into())
     }
 
     /// Determine whether a value instance is undefined.

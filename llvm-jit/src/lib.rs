@@ -12,6 +12,7 @@ extern crate error_chain;
 extern crate lazy_static;
 #[macro_use]
 extern crate bitflags;
+extern crate boolinator;
 extern crate hexplay;
 extern crate libc;
 extern crate llvm_sys;
