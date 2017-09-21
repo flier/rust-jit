@@ -156,13 +156,13 @@ pub fn unchecked_cstring<S: AsRef<str>>(s: S) -> CString {
 
 macro_rules! cstr {
     ($s:expr) => (
-        ($crate::utils::unchecked_cstring($s).as_bytes_with_nul().as_ptr() as *const i8)
+        $crate::utils::unchecked_cstring($s).as_bytes_with_nul().as_ptr() as *const i8
     )
 }
 
 macro_rules! cpath {
     ($s:expr) => (
-        ($crate::utils::unchecked_cstring($s.to_string_lossy().as_ref()).as_bytes_with_nul().as_ptr() as *const i8)
+        $crate::utils::unchecked_cstring($s.to_string_lossy().as_ref()).as_bytes_with_nul().as_ptr() as *const i8
     )
 }
 
