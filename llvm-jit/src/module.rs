@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
 use std::path::Path;
-use std::ptr;
 
 use llvm::core::*;
 use llvm::prelude::*;
@@ -13,7 +12,6 @@ use function::FunctionType;
 use global::GlobalVar;
 use types::TypeRef;
 use utils::{AsRaw, AsResult, DisposableMessage, FromRaw, UncheckedCStr, from_unchecked_cstr};
-use value::ValueRef;
 
 pub type AddressSpace = u32;
 
@@ -110,25 +108,6 @@ impl Module {
         let name = name.as_ref();
 
         unsafe { LLVMGetTypeByName(self.as_raw(), cstr!(name)) }.wrap()
-    }
-
-    /// Obtain the named metadata operands for a module.
-    pub fn get_named_operands<S: AsRef<str>>(&self, name: S) -> Vec<ValueRef> {
-        let name = name.as_ref();
-        let count = unsafe { LLVMGetNamedMetadataNumOperands(self.as_raw(), cstr!(name)) };
-
-        let mut operands = vec![ptr::null_mut(); count as usize];
-
-        unsafe { LLVMGetNamedMetadataOperands(self.as_raw(), cstr!(name), operands.as_mut_ptr()) };
-
-        operands.into_iter().map(|v| v.into()).collect()
-    }
-
-    /// Add an operand to named metadata.
-    pub fn add_named_operand<S: AsRef<str>, V: AsRef<ValueRef>>(&self, name: S, v: V) {
-        unsafe {
-            LLVMAddNamedMetadataOperand(self.as_raw(), cstr!(name.as_ref()), v.as_ref().as_raw())
-        }
     }
 
     /// Look up the specified function in the module symbol table.

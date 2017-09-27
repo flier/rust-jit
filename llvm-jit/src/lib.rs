@@ -62,6 +62,7 @@ pub mod target;
 mod analysis;
 mod disasm;
 mod membuf;
+mod metadata;
 mod object;
 mod bitcode;
 
@@ -77,6 +78,7 @@ pub use global::{DLLStorageClass, GlobalValue, GlobalVar, Linkage, ThreadLocalMo
 pub use insts::{IRBuilder, Position};
 pub use intrinsics::{Intrinsic, IntrinsicId};
 pub use membuf::MemoryBuffer;
+pub use metadata::Metadata;
 pub use module::{AddressSpace, Module};
 pub use object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
 pub use orc::{JITStack, LazyCompileCallback, ModuleHandle, SharedModule, SharedObjectBuffer,
@@ -85,7 +87,7 @@ pub use passmgr::{FunctionPassManager, Pass, PassManager, PassManagerBuilder, Pa
 pub use symbols::Symbols;
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
                 TypeKind, TypeRef, VectorType};
-pub use value::{BlockAddress, Instruction, Metadata, Opcode, ValueKind, ValueRef};
+pub use value::{BlockAddress, Instruction, Opcode, ValueKind, ValueRef};
 
 pub mod prelude {
     //! A prelude for writing LLVM JIT code.

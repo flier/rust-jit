@@ -2,14 +2,13 @@ use std::borrow::Cow;
 use std::fmt;
 
 use boolinator::Boolinator;
-use libc;
+
 use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
 
 use block::BasicBlock;
 use constant::Constant;
-use context::{Context, GlobalContext};
 use types::TypeRef;
 use utils::{AsBool, AsRaw, DisposableMessage, FromRaw, UncheckedCStr};
 
@@ -18,8 +17,6 @@ macro_rules! values {
     ($($x:expr),*) => (&[ $($x.into()),* ]);
     ($($x:expr,)*) => (&[ $($x.into()),* ]);
 }
-
-pub type KindId = libc::c_uint;
 
 /// Represents an individual value in LLVM IR.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -164,22 +161,6 @@ impl Instruction {
         unsafe { LLVMInstructionEraseFromParent(self.as_raw()) }
     }
 
-    /// Determine whether an instruction has any metadata attached.
-    pub fn has_metadata(&self) -> bool {
-        unsafe { LLVMHasMetadata(self.as_raw()) }.as_bool()
-    }
-
-    /// Return metadata associated with an instruction value.
-    pub fn get_metadata(&self, kind_id: KindId) -> ValueRef {
-        unsafe { LLVMGetMetadata(self.as_raw(), kind_id) }.into()
-    }
-
-    /// Set metadata associated with an instruction value.
-    pub fn set_metadata(&self, kind_id: KindId, node: ValueRef) -> &Self {
-        unsafe { LLVMSetMetadata(self.as_raw(), kind_id, node.as_raw()) };
-        self
-    }
-
     /// Obtain the instruction that occurs after the one specified.
     pub fn next(&self) -> Option<Instruction> {
         unsafe { LLVMGetNextInstruction(self.as_raw()) }.wrap()
@@ -188,38 +169,5 @@ impl Instruction {
     /// Obtain the instruction that occurred before this one.
     pub fn previous(&self) -> Option<Instruction> {
         unsafe { LLVMGetPreviousInstruction(self.as_raw()) }.wrap()
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Metadata(LLVMMetadataRef);
-
-inherit_from!(Metadata, LLVMMetadataRef);
-
-impl<T: AsRaw<RawType = LLVMValueRef>> From<T> for Metadata {
-    fn from(value: T) -> Self {
-        Metadata(unsafe { LLVMValueAsMetadata(value.as_raw()) })
-    }
-}
-
-impl Context {
-    pub fn as_value<T: AsRaw<RawType = LLVMMetadataRef>>(&self, metadata: T) -> ValueRef {
-        unsafe { LLVMMetadataAsValue(self.as_raw(), metadata.as_raw()) }.into()
-    }
-
-    pub fn metadata_id<T: AsRef<str>>(&self, name: T) -> KindId {
-        let name = name.as_ref();
-
-        unsafe {
-            LLVMGetMDKindIDInContext(self.as_raw(), name.as_ptr() as *const i8, name.len() as u32)
-        }
-    }
-}
-
-impl GlobalContext {
-    pub fn metadata_id<T: AsRef<str>>(name: T) -> KindId {
-        let name = name.as_ref();
-
-        unsafe { LLVMGetMDKindID(name.as_ptr() as *const i8, name.len() as u32) }
     }
 }
