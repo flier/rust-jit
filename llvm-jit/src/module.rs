@@ -112,6 +112,7 @@ impl Module {
         unsafe { LLVMGetTypeByName(self.as_raw(), cstr!(name)) }.wrap()
     }
 
+    /// Obtain the named metadata operands for a module.
     pub fn get_named_operands<S: AsRef<str>>(&self, name: S) -> Vec<ValueRef> {
         let name = name.as_ref();
         let count = unsafe { LLVMGetNamedMetadataNumOperands(self.as_raw(), cstr!(name)) };
@@ -123,6 +124,7 @@ impl Module {
         operands.into_iter().map(|v| v.into()).collect()
     }
 
+    /// Add an operand to named metadata.
     pub fn add_named_operand<S: AsRef<str>, V: AsRef<ValueRef>>(&self, name: S, v: V) {
         unsafe {
             LLVMAddNamedMetadataOperand(self.as_raw(), cstr!(name.as_ref()), v.as_ref().as_raw())

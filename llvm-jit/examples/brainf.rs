@@ -293,6 +293,8 @@ impl<'a> BrainF<'a> {
         let mut next_sym = Symbol::None;
         let mut cur_value = 0;
         let mut next_value = 0;
+        let mut line = 0;
+        let mut column = 0;
 
         let mut builder = self.context.create_builder();
 
@@ -404,6 +406,8 @@ impl<'a> BrainF<'a> {
 
             while !terminated {
                 if let Some(c) = iter.next() {
+                    column += 1;
+
                     match c {
                         b'+' | b'-' => {
                             let direction = if c == b'+' { 1 } else { -1 };
@@ -472,6 +476,10 @@ impl<'a> BrainF<'a> {
                                 next_sym = Symbol::Endloop
                             }
                             terminated = true;
+                        }
+                        b'\n' => {
+                            line += 1;
+                            column = 0;
                         }
                         _ => {
                             // trace!("Ignore other characters: `{}`", c)
