@@ -78,7 +78,7 @@ pub use global::{DLLStorageClass, GlobalValue, GlobalVar, Linkage, ThreadLocalMo
 pub use insts::{IRBuilder, Position};
 pub use intrinsics::{Intrinsic, IntrinsicId};
 pub use membuf::MemoryBuffer;
-pub use metadata::Metadata;
+pub use metadata::{MDKindId, MDNode, MDString, Metadata};
 pub use module::{AddressSpace, Module};
 pub use object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
 pub use orc::{JITStack, LazyCompileCallback, ModuleHandle, SharedModule, SharedObjectBuffer,
