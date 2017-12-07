@@ -235,7 +235,7 @@ mod tests {
 
         let mut cur = Cursor::new(&insts);
 
-        disasm.set_options(USE_MARKUP);
+        disasm.set_options(DisasmOptions::USE_MARKUP);
         assert_eq!(
             disasm.disasm_inst(&mut cur, 0).unwrap(),
             "\tleaq\t<mem:-47(<reg:%rip>)>, <reg:%rax>"
@@ -243,7 +243,7 @@ mod tests {
 
         let mut cur = Cursor::new(&insts);
 
-        disasm.set_options(PRINT_IMM_HEX);
+        disasm.set_options(DisasmOptions::PRINT_IMM_HEX);
         assert_eq!(
             disasm.disasm_inst(&mut cur, 0).unwrap(),
             "\tleaq\t<mem:-0x2f(<reg:%rip>)>, <reg:%rax>"

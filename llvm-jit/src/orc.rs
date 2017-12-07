@@ -163,13 +163,13 @@ impl JITStack {
         ctx: Option<&mut T>,
     ) -> Result<ModuleHandle> {
         let mut handle = ModuleHandle::default();
-        let module = module.into_raw();
+        let shared_module: SharedModule = module.into();
 
         unsafe {
             LLVMOrcAddEagerlyCompiledIR(
                 self.as_raw(),
                 &mut handle,
-                module,
+                shared_module.as_raw(),
                 mem::transmute(resolver),
                 ctx.as_mut_ptr(),
             )
@@ -185,13 +185,13 @@ impl JITStack {
         ctx: Option<&mut T>,
     ) -> Result<ModuleHandle> {
         let mut handle = ModuleHandle::default();
-        let module = module.into_raw();
+        let shared_module: SharedModule = module.into();
 
         unsafe {
             LLVMOrcAddLazilyCompiledIR(
                 self.as_raw(),
                 &mut handle,
-                module,
+                shared_module.as_raw(),
                 mem::transmute(resolver),
                 ctx.as_mut_ptr(),
             )

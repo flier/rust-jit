@@ -212,11 +212,12 @@ impl<'a> BrainF<'a> {
         ).set_tail_call(false);
 
         //%arrmax = getelementptr i8 *%arr, i32 %d
-        let ptr_arrmax = compile_flags.contains(FLAG_ARRAY_BOUNDS).as_option().map(
-            |_| {
+        let ptr_arrmax = compile_flags
+            .contains(CompileFlags::FLAG_ARRAY_BOUNDS)
+            .as_option()
+            .map(|_| {
                 gep!(ptr_arr, i32_t.int(mem_total as i64); "arrmax").emit_to(&builder)
-            },
-        );
+            });
 
         //%head.%d = getelementptr i8 *%arr, i32 %d
         let cur_head = gep!(ptr_arr, i32_t.int(mem_total as i64 / 2); HEAD_REG).emit_to(&builder);
@@ -235,33 +236,37 @@ impl<'a> BrainF<'a> {
         builder <<= ret!();
 
         //Error block for array out of bounds
-        let aberror_bb = compile_flags.contains(FLAG_ARRAY_BOUNDS).as_some({
-            //@aberrormsg = internal constant [%d x i8] c"\00"
-            let msg = context.str("Error: The head has left the tape.");
+        let aberror_bb = compile_flags
+            .contains(CompileFlags::FLAG_ARRAY_BOUNDS)
+            .as_some({
+                //@aberrormsg = internal constant [%d x i8] c"\00"
+                let msg = context.str("Error: The head has left the tape.");
 
-            let aberror_msg = module.add_global_var("aberrormsg", msg.type_of());
+                let aberror_msg = module.add_global_var("aberrormsg", msg.type_of());
 
-            aberror_msg.set_linkage(llvm::LLVMLinkage::LLVMInternalLinkage);
-            aberror_msg.set_initializer(msg);
+                aberror_msg.set_linkage(llvm::LLVMLinkage::LLVMInternalLinkage);
+                aberror_msg.set_initializer(msg);
 
-            //declare i32 @puts(i8 *)
-            let puts_func = module.get_or_insert_function("puts", i32_t, types![i8_t.ptr_t()]);
+                //declare i32 @puts(i8 *)
+                let puts_func = module.get_or_insert_function("puts", i32_t, types![i8_t.ptr_t()]);
 
-            //brainf.aberror:
-            let aberror_bb =
-                brainf_func.append_basic_block_in_context(format!("{}.aberror", LABEL), &context);
+                //brainf.aberror:
+                let aberror_bb = brainf_func.append_basic_block_in_context(
+                    format!("{}.aberror", LABEL),
+                    &context,
+                );
 
-            builder.position_at_end(aberror_bb);
+                builder.position_at_end(aberror_bb);
 
-            //call i32 @puts(i8 *getelementptr([%d x i8] *@aberrormsg, i32 0, i32 0))
-            let msg_ptr = gep!(aberror_msg, i32_t.null(), i32_t.null()).emit_to(&builder);
+                //call i32 @puts(i8 *getelementptr([%d x i8] *@aberrormsg, i32 0, i32 0))
+                let msg_ptr = gep!(aberror_msg, i32_t.null(), i32_t.null()).emit_to(&builder);
 
-            builder <<= call!(puts_func, msg_ptr).set_tail_call(false);
+                builder <<= call!(puts_func, msg_ptr).set_tail_call(false);
 
-            builder <<= br!(end_bb);
+                builder <<= br!(end_bb);
 
-            aberror_bb
-        });
+                aberror_bb
+            });
 
         (
             module,
@@ -334,7 +339,7 @@ impl<'a> BrainF<'a> {
                         .emit_to(&builder)
                         .into();
 
-                    if self.compile_flags.contains(FLAG_ARRAY_BOUNDS) {
+                    if self.compile_flags.contains(CompileFlags::FLAG_ARRAY_BOUNDS) {
                         trace!("checking array bounds");
 
                         //%test.%d = icmp uge i8 *%head.%d, %arrmax
@@ -621,7 +626,7 @@ fn main() {
         let compile_flags = if opts.opt_present("abc") {
             debug!("array bounds checking enabled");
 
-            FLAG_ARRAY_BOUNDS
+            CompileFlags::FLAG_ARRAY_BOUNDS
         } else {
             CompileFlags::empty()
         };
