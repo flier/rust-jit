@@ -27,8 +27,8 @@ impl InstructionBuilder for RetVoid {
 pub struct Ret<T>(T);
 
 impl<T> Ret<T> {
-    pub fn new(ret: T) -> Self {
-        Ret(ret)
+    pub fn new(result: T) -> Self {
+        Ret(result)
     }
 }
 
@@ -111,6 +111,29 @@ macro_rules! ret {
     };
     ($( $result:expr ),*) => {
         $crate::insts::AggregateRet::new(vec![$( $result.into() ),*])
+    }
+}
+
+impl IRBuilder {
+    /// The ‘ret‘ instruction is used to return control flow (and optionally a value) from a function back to the caller.
+    pub fn ret_void(&self) -> Instruction {
+        RetVoid.emit_to(self)
+    }
+
+    /// The ‘ret‘ instruction is used to return control flow (and optionally a value) from a function back to the caller.
+    pub fn ret<T>(&self, result: T) -> TerminatorInst
+    where
+        T: InstructionBuilder + fmt::Debug,
+    {
+        Ret::new(result).emit_to(self)
+    }
+
+    /// The ‘ret‘ instruction is used to return control flow (and optionally a value) from a function back to the caller.
+    pub fn aggregate_ret<I>(&self, values: I) -> TerminatorInst
+    where
+        I: IntoIterator<Item = ValueRef>,
+    {
+        AggregateRet::new(values.into_iter().collect()).emit_to(self)
     }
 }
 

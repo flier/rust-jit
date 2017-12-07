@@ -9,6 +9,7 @@ use insts::{IRBuilder, InstructionBuilder};
 use utils::{AsLLVMBool, AsRaw};
 use value::Instruction;
 
+/// The `fence` instruction is used to introduce happens-before edges between operations.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Fence<'a> {
     ordering: u32, // TODO: LLVMAtomicOrdering
@@ -17,6 +18,7 @@ pub struct Fence<'a> {
 }
 
 impl<'a> Fence<'a> {
+    /// The `fence` instruction is used to introduce happens-before edges between operations.
     pub fn new(ordering: LLVMAtomicOrdering, single_thread: bool, name: Cow<'a, str>) -> Self {
         Fence {
             ordering: ordering as u32,
@@ -316,6 +318,203 @@ macro_rules! atomic {
             false
         )
     )
+}
+
+impl IRBuilder {
+    /// The `fence` instruction is used to introduce happens-before edges between operations.
+    pub fn fence<'a, N>(
+        &self,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+        name: N,
+    ) -> Instruction
+    where
+        N: Into<Cow<'a, str>>,
+    {
+        Fence::new(ordering, single_thread, name.into()).emit_to(self)
+    }
+
+    /// The `atomicrmw` instruction is used to atomically modify memory.
+    pub fn atomic_rmw<P, V>(
+        &self,
+        op: LLVMAtomicRMWBinOp,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
+    where
+        P: InstructionBuilder + fmt::Debug,
+        V: InstructionBuilder + fmt::Debug,
+    {
+        AtomicRMW::new(op, ptr, value, ordering, single_thread).emit_to(self)
+    }
+
+    /// The `atomicrmw` instruction is used to atomically modify memory.
+    ///
+    /// xchg: *ptr = val
+    pub fn atomic_xchg<P, V>(
+        &self,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
+    where
+        P: InstructionBuilder + fmt::Debug,
+        V: InstructionBuilder + fmt::Debug,
+    {
+        self.atomic_rmw(
+            LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXchg,
+            ptr,
+            value,
+            ordering,
+            single_thread,
+        )
+    }
+
+    /// The `atomicrmw` instruction is used to atomically modify memory.
+    ///
+    /// add: *ptr = *ptr + val
+    pub fn atomic_add<P, V>(
+        &self,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
+    where
+        P: InstructionBuilder + fmt::Debug,
+        V: InstructionBuilder + fmt::Debug,
+    {
+        self.atomic_rmw(
+            LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAdd,
+            ptr,
+            value,
+            ordering,
+            single_thread,
+        )
+    }
+
+    /// The `atomicrmw` instruction is used to atomically modify memory.
+    ///
+    /// sub: *ptr = *ptr - val
+    pub fn atomic_sub<P, V>(
+        &self,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
+    where
+        P: InstructionBuilder + fmt::Debug,
+        V: InstructionBuilder + fmt::Debug,
+    {
+        self.atomic_rmw(
+            LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpSub,
+            ptr,
+            value,
+            ordering,
+            single_thread,
+        )
+    }
+
+    /// The `atomicrmw` instruction is used to atomically modify memory.
+    ///
+    /// and: *ptr = *ptr & val
+    pub fn atomic_and<P, V>(
+        &self,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
+    where
+        P: InstructionBuilder + fmt::Debug,
+        V: InstructionBuilder + fmt::Debug,
+    {
+        self.atomic_rmw(
+            LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAnd,
+            ptr,
+            value,
+            ordering,
+            single_thread,
+        )
+    }
+
+    /// The `atomicrmw` instruction is used to atomically modify memory.
+    ///
+    /// nand: *ptr = ~(*ptr & val)
+    pub fn atomic_nand<P, V>(
+        &self,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
+    where
+        P: InstructionBuilder + fmt::Debug,
+        V: InstructionBuilder + fmt::Debug,
+    {
+        self.atomic_rmw(
+            LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpNand,
+            ptr,
+            value,
+            ordering,
+            single_thread,
+        )
+    }
+
+    /// The `atomicrmw` instruction is used to atomically modify memory.
+    ///
+    /// or: *ptr = *ptr | val
+    pub fn atomic_or<P, V>(
+        &self,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
+    where
+        P: InstructionBuilder + fmt::Debug,
+        V: InstructionBuilder + fmt::Debug,
+    {
+        self.atomic_rmw(
+            LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpOr,
+            ptr,
+            value,
+            ordering,
+            single_thread,
+        )
+    }
+
+    /// The `cmpxchg` instruction is used to atomically modify memory.
+    ///
+    /// It loads a value in memory and compares it to a given value.
+    /// If they are equal, it tries to store a new value into the memory.
+    pub fn cmpxchg<P, C, N>(
+        &self,
+        ptr: P,
+        cmp: C,
+        new: N,
+        success_ordering: LLVMAtomicOrdering,
+        failure_ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
+    where
+        P: InstructionBuilder + fmt::Debug,
+        C: InstructionBuilder + fmt::Debug,
+        N: InstructionBuilder + fmt::Debug,
+    {
+        AtomicCmpXchg::new(
+            ptr,
+            cmp,
+            new,
+            success_ordering,
+            failure_ordering,
+            single_thread,
+        ).emit_to(self)
+    }
 }
 
 #[cfg(test)]

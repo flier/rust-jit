@@ -283,6 +283,63 @@ macro_rules! store {
     }
 }
 
+impl IRBuilder {
+    /// Invoke `malloc` function to allocates memory on the heap, need to be expicity released by its caller.
+    pub fn malloc<'a, T, V, N>(&self, ty: T, size: Option<V>, name: N) -> Instruction
+    where
+        T: Into<TypeRef>,
+        V: InstructionBuilder + fmt::Debug,
+        N: Into<Cow<'a, str>>,
+    {
+        if let Some(size) = size {
+            Malloc::array(ty.into(), size, name.into())
+        } else {
+            Malloc::new(ty.into(), name.into())
+        }.emit_to(self)
+    }
+
+    /// Deallocates the memory allocation pointed to by ptr.
+    pub fn free<P>(&self, ptr: P) -> Instruction
+    where
+        P: InstructionBuilder + fmt::Debug,
+    {
+        free(ptr).emit_to(self)
+    }
+
+    /// The `alloca` instruction allocates memory on the stack frame of the currently executing function,
+    /// to be automatically released when this function returns to its caller.
+    pub fn alloca<'a, T, V, N>(&self, ty: T, size: Option<V>, name: N) -> AllocaInst
+    where
+        T: Into<TypeRef>,
+        V: InstructionBuilder + fmt::Debug,
+        N: Into<Cow<'a, str>>,
+    {
+        if let Some(size) = size {
+            Alloca::array(ty.into(), size, name.into())
+        } else {
+            Alloca::new(ty.into(), name.into())
+        }.emit_to(self)
+    }
+
+    /// The `load` instruction is used to read from memory.
+    pub fn load<'a, P, N>(&self, ptr: P, name: N) -> Instruction
+    where
+        P: InstructionBuilder + fmt::Debug,
+        N: Into<Cow<'a, str>>,
+    {
+        load(ptr, name).emit_to(self)
+    }
+
+    /// The `store` instruction is used to write to memory.
+    pub fn store<V, P>(&self, value: V, ptr: P) -> Instruction
+    where
+        V: InstructionBuilder + fmt::Debug,
+        P: InstructionBuilder + fmt::Debug,
+    {
+        store(value, ptr).emit_to(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use insts::*;

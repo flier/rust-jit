@@ -95,6 +95,27 @@ macro_rules! global_str_ptr {
     }
 }
 
+impl IRBuilder {
+    /// Make a new global variable with initializer type i8*
+    pub fn global_str<'a, S, N>(&self, s: S, name: N) -> Instruction
+    where
+        S: Into<Cow<'a, str>>,
+        N: Into<Cow<'a, str>>,
+    {
+        global_str(s, name).emit_to(self)
+    }
+
+    /// Make a new global variable with initializer type i8*,
+    /// return a pointer with "i8*" type instead of a pointer to array of i8.
+    pub fn global_str_ptr<'a, S, N>(&self, s: S, name: N) -> Instruction
+    where
+        S: Into<Cow<'a, str>>,
+        N: Into<Cow<'a, str>>,
+    {
+        global_str_ptr(s, name).emit_to(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use insts::*;

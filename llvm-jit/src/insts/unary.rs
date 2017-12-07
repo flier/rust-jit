@@ -1,5 +1,6 @@
 use llvm::core::*;
 
+use insts::builder::InstructionBuilder;
 use utils::AsRaw;
 
 macro_rules! define_unary_instruction {
@@ -53,6 +54,21 @@ macro_rules! define_unary_instruction {
             ($value:expr) => (
                 $crate::insts::$alias($value, stringify!($alias))
             )
+        }
+
+        impl $crate::insts::IRBuilder {
+            #[doc=$comment]
+            pub fn $alias<'a, V, N>(
+                &self,
+                value: V,
+                name: N
+            ) -> $crate::Instruction
+            where
+                V: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
+                N: Into<::std::borrow::Cow<'a, str>>
+            {
+                $alias(value, name).emit_to(self)
+            }
         }
     )
 }

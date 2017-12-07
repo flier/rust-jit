@@ -166,10 +166,6 @@ impl ValueRef {
     pub fn as_md_string(&self) -> Option<MDString> {
         let ptr = unsafe { LLVMIsAMDString(self.as_raw()) };
 
-        if ptr.is_null() {
-            None
-        } else {
-            Some(ptr.into())
-        }
+        ptr.is_null().as_some(ptr.into())
     }
 }

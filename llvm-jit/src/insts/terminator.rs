@@ -96,13 +96,37 @@ impl LandingPadInst {
     }
 }
 
+/// The `landingpad` instruction is used by LLVM’s exception handling system
+/// to specify that a basic block is a landing pad — one where the exception lands,
+/// and corresponds to the code found in the catch portion of a try/catch sequence.
+/// It defines values supplied by the personality function upon re-entry to the function.
+/// The resultval has the type resultty.
+pub fn landing_pad<'a, T, F, N>(
+    result_ty: T,
+    personality_fn: Option<F>,
+    name: N,
+    cleanup: bool,
+) -> LandingPad<'a>
+where
+    T: Into<TypeRef>,
+    F: Into<Function>,
+    N: Into<Cow<'a, str>>,
+{
+    LandingPad::new(
+        result_ty.into(),
+        personality_fn.map(|f| f.into()),
+        name.into(),
+        cleanup,
+    )
+}
+
 #[macro_export]
 macro_rules! landing_pad {
     ($ty:expr, $personality:expr; $name:expr) => (
-        $crate::insts::LandingPad::new($ty.into(), Some($personality.into()), $name.into(), false)
+        $crate::insts::landing_pad($ty, Some($personality), $name, false)
     );
     ($ty:expr; $name:expr) => (
-        $crate::insts::LandingPad::new($ty.into(), None, $name.into(), false)
+        $crate::insts::landing_pad($ty, None, $name, false)
     );
     ($ty:expr, $personality:expr) => (
         landing_pad!($ty, $personality; "landingpad")
@@ -166,6 +190,41 @@ impl InstructionBuilder for Unreachable {
 /// The `unreachable` instruction is used to inform the optimizer that a particular portion of the code is not reachable.
 pub fn unreachable() -> Unreachable {
     Unreachable
+}
+
+impl IRBuilder {
+    /// The `landingpad` instruction is used by LLVM’s exception handling system
+    /// to specify that a basic block is a landing pad — one where the exception lands,
+    /// and corresponds to the code found in the catch portion of a try/catch sequence.
+    /// It defines values supplied by the personality function upon re-entry to the function.
+    /// The resultval has the type resultty.
+    pub fn landing_pad<'a, T, F, N>(
+        &self,
+        result_ty: T,
+        personality_fn: Option<F>,
+        name: N,
+        cleanup: bool,
+    ) -> LandingPadInst
+    where
+        T: Into<TypeRef>,
+        F: Into<Function>,
+        N: Into<Cow<'a, str>>,
+    {
+        landing_pad(result_ty, personality_fn, name, cleanup).emit_to(self)
+    }
+
+    /// The `resume` instruction is a terminator instruction that has no successors.
+    pub fn resume<V>(&self, result: V) -> Instruction
+    where
+        V: InstructionBuilder + fmt::Debug,
+    {
+        resume(result).emit_to(self)
+    }
+
+    /// The `unreachable` instruction is used to inform the optimizer that a particular portion of the code is not reachable.
+    pub fn unreachable(&self) -> Instruction {
+        unreachable().emit_to(self)
+    }
 }
 
 #[cfg(test)]

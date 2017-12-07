@@ -52,13 +52,14 @@ pub use self::cast::*;
 pub use self::cmp::{FCmp, FCmpInst, ICmp, ICmpInst};
 pub use self::gep::{GetElementPtr, GetElementPtrInst};
 pub use self::globalstr::{GlobalString, GlobalStringPtr, global_str, global_str_ptr};
-pub use self::invoke::{Invoke, InvokeInst};
+pub use self::invoke::{Invoke, InvokeInst, invoke};
 pub use self::memory::{Alloca, AllocaInst, Free, Load, Malloc, Store, free, load, store};
-pub use self::phi::{Phi, PhiNode};
+pub use self::phi::{Phi, PhiNode, phi};
 pub use self::ret::{AggregateRet, Ret, RetVoid, TerminatorInst};
 pub use self::select::{Select, select};
-pub use self::switch::{Switch, SwitchInst};
-pub use self::terminator::{LandingPad, Resume, Unreachable, resume, unreachable};
+pub use self::switch::{Switch, SwitchInst, switch};
+pub use self::terminator::{LandingPad, LandingPadInst, Resume, Unreachable, landing_pad, resume,
+                           unreachable};
 pub use self::unary::*;
 pub use self::vaarg::{VaArg, va_arg};
 pub use self::vector::{ExtractElement, InsertElement, ShuffleVector, extract_element,

@@ -94,8 +94,15 @@ pub struct IndirectBr<T> {
 }
 
 impl<T> IndirectBr<T> {
-    pub fn new(addr: T, dests: Vec<BasicBlock>) -> Self {
-        IndirectBr { addr, dests }
+    /// The `indirectbr` instruction implements an indirect branch to a label within the current function, whose address is specified by “address”.
+    pub fn new<I>(addr: T, dests: I) -> Self
+    where
+        I: IntoIterator<Item = BasicBlock>,
+    {
+        IndirectBr {
+            addr,
+            dests: dests.into_iter().collect(),
+        }
     }
 
     pub fn on(addr: T) -> Self {
@@ -175,6 +182,35 @@ macro_rules! br {
     ($cond:expr => $then:expr, _ => $or_else:expr) => (
         $crate::insts::CondBr::new($cond, Some($then.into()), Some($or_else.into()))
     );
+}
+
+impl IRBuilder {
+    /// The `br` instruction is used to cause control flow to transfer to a different basic block in the current function.
+    pub fn br(&self, dest: BasicBlock) -> BranchInst {
+        Br::new(dest).emit_to(self)
+    }
+
+    /// The conditional branch form of the `br` instruction takes a single `i1` value and two `label` values.
+    pub fn cond_br<T>(
+        &self,
+        cond: T,
+        then: Option<BasicBlock>,
+        or_else: Option<BasicBlock>,
+    ) -> BranchInst
+    where
+        T: InstructionBuilder + fmt::Debug,
+    {
+        CondBr::new(cond, then, or_else).emit_to(&self)
+    }
+
+    /// The `indirectbr` instruction implements an indirect branch to a label within the current function, whose address is specified by “address”.
+    pub fn indirect_br<T, I>(&self, addr: T, dests: I) -> BranchInst
+    where
+        T: InstructionBuilder + fmt::Debug,
+        I: IntoIterator<Item = BasicBlock>,
+    {
+        IndirectBr::new(addr, dests).emit_to(&self)
+    }
 }
 
 #[cfg(test)]

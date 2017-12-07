@@ -198,6 +198,47 @@ macro_rules! shuffle_vector {
     )
 }
 
+impl IRBuilder {
+    /// The `extractelement` instruction extracts a single scalar element from a vector at a specified index.
+    pub fn extract_element<'a, V, I, N>(&self, vector: V, index: I, name: N) -> Instruction
+    where
+        V: InstructionBuilder + fmt::Debug,
+        I: InstructionBuilder + fmt::Debug,
+        N: Into<Cow<'a, str>>,
+    {
+        extract_element(vector, index, name).emit_to(self)
+    }
+
+    /// The `insertelement` instruction inserts a scalar element into a vector at a specified index.
+    pub fn insert_element<'a, V, E, I, N>(
+        &self,
+        vector: V,
+        element: E,
+        index: I,
+        name: N,
+    ) -> Instruction
+    where
+        V: InstructionBuilder + fmt::Debug,
+        E: InstructionBuilder + fmt::Debug,
+        I: InstructionBuilder + fmt::Debug,
+        N: Into<Cow<'a, str>>,
+    {
+        insert_element(vector, element, index, name).emit_to(self)
+    }
+
+    /// The `shufflevector` instruction constructs a permutation of elements from two input vectors,
+    /// returning a vector with the same element type as the input and length that is the same as the shuffle mask.
+    pub fn shuffle_vector<'a, V1, V2, M, N>(&self, v1: V1, v2: V2, mask: M, name: N) -> Instruction
+    where
+        V1: InstructionBuilder + fmt::Debug,
+        V2: InstructionBuilder + fmt::Debug,
+        M: InstructionBuilder + fmt::Debug,
+        N: Into<Cow<'a, str>>,
+    {
+        shuffle_vector(v1, v2, mask, name).emit_to(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use insts::*;

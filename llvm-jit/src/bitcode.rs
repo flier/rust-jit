@@ -100,7 +100,6 @@ impl Module {
 #[cfg(test)]
 mod tests {
     use std::io::Read;
-    use std::str;
 
     use tempfile::NamedTempFile;
 

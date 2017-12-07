@@ -126,6 +126,33 @@ macro_rules! insert_value {
     }
 }
 
+impl IRBuilder {
+    /// The `extractvalue` instruction extracts the value of a member field from an aggregate value.
+    pub fn extract_value<'a, T, N>(&self, aggregate: T, index: u32, name: N) -> Instruction
+    where
+        T: InstructionBuilder + fmt::Debug,
+        N: Into<Cow<'a, str>>,
+    {
+        extract_value(aggregate, index, name).emit_to(self)
+    }
+
+    /// The `insertvalue` instruction inserts a value into a member field in an aggregate value.
+    pub fn insert_value<'a, T, E, N>(
+        &self,
+        aggregate: T,
+        element: E,
+        index: u32,
+        name: N,
+    ) -> Instruction
+    where
+        T: InstructionBuilder + fmt::Debug,
+        E: InstructionBuilder + fmt::Debug,
+        N: Into<Cow<'a, str>>,
+    {
+        insert_value(aggregate, element, index, name).emit_to(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use insts::*;

@@ -28,7 +28,9 @@ pub struct Invoke<'a> {
 }
 
 impl<'a> Invoke<'a> {
-    pub fn call(func: Function, args: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
+    /// The ‘invoke‘ instruction causes control to transfer to a specified function,
+    /// with the possibility of control flow transfer to either the ‘normal‘ label or the ‘exception‘ label.
+    pub fn new(func: Function, args: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
         Invoke {
             func: func,
             args: args,
@@ -104,21 +106,32 @@ impl InvokeInst {
     }
 }
 
+/// The ‘invoke‘ instruction causes control to transfer to a specified function,
+/// with the possibility of control flow transfer to either the ‘normal‘ label or the ‘exception‘ label.
+pub fn invoke<'a, F, I, N>(func: F, args: I, name: N) -> Invoke<'a>
+where
+    F: Into<Function>,
+    I: IntoIterator<Item = ValueRef>,
+    N: Into<Cow<'a, str>>,
+{
+    Invoke::new(func.into(), args.into_iter().collect(), name.into())
+}
+
 /// The `invoke` instruction causes control to transfer to a specified function,
 /// with the possibility of control flow transfer to either the `normal` label or the `exception` label.
 #[macro_export]
 macro_rules! invoke {
     ($func:expr, $( $arg:expr ),* ; to $then:expr ; unwind $unwind:expr ; $name:expr) => ({
-        $crate::insts::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into()).then($then).unwind($unwind)
+        $crate::insts::invoke($func, vec![ $( $arg.into() ),* ], $name).then($then).unwind($unwind)
     });
     ($func:expr, $( $arg:expr ),* ; to $then:expr ; $name:expr) => ({
-        $crate::insts::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into()).then($then)
+        $crate::insts::invoke($func, vec![ $( $arg.into() ),* ], $name).then($then)
     });
     ($func:expr, $( $arg:expr ),* ; unwind $unwind:expr ; $name:expr) => ({
-        $crate::insts::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into()).unwind($unwind)
+        $crate::insts::invoke($func, vec![ $( $arg.into() ),* ], $name).unwind($unwind)
     });
     ($func:expr, $( $arg:expr ),* ; $name:expr) => ({
-        $crate::insts::Invoke::call($func.into(), vec![ $( $arg.into() ),* ], $name.into())
+        $crate::insts::invoke($func, vec![ $( $arg.into() ),* ], $name)
     });
 
     ($func:expr, $( $arg:expr ),* ; to $then:expr ; unwind $unwind:expr) => ({
@@ -133,6 +146,19 @@ macro_rules! invoke {
     ($func:expr, $( $arg:expr ),*) => ({
         invoke!($func, $( $arg ),* ; "invoke")
     });
+}
+
+impl IRBuilder {
+    /// The ‘invoke‘ instruction causes control to transfer to a specified function,
+    /// with the possibility of control flow transfer to either the ‘normal‘ label or the ‘exception‘ label.
+    pub fn invoke<'a, F, I, N>(&self, func: F, args: I, name: N) -> InvokeInst
+    where
+        F: Into<Function>,
+        I: IntoIterator<Item = ValueRef>,
+        N: Into<Cow<'a, str>>,
+    {
+        Invoke::new(func.into(), args.into_iter().collect(), name.into()).emit_to(self)
+    }
 }
 
 #[cfg(test)]

@@ -1,5 +1,6 @@
 use llvm::core::*;
 
+use insts::builder::InstructionBuilder;
 use utils::AsRaw;
 
 macro_rules! define_binary_operator {
@@ -57,6 +58,18 @@ macro_rules! define_binary_operator {
             ($lhs:expr, $rhs:expr) => (
                 $crate::insts::$alias($lhs, $rhs, stringify!($alias))
             );
+        }
+
+        impl $crate::insts::IRBuilder {
+            #[doc=$comment]
+            pub fn $alias<'a, LHS, RHS, N>(&self, lhs: LHS, rhs: RHS, name: N) -> $crate::Instruction
+            where
+                LHS: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
+                RHS: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
+                N: Into<::std::borrow::Cow<'a, str>>
+            {
+                $crate::insts::$alias(lhs, rhs, name.into()).emit_to(self)
+            }
         }
     )
 }

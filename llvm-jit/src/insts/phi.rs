@@ -116,20 +116,40 @@ impl PhiNode {
     }
 }
 
+/// The `phi` instruction is used to implement the φ node in the SSA graph representing the function.
+pub fn phi<'a, T, N>(ty: T, name: N) -> Phi<'a>
+where
+    T: Into<TypeRef>,
+    N: Into<Cow<'a, str>>,
+{
+    Phi::new(ty.into(), name.into())
+}
+
 #[macro_export]
 macro_rules! phi {
     ( $ty:expr, $( $value:expr => $block:expr ),* ; $name:expr ) => ({
-        $crate::insts::Phi::new($ty.into(), $name.into()) $( .add_incoming( $value.into(), $block.into() ) )*
+        $crate::insts::phi($ty, $name) $( .add_incoming( $value.into(), $block.into() ) )*
     });
     ( $ty:expr, $( $value:expr => $block:expr ),* ) => ({
         phi!( $ty, $( $value => $block ),* ; "phi" )
     });
     ( $ty:expr; $name:expr ) => ({
-        $crate::insts::Phi::new($ty.into(), $name.into())
+        $crate::insts::phi($ty, $name)
     });
     ( $ty:expr ) => ({
         phi!( $ty ; "phi" )
     })
+}
+
+impl IRBuilder {
+    /// The `phi` instruction is used to implement the φ node in the SSA graph representing the function.
+    pub fn phi<'a, T, N>(&self, ty: T, name: N) -> PhiNode
+    where
+        T: Into<TypeRef>,
+        N: Into<Cow<'a, str>>,
+    {
+        phi(ty, name).emit_to(self)
+    }
 }
 
 #[cfg(test)]

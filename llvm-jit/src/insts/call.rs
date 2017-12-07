@@ -118,13 +118,13 @@ impl CallInst {
     }
 }
 
-pub fn call<'a, F, A, N>(func: F, args: A, name: N) -> Call<'a>
+pub fn call<'a, F, I, N>(func: F, args: I, name: N) -> Call<'a>
 where
     F: Into<Function>,
-    A: AsRef<[ValueRef]>,
+    I: IntoIterator<Item = ValueRef>,
     N: Into<Cow<'a, str>>,
 {
-    Call::new(func.into(), args.as_ref().to_vec(), name.into())
+    Call::new(func.into(), args.into_iter().collect(), name.into())
 }
 
 #[macro_export]
@@ -141,6 +141,17 @@ macro_rules! call {
     ($func:expr) => ({
         call!($func ; "")
     });
+}
+
+impl IRBuilder {
+    pub fn call<'a, F, I, N>(&self, func: F, args: I, name: N) -> CallInst
+    where
+        F: Into<Function>,
+        I: IntoIterator<Item = ValueRef>,
+        N: Into<Cow<'a, str>>,
+    {
+        call(func, args, name).emit_to(self)
+    }
 }
 
 #[cfg(test)]

@@ -89,17 +89,32 @@ impl SwitchInst {
 }
 
 /// The `switch` instruction is used to transfer control flow to one of several different places.
+pub fn switch<V>(v: V) -> Switch<V> {
+    Switch::on(v)
+}
+
+/// The `switch` instruction is used to transfer control flow to one of several different places.
 #[macro_export]
 macro_rules! switch {
     ($cond:expr; _ => $default:expr , $( $on:expr => $dest:expr ),*) => ({
-        $crate::insts::Switch::on($cond).default($default) $( .case($on.into(), $dest) )*
+        $crate::insts::switch($cond).default($default) $( .case($on.into(), $dest) )*
     });
     ($cond:expr; _ => $default:expr) => ({
-        $crate::insts::Switch::on($cond).default($default)
+        $crate::insts::switch($cond).default($default)
     });
     ($cond:expr; $( $on:expr => $dest:expr ),*) => ({
-        $crate::insts::Switch::on($cond) $( .case($on.into(), $dest) )*
+        $crate::insts::switch($cond) $( .case($on.into(), $dest) )*
     });
+}
+
+impl IRBuilder {
+    /// The `switch` instruction is used to transfer control flow to one of several different places.
+    pub fn switch<V>(&self, v: V) -> SwitchInst
+    where
+        V: InstructionBuilder + fmt::Debug,
+    {
+        switch(v).emit_to(self)
+    }
 }
 
 #[cfg(test)]

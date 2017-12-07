@@ -1,5 +1,6 @@
 use llvm::core::*;
 
+use insts::builder::InstructionBuilder;
 use utils::AsRaw;
 
 macro_rules! define_cast_instruction {
@@ -57,6 +58,18 @@ macro_rules! define_cast_instruction {
             ($value:expr, $ty:expr) => (
                 $crate::insts::$alias($value, $ty, stringify!($alias))
             );
+        }
+
+        impl $crate::insts::IRBuilder {
+            #[doc=$comment]
+            pub fn $alias<'a, V, T, N>(&self, value: V, ty: T, name: N) -> $crate::Instruction
+            where
+                V: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
+                T: Into<$crate::TypeRef>,
+                N: Into<::std::borrow::Cow<'a, str>>
+            {
+                $crate::insts::$alias(value, ty, name).emit_to(self)
+            }
         }
     )
 }

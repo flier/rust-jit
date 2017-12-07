@@ -158,6 +158,38 @@ macro_rules! struct_gep {
     });
 }
 
+impl IRBuilder {
+    pub fn gep<'a, P, I, N>(&self, ptr: P, indices: Vec<ValueRef>, name: N) -> GetElementPtrInst
+    where
+        P: InstructionBuilder + fmt::Debug,
+        N: Into<Cow<'a, str>>,
+    {
+        GetElementPtr::new(ptr, indices.into_iter().collect(), name.into()).emit_to(self)
+    }
+
+    pub fn gep_in_bounds<'a, P, I, N>(
+        &self,
+        ptr: P,
+        indices: Vec<ValueRef>,
+        name: N,
+    ) -> GetElementPtrInst
+    where
+        P: InstructionBuilder + fmt::Debug,
+        N: Into<Cow<'a, str>>,
+    {
+        GetElementPtr::in_bounds(ptr, indices.into_iter().collect(), name.into()).emit_to(self)
+    }
+
+    pub fn gep_in_struct<'a, P, I, N>(&self, ptr: P, index: I, name: N) -> GetElementPtrInst
+    where
+        P: InstructionBuilder + fmt::Debug,
+        I: Into<u32>,
+        N: Into<Cow<'a, str>>,
+    {
+        GetElementPtr::in_struct(ptr, index.into(), name.into()).emit_to(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use insts::*;

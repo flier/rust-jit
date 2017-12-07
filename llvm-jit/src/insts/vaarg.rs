@@ -64,6 +64,19 @@ macro_rules! va_arg {
     )
 }
 
+impl IRBuilder {
+    /// The `va_arg` instruction is used to access arguments passed through the “variable argument” area
+    /// of a function call. It is used to implement the `va_arg` macro in C.
+    pub fn va_arg<'a, V, T, N>(&self, args: V, ty: T, name: N) -> Instruction
+    where
+        V: InstructionBuilder + fmt::Debug,
+        T: Into<TypeRef>,
+        N: Into<Cow<'a, str>>,
+    {
+        va_arg(args, ty, name).emit_to(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use insts::*;
