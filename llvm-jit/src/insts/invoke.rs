@@ -76,7 +76,6 @@ impl<'a> InstructionBuilder for Invoke<'a> {
     }
 }
 
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InvokeInst(Instruction);
 
@@ -176,8 +175,7 @@ mod tests {
 
         let i64_t = context.int64_t();
         let fn_test = module.add_function("test", FunctionType::new(context.void_t(), &[], false));
-        let fn_hello =
-            module.add_function("hello", FunctionType::new(i64_t, &[i64_t, i64_t], false));
+        let fn_hello = module.add_function("hello", FunctionType::new(i64_t, &[i64_t, i64_t], false));
 
         let bb = fn_test.append_basic_block_in_context("entry", &context);
         builder.position_at_end(bb);
@@ -186,8 +184,7 @@ mod tests {
         let bb_unwind = fn_test.append_basic_block_in_context("catch", &context);
 
         let invoke =
-            invoke!(fn_hello, i64_t.uint(123), i64_t.int(456); to bb_normal; unwind bb_unwind)
-                .emit_to(&builder);
+            invoke!(fn_hello, i64_t.uint(123), i64_t.int(456); to bb_normal; unwind bb_unwind).emit_to(&builder);
 
         assert_eq!(
             invoke.to_string().trim(),

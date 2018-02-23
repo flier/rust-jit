@@ -137,22 +137,16 @@ impl JITStack {
 
         trace!("create indirect stub `{}` @ {}", name, addr);
 
-        unsafe { LLVMOrcCreateIndirectStub(self.as_raw(), cstr!(name), addr) }
-            .ok_or_else(|| self.err())
+        unsafe { LLVMOrcCreateIndirectStub(self.as_raw(), cstr!(name), addr) }.ok_or_else(|| self.err())
     }
 
     /// Set the pointer for the given indirect stub.
-    pub fn set_indirect_stub_pointer<S: AsRef<str>>(
-        &self,
-        name: S,
-        addr: TargetAddress,
-    ) -> Result<()> {
+    pub fn set_indirect_stub_pointer<S: AsRef<str>>(&self, name: S, addr: TargetAddress) -> Result<()> {
         let name = name.as_ref();
 
         trace!("set indirect stub `{}` pointer to {}", name, addr);
 
-        unsafe { LLVMOrcSetIndirectStubPointer(self.as_raw(), cstr!(name), addr) }
-            .ok_or_else(|| self.err())
+        unsafe { LLVMOrcSetIndirectStubPointer(self.as_raw(), cstr!(name), addr) }.ok_or_else(|| self.err())
     }
 
     /// Add a module to be eagerly compiled.

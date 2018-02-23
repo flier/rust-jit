@@ -42,25 +42,23 @@ mod aggregate;
 #[macro_use]
 mod atomic;
 
-pub use self::aggregate::{ExtractValue, InsertValue, extract_value, insert_value};
+pub use self::aggregate::{extract_value, insert_value, ExtractValue, InsertValue};
 pub use self::atomic::{AtomicCmpXchg, AtomicRMW, Fence};
 pub use self::binop::*;
 pub use self::br::{Br, BranchInst, CondBr, IndirectBr};
 pub use self::builder::{IRBuilder, InstructionBuilder, Position};
-pub use self::call::{Call, CallConv, CallInst, CallSite, call};
+pub use self::call::{call, Call, CallConv, CallInst, CallSite};
 pub use self::cast::*;
 pub use self::cmp::{FCmp, FCmpInst, ICmp, ICmpInst};
 pub use self::gep::{GetElementPtr, GetElementPtrInst};
-pub use self::globalstr::{GlobalString, GlobalStringPtr, global_str, global_str_ptr};
-pub use self::invoke::{Invoke, InvokeInst, invoke};
-pub use self::memory::{Alloca, AllocaInst, Free, Load, Malloc, Store, free, load, store};
-pub use self::phi::{Phi, PhiNode, phi};
+pub use self::globalstr::{global_str, global_str_ptr, GlobalString, GlobalStringPtr};
+pub use self::invoke::{invoke, Invoke, InvokeInst};
+pub use self::memory::{free, load, store, Alloca, AllocaInst, Free, Load, Malloc, Store};
+pub use self::phi::{phi, Phi, PhiNode};
 pub use self::ret::{AggregateRet, Ret, RetVoid, TerminatorInst};
-pub use self::select::{Select, select};
-pub use self::switch::{Switch, SwitchInst, switch};
-pub use self::terminator::{LandingPad, LandingPadInst, Resume, Unreachable, landing_pad, resume,
-                           unreachable};
+pub use self::select::{select, Select};
+pub use self::switch::{switch, Switch, SwitchInst};
+pub use self::terminator::{landing_pad, resume, unreachable, LandingPad, LandingPadInst, Resume, Unreachable};
 pub use self::unary::*;
-pub use self::vaarg::{VaArg, va_arg};
-pub use self::vector::{ExtractElement, InsertElement, ShuffleVector, extract_element,
-                       insert_element, shuffle_vector};
+pub use self::vaarg::{va_arg, VaArg};
+pub use self::vector::{extract_element, insert_element, shuffle_vector, ExtractElement, InsertElement, ShuffleVector};

@@ -68,8 +68,7 @@ mod object;
 mod bitcode;
 
 pub use attribute::{attrs, Attribute, AttributeIndex, EnumAttribute, StringAttribute};
-pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
-                   ConstantStruct, ConstantVector};
+pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString, ConstantStruct, ConstantVector};
 pub use context::{Context, GlobalContext};
 pub use disasm::Disasm;
 pub use engine::{shutdown, ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJITCompiler,
@@ -82,12 +81,12 @@ pub use membuf::MemoryBuffer;
 pub use metadata::{MDKindId, MDNode, MDString, Metadata};
 pub use module::{AddressSpace, Module};
 pub use object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
-pub use orc::{JITStack, LazyCompileCallback, ModuleHandle, SharedModule, SharedObjectBuffer,
-              SymbolResolver, TargetAddress};
+pub use orc::{JITStack, LazyCompileCallback, ModuleHandle, SharedModule, SharedObjectBuffer, SymbolResolver,
+              TargetAddress};
 pub use passmgr::{FunctionPassManager, Pass, PassManager, PassManagerBuilder, PassRegistry};
 pub use symbols::Symbols;
-pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType,
-                TypeKind, TypeRef, VectorType};
+pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType, TypeKind, TypeRef,
+                VectorType};
 pub use value::{BlockAddress, Instruction, Opcode, ValueKind, ValueRef};
 
 pub mod prelude {
@@ -103,14 +102,14 @@ pub mod prelude {
     pub use value::ValueRef;
 
     pub use attribute::AttributeGroups;
-    pub use constant::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray,
-                       ToConstantStruct, ToConstantVector};
+    pub use constant::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray, ToConstantStruct,
+                       ToConstantVector};
     pub use constexpr::ConstantExpr;
     pub use global::GlobalValue;
     pub use insts::InstructionBuilder;
     pub use intrinsics::Intrinsics;
-    pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType,
-                    ToPointerType, ToStructType, ToVectorType};
+    pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType, ToPointerType, ToStructType,
+                    ToVectorType};
     pub use utils::{AsRaw, IntoRaw};
     pub use value::{AsValueRef, Instruction};
 }

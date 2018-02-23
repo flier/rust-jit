@@ -361,9 +361,7 @@ impl PassManager {
             Pass::AlwaysInliner => unsafe { LLVMAddAlwaysInlinerPass(self.as_raw()) },
             Pass::GlobalDCE => unsafe { LLVMAddGlobalDCEPass(self.as_raw()) },
             Pass::GlobalOptimizer => unsafe { LLVMAddGlobalOptimizerPass(self.as_raw()) },
-            Pass::IPConstantPropagation => unsafe {
-                LLVMAddIPConstantPropagationPass(self.as_raw())
-            },
+            Pass::IPConstantPropagation => unsafe { LLVMAddIPConstantPropagationPass(self.as_raw()) },
             Pass::PruneEH => unsafe { LLVMAddPruneEHPass(self.as_raw()) },
             Pass::IPSCCP => unsafe { LLVMAddIPSCCPPass(self.as_raw()) },
             Pass::Internalize(all_but_main) => unsafe {
@@ -379,18 +377,12 @@ impl PassManager {
             // Scalar transformations
             Pass::AggressiveDCE => unsafe { LLVMAddAggressiveDCEPass(self.as_raw()) },
             Pass::BitTrackingDCE => unsafe { LLVMAddBitTrackingDCEPass(self.as_raw()) },
-            Pass::AlignmentFromAssumptions => unsafe {
-                LLVMAddAlignmentFromAssumptionsPass(self.as_raw())
-            },
+            Pass::AlignmentFromAssumptions => unsafe { LLVMAddAlignmentFromAssumptionsPass(self.as_raw()) },
             Pass::CFGSimplification => unsafe { LLVMAddCFGSimplificationPass(self.as_raw()) },
-            Pass::LateCFGSimplification => unsafe {
-                LLVMAddLateCFGSimplificationPass(self.as_raw())
-            },
+            Pass::LateCFGSimplification => unsafe { LLVMAddLateCFGSimplificationPass(self.as_raw()) },
             Pass::DeadStoreElimination => unsafe { LLVMAddDeadStoreEliminationPass(self.as_raw()) },
             Pass::Scalarizer => unsafe { LLVMAddScalarizerPass(self.as_raw()) },
-            Pass::MergedLoadStoreMotion => unsafe {
-                LLVMAddMergedLoadStoreMotionPass(self.as_raw())
-            },
+            Pass::MergedLoadStoreMotion => unsafe { LLVMAddMergedLoadStoreMotionPass(self.as_raw()) },
             Pass::GVN => unsafe { LLVMAddGVNPass(self.as_raw()) },
             Pass::NewGVN => unsafe { LLVMAddNewGVNPass(self.as_raw()) },
             Pass::IndVarSimplify => unsafe { LLVMAddIndVarSimplifyPass(self.as_raw()) },
@@ -404,38 +396,26 @@ impl PassManager {
             Pass::LoopUnroll => unsafe { LLVMAddLoopUnrollPass(self.as_raw()) },
             Pass::LoopUnswitch => unsafe { LLVMAddLoopUnswitchPass(self.as_raw()) },
             Pass::MemCpyOpt => unsafe { LLVMAddMemCpyOptPass(self.as_raw()) },
-            Pass::PartiallyInlineLibCalls => unsafe {
-                LLVMAddPartiallyInlineLibCallsPass(self.as_raw())
-            },
+            Pass::PartiallyInlineLibCalls => unsafe { LLVMAddPartiallyInlineLibCallsPass(self.as_raw()) },
             Pass::LowerSwitch => unsafe { LLVMAddLowerSwitchPass(self.as_raw()) },
-            Pass::PromoteMemoryToRegister => unsafe {
-                LLVMAddPromoteMemoryToRegisterPass(self.as_raw())
-            },
+            Pass::PromoteMemoryToRegister => unsafe { LLVMAddPromoteMemoryToRegisterPass(self.as_raw()) },
             Pass::Reassociate => unsafe { LLVMAddReassociatePass(self.as_raw()) },
             Pass::SCCP => unsafe { LLVMAddSCCPPass(self.as_raw()) },
             Pass::ScalarReplAggregates => unsafe { LLVMAddScalarReplAggregatesPass(self.as_raw()) },
-            Pass::ScalarReplAggregatesSSA => unsafe {
-                LLVMAddScalarReplAggregatesPassSSA(self.as_raw())
-            },
+            Pass::ScalarReplAggregatesSSA => unsafe { LLVMAddScalarReplAggregatesPassSSA(self.as_raw()) },
             Pass::ScalarReplAggregatesWithThreshold(threshold) => unsafe {
                 LLVMAddScalarReplAggregatesPassWithThreshold(self.as_raw(), threshold)
             },
             Pass::SimplifyLibCalls => unsafe { LLVMAddSimplifyLibCallsPass(self.as_raw()) },
             Pass::TailCallElimination => unsafe { LLVMAddTailCallEliminationPass(self.as_raw()) },
             Pass::ConstantPropagation => unsafe { LLVMAddConstantPropagationPass(self.as_raw()) },
-            Pass::DemoteMemoryToRegister => unsafe {
-                LLVMAddDemoteMemoryToRegisterPass(self.as_raw())
-            },
+            Pass::DemoteMemoryToRegister => unsafe { LLVMAddDemoteMemoryToRegisterPass(self.as_raw()) },
             Pass::Verifier => unsafe { LLVMAddVerifierPass(self.as_raw()) },
-            Pass::CorrelatedValuePropagation => unsafe {
-                LLVMAddCorrelatedValuePropagationPass(self.as_raw())
-            },
+            Pass::CorrelatedValuePropagation => unsafe { LLVMAddCorrelatedValuePropagationPass(self.as_raw()) },
             Pass::EarlyCSE => unsafe { LLVMAddEarlyCSEPass(self.as_raw()) },
             Pass::EarlyCSEMemSSA => unsafe { LLVMAddEarlyCSEMemSSAPass(self.as_raw()) },
             Pass::LowerExpectIntrinsic => unsafe { LLVMAddLowerExpectIntrinsicPass(self.as_raw()) },
-            Pass::TypeBasedAliasAnalysis => unsafe {
-                LLVMAddTypeBasedAliasAnalysisPass(self.as_raw())
-            },
+            Pass::TypeBasedAliasAnalysis => unsafe { LLVMAddTypeBasedAliasAnalysisPass(self.as_raw()) },
             Pass::ScopedNoAliasAA => unsafe { LLVMAddScopedNoAliasAAPass(self.as_raw()) },
             Pass::BasicAliasAnalysis => unsafe { LLVMAddBasicAliasAnalysisPass(self.as_raw()) },
         }
@@ -548,15 +528,11 @@ impl PassManagerBuilder {
     }
 
     pub fn populate_function_pass_manager<M: AsRef<Deref<Target = PassManager>>>(&self, mgr: M) {
-        unsafe {
-            LLVMPassManagerBuilderPopulateFunctionPassManager(self.as_raw(), mgr.as_ref().as_raw())
-        }
+        unsafe { LLVMPassManagerBuilderPopulateFunctionPassManager(self.as_raw(), mgr.as_ref().as_raw()) }
     }
 
     pub fn populate_module_pass_manager<M: AsRef<Deref<Target = PassManager>>>(&self, mgr: M) {
-        unsafe {
-            LLVMPassManagerBuilderPopulateModulePassManager(self.as_raw(), mgr.as_ref().as_raw())
-        }
+        unsafe { LLVMPassManagerBuilderPopulateModulePassManager(self.as_raw(), mgr.as_ref().as_raw()) }
     }
 
     pub fn populate_lto_pass_manager<M: AsRef<Deref<Target = PassManager>>>(

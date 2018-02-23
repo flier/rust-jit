@@ -60,8 +60,7 @@ where
 
         unsafe {
             match self.gep {
-                GEP::Indices(ref indices) |
-                GEP::InBounds(ref indices) => {
+                GEP::Indices(ref indices) | GEP::InBounds(ref indices) => {
                     let mut indices = indices
                         .iter()
                         .map(|v| v.as_raw())
@@ -81,14 +80,12 @@ where
                         cstr!(self.name),
                     )
                 }
-                GEP::Struct(index) => {
-                    LLVMBuildStructGEP(
-                        builder.as_raw(),
-                        self.ptr.emit_to(builder).into().as_raw(),
-                        index,
-                        cstr!(self.name),
-                    )
-                }
+                GEP::Struct(index) => LLVMBuildStructGEP(
+                    builder.as_raw(),
+                    self.ptr.emit_to(builder).into().as_raw(),
+                    index,
+                    cstr!(self.name),
+                ),
             }
         }.into()
     }
@@ -167,12 +164,7 @@ impl IRBuilder {
         GetElementPtr::new(ptr, indices.into_iter().collect(), name.into()).emit_to(self)
     }
 
-    pub fn gep_in_bounds<'a, P, I, N>(
-        &self,
-        ptr: P,
-        indices: Vec<ValueRef>,
-        name: N,
-    ) -> GetElementPtrInst
+    pub fn gep_in_bounds<'a, P, I, N>(&self, ptr: P, indices: Vec<ValueRef>, name: N) -> GetElementPtrInst
     where
         P: InstructionBuilder + fmt::Debug,
         N: Into<Cow<'a, str>>,

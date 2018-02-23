@@ -226,34 +226,19 @@ impl TargetMachine {
                 codegen,
                 &mut err,
             )
-        }.ok_or_else(|| {
-            format!("fail to emit to file, {}", err.into_string()).into()
-        })
+        }.ok_or_else(|| format!("fail to emit to file, {}", err.into_string()).into())
     }
 
     /// Emits an asm or object file for the given module to the filename.
-    pub fn emit_to_memory_buffer<M>(
-        &self,
-        module: M,
-        codegen: CodeGenFileType,
-    ) -> Result<MemoryBuffer>
+    pub fn emit_to_memory_buffer<M>(&self, module: M, codegen: CodeGenFileType) -> Result<MemoryBuffer>
     where
         M: AsRaw<RawType = LLVMModuleRef>,
     {
         let mut err = DisposableMessage::new();
         let mut buf = ptr::null_mut();
 
-        unsafe {
-            LLVMTargetMachineEmitToMemoryBuffer(
-                self.as_raw(),
-                module.as_raw(),
-                codegen,
-                &mut err,
-                &mut buf,
-            )
-        }.ok_or_else(|| {
-            format!("fail to emit to memory buffer, {}", err.into_string()).into()
-        })
+        unsafe { LLVMTargetMachineEmitToMemoryBuffer(self.as_raw(), module.as_raw(), codegen, &mut err, &mut buf) }
+            .ok_or_else(|| format!("fail to emit to memory buffer, {}", err.into_string()).into())
             .map(|_| buf.into())
     }
 
@@ -333,13 +318,8 @@ impl TargetData {
     /// Returns the integer type that is the same size as a pointer on a target.
     ///
     /// This version allows the address space to be specified.
-    pub fn int_ptr_type_for_address_space_in_context(
-        &self,
-        context: &Context,
-        address_space: AddressSpace,
-    ) -> TypeRef {
-        unsafe { LLVMIntPtrTypeForASInContext(context.as_raw(), self.as_raw(), address_space) }
-            .into()
+    pub fn int_ptr_type_for_address_space_in_context(&self, context: &Context, address_space: AddressSpace) -> TypeRef {
+        unsafe { LLVMIntPtrTypeForASInContext(context.as_raw(), self.as_raw(), address_space) }.into()
     }
 
     /// Computes the size of a type in bits for a target.

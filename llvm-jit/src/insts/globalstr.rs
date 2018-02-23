@@ -70,8 +70,7 @@ impl<'a> InstructionBuilder for GlobalStringPtr<'a> {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe { LLVMBuildGlobalStringPtr(builder.as_raw(), cstr!(self.s), cstr!(self.name)) }
-            .into()
+        unsafe { LLVMBuildGlobalStringPtr(builder.as_raw(), cstr!(self.s), cstr!(self.name)) }.into()
     }
 }
 

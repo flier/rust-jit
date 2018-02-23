@@ -11,7 +11,7 @@ use function::Function;
 use function::FunctionType;
 use global::GlobalVar;
 use types::TypeRef;
-use utils::{AsRaw, AsResult, DisposableMessage, FromRaw, UncheckedCStr, from_unchecked_cstr};
+use utils::{from_unchecked_cstr, AsRaw, AsResult, DisposableMessage, FromRaw, UncheckedCStr};
 
 pub type AddressSpace = u32;
 
@@ -30,8 +30,7 @@ impl AsRaw for Module {
 
     fn as_raw(&self) -> Self::RawType {
         match self.0 {
-            State::Owned(m) |
-            State::Borrowed(m) => m,
+            State::Owned(m) | State::Borrowed(m) => m,
         }
     }
 }
@@ -187,9 +186,7 @@ impl Module {
         address_space: AddressSpace,
     ) -> GlobalVar {
         let name = name.as_ref();
-        let var = unsafe {
-            LLVMAddGlobalInAddressSpace(self.as_raw(), ty.as_raw(), cstr!(name), address_space)
-        };
+        let var = unsafe { LLVMAddGlobalInAddressSpace(self.as_raw(), ty.as_raw(), cstr!(name), address_space) };
 
         trace!(
             "add global var `{}`: {:?} to {:?}: ValueRef({:?})",

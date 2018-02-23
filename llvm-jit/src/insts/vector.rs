@@ -89,7 +89,8 @@ impl<'a, V, E, I> InstructionBuilder for InsertElement<'a, V, E, I>
 where
     V: InstructionBuilder + fmt::Debug,
     E: InstructionBuilder + fmt::Debug,
-    I: InstructionBuilder + fmt::Debug,{
+    I: InstructionBuilder + fmt::Debug,
+{
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -108,12 +109,7 @@ where
 }
 
 /// The `insertelement` instruction inserts a scalar element into a vector at a specified index.
-pub fn insert_element<'a, V, E, I, N>(
-    vector: V,
-    element: E,
-    index: I,
-    name: N,
-) -> InsertElement<'a, V, E, I>
+pub fn insert_element<'a, V, E, I, N>(vector: V, element: E, index: I, name: N) -> InsertElement<'a, V, E, I>
 where
     N: Into<Cow<'a, str>>,
 {
@@ -148,12 +144,9 @@ impl<'a, V1, V2, M> ShuffleVector<'a, V1, V2, M> {
 
 impl<'a, V1, V2, M> InstructionBuilder for ShuffleVector<'a, V1, V2, M>
 where
-    V1: InstructionBuilder
-        + fmt::Debug,
-    V2: InstructionBuilder
-        + fmt::Debug,
-    M: InstructionBuilder
-        + fmt::Debug,
+    V1: InstructionBuilder + fmt::Debug,
+    V2: InstructionBuilder + fmt::Debug,
+    M: InstructionBuilder + fmt::Debug,
 {
     type Target = Instruction;
 
@@ -174,12 +167,7 @@ where
 
 /// The `shufflevector` instruction constructs a permutation of elements from two input vectors,
 /// returning a vector with the same element type as the input and length that is the same as the shuffle mask.
-pub fn shuffle_vector<'a, V1, V2, M, N>(
-    v1: V1,
-    v2: V2,
-    mask: M,
-    name: N,
-) -> ShuffleVector<'a, V1, V2, M>
+pub fn shuffle_vector<'a, V1, V2, M, N>(v1: V1, v2: V2, mask: M, name: N) -> ShuffleVector<'a, V1, V2, M>
 where
     N: Into<Cow<'a, str>>,
 {
@@ -210,13 +198,7 @@ impl IRBuilder {
     }
 
     /// The `insertelement` instruction inserts a scalar element into a vector at a specified index.
-    pub fn insert_element<'a, V, E, I, N>(
-        &self,
-        vector: V,
-        element: E,
-        index: I,
-        name: N,
-    ) -> Instruction
+    pub fn insert_element<'a, V, E, I, N>(&self, vector: V, element: E, index: I, name: N) -> Instruction
     where
         V: InstructionBuilder + fmt::Debug,
         E: InstructionBuilder + fmt::Debug,

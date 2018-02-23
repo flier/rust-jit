@@ -38,13 +38,11 @@ impl<'a> InstructionBuilder for Phi<'a> {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        let phi: PhiNode =
-            unsafe { LLVMBuildPhi(builder.as_raw(), self.ty.as_raw(), cstr!(self.name)) }.into();
+        let phi: PhiNode = unsafe { LLVMBuildPhi(builder.as_raw(), self.ty.as_raw(), cstr!(self.name)) }.into();
 
         let (mut values, mut blocks) = self.incomings.iter().fold(
             (Vec::new(), Vec::new()),
-            |(mut values, mut blocks),
-             &(value, block)| {
+            |(mut values, mut blocks), &(value, block)| {
                 values.push(value.as_raw());
                 blocks.push(block.as_raw());
                 (values, blocks)
@@ -70,11 +68,7 @@ pub struct PhiNode(Instruction);
 inherit_from!(PhiNode, Instruction, ValueRef, LLVMValueRef);
 
 impl PhiNode {
-    pub fn add_incoming<V: Into<ValueRef>, B: Into<BasicBlock>>(
-        &self,
-        value: V,
-        block: B,
-    ) -> &Self {
+    pub fn add_incoming<V: Into<ValueRef>, B: Into<BasicBlock>>(&self, value: V, block: B) -> &Self {
         self.add_incomings(&[(value.into(), block.into())])
     }
 
@@ -82,8 +76,7 @@ impl PhiNode {
     pub fn add_incomings(&self, incomings: &[(ValueRef, BasicBlock)]) -> &Self {
         let (mut values, mut blocks) = incomings.iter().fold(
             (Vec::new(), Vec::new()),
-            |(mut values, mut blocks),
-             &(value, block)| {
+            |(mut values, mut blocks), &(value, block)| {
                 values.push(value.as_raw());
                 blocks.push(block.as_raw());
                 (values, blocks)

@@ -30,9 +30,7 @@ impl Module {
 
     /// Add an operand to named metadata.
     pub fn add_named_operand<S: AsRef<str>, V: AsRef<ValueRef>>(&self, name: S, v: V) {
-        unsafe {
-            LLVMAddNamedMetadataOperand(self.as_raw(), cstr!(name.as_ref()), v.as_ref().as_raw())
-        }
+        unsafe { LLVMAddNamedMetadataOperand(self.as_raw(), cstr!(name.as_ref()), v.as_ref().as_raw()) }
     }
 }
 
@@ -66,24 +64,19 @@ impl Context {
     pub fn md_kind_id<T: AsRef<str>>(&self, name: T) -> MDKindId {
         let name = name.as_ref();
 
-        unsafe {
-            LLVMGetMDKindIDInContext(self.as_raw(), name.as_ptr() as *const i8, name.len() as u32)
-        }
+        unsafe { LLVMGetMDKindIDInContext(self.as_raw(), name.as_ptr() as *const i8, name.len() as u32) }
     }
 
     pub fn md_string<T: AsRef<str>>(&self, name: T) -> MDString {
         let name = name.as_ref();
 
-        unsafe {
-            LLVMMDStringInContext(self.as_raw(), name.as_ptr() as *const i8, name.len() as u32)
-        }.into()
+        unsafe { LLVMMDStringInContext(self.as_raw(), name.as_ptr() as *const i8, name.len() as u32) }.into()
     }
 
     pub fn md_node<I: Iterator<Item = ValueRef>>(&self, values: I) -> MDNode {
         let mut values = values.map(|v| v.as_raw()).collect::<Vec<LLVMValueRef>>();
 
-        unsafe { LLVMMDNodeInContext(self.as_raw(), values.as_mut_ptr(), values.len() as u32) }
-            .into()
+        unsafe { LLVMMDNodeInContext(self.as_raw(), values.as_mut_ptr(), values.len() as u32) }.into()
     }
 }
 

@@ -73,15 +73,9 @@ impl BasicBlock {
     /// Insert a basic block in a function before another basic block.
     ///
     /// The function to add to is determined by the function of the passed basic block.
-    pub fn insert_before_in_context<S: AsRef<str>>(
-        &self,
-        name: S,
-        context: &Context,
-    ) -> BasicBlock {
+    pub fn insert_before_in_context<S: AsRef<str>>(&self, name: S, context: &Context) -> BasicBlock {
         let name = name.as_ref();
-        let block = unsafe {
-            LLVMInsertBasicBlockInContext(context.as_raw(), self.as_raw(), cstr!(name))
-        }.into();
+        let block = unsafe { LLVMInsertBasicBlockInContext(context.as_raw(), self.as_raw(), cstr!(name)) }.into();
 
         trace!(
             "insert `{}` block before {:?} in {:?}: {:?}",

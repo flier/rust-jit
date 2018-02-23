@@ -375,9 +375,8 @@ impl StructType {
 
     /// Get the type of the element at a given index in the structure.
     pub fn element_type(self, index: usize) -> Option<TypeRef> {
-        (index < self.element_count()).and_option_from(|| {
-            unsafe { LLVMStructGetTypeAtIndex(self.as_raw(), index as u32) }.wrap()
-        })
+        (index < self.element_count())
+            .and_option_from(|| unsafe { LLVMStructGetTypeAtIndex(self.as_raw(), index as u32) }.wrap())
     }
 
     /// Determine whether a structure is packed.
@@ -398,12 +397,7 @@ pub trait ToStructType {
     /// Create an empty structure in a context having a specified name.
     fn empty_struct_t<S: AsRef<str>>(&self, name: S) -> StructType;
 
-    fn named_struct_t<S: AsRef<str>>(
-        &self,
-        name: S,
-        elements: &[TypeRef],
-        packed: bool,
-    ) -> StructType {
+    fn named_struct_t<S: AsRef<str>>(&self, name: S, elements: &[TypeRef], packed: bool) -> StructType {
         self.empty_struct_t(name).set_body(elements, packed)
     }
 }

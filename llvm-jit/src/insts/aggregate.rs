@@ -46,11 +46,7 @@ where
 }
 
 /// The `extractvalue` instruction extracts the value of a member field from an aggregate value.
-pub fn extract_value<'a, T, N: Into<Cow<'a, str>>>(
-    aggregate: T,
-    index: u32,
-    name: N,
-) -> ExtractValue<'a, T> {
+pub fn extract_value<'a, T, N: Into<Cow<'a, str>>>(aggregate: T, index: u32, name: N) -> ExtractValue<'a, T> {
     ExtractValue::new(aggregate, index, name.into())
 }
 
@@ -137,13 +133,7 @@ impl IRBuilder {
     }
 
     /// The `insertvalue` instruction inserts a value into a member field in an aggregate value.
-    pub fn insert_value<'a, T, E, N>(
-        &self,
-        aggregate: T,
-        element: E,
-        index: u32,
-        name: N,
-    ) -> Instruction
+    pub fn insert_value<'a, T, E, N>(&self, aggregate: T, element: E, index: u32, name: N) -> Instruction
     where
         T: InstructionBuilder + fmt::Debug,
         E: InstructionBuilder + fmt::Debug,

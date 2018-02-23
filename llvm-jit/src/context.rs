@@ -21,9 +21,7 @@ impl AsRaw for Context {
 
     fn as_raw(&self) -> Self::RawType {
         match self.0 {
-            State::Owned(context) |
-            State::Global(context) |
-            State::Borrowed(context) => context,
+            State::Owned(context) | State::Global(context) | State::Borrowed(context) => context,
         }
     }
 }

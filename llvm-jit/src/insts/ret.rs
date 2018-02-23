@@ -69,8 +69,7 @@ impl InstructionBuilder for AggregateRet {
             .map(|v| v.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        unsafe { LLVMBuildAggregateRet(builder.as_raw(), values.as_mut_ptr(), values.len() as u32) }
-            .into()
+        unsafe { LLVMBuildAggregateRet(builder.as_raw(), values.as_mut_ptr(), values.len() as u32) }.into()
     }
 }
 

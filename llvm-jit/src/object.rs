@@ -180,8 +180,7 @@ impl AsRaw for Symbol {
 
     fn as_raw(&self) -> Self::RawType {
         match *self {
-            Symbol::Owned(iter) |
-            Symbol::Borrowed(iter) => iter,
+            Symbol::Owned(iter) | Symbol::Borrowed(iter) => iter,
         }
     }
 }

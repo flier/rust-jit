@@ -13,8 +13,7 @@ use global::GlobalValue;
 use module::Module;
 use target::{TargetData, TargetMachine};
 use types::TypeRef;
-use utils::{unchecked_cstring, AsLLVMBool, AsMutPtr, AsRaw, AsResult, DisposableMessage, FromRaw,
-            IntoRaw};
+use utils::{unchecked_cstring, AsLLVMBool, AsMutPtr, AsRaw, AsResult, DisposableMessage, FromRaw, IntoRaw};
 
 /// Deallocate and destroy all `ManagedStatic` variables.
 pub fn shutdown() {
@@ -39,9 +38,7 @@ impl GenericValue {
     }
 
     pub fn from_int<T: Into<TypeRef>>(ty: T, n: i64) -> Self {
-        unsafe {
-            LLVMCreateGenericValueOfInt(ty.into().as_raw(), mem::transmute(n), true.as_bool())
-        }.into()
+        unsafe { LLVMCreateGenericValueOfInt(ty.into().as_raw(), mem::transmute(n), true.as_bool()) }.into()
     }
 
     pub fn from_ptr<T>(p: *const T) -> Self {
@@ -150,15 +147,7 @@ impl MCJITMemoryManager {
         free: LLVMMemoryManagerFinalizeMemoryCallback,
         destroy: LLVMMemoryManagerDestroyCallback,
     ) -> Option<Self> {
-        unsafe {
-            LLVMCreateSimpleMCJITMemoryManager(
-                data.as_mut_ptr(),
-                alloc_code,
-                alloc_data,
-                free,
-                destroy,
-            )
-        }.wrap()
+        unsafe { LLVMCreateSimpleMCJITMemoryManager(data.as_mut_ptr(), alloc_code, alloc_data, free, destroy) }.wrap()
     }
 
     /// Consumes the wrapper, returning the wrapped raw pointer.
@@ -680,8 +669,7 @@ mod tests {
         section_name: *const ::libc::c_char,
         is_read_only: LLVMBool,
     ) -> *mut u8 {
-        let section =
-            MemorySection::data(size as usize, alignment as usize, is_read_only.as_bool());
+        let section = MemorySection::data(size as usize, alignment as usize, is_read_only.as_bool());
         let p = section.base();
 
         trace!(
@@ -703,10 +691,7 @@ mod tests {
 
         p
     }
-    extern "C" fn mm_finalize(
-        opaque: *mut ::libc::c_void,
-        err_msg: *mut *mut ::libc::c_char,
-    ) -> LLVMBool {
+    extern "C" fn mm_finalize(opaque: *mut ::libc::c_void, err_msg: *mut *mut ::libc::c_char) -> LLVMBool {
         trace!("finalize memory @ {:?}", opaque);
 
         unsafe {

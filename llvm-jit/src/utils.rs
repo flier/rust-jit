@@ -68,18 +68,30 @@ pub trait AsResult: Sized {
     fn is_ok(self) -> bool;
 
     fn ok(self) -> Option<()> {
-        if self.is_ok() { Some(()) } else { None }
+        if self.is_ok() {
+            Some(())
+        } else {
+            None
+        }
     }
 
     fn ok_or<E>(self, err: E) -> Result<(), E> {
-        if self.is_ok() { Ok(()) } else { Err(err) }
+        if self.is_ok() {
+            Ok(())
+        } else {
+            Err(err)
+        }
     }
 
     fn ok_or_else<E, F>(self, err: F) -> Result<(), E>
     where
         F: FnOnce() -> E,
     {
-        if self.is_ok() { Ok(()) } else { Err(err()) }
+        if self.is_ok() {
+            Ok(())
+        } else {
+            Err(err())
+        }
     }
 }
 
@@ -95,14 +107,17 @@ pub trait AsLLVMBool {
 
 impl AsLLVMBool for bool {
     fn as_bool(self) -> LLVMBool {
-        if self { TRUE } else { FALSE }
+        if self {
+            TRUE
+        } else {
+            FALSE
+        }
     }
 }
 
 pub trait AsPtr<T> {
     fn as_ptr<P>(self) -> *const P;
 }
-
 
 impl<T> AsPtr<T> for *const T {
     fn as_ptr<P>(self) -> *const P {

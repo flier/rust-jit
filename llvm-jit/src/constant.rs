@@ -6,7 +6,7 @@ use llvm::prelude::*;
 
 use context::Context;
 use types::{FloatingPointType, IntegerType, StructType, TypeRef};
-use utils::{AsBool, AsLLVMBool, AsRaw, FromRaw, from_unchecked_cstr};
+use utils::{from_unchecked_cstr, AsBool, AsLLVMBool, AsRaw, FromRaw};
 use value::{AsValueRef, ValueRef};
 
 pub trait AsConstant: AsValueRef {
@@ -115,16 +115,13 @@ impl ConstantInts for IntegerType {
     }
 
     fn int_with_precision(&self, words: &[u64]) -> ConstantInt {
-        unsafe {
-            LLVMConstIntOfArbitraryPrecision(self.as_raw(), words.len() as u32, words.as_ptr())
-        }.into()
+        unsafe { LLVMConstIntOfArbitraryPrecision(self.as_raw(), words.len() as u32, words.as_ptr()) }.into()
     }
 
     fn int_of_string<S: AsRef<str>>(&self, s: S, radix: u8) -> ConstantInt {
         let s = s.as_ref();
 
-        unsafe { LLVMConstIntOfStringAndSize(self.as_raw(), cstr!(s), s.len() as u32, radix) }
-            .into()
+        unsafe { LLVMConstIntOfStringAndSize(self.as_raw(), cstr!(s), s.len() as u32, radix) }.into()
     }
 }
 
@@ -185,9 +182,9 @@ impl ConstantString {
         let mut len = 0;
 
         unsafe {
-            LLVMGetAsString(self.as_raw(), &mut len).as_ref().map(|p| {
-                from_unchecked_cstr(p as *const i8 as *const u8, len)
-            })
+            LLVMGetAsString(self.as_raw(), &mut len)
+                .as_ref()
+                .map(|p| from_unchecked_cstr(p as *const i8 as *const u8, len))
         }
     }
 }
@@ -218,9 +215,7 @@ impl ConstantStruct {
             .map(|v| v.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        let ty = unsafe {
-            LLVMConstStruct(values.as_mut_ptr(), values.len() as u32, packed.as_bool())
-        }.into();
+        let ty = unsafe { LLVMConstStruct(values.as_mut_ptr(), values.len() as u32, packed.as_bool()) }.into();
 
         trace!("create constant struct: {:?}", ty);
 
@@ -240,9 +235,7 @@ impl ToConstantStruct for StructType {
             .map(|v| v.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        let ty = unsafe {
-            LLVMConstNamedStruct(self.as_raw(), values.as_mut_ptr(), values.len() as u32)
-        }.into();
+        let ty = unsafe { LLVMConstNamedStruct(self.as_raw(), values.as_mut_ptr(), values.len() as u32) }.into();
 
         trace!("create constant struct: {:?}", ty);
 
@@ -277,8 +270,7 @@ impl ToConstantArray for TypeRef {
             .map(|v| v.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        let ty = unsafe { LLVMConstArray(self.as_raw(), values.as_mut_ptr(), values.len() as u32) }
-            .into();
+        let ty = unsafe { LLVMConstArray(self.as_raw(), values.as_mut_ptr(), values.len() as u32) }.into();
 
         trace!("create constant array: {:?}", ty);
 

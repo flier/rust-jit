@@ -271,8 +271,7 @@ impl<T: AsConstant> ConstantExpr for T {
             .map(|c| c.as_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        unsafe { LLVMConstInBoundsGEP(self.as_raw(), indices.as_mut_ptr(), indices.len() as u32) }
-            .into()
+        unsafe { LLVMConstInBoundsGEP(self.as_raw(), indices.as_mut_ptr(), indices.len() as u32) }.into()
     }
 
     fn trunc(&self, ty: TypeRef) -> Constant {
@@ -356,8 +355,7 @@ impl<T: AsConstant> ConstantExpr for T {
     }
 
     fn extract_value(&self, indices: &mut [u32]) -> Constant {
-        unsafe { LLVMConstExtractValue(self.as_raw(), indices.as_mut_ptr(), indices.len() as u32) }
-            .into()
+        unsafe { LLVMConstExtractValue(self.as_raw(), indices.as_mut_ptr(), indices.len() as u32) }.into()
     }
 
     fn insert_value(&self, element: Constant, indices: &mut [u32]) -> Constant {
@@ -387,13 +385,7 @@ impl ConstantVector {
 }
 
 impl TypeRef {
-    pub fn inline_asm(
-        &self,
-        asm: &str,
-        constraints: &str,
-        has_side_effects: bool,
-        is_align_stack: bool,
-    ) -> ValueRef {
+    pub fn inline_asm(&self, asm: &str, constraints: &str, has_side_effects: bool, is_align_stack: bool) -> ValueRef {
         unsafe {
             LLVMConstInlineAsm(
                 self.as_raw(),
@@ -424,23 +416,23 @@ mod tests {
         let f = f64_t.real(123.0);
 
         let bv = bool_t.vector_t(4).vector_of(types![
-                bool_t.int(1),
-                bool_t.int(0),
-                bool_t.int(1),
-                bool_t.int(0),
-            ]);
+            bool_t.int(1),
+            bool_t.int(0),
+            bool_t.int(1),
+            bool_t.int(0),
+        ]);
         let iv = i64_t.vector_t(4).vector_of(types![
-                i64_t.int(1),
-                i64_t.int(2),
-                i64_t.int(3),
-                i64_t.int(4),
-            ]);
+            i64_t.int(1),
+            i64_t.int(2),
+            i64_t.int(3),
+            i64_t.int(4),
+        ]);
         let fv = f64_t.vector_t(4).vector_of(types![
-                f64_t.real(1.0),
-                f64_t.real(2.0),
-                f64_t.real(3.0),
-                f64_t.real(4.0),
-            ]);
+            f64_t.real(1.0),
+            f64_t.real(2.0),
+            f64_t.real(3.0),
+            f64_t.real(4.0),
+        ]);
 
         // neg
         assert_eq!(i.neg().to_string(), "i64 -123");

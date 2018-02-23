@@ -144,7 +144,6 @@ where
     }
 }
 
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BranchInst(Instruction);
 
@@ -191,12 +190,7 @@ impl IRBuilder {
     }
 
     /// The conditional branch form of the `br` instruction takes a single `i1` value and two `label` values.
-    pub fn cond_br<T>(
-        &self,
-        cond: T,
-        then: Option<BasicBlock>,
-        or_else: Option<BasicBlock>,
-    ) -> BranchInst
+    pub fn cond_br<T>(&self, cond: T, then: Option<BasicBlock>, or_else: Option<BasicBlock>) -> BranchInst
     where
         T: InstructionBuilder + fmt::Debug,
     {

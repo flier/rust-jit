@@ -16,9 +16,7 @@ impl Module {
                 LLVMVerifierFailureAction::LLVMReturnStatusAction,
                 &mut msg,
             )
-        }.ok_or_else(|| {
-            format!("verify {:?} failed, {}", self, msg.into_string()).into()
-        })
+        }.ok_or_else(|| format!("verify {:?} failed, {}", self, msg.into_string()).into())
     }
 }
 

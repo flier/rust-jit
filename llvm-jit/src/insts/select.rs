@@ -58,10 +58,13 @@ where
 
 /// The `select` instruction is used to choose one value based on a condition, without IR-level branching.
 ///
-/// The `select` instruction requires an `i1` value or a vector of `i1` values indicating the condition, and two values of the same first class type.
+/// The `select` instruction requires an `i1` value or a vector of `i1` values indicating the condition,
+/// and two values of the same first class type.
 ///
-/// - If the condition is an i1 and it evaluates to 1, the instruction returns the first value argument; otherwise, it returns the second value argument.
-/// - If the condition is a vector of i1, then the value arguments must be vectors of the same size, and the selection is done element by element.
+/// - If the condition is an i1 and it evaluates to 1, the instruction returns the first value argument;
+/// otherwise, it returns the second value argument.
+/// - If the condition is a vector of i1, then the value arguments must be vectors of the same size,
+/// and the selection is done element by element.
 /// - If the condition is an i1 and the value arguments are vectors of the same size, then an entire vector is selected.
 pub fn select<'a, C, T, E, N>(cond: C, then: T, or_else: E, name: N) -> Select<'a, C, T, E>
 where
@@ -70,14 +73,17 @@ where
     Select::new(cond, then, or_else, name.into())
 }
 
-
 /// The `select` instruction is used to choose one value based on a condition, without IR-level branching.
 ///
-/// The `select` instruction requires an `i1` value or a vector of `i1` values indicating the condition, and two values of the same first class type.
+/// The `select` instruction requires an `i1` value or a vector of `i1` values indicating the condition,
+/// and two values of the same first class type.
 ///
-/// - If the condition is an i1 and it evaluates to 1, the instruction returns the first value argument; otherwise, it returns the second value argument.
-/// - If the condition is a vector of i1, then the value arguments must be vectors of the same size, and the selection is done element by element.
-/// - If the condition is an i1 and the value arguments are vectors of the same size, then an entire vector is selected.
+/// - If the condition is an i1 and it evaluates to 1, the instruction returns the first value argument;
+/// otherwise, it returns the second value argument.
+/// - If the condition is a vector of i1, then the value arguments must be vectors of the same size,
+/// and the selection is done element by element.
+/// - If the condition is an i1 and the value arguments are vectors of the same size,
+/// then an entire vector is selected.
 #[macro_export]
 macro_rules! select {
     ($cond:expr => $then:expr, _ => $or_else:expr; $name:expr) => (
@@ -91,11 +97,15 @@ macro_rules! select {
 impl IRBuilder {
     /// The `select` instruction is used to choose one value based on a condition, without IR-level branching.
     ///
-    /// The `select` instruction requires an `i1` value or a vector of `i1` values indicating the condition, and two values of the same first class type.
+    /// The `select` instruction requires an `i1` value or a vector of `i1` values indicating the condition,
+    /// and two values of the same first class type.
     ///
-    /// - If the condition is an i1 and it evaluates to 1, the instruction returns the first value argument; otherwise, it returns the second value argument.
-    /// - If the condition is a vector of i1, then the value arguments must be vectors of the same size, and the selection is done element by element.
-    /// - If the condition is an i1 and the value arguments are vectors of the same size, then an entire vector is selected.
+    /// - If the condition is an i1 and it evaluates to 1, the instruction returns the first value argument;
+    /// otherwise, it returns the second value argument.
+    /// - If the condition is a vector of i1, then the value arguments must be vectors of the same size,
+    /// and the selection is done element by element.
+    /// - If the condition is an i1 and the value arguments are vectors of the same size,
+    /// then an entire vector is selected.
     pub fn select<'a, C, T, E, N>(&self, cond: C, then: T, or_else: E, name: N) -> Instruction
     where
         C: InstructionBuilder + fmt::Debug,

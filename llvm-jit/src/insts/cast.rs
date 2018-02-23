@@ -196,7 +196,10 @@ mod tests {
 
     macro_rules! test_instruction {
         ($builder:ident, $name:ident !( $arg0_i64:ident, $arg1_i64:ident ), $display:expr) => (
-            assert_eq!( $name ( $arg0_i64, $arg1_i64, stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
+            assert_eq!(
+                $name ( $arg0_i64, $arg1_i64, stringify!($name) ).emit_to(& $builder).to_string().trim(),
+                $display
+            )
         );
     }
 
@@ -217,16 +220,7 @@ mod tests {
 
         let f_ty = FunctionType::new(
             c.void_t(),
-            types![
-                i64_t,
-                i64_t,
-                f64_t,
-                f64_t,
-                i32_t,
-                f32_t,
-                p_i64_t,
-                p_f64_t,
-            ],
+            types![i64_t, i64_t, f64_t, f64_t, i32_t, f32_t, p_i64_t, p_f64_t,],
             false,
         );
         let f = m.add_function("test", f_ty);

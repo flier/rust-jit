@@ -122,15 +122,9 @@ impl Function {
     }
 
     /// Append a basic block to the end of a function.
-    pub fn append_basic_block_in_context<S: AsRef<str>>(
-        &self,
-        name: S,
-        context: &Context,
-    ) -> BasicBlock {
+    pub fn append_basic_block_in_context<S: AsRef<str>>(&self, name: S, context: &Context) -> BasicBlock {
         let name = name.as_ref();
-        let block = unsafe {
-            LLVMAppendBasicBlockInContext(context.as_raw(), self.as_raw(), cstr!(name))
-        }.into();
+        let block = unsafe { LLVMAppendBasicBlockInContext(context.as_raw(), self.as_raw(), cstr!(name)) }.into();
 
         trace!(
             "{:?} create `{}` block in {:?}: {:?}",

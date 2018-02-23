@@ -55,13 +55,7 @@ pub struct AtomicRMW<P, V> {
 }
 
 impl<P, V> AtomicRMW<P, V> {
-    pub fn new(
-        op: LLVMAtomicRMWBinOp,
-        ptr: P,
-        value: V,
-        ordering: LLVMAtomicOrdering,
-        single_thread: bool,
-    ) -> Self {
+    pub fn new(op: LLVMAtomicRMWBinOp, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Self {
         AtomicRMW {
             op: op as u32,
             ptr,
@@ -322,12 +316,7 @@ macro_rules! atomic {
 
 impl IRBuilder {
     /// The `fence` instruction is used to introduce happens-before edges between operations.
-    pub fn fence<'a, N>(
-        &self,
-        ordering: LLVMAtomicOrdering,
-        single_thread: bool,
-        name: N,
-    ) -> Instruction
+    pub fn fence<'a, N>(&self, ordering: LLVMAtomicOrdering, single_thread: bool, name: N) -> Instruction
     where
         N: Into<Cow<'a, str>>,
     {
@@ -353,13 +342,7 @@ impl IRBuilder {
     /// The `atomicrmw` instruction is used to atomically modify memory.
     ///
     /// xchg: *ptr = val
-    pub fn atomic_xchg<P, V>(
-        &self,
-        ptr: P,
-        value: V,
-        ordering: LLVMAtomicOrdering,
-        single_thread: bool,
-    ) -> Instruction
+    pub fn atomic_xchg<P, V>(&self, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Instruction
     where
         P: InstructionBuilder + fmt::Debug,
         V: InstructionBuilder + fmt::Debug,
@@ -376,13 +359,7 @@ impl IRBuilder {
     /// The `atomicrmw` instruction is used to atomically modify memory.
     ///
     /// add: *ptr = *ptr + val
-    pub fn atomic_add<P, V>(
-        &self,
-        ptr: P,
-        value: V,
-        ordering: LLVMAtomicOrdering,
-        single_thread: bool,
-    ) -> Instruction
+    pub fn atomic_add<P, V>(&self, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Instruction
     where
         P: InstructionBuilder + fmt::Debug,
         V: InstructionBuilder + fmt::Debug,
@@ -399,13 +376,7 @@ impl IRBuilder {
     /// The `atomicrmw` instruction is used to atomically modify memory.
     ///
     /// sub: *ptr = *ptr - val
-    pub fn atomic_sub<P, V>(
-        &self,
-        ptr: P,
-        value: V,
-        ordering: LLVMAtomicOrdering,
-        single_thread: bool,
-    ) -> Instruction
+    pub fn atomic_sub<P, V>(&self, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Instruction
     where
         P: InstructionBuilder + fmt::Debug,
         V: InstructionBuilder + fmt::Debug,
@@ -422,13 +393,7 @@ impl IRBuilder {
     /// The `atomicrmw` instruction is used to atomically modify memory.
     ///
     /// and: *ptr = *ptr & val
-    pub fn atomic_and<P, V>(
-        &self,
-        ptr: P,
-        value: V,
-        ordering: LLVMAtomicOrdering,
-        single_thread: bool,
-    ) -> Instruction
+    pub fn atomic_and<P, V>(&self, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Instruction
     where
         P: InstructionBuilder + fmt::Debug,
         V: InstructionBuilder + fmt::Debug,
@@ -445,13 +410,7 @@ impl IRBuilder {
     /// The `atomicrmw` instruction is used to atomically modify memory.
     ///
     /// nand: *ptr = ~(*ptr & val)
-    pub fn atomic_nand<P, V>(
-        &self,
-        ptr: P,
-        value: V,
-        ordering: LLVMAtomicOrdering,
-        single_thread: bool,
-    ) -> Instruction
+    pub fn atomic_nand<P, V>(&self, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Instruction
     where
         P: InstructionBuilder + fmt::Debug,
         V: InstructionBuilder + fmt::Debug,
@@ -468,13 +427,7 @@ impl IRBuilder {
     /// The `atomicrmw` instruction is used to atomically modify memory.
     ///
     /// or: *ptr = *ptr | val
-    pub fn atomic_or<P, V>(
-        &self,
-        ptr: P,
-        value: V,
-        ordering: LLVMAtomicOrdering,
-        single_thread: bool,
-    ) -> Instruction
+    pub fn atomic_or<P, V>(&self, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Instruction
     where
         P: InstructionBuilder + fmt::Debug,
         V: InstructionBuilder + fmt::Debug,

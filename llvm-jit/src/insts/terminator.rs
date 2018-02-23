@@ -21,12 +21,7 @@ pub struct LandingPad<'a> {
 }
 
 impl<'a> LandingPad<'a> {
-    pub fn new(
-        result_ty: TypeRef,
-        personality_fn: Option<Function>,
-        name: Cow<'a, str>,
-        cleanup: bool,
-    ) -> Self {
+    pub fn new(result_ty: TypeRef, personality_fn: Option<Function>, name: Cow<'a, str>, cleanup: bool) -> Self {
         LandingPad {
             result_ty,
             personality_fn,
@@ -101,12 +96,7 @@ impl LandingPadInst {
 /// and corresponds to the code found in the catch portion of a try/catch sequence.
 /// It defines values supplied by the personality function upon re-entry to the function.
 /// The resultval has the type resultty.
-pub fn landing_pad<'a, T, F, N>(
-    result_ty: T,
-    personality_fn: Option<F>,
-    name: N,
-    cleanup: bool,
-) -> LandingPad<'a>
+pub fn landing_pad<'a, T, F, N>(result_ty: T, personality_fn: Option<F>, name: N, cleanup: bool) -> LandingPad<'a>
 where
     T: Into<TypeRef>,
     F: Into<Function>,
