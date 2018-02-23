@@ -13,8 +13,8 @@ use global::GlobalValue;
 use module::Module;
 use target::{TargetData, TargetMachine};
 use types::TypeRef;
-use utils::{AsLLVMBool, AsMutPtr, AsRaw, AsResult, DisposableMessage, FromRaw, IntoRaw,
-            unchecked_cstring};
+use utils::{unchecked_cstring, AsLLVMBool, AsMutPtr, AsRaw, AsResult, DisposableMessage, FromRaw,
+            IntoRaw};
 
 /// Deallocate and destroy all `ManagedStatic` variables.
 pub fn shutdown() {
@@ -356,9 +356,7 @@ impl ExecutionEngine {
         let mut err = DisposableMessage::new();
 
         unsafe { LLVMRemoveModule(self.0, module, &mut out, &mut err) }
-            .ok_or_else(|| {
-                format!("fail to remove {:?}, {}", module, err.into_string()).into()
-            })
+            .ok_or_else(|| format!("fail to remove {:?}, {}", module, err.into_string()).into())
             .map(|_| {
                 trace!("remove Module({:?}) from {:?}", module, self);
 
@@ -540,6 +538,8 @@ mod tests {
 
     #[test]
     fn run_function_without_args() {
+        Interpreter::link_in();
+
         let c = Context::new();
         let m = c.create_module("run_function_without_args");
 
@@ -688,7 +688,10 @@ mod tests {
             "allocated {} bytes (align to {}) {} data section `{}` #{} @ {:?}",
             size,
             alignment,
-            is_read_only.as_bool().as_some("readonly").unwrap_or("writable"),
+            is_read_only
+                .as_bool()
+                .as_some("readonly")
+                .unwrap_or("writable"),
             section_name.as_str(),
             section_id,
             p,

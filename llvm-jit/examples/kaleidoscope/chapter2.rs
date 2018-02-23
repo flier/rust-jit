@@ -1,8 +1,8 @@
 #[macro_use]
+extern crate error_chain;
+#[macro_use]
 extern crate log;
 extern crate pretty_env_logger;
-#[macro_use]
-extern crate error_chain;
 extern crate rustyline;
 
 mod lines;
@@ -50,7 +50,9 @@ mod lexer {
 
     impl<I: Iterator> Lexer<I> {
         pub fn new(iter: I) -> Self {
-            Lexer { iter: iter.backable() }
+            Lexer {
+                iter: iter.backable(),
+            }
         }
     }
 
@@ -433,11 +435,7 @@ mod parser {
 
         /// binoprhs
         ///   ::= ('+' primary)*
-        fn parse_bin_op_rhs(
-            &mut self,
-            expr_prec: i32,
-            mut lhs: Box<ast::Expr>,
-        ) -> Result<Box<ast::Expr>> {
+        fn parse_bin_op_rhs(&mut self, expr_prec: i32, mut lhs: Box<ast::Expr>) -> Result<Box<ast::Expr>> {
             // If this is a binop, find its precedence.
             loop {
                 let tok_prec = self.get_tok_precedence().unwrap_or(-1);
@@ -581,7 +579,7 @@ where
 //===----------------------------------------------------------------------===//
 
 fn main() {
-    pretty_env_logger::init().unwrap();
+    pretty_env_logger::init();
 
     let mut parser = parser::new(lines::Lines::new());
 

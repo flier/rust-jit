@@ -11,10 +11,10 @@
 // same time). This test had assertion errors until I got the locking right.
 //
 //===----------------------------------------------------------------------===//
-extern crate pretty_env_logger;
 extern crate crossbeam;
 #[macro_use]
 extern crate llvm_jit as jit;
+extern crate pretty_env_logger;
 
 use std::sync::{Arc, Barrier};
 
@@ -78,8 +78,7 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
     let recurse_bb = fib_f.append_basic_block_in_context("recurse", &context);
 
     // Create the "if (arg < 2) goto exitbb"
-    builder <<=
-        br!(
+    builder <<= br!(
             icmp!(SLT argx, two; "cond") => ret_bb,
             _ => recurse_bb
         );
@@ -109,7 +108,7 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
 }
 
 fn main() {
-    pretty_env_logger::init().unwrap();
+    pretty_env_logger::init();
 
     jit::target::NativeTarget::init().unwrap();
     jit::target::NativeAsmPrinter::init().unwrap();

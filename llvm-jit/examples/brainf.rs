@@ -30,18 +30,18 @@
 //
 //===----------------------------------------------------------------------===//
 #[macro_use]
-extern crate log;
-extern crate pretty_env_logger;
+extern crate bitflags;
+extern crate boolinator;
 #[macro_use]
 extern crate error_chain;
-#[macro_use]
-extern crate bitflags;
 extern crate getopts;
 extern crate hexplay;
-extern crate boolinator;
 #[macro_use]
 extern crate llvm_jit as jit;
 extern crate llvm_sys as llvm;
+#[macro_use]
+extern crate log;
+extern crate pretty_env_logger;
 
 use std::env;
 use std::fs::File;
@@ -160,11 +160,7 @@ impl<'a> BrainF<'a> {
         Ok(())
     }
 
-    fn gen_module(
-        mem_total: usize,
-        compile_flags: CompileFlags,
-        context: &'a Context,
-    ) -> (Module, State) {
+    fn gen_module(mem_total: usize, compile_flags: CompileFlags, context: &'a Context) -> (Module, State) {
         let module = context.create_module("BrainF");
 
         let void_t = context.void_t();
@@ -215,9 +211,7 @@ impl<'a> BrainF<'a> {
         let ptr_arrmax = compile_flags
             .contains(CompileFlags::FLAG_ARRAY_BOUNDS)
             .as_option()
-            .map(|_| {
-                gep!(ptr_arr, i32_t.int(mem_total as i64); "arrmax").emit_to(&builder)
-            });
+            .map(|_| gep!(ptr_arr, i32_t.int(mem_total as i64); "arrmax").emit_to(&builder));
 
         //%head.%d = getelementptr i8 *%arr, i32 %d
         let cur_head = gep!(ptr_arr, i32_t.int(mem_total as i64 / 2); HEAD_REG).emit_to(&builder);
@@ -251,10 +245,7 @@ impl<'a> BrainF<'a> {
                 let puts_func = module.get_or_insert_function("puts", i32_t, types![i8_t.ptr_t()]);
 
                 //brainf.aberror:
-                let aberror_bb = brainf_func.append_basic_block_in_context(
-                    format!("{}.aberror", LABEL),
-                    &context,
-                );
+                let aberror_bb = brainf_func.append_basic_block_in_context(format!("{}.aberror", LABEL), &context);
 
                 builder.position_at_end(aberror_bb);
 
@@ -352,10 +343,8 @@ impl<'a> BrainF<'a> {
                         let test_2 = or!(test_0, test_1; TEST_REG);
 
                         //br i1 %test.%d, label %main.%d, label %main.%d
-                        let next_bb = self.brainf_func.append_basic_block_in_context(
-                            LABEL,
-                            &self.context,
-                        );
+                        let next_bb = self.brainf_func
+                            .append_basic_block_in_context(LABEL, &self.context);
 
                         builder <<= br!(test_2 => self.aberror_bb.unwrap(), _ => next_bb);
 
@@ -375,24 +364,19 @@ impl<'a> BrainF<'a> {
                 }
                 Symbol::Loop => {
                     //br label %main.%d
-                    let test_bb = self.brainf_func.append_basic_block_in_context(
-                        LABEL,
-                        &self.context,
-                    );
+                    let test_bb = self.brainf_func
+                        .append_basic_block_in_context(LABEL, &self.context);
 
                     builder <<= br!(test_bb);
 
                     //main.%d:
                     let bb_0 = builder.insert_block().unwrap();
-                    let bb_1 = self.brainf_func.append_basic_block_in_context(
-                        LABEL,
-                        &self.context,
-                    );
+                    let bb_1 = self.brainf_func
+                        .append_basic_block_in_context(LABEL, &self.context);
                     builder.position_at_end(bb_1);
 
                     // Make part of PHI instruction now, wait until end of loop to finish
-                    let phi_0 = phi!(i8_t.ptr_t(), self.cur_head => bb_0; HEAD_REG)
-                        .emit_to(&builder);
+                    let phi_0 = phi!(i8_t.ptr_t(), self.cur_head => bb_0; HEAD_REG).emit_to(&builder);
 
                     self.cur_head = phi_0.into();
 
@@ -517,10 +501,8 @@ impl<'a> BrainF<'a> {
 
             //%head.%d = phi i8 *[%head.%d, %main.%d], [%head.%d, %main.%d]
             //Finish phi made at beginning of loop
-            phi.unwrap().add_incoming(
-                self.cur_head,
-                builder.insert_block().unwrap(),
-            );
+            phi.unwrap()
+                .add_incoming(self.cur_head, builder.insert_block().unwrap());
 
             let head_0 = phi;
 
@@ -531,10 +513,8 @@ impl<'a> BrainF<'a> {
             let test_0 = icmp!(EQ tape_0, i8_t.int(0); TEST_REG);
 
             //br i1 %test.%d, label %main.%d, label %main.%d
-            let bb_0 = self.brainf_func.append_basic_block_in_context(
-                LABEL,
-                &self.context,
-            );
+            let bb_0 = self.brainf_func
+                .append_basic_block_in_context(LABEL, &self.context);
 
             builder.position_at_end(test_bb.unwrap());
 
@@ -583,16 +563,14 @@ fn parse_cmdline(program: &str, args: &[String]) -> Result<Option<Matches>> {
 
         Ok(None)
     } else if matches.free.is_empty() {
-        bail!(
-            "Error: You must specify the filename of the program to be compiled.  Use --help to see the options."
-        );
+        bail!("Error: You must specify the filename of the program to be compiled.  Use --help to see the options.");
     } else {
         Ok(Some(matches))
     }
 }
 
 fn main() {
-    pretty_env_logger::init().unwrap();
+    pretty_env_logger::init();
 
     let args: Vec<String> = env::args().collect();
     let (program, args) = args.split_first().unwrap();
@@ -618,9 +596,8 @@ fn main() {
                 .unwrap();
         }
 
-        let tape_size = opts.opt_str("tape-size").map_or(DEFAULT_TAPE_SIZE, |s| {
-            s.parse().unwrap()
-        });
+        let tape_size = opts.opt_str("tape-size")
+            .map_or(DEFAULT_TAPE_SIZE, |s| s.parse().unwrap());
 
         //Gather the compile flags
         let compile_flags = if opts.opt_present("abc") {
@@ -653,18 +630,17 @@ fn main() {
             let _gv = ee.run_function(brainf_func, &[]);
         } else {
             //Get the output stream
-            let output_filename =
-                opts.opt_str("o").map_or_else(
-                    || {
-                        // Use default filename.
-                        Path::new(if input_filename == "-" {
-                            "a"
-                        } else {
-                            input_filename.as_str()
-                        }).with_extension("bc")
-                    },
-                    |filename| Path::new(filename.as_str()).to_owned(),
-                );
+            let output_filename = opts.opt_str("o").map_or_else(
+                || {
+                    // Use default filename.
+                    Path::new(if input_filename == "-" {
+                        "a"
+                    } else {
+                        input_filename.as_str()
+                    }).with_extension("bc")
+                },
+                |filename| Path::new(filename.as_str()).to_owned(),
+            );
 
             debug!("write output to file: {:?}", output_filename);
 

@@ -1,12 +1,12 @@
 #[macro_use]
-extern crate log;
-extern crate pretty_env_logger;
-#[macro_use]
 extern crate error_chain;
-extern crate rustyline;
 extern crate libc;
 #[macro_use]
 extern crate llvm_jit as jit;
+#[macro_use]
+extern crate log;
+extern crate pretty_env_logger;
+extern crate rustyline;
 
 mod lines;
 
@@ -76,7 +76,9 @@ mod lexer {
 
     impl<I: Iterator> Lexer<I> {
         pub fn new(iter: I) -> Self {
-            Lexer { iter: iter.backable() }
+            Lexer {
+                iter: iter.backable(),
+            }
         }
     }
 
@@ -555,11 +557,7 @@ mod parser {
 
         /// binoprhs
         ///   ::= ('+' primary)*
-        fn parse_bin_op_rhs(
-            &mut self,
-            expr_prec: i32,
-            mut lhs: Box<ast::Expr>,
-        ) -> Result<Box<ast::Expr>> {
+        fn parse_bin_op_rhs(&mut self, expr_prec: i32, mut lhs: Box<ast::Expr>) -> Result<Box<ast::Expr>> {
             // If this is a binop, find its precedence.
             loop {
                 let tok_prec = self.get_tok_precedence().unwrap_or(-1);
@@ -704,13 +702,11 @@ mod codegen {
                 // If not, check whether we can codegen the declaration from some existing prototype.
                 let proto = self.protos.borrow().get(name).cloned();
 
-                proto.map(
-                    |proto| {
-                        trace!("construct function base on prototype `{}`", name);
+                proto.map(|proto| {
+                    trace!("construct function base on prototype `{}`", name);
 
-                        proto.codegen(self).unwrap().into()
-                    }
-                )
+                    proto.codegen(self).unwrap().into()
+                })
             })
         }
     }
@@ -743,11 +739,10 @@ mod codegen {
     impl ast::Expr for ast::VariableExpr {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             // Look this variable up in the function.
-            gen.named_values.get(&self.name).map(|v| *v).ok_or_else(
-                || {
-                    ErrorKind::UnknownVariable(self.name.clone()).into()
-                },
-            )
+            gen.named_values
+                .get(&self.name)
+                .map(|v| *v)
+                .ok_or_else(|| ErrorKind::UnknownVariable(self.name.clone()).into())
         }
     }
 
@@ -758,18 +753,16 @@ mod codegen {
             let lhs = self.lhs.codegen(gen)?;
             let rhs = self.rhs.codegen(gen)?;
 
-            Ok(
-                match self.op {
-                    ast::BinOp::Add => fadd!(lhs, rhs; "addtmp").emit_to(&gen.builder),
-                    ast::BinOp::Sub => fsub!(lhs, rhs; "subtmp").emit_to(&gen.builder),
-                    ast::BinOp::Mul => fmul!(lhs, rhs; "multmp").emit_to(&gen.builder),
-                    ast::BinOp::LessThen => {
-                        let lhs = fcmp!(ULT lhs, rhs; "cmptmp");
-                        // Convert bool 0/1 to double 0.0 or 1.0
-                        uitofp!(lhs, f64_t; "booltmp").emit_to(&gen.builder)
-                    }
-                }.into(),
-            )
+            Ok(match self.op {
+                ast::BinOp::Add => fadd!(lhs, rhs; "addtmp").emit_to(&gen.builder),
+                ast::BinOp::Sub => fsub!(lhs, rhs; "subtmp").emit_to(&gen.builder),
+                ast::BinOp::Mul => fmul!(lhs, rhs; "multmp").emit_to(&gen.builder),
+                ast::BinOp::LessThen => {
+                    let lhs = fcmp!(ULT lhs, rhs; "cmptmp");
+                    // Convert bool 0/1 to double 0.0 or 1.0
+                    uitofp!(lhs, f64_t; "booltmp").emit_to(&gen.builder)
+                }
+            }.into())
         }
     }
 
@@ -838,8 +831,7 @@ mod codegen {
             // Emit merge block.
             gen.builder.position_at_end(merge_bb);
 
-            let pn = phi!(f64_t, then => then_bb, or_else => else_bb; "iftmp")
-                .emit_to(&gen.builder);
+            let pn = phi!(f64_t, then => then_bb, or_else => else_bb; "iftmp").emit_to(&gen.builder);
 
             Ok(pn.into())
         }
@@ -864,8 +856,7 @@ mod codegen {
             gen.builder.position_at_end(loop_bb);
 
             // Start the PHI node with an entry for Start.
-            let var = phi!(f64_t, start => preheader_bb; self.var_name.clone())
-                .emit_to(&gen.builder);
+            let var = phi!(f64_t, start => preheader_bb; self.var_name.clone()).emit_to(&gen.builder);
 
             // Within the loop, the variable is defined equal to the PHI node.
             // If it shadows an existing variable, we have to restore it, so save it now.
@@ -935,10 +926,9 @@ mod codegen {
 
     impl ast::Expr for ast::Function {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
-            gen.protos.borrow_mut().insert(
-                self.proto.name.clone(),
-                self.proto.clone(),
-            );
+            gen.protos
+                .borrow_mut()
+                .insert(self.proto.name.clone(), self.proto.clone());
 
             let func = if let Some(func) = gen.get_function(&self.proto.name) {
                 func
@@ -999,11 +989,7 @@ impl<I> parser::Parser<I>
 where
     I: Iterator<Item = char>,
 {
-    fn handle_definition(
-        &mut self,
-        mut gen: CodeGenerator,
-        engine: &mut KaleidoscopeJIT,
-    ) -> Result<ValueRef> {
+    fn handle_definition(&mut self, mut gen: CodeGenerator, engine: &mut KaleidoscopeJIT) -> Result<ValueRef> {
         self.parse_definition().and_then(move |func| {
             println!("parsed a function difinition: {:?}", func);
 
@@ -1017,11 +1003,7 @@ where
         })
     }
 
-    fn handle_extern(
-        &mut self,
-        mut gen: CodeGenerator,
-        _engine: &mut KaleidoscopeJIT,
-    ) -> Result<ValueRef> {
+    fn handle_extern(&mut self, mut gen: CodeGenerator, _engine: &mut KaleidoscopeJIT) -> Result<ValueRef> {
         self.parse_extern().and_then(|proto| {
             println!("parsed a extern prototype: {:?}", proto);
 
@@ -1073,8 +1055,7 @@ where
             Token::Def => Ok(Parsed::Code(self.handle_definition(gen, engine)?)),
             Token::Extern => Ok(Parsed::Code(self.handle_extern(gen, engine)?)),
             Token::Eof => Ok(Parsed::ToEnd),
-            token @ Token::Character(';') |
-            token @ Token::Comment(_) => Ok(Parsed::Skipped(token)),
+            token @ Token::Character(';') | token @ Token::Comment(_) => Ok(Parsed::Skipped(token)),
             _ => Ok(Parsed::Code(self.handle_top_level_expression(gen, engine)?)),
         }
     }
@@ -1152,10 +1133,7 @@ impl KaleidoscopeJIT {
 
 pub type ExternFn = extern "C" fn(f64) -> f64;
 
-extern "C" fn symbol_resolver_callback(
-    symbol: *const libc::c_char,
-    ctx: *mut libc::c_void,
-) -> jit::TargetAddress {
+extern "C" fn symbol_resolver_callback(symbol: *const libc::c_char, ctx: *mut libc::c_void) -> jit::TargetAddress {
     let jit: &KaleidoscopeJIT = unsafe { &*(ctx as *const KaleidoscopeJIT) };
     let symbol = unsafe { CStr::from_ptr(symbol) }.to_string_lossy();
 
@@ -1191,7 +1169,7 @@ extern "C" fn printd(x: f64) -> f64 {
 //===----------------------------------------------------------------------===//
 
 fn main() {
-    pretty_env_logger::init().unwrap();
+    pretty_env_logger::init();
 
     NativeTarget::init().unwrap();
     NativeAsmParser::init().unwrap();

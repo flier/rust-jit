@@ -9,36 +9,50 @@ use errors::Result;
 use utils::{AsLLVMBool, AsRaw, AsResult, DisposableMessage};
 
 #[derive(Debug)]
-pub struct MemoryBuffer(LLVMMemoryBufferRef);
+pub struct MemoryBuffer<'a>(LLVMMemoryBufferRef, Option<&'a [u8]>);
 
-inherit_from!(MemoryBuffer, LLVMMemoryBufferRef);
-
-impl Drop for MemoryBuffer {
+impl<'a> Drop for MemoryBuffer<'a> {
     fn drop(&mut self) {
         unsafe { LLVMDisposeMemoryBuffer(self.0) }
     }
 }
 
-impl Clone for MemoryBuffer {
-    fn clone(&self) -> Self {
+impl<'a> Clone for MemoryBuffer<'a> {
+    fn clone(&self) -> MemoryBuffer<'a> {
         MemoryBuffer::from_bytes(self.as_bytes(), "clone")
     }
 }
 
-impl MemoryBuffer {
+impl<'a> From<LLVMMemoryBufferRef> for MemoryBuffer<'a> {
+    fn from(buf: LLVMMemoryBufferRef) -> Self {
+        MemoryBuffer(buf, None)
+    }
+}
+
+impl<'a> AsRaw for MemoryBuffer<'a> {
+    type RawType = LLVMMemoryBufferRef;
+
+    fn as_raw(&self) -> Self::RawType {
+        self.0
+    }
+}
+
+impl<'a> MemoryBuffer<'a> {
     /// Open the specified file as a MemoryBuffer.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path = path.as_ref();
         let mut buf = ptr::null_mut();
         let mut msg = DisposableMessage::new();
 
+        trace!("MemoryBuffer from file: {}", path.to_string_lossy());
+
         unsafe { LLVMCreateMemoryBufferWithContentsOfFile(cpath!(path), &mut buf, &mut msg) }
             .ok_or_else(|| {
                 format!(
-                "fail to create memory buffer from file {:?}, {}",
-                path,
-                msg.into_string(),
-            ).into()
+                    "fail to create memory buffer from file {:?}, {}",
+                    path,
+                    msg.into_string(),
+                ).into()
             })
             .map(|_| buf.into())
     }
@@ -48,40 +62,65 @@ impl MemoryBuffer {
         let mut buf = ptr::null_mut();
         let mut msg = DisposableMessage::new();
 
+        trace!("MemoryBuffer from STDIN");
+
         unsafe { LLVMCreateMemoryBufferWithSTDIN(&mut buf, &mut msg) }
             .ok_or_else(|| {
                 format!(
-                "fail to create memory buffer from STDIN, {}",
-                msg.into_string(),
-            ).into()
+                    "fail to create memory buffer from STDIN, {}",
+                    msg.into_string(),
+                ).into()
             })
             .map(|_| buf.into())
     }
 
     /// Open the specified memory range as a MemoryBuffer.
-    pub fn from_bytes(data: &[u8], name: &str) -> Self {
-        unsafe {
-            LLVMCreateMemoryBufferWithMemoryRange(
-                data.as_ptr() as *const i8,
-                data.len(),
-                cstr!(name),
-                false.as_bool(),
-            )
-        }.into()
+    pub fn from_str(s: &'a str, name: &str) -> MemoryBuffer<'a> {
+        MemoryBuffer::from_bytes(s.as_bytes(), name)
+    }
+
+    /// Open the specified memory range as a MemoryBuffer.
+    pub fn copy_from_str(s: &str, name: &str) -> MemoryBuffer<'a> {
+        MemoryBuffer::copy_from_bytes(s.as_bytes(), name)
+    }
+
+    /// Open the specified memory range as a MemoryBuffer.
+    pub fn from_bytes(data: &'a [u8], name: &str) -> MemoryBuffer<'a> {
+        trace!(
+            "MemoryBuffer `{}` from bytes @ 0x{:p} with {} bytes:\n{}",
+            name,
+            data.as_ptr(),
+            data.len(),
+            hexdump!(data)
+        );
+
+        MemoryBuffer(
+            unsafe {
+                LLVMCreateMemoryBufferWithMemoryRange(
+                    data.as_ptr() as *const i8,
+                    data.len(),
+                    cstr!(name),
+                    true.as_bool(),
+                )
+            },
+            Some(data),
+        )
     }
 
     /// Open the specified memory range as a MemoryBuffer, copying the contents and taking ownership of it.
     pub fn copy_from_bytes(data: &[u8], name: &str) -> Self {
-        unsafe {
-            LLVMCreateMemoryBufferWithMemoryRangeCopy(
-                data.as_ptr() as *const i8,
-                data.len(),
-                cstr!(name),
-            )
-        }.into()
+        trace!(
+            "MemoryBuffer `{}` copied from bytes @ 0x{:p} with {} bytes:\n{}",
+            name,
+            data.as_ptr(),
+            data.len(),
+            hexdump!(data)
+        );
+
+        unsafe { LLVMCreateMemoryBufferWithMemoryRangeCopy(data.as_ptr() as *const i8, data.len(), cstr!(name)) }.into()
     }
 
-    pub fn as_bytes(&self) -> &[u8] {
+    pub fn as_bytes(&self) -> &'a [u8] {
         unsafe { slice::from_raw_parts(self.as_ptr(), self.len()) }
     }
 
@@ -112,7 +151,7 @@ mod tests {
     #[test]
     fn from_bytes() {
         let data = b"test";
-        let buf = MemoryBuffer::from_bytes(data, "buf");
+        let buf = MemoryBuffer::from_bytes(data, "from_bytes");
 
         assert_eq!(buf.as_bytes(), data);
         assert_eq!(buf.as_ptr(), data.as_ptr());

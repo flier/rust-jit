@@ -22,9 +22,7 @@ impl GlobalContext {
         let mut msg = DisposableMessage::new();
 
         unsafe { LLVMParseBitcode(buf.as_raw(), &mut module, &mut msg) }
-            .ok_or_else(|| {
-                format!("fail to parse bitcode, {}", msg.into_string()).into()
-            })
+            .ok_or_else(|| format!("fail to parse bitcode, {}", msg.into_string()).into())
             .map(|_| module.into())
     }
 
@@ -34,9 +32,7 @@ impl GlobalContext {
         let mut msg = DisposableMessage::new();
 
         unsafe { LLVMGetBitcodeModule(buf.into_raw(), &mut module, &mut msg) }
-            .ok_or_else(|| {
-                format!("fail to get bitcode module, {}", msg.into_string()).into()
-            })
+            .ok_or_else(|| format!("fail to get bitcode module, {}", msg.into_string()).into())
             .map(|_| module.into())
     }
 }
@@ -48,9 +44,7 @@ impl Context {
         let mut msg = DisposableMessage::new();
 
         unsafe { LLVMParseIRInContext(self.as_raw(), buf.into_raw(), &mut module, &mut msg) }
-            .ok_or_else(|| {
-                format!("fail to parse IR code, {}", msg.into_string()).into()
-            })
+            .ok_or_else(|| format!("fail to parse IR code, {}", msg.into_string()).into())
             .map(|_| module.into())
     }
 
@@ -60,9 +54,7 @@ impl Context {
         let mut msg = DisposableMessage::new();
 
         unsafe { LLVMParseBitcodeInContext(self.as_raw(), buf.as_raw(), &mut module, &mut msg) }
-            .ok_or_else(|| {
-                format!("fail to parse bitcode, {}", msg.into_string()).into()
-            })
+            .ok_or_else(|| format!("fail to parse bitcode, {}", msg.into_string()).into())
             .map(|_| module.into())
     }
 
@@ -73,9 +65,7 @@ impl Context {
 
         unsafe {
             LLVMGetBitcodeModuleInContext(self.as_raw(), buf.into_raw(), &mut module, &mut msg)
-                .ok_or_else(|| {
-                    format!("fail to get bitcode module, {}", msg.into_string()).into()
-                })
+                .ok_or_else(|| format!("fail to get bitcode module, {}", msg.into_string()).into())
                 .map(|_| module.into())
         }
     }
@@ -86,9 +76,8 @@ impl Module {
     pub fn write_bitcode<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let path = path.as_ref();
 
-        (unsafe { LLVMWriteBitcodeToFile(self.as_raw(), cpath!(path)) } == 0).ok_or_else(|| {
-            format!("fail to write bitcode to file {:?}", path).into()
-        })
+        (unsafe { LLVMWriteBitcodeToFile(self.as_raw(), cpath!(path)) } == 0)
+            .ok_or_else(|| format!("fail to write bitcode to file {:?}", path).into())
     }
 
     /// Writes a module to a new memory buffer.
@@ -101,6 +90,7 @@ impl Module {
 mod tests {
     use std::io::Read;
 
+    use pretty_env_logger;
     use tempfile::NamedTempFile;
 
     use super::*;
@@ -110,17 +100,11 @@ mod tests {
 
     #[test]
     fn ir_code() {
-        let c = Context::new();
-        let buf = MemoryBuffer::from_bytes(
-            br#"
-source_filename = "test"
+        let _ = pretty_env_logger::try_init();
 
-define void @nop() {
-entry:
-  ret void
-}"#,
-            "test",
-        );
+        let c = Context::new();
+        let code = b"define void @nop() { ret void }\0";
+        let buf = MemoryBuffer::from_bytes(&code[..code.len() - 1], "ir_code");
         let m = c.parse_ir(buf).unwrap();
 
         assert!(m.get_function("nop").is_some());
@@ -184,7 +168,7 @@ entry:
                 .is_some()
         );
 
-        let err = GlobalContext::get_bitcode_module(MemoryBuffer::from_bytes(b"", "test")).err();
+        let err = GlobalContext::get_bitcode_module(MemoryBuffer::from_bytes(b"", "bitcode")).err();
 
         match err {
             Some(Error(ErrorKind::Msg(msg), _)) => {

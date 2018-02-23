@@ -1,14 +1,14 @@
 #[macro_use]
-extern crate log;
-extern crate pretty_env_logger;
-#[macro_use]
 extern crate error_chain;
 extern crate getopts;
-extern crate rustyline;
 extern crate libc;
 #[macro_use]
 extern crate llvm_jit as jit;
 extern crate llvm_sys as llvm;
+#[macro_use]
+extern crate log;
+extern crate pretty_env_logger;
+extern crate rustyline;
 
 mod lines;
 
@@ -91,7 +91,9 @@ mod lexer {
 
     impl<I: Iterator> Lexer<I> {
         pub fn new(iter: I) -> Self {
-            Lexer { iter: iter.backable() }
+            Lexer {
+                iter: iter.backable(),
+            }
         }
     }
 
@@ -478,12 +480,10 @@ mod parser {
                 ast::BinOp::Add => Some(20),
                 ast::BinOp::Sub => Some(20),
                 ast::BinOp::Mul => Some(40),
-                ast::BinOp::UserDefined(op) => {
-                    self.binop_precedences
-                        .borrow()
-                        .get(format!("binary{}", op).as_str())
-                        .map(|&v| v as i32)
-                }
+                ast::BinOp::UserDefined(op) => self.binop_precedences
+                    .borrow()
+                    .get(format!("binary{}", op).as_str())
+                    .map(|&v| v as i32),
             })
         }
 
@@ -691,7 +691,6 @@ mod parser {
                 Token::Var => {
                     self.parse_var_expr()
                 } | "Expected `identifier`, `number` or `(`")
-
         }
 
         /// unary
@@ -716,11 +715,7 @@ mod parser {
 
         /// binoprhs
         ///   ::= ('+' primary)*
-        fn parse_bin_op_rhs(
-            &mut self,
-            expr_prec: i32,
-            mut lhs: Box<ast::Expr>,
-        ) -> Result<Box<ast::Expr>> {
+        fn parse_bin_op_rhs(&mut self, expr_prec: i32, mut lhs: Box<ast::Expr>) -> Result<Box<ast::Expr>> {
             // If this is a binop, find its precedence.
             loop {
                 let tok_prec = self.get_tok_precedence().unwrap_or(-1);
@@ -925,13 +920,11 @@ mod codegen {
                 // If not, check whether we can codegen the declaration from some existing prototype.
                 let proto = self.protos.get(name).cloned();
 
-                proto.map(
-                    |proto| {
-                        trace!("construct function base on prototype `{}`", name);
+                proto.map(|proto| {
+                    trace!("construct function base on prototype `{}`", name);
 
-                        proto.codegen(self).unwrap().into()
-                    }
-                )
+                    proto.codegen(self).unwrap().into()
+                })
             })
         }
 
@@ -1147,8 +1140,7 @@ mod codegen {
             // Emit merge block.
             gen.builder.position_at_end(merge_bb);
 
-            let pn = phi!(f64_t, then => then_bb, or_else => else_bb; "iftmp")
-                .emit_to(&gen.builder);
+            let pn = phi!(f64_t, then => then_bb, or_else => else_bb; "iftmp").emit_to(&gen.builder);
 
             Ok(pn.into())
         }
@@ -1187,10 +1179,8 @@ mod codegen {
 
             // Within the loop, the variable is defined equal to the PHI node.
             // If it shadows an existing variable, we have to restore it, so save it now.
-            let old_value = gen.named_values.insert(
-                self.var_name.clone(),
-                alloca.into(),
-            );
+            let old_value = gen.named_values
+                .insert(self.var_name.clone(), alloca.into());
 
             // Emit the body of the loop.
             // This, like any other expr, can change the current BB.
@@ -1317,10 +1307,8 @@ mod codegen {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             trace!("gen code for {:?}", self);
 
-            gen.protos.insert(
-                self.proto.name.clone(),
-                self.proto.clone(),
-            );
+            gen.protos
+                .insert(self.proto.name.clone(), self.proto.clone());
 
             let func = if let Some(func) = gen.get_function(&self.proto.name) {
                 func
@@ -1329,10 +1317,9 @@ mod codegen {
             };
 
             if let Some(precedence) = self.proto.precedence {
-                gen.binop_precedences.borrow_mut().insert(
-                    self.proto.name.clone(),
-                    precedence,
-                );
+                gen.binop_precedences
+                    .borrow_mut()
+                    .insert(self.proto.name.clone(), precedence);
             }
 
             // Create a new basic block to start insertion into.
@@ -1439,8 +1426,7 @@ where
             Token::Def => Ok(Parsed::Code(self.handle_definition(gen)?)),
             Token::Extern => Ok(Parsed::Code(self.handle_extern(gen)?)),
             Token::Eof => Ok(Parsed::ToEnd),
-            token @ Token::Character(';') |
-            token @ Token::Comment(_) => Ok(Parsed::Skipped(token)),
+            token @ Token::Character(';') | token @ Token::Comment(_) => Ok(Parsed::Skipped(token)),
             _ => Ok(Parsed::Code(self.handle_top_level_expression(gen)?)),
         }
     }
@@ -1489,7 +1475,7 @@ fn parse_cmdline(program: &str, args: &[String]) -> Result<Option<Matches>> {
 }
 
 fn main() {
-    pretty_env_logger::init().unwrap();
+    pretty_env_logger::init();
 
     AllTargets::init();
     AllTargetInfos::init();
@@ -1529,9 +1515,8 @@ fn main() {
         }
 
         // Initialize the target registry etc.
-        let target_triple = opts.opt_str("t").unwrap_or_else(
-            || Target::default_triple(),
-        );
+        let target_triple = opts.opt_str("t")
+            .unwrap_or_else(|| Target::default_triple());
 
         gen.module.set_target_triple(&target_triple);
 

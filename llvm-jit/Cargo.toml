@@ -7,7 +7,7 @@ authors = ["Flier Lu <flier.lu@gmail.com>"]
 doctest = false
 
 [dependencies]
-log = "0.3"
+log = "0.4"
 error-chain = "0.11"
 lazy_static = "1.0"
 bitflags = "1.0"
@@ -19,7 +19,7 @@ llvm-sys = "50"
 clippy = {version = "*", optional = true}
 
 [dev-dependencies]
-pretty_env_logger = "0.1"
+pretty_env_logger = "0.2"
 getopts = "0.2"
 tempfile = "2"
 mmap = "0.1"

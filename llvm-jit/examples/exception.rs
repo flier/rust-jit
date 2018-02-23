@@ -43,13 +43,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#[macro_use]
-extern crate log;
-extern crate pretty_env_logger;
+extern crate libc;
 #[macro_use]
 extern crate llvm_jit as jit;
 extern crate llvm_sys as llvm;
-extern crate libc;
+#[macro_use]
+extern crate log;
+extern crate pretty_env_logger;
 
 use std::env;
 use std::ffi::CStr;
@@ -92,8 +92,8 @@ impl OurBaseException_t {
         let dummy_exception: OurBaseException_t = unsafe { mem::zeroed() };
 
         unsafe {
-            mem::transmute::<_, isize>(&dummy_exception.unwind_exception) -
-                mem::transmute::<_, isize>(&dummy_exception)
+            mem::transmute::<_, isize>(&dummy_exception.unwind_exception)
+                - mem::transmute::<_, isize>(&dummy_exception)
         }
     }
 }
@@ -117,8 +117,8 @@ pub enum UnwindReasonCode {
 pub type UnwindExceptionClass = u64;
 pub type UnwindWord = libc::uintptr_t;
 pub type UnwindPtr = libc::uintptr_t;
-pub type UnwindTraceFn = extern "C" fn(ctx: *mut UnwindContext, arg: *mut libc::c_void)
-                                       -> UnwindReasonCode;
+pub type UnwindTraceFn =
+    extern "C" fn(ctx: *mut UnwindContext, arg: *mut libc::c_void) -> UnwindReasonCode;
 #[cfg(target_arch = "x86")]
 pub const UNWINDER_PRIVATE_DATA_SIZE: usize = 5;
 
@@ -145,8 +145,8 @@ pub struct _Unwind_Exception {
 
 pub enum UnwindContext {}
 
-pub type UnwindExceptionCleanupFn = extern "C" fn(unwind_code: UnwindReasonCode,
-                                                  exception: *mut _Unwind_Exception);
+pub type UnwindExceptionCleanupFn =
+    extern "C" fn(unwind_code: UnwindReasonCode, exception: *mut _Unwind_Exception);
 extern "C" {
     pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
     pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
@@ -207,9 +207,9 @@ extern "C" fn delete_our_exception(exc: *mut OurUnwindException) {
 
     unsafe {
         if !exc.is_null() && (*exc).exception_class == OUR_BASE_EXCEPTION_CLASS {
-            libc::free((exc as *mut libc::c_char).offset(
-                OurBaseException_t::base_from_unwind_offset(),
-            ) as *mut libc::c_void)
+            libc::free((exc as *mut libc::c_char)
+                .offset(OurBaseException_t::base_from_unwind_offset())
+                as *mut libc::c_void)
         }
     }
 }
@@ -575,8 +575,8 @@ impl Example {
 
         func.set_personality_function(personality);
 
-        let caught_result = landing_pad!(self.our_caught_result_type.unwrap(); "landingPad")
-            .emit_to(&builder);
+        let caught_result =
+            landing_pad!(self.our_caught_result_type.unwrap(); "landingPad").emit_to(&builder);
         caught_result.set_cleanup(true);
 
         for i in exception_types_to_catch {
@@ -638,18 +638,17 @@ impl Example {
             unwind_exception,
             i64_t.int(OurBaseException_t::base_from_unwind_offset() as i64)
         ).emit_to(&builder);
-        let type_info_thrown =
-            ptr_cast!(p, self.our_exception_type.unwrap().ptr_t(); "type_info_thrown")
-                .emit_to(&builder);
+        let type_info_thrown = ptr_cast!(p, self.our_exception_type.unwrap().ptr_t(); "type_info_thrown")
+            .emit_to(&builder);
 
         // Retrieve thrown exception type info type
         //
         // Note: Index is not relative to pointer but instead to structure
         //       unlike a true getelementptr (GEP) instruction
-        let type_info_thrown = struct_gep!(type_info_thrown, 0; "type_info_thrown")
-            .emit_to(&builder);
-        let type_info_thrown_type = struct_gep!(type_info_thrown, 0; "type_info_thrown_type")
-            .emit_to(&builder);
+        let type_info_thrown =
+            struct_gep!(type_info_thrown, 0; "type_info_thrown").emit_to(&builder);
+        let type_info_thrown_type =
+            struct_gep!(type_info_thrown, 0; "type_info_thrown_type").emit_to(&builder);
         let load = load!(type_info_thrown_type).emit_to(&builder);
 
         self.generate_integer_print(
@@ -706,8 +705,7 @@ impl Example {
             &builder,
             format!(
                 "Gen: Executing catch block {} in {}",
-                block_name,
-                function_id
+                block_name, function_id
             ),
             USE_GLOBAL_STR_CONSTS,
         );
@@ -775,8 +773,7 @@ impl Example {
             &builder,
             format!(
                 "Gen: Executing finally block {} in {}",
-                block_name,
-                function_id
+                block_name, function_id
             ),
             USE_GLOBAL_STR_CONSTS,
         );
@@ -1033,55 +1030,39 @@ impl Example {
 
                 self.module
                     .add_global_var(&type_info_name, self.our_type_info_type.unwrap())
-                    .set_initializer(self.our_type_info_type.unwrap().struct_of(
-                        values![i32_t.int(i as i64)],
-                    ));
+                    .set_initializer(
+                        self.our_type_info_type
+                            .unwrap()
+                            .struct_of(values![i32_t.int(i as i64)]),
+                    );
 
                 type_info_name
             })
             .collect();
 
         // print32_int
-        self.module.get_or_insert_function(
-            "print32_int",
-            void_t,
-            types![i32_t, i8_t.ptr_t()],
-        );
+        self.module
+            .get_or_insert_function("print32_int", void_t, types![i32_t, i8_t.ptr_t()]);
 
         // print64_int
-        self.module.get_or_insert_function(
-            "print64_int",
-            void_t,
-            types![i64_t, i8_t.ptr_t()],
-        );
+        self.module
+            .get_or_insert_function("print64_int", void_t, types![i64_t, i8_t.ptr_t()]);
 
         // print_str
-        self.module.get_or_insert_function(
-            "print_str",
-            void_t,
-            types![i8_t.ptr_t()],
-        );
+        self.module
+            .get_or_insert_function("print_str", void_t, types![i8_t.ptr_t()]);
 
         // native_throw_funct_name
-        self.module.get_or_insert_function(
-            native_throw_funct_name,
-            void_t,
-            &[i32_t],
-        );
+        self.module
+            .get_or_insert_function(native_throw_funct_name, void_t, &[i32_t]);
 
         // delete_our_exception
-        self.module.get_or_insert_function(
-            "delete_our_exception",
-            void_t,
-            types![i8_t.ptr_t()],
-        );
+        self.module
+            .get_or_insert_function("delete_our_exception", void_t, types![i8_t.ptr_t()]);
 
         // create_our_exception
-        self.module.get_or_insert_function(
-            "create_our_exception",
-            i8_t.ptr_t(),
-            types![i32_t],
-        );
+        self.module
+            .get_or_insert_function("create_our_exception", i8_t.ptr_t(), types![i32_t]);
 
         let no_return = self.context.create_enum_attribute(*jit::attrs::NoReturn, 0);
 
@@ -1155,7 +1136,7 @@ fn run_exception_throw(ee: &ExecutionEngine, func: &Function, type_to_throw: i32
 }
 
 fn main() {
-    pretty_env_logger::init().unwrap();
+    pretty_env_logger::init();
 
     jit::target::NativeTarget::init().unwrap();
     jit::target::NativeAsmPrinter::init().unwrap();

@@ -1,21 +1,20 @@
-#![recursion_limit="128"]
+#![recursion_limit = "128"]
+#![cfg_attr(feature = "clippy", feature(plugin))]
+#![cfg_attr(feature = "clippy", plugin(clippy(conf_file = ".clippy.toml")))]
+#![cfg_attr(feature = "clippy", allow(module_inception, block_in_if_condition_stmt))]
 
-#![cfg_attr(feature="clippy", feature(plugin))]
-#![cfg_attr(feature="clippy", plugin(clippy(conf_file=".clippy.toml")))]
-#![cfg_attr(feature="clippy", allow(module_inception, block_in_if_condition_stmt))]
-
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate error_chain;
-#[macro_use]
-extern crate lazy_static;
 #[macro_use]
 extern crate bitflags;
 extern crate boolinator;
+#[macro_use]
+extern crate error_chain;
 extern crate hexplay;
+#[macro_use]
+extern crate lazy_static;
 extern crate libc;
 extern crate llvm_sys;
+#[macro_use]
+extern crate log;
 
 #[doc(hidden)]
 pub mod llvm {
@@ -23,15 +22,17 @@ pub mod llvm {
 }
 
 #[cfg(test)]
-extern crate tempfile;
-#[cfg(test)]
-extern crate mmap;
+#[macro_use]
+extern crate hamcrest;
 #[cfg(test)]
 #[macro_use]
 extern crate matches;
 #[cfg(test)]
-#[macro_use]
-extern crate hamcrest;
+extern crate mmap;
+#[cfg(test)]
+extern crate pretty_env_logger;
+#[cfg(test)]
+extern crate tempfile;
 
 #[doc(hidden)]
 #[macro_use]
@@ -66,13 +67,13 @@ mod metadata;
 mod object;
 mod bitcode;
 
-pub use attribute::{Attribute, AttributeIndex, EnumAttribute, StringAttribute, attrs};
+pub use attribute::{attrs, Attribute, AttributeIndex, EnumAttribute, StringAttribute};
 pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString,
                    ConstantStruct, ConstantVector};
 pub use context::{Context, GlobalContext};
 pub use disasm::Disasm;
-pub use engine::{ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJIT, MCJITCompiler,
-                 MCJITCompilerOptions, MCJITMemoryManager, shutdown};
+pub use engine::{shutdown, ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJITCompiler,
+                 MCJITCompilerOptions, MCJITMemoryManager, MCJIT};
 pub use function::{Function, FunctionType};
 pub use global::{DLLStorageClass, GlobalValue, GlobalVar, Linkage, ThreadLocalMode, Visibility};
 pub use insts::{IRBuilder, Position};

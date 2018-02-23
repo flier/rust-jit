@@ -1,11 +1,11 @@
-extern crate pretty_env_logger;
 #[macro_use]
 extern crate llvm_jit as jit;
+extern crate pretty_env_logger;
 
 use jit::prelude::*;
 
 fn main() {
-    pretty_env_logger::init().unwrap();
+    pretty_env_logger::init();
 
     // Set up a context, module and builder in that context.
     let context = Context::new();

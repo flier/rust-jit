@@ -1,11 +1,11 @@
 #[macro_use]
-extern crate log;
-extern crate pretty_env_logger;
-#[macro_use]
 extern crate error_chain;
-extern crate rustyline;
 #[macro_use]
 extern crate llvm_jit as jit;
+#[macro_use]
+extern crate log;
+extern crate pretty_env_logger;
+extern crate rustyline;
 
 mod lines;
 
@@ -64,7 +64,9 @@ mod lexer {
 
     impl<I: Iterator> Lexer<I> {
         pub fn new(iter: I) -> Self {
-            Lexer { iter: iter.backable() }
+            Lexer {
+                iter: iter.backable(),
+            }
         }
     }
 
@@ -441,11 +443,7 @@ mod parser {
 
         /// binoprhs
         ///   ::= ('+' primary)*
-        fn parse_bin_op_rhs(
-            &mut self,
-            expr_prec: i32,
-            mut lhs: Box<ast::Expr>,
-        ) -> Result<Box<ast::Expr>> {
+        fn parse_bin_op_rhs(&mut self, expr_prec: i32, mut lhs: Box<ast::Expr>) -> Result<Box<ast::Expr>> {
             // If this is a binop, find its precedence.
             loop {
                 let tok_prec = self.get_tok_precedence().unwrap_or(-1);
@@ -582,11 +580,10 @@ mod codegen {
     impl ast::Expr for ast::VariableExpr {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             // Look this variable up in the function.
-            gen.named_values.get(&self.name).map(|v| *v).ok_or_else(
-                || {
-                    ErrorKind::UnknownVariable(self.name.clone()).into()
-                },
-            )
+            gen.named_values
+                .get(&self.name)
+                .map(|v| *v)
+                .ok_or_else(|| ErrorKind::UnknownVariable(self.name.clone()).into())
         }
     }
 
@@ -597,18 +594,16 @@ mod codegen {
             let lhs = self.lhs.codegen(gen)?;
             let rhs = self.rhs.codegen(gen)?;
 
-            Ok(
-                match self.op {
-                    ast::BinOp::Add => fadd!(lhs, rhs; "addtmp").emit_to(&gen.builder),
-                    ast::BinOp::Sub => fsub!(lhs, rhs; "subtmp").emit_to(&gen.builder),
-                    ast::BinOp::Mul => fmul!(lhs, rhs; "multmp").emit_to(&gen.builder),
-                    ast::BinOp::LessThen => {
-                        let lhs = fcmp!(ULT lhs, rhs; "cmptmp");
-                        // Convert bool 0/1 to double 0.0 or 1.0
-                        uitofp!(lhs, f64_t; "booltmp").emit_to(&gen.builder)
-                    }
-                }.into(),
-            )
+            Ok(match self.op {
+                ast::BinOp::Add => fadd!(lhs, rhs; "addtmp").emit_to(&gen.builder),
+                ast::BinOp::Sub => fsub!(lhs, rhs; "subtmp").emit_to(&gen.builder),
+                ast::BinOp::Mul => fmul!(lhs, rhs; "multmp").emit_to(&gen.builder),
+                ast::BinOp::LessThen => {
+                    let lhs = fcmp!(ULT lhs, rhs; "cmptmp");
+                    // Convert bool 0/1 to double 0.0 or 1.0
+                    uitofp!(lhs, f64_t; "booltmp").emit_to(&gen.builder)
+                }
+            }.into())
         }
     }
 
@@ -754,8 +749,7 @@ where
             Token::Def => Ok(Parsed::Code(self.handle_definition(gen)?)),
             Token::Extern => Ok(Parsed::Code(self.handle_extern(gen)?)),
             Token::Eof => Ok(Parsed::ToEnd),
-            token @ Token::Character(';') |
-            token @ Token::Comment(_) => Ok(Parsed::Skipped(token)),
+            token @ Token::Character(';') | token @ Token::Comment(_) => Ok(Parsed::Skipped(token)),
             _ => Ok(Parsed::Code(self.handle_top_level_expression(gen)?)),
         }
     }
@@ -772,7 +766,7 @@ enum Parsed {
 //===----------------------------------------------------------------------===//
 
 fn main() {
-    pretty_env_logger::init().unwrap();
+    pretty_env_logger::init();
 
     // Make the module, which holds all the code.
     let mut gen = codegen::new("my cool jit");

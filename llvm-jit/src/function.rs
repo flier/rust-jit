@@ -36,14 +36,13 @@ impl FunctionType {
         trace!(
             "create Function({:?}): ({}) -> {}",
             function,
-            params_type.iter().fold(
-                "".to_owned(),
-                |s, t| if s.is_empty() {
+            params_type
+                .iter()
+                .fold("".to_owned(), |s, t| if s.is_empty() {
                     t.to_string()
                 } else {
                     format!("{}, {}", s, t)
-                },
-            ),
+                },),
             return_type,
         );
 
@@ -178,7 +177,7 @@ impl Function {
 
     /// Check whether the given function has a personality function.
     pub fn has_personality_function(&self) -> bool {
-        unsafe { LLVMHasPersonalityFunction(self.as_raw()).as_bool() }
+        unsafe { LLVMHasPersonalityFn(self.as_raw()).as_bool() }
     }
 
     /// Obtain the personality function attached to the function.

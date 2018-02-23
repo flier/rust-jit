@@ -52,8 +52,9 @@ impl<'a> Iterator for Lines<'a> {
                     self.line = line;
                     self.pos = 0;
                 }
-                Err(rustyline::error::ReadlineError::Interrupted) |
-                Err(rustyline::error::ReadlineError::Eof) => return None,
+                Err(rustyline::error::ReadlineError::Interrupted) | Err(rustyline::error::ReadlineError::Eof) => {
+                    return None
+                }
                 Err(err) => {
                     error!("fail to read line, {}", err);
 

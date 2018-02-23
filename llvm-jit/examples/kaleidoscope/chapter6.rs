@@ -1,12 +1,12 @@
 #[macro_use]
-extern crate log;
-extern crate pretty_env_logger;
-#[macro_use]
 extern crate error_chain;
-extern crate rustyline;
 extern crate libc;
 #[macro_use]
 extern crate llvm_jit as jit;
+#[macro_use]
+extern crate log;
+extern crate pretty_env_logger;
+extern crate rustyline;
 
 mod lines;
 
@@ -80,7 +80,9 @@ mod lexer {
 
     impl<I: Iterator> Lexer<I> {
         pub fn new(iter: I) -> Self {
-            Lexer { iter: iter.backable() }
+            Lexer {
+                iter: iter.backable(),
+            }
         }
     }
 
@@ -449,12 +451,10 @@ mod parser {
                 ast::BinOp::Add => Some(20),
                 ast::BinOp::Sub => Some(20),
                 ast::BinOp::Mul => Some(40),
-                ast::BinOp::UserDefined(op) => {
-                    self.binop_precedences
-                        .borrow()
-                        .get(format!("binary{}", op).as_str())
-                        .map(|&v| v as i32)
-                }
+                ast::BinOp::UserDefined(op) => self.binop_precedences
+                    .borrow()
+                    .get(format!("binary{}", op).as_str())
+                    .map(|&v| v as i32),
             })
         }
 
@@ -637,11 +637,7 @@ mod parser {
 
         /// binoprhs
         ///   ::= ('+' primary)*
-        fn parse_bin_op_rhs(
-            &mut self,
-            expr_prec: i32,
-            mut lhs: Box<ast::Expr>,
-        ) -> Result<Box<ast::Expr>> {
+        fn parse_bin_op_rhs(&mut self, expr_prec: i32, mut lhs: Box<ast::Expr>) -> Result<Box<ast::Expr>> {
             // If this is a binop, find its precedence.
             loop {
                 let tok_prec = self.get_tok_precedence().unwrap_or(-1);
@@ -844,13 +840,11 @@ mod codegen {
                 // If not, check whether we can codegen the declaration from some existing prototype.
                 let proto = self.protos.borrow().get(name).cloned();
 
-                proto.map(
-                    |proto| {
-                        trace!("construct function base on prototype `{}`", name);
+                proto.map(|proto| {
+                    trace!("construct function base on prototype `{}`", name);
 
-                        proto.codegen(self).unwrap().into()
-                    }
-                )
+                    proto.codegen(self).unwrap().into()
+                })
             })
         }
     }
@@ -885,11 +879,10 @@ mod codegen {
     impl ast::Expr for ast::VariableExpr {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
             // Look this variable up in the function.
-            gen.named_values.get(&self.name).map(|v| *v).ok_or_else(
-                || {
-                    ErrorKind::UnknownVariable(self.name.clone()).into()
-                },
-            )
+            gen.named_values
+                .get(&self.name)
+                .map(|v| *v)
+                .ok_or_else(|| ErrorKind::UnknownVariable(self.name.clone()).into())
         }
     }
 
@@ -999,8 +992,7 @@ mod codegen {
             // Emit merge block.
             gen.builder.position_at_end(merge_bb);
 
-            let pn = phi!(f64_t, then => then_bb, or_else => else_bb; "iftmp")
-                .emit_to(&gen.builder);
+            let pn = phi!(f64_t, then => then_bb, or_else => else_bb; "iftmp").emit_to(&gen.builder);
 
             Ok(pn.into())
         }
@@ -1025,8 +1017,7 @@ mod codegen {
             gen.builder.position_at_end(loop_bb);
 
             // Start the PHI node with an entry for Start.
-            let var = phi!(f64_t, start_val => preheader_bb; self.var_name.clone())
-                .emit_to(&gen.builder);
+            let var = phi!(f64_t, start_val => preheader_bb; self.var_name.clone()).emit_to(&gen.builder);
 
             // Within the loop, the variable is defined equal to the PHI node.
             // If it shadows an existing variable, we have to restore it, so save it now.
@@ -1096,10 +1087,9 @@ mod codegen {
 
     impl ast::Expr for ast::Function {
         fn codegen(&self, gen: &mut CodeGenerator) -> Result<ValueRef> {
-            gen.protos.borrow_mut().insert(
-                self.proto.name.clone(),
-                self.proto.clone(),
-            );
+            gen.protos
+                .borrow_mut()
+                .insert(self.proto.name.clone(), self.proto.clone());
 
             let func = if let Some(func) = gen.get_function(&self.proto.name) {
                 func
@@ -1108,10 +1098,9 @@ mod codegen {
             };
 
             if let Some(precedence) = self.proto.precedence {
-                gen.binop_precedences.borrow_mut().insert(
-                    self.proto.name.clone(),
-                    precedence,
-                );
+                gen.binop_precedences
+                    .borrow_mut()
+                    .insert(self.proto.name.clone(), precedence);
             }
 
             // Create a new basic block to start insertion into.
@@ -1169,11 +1158,7 @@ impl<I> parser::Parser<I>
 where
     I: Iterator<Item = char>,
 {
-    fn handle_definition(
-        &mut self,
-        mut gen: CodeGenerator,
-        engine: &mut KaleidoscopeJIT,
-    ) -> Result<ValueRef> {
+    fn handle_definition(&mut self, mut gen: CodeGenerator, engine: &mut KaleidoscopeJIT) -> Result<ValueRef> {
         self.parse_definition().and_then(move |func| {
             println!("parsed a function difinition: {:?}", func);
 
@@ -1187,11 +1172,7 @@ where
         })
     }
 
-    fn handle_extern(
-        &mut self,
-        mut gen: CodeGenerator,
-        _engine: &mut KaleidoscopeJIT,
-    ) -> Result<ValueRef> {
+    fn handle_extern(&mut self, mut gen: CodeGenerator, _engine: &mut KaleidoscopeJIT) -> Result<ValueRef> {
         self.parse_extern().and_then(|proto| {
             println!("parsed a extern prototype: {:?}", proto);
 
@@ -1243,8 +1224,7 @@ where
             Token::Def => Ok(Parsed::Code(self.handle_definition(gen, engine)?)),
             Token::Extern => Ok(Parsed::Code(self.handle_extern(gen, engine)?)),
             Token::Eof => Ok(Parsed::ToEnd),
-            token @ Token::Character(';') |
-            token @ Token::Comment(_) => Ok(Parsed::Skipped(token)),
+            token @ Token::Character(';') | token @ Token::Comment(_) => Ok(Parsed::Skipped(token)),
             _ => Ok(Parsed::Code(self.handle_top_level_expression(gen, engine)?)),
         }
     }
@@ -1301,11 +1281,7 @@ impl KaleidoscopeJIT {
         let addr = self.engine
             .get_symbol_address(symbol)?
             .map(|addr| addr)
-            .or_else(|| {
-                jit::Symbols::search_for_address(symbol).map(
-                    |p: *const c_void| unsafe { mem::transmute(p) },
-                )
-            })
+            .or_else(|| jit::Symbols::search_for_address(symbol).map(|p: *const c_void| unsafe { mem::transmute(p) }))
             .or_else(|| {
                 trace!("missing symbol `{}`", symbol);
 
@@ -1318,10 +1294,7 @@ impl KaleidoscopeJIT {
 
 pub type ExternFn = extern "C" fn(f64) -> f64;
 
-extern "C" fn symbol_resolver_callback(
-    symbol: *const libc::c_char,
-    ctx: *mut libc::c_void,
-) -> jit::TargetAddress {
+extern "C" fn symbol_resolver_callback(symbol: *const libc::c_char, ctx: *mut libc::c_void) -> jit::TargetAddress {
     let jit: &KaleidoscopeJIT = unsafe { &*(ctx as *const KaleidoscopeJIT) };
     let symbol = unsafe { CStr::from_ptr(symbol) }.to_string_lossy();
 
@@ -1359,7 +1332,7 @@ pub extern "C" fn printd(x: f64) -> f64 {
 //===----------------------------------------------------------------------===//
 
 fn main() {
-    pretty_env_logger::init().unwrap();
+    pretty_env_logger::init();
 
     NativeTarget::init().unwrap();
     NativeAsmParser::init().unwrap();
