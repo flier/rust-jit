@@ -10,6 +10,22 @@ use types::TypeRef;
 use utils::{AsBool, AsRaw, FromRaw};
 use value::ValueRef;
 
+#[macro_export]
+macro_rules! func {
+    ( || -> $ret:ident ) => {
+        $crate::FunctionType::new($ret, &[], false)
+    };
+    ( | $( $arg:ident ),* | -> $ret:ident ) => {
+        $crate::FunctionType::new($ret, &[$( $arg ),*], false)
+    };
+    ( | ... | -> $ret:ident ) => {
+        $crate::FunctionType::new($ret, &[], true)
+    };
+    ( | $( $arg:ident ),* , ... | -> $ret:ident ) => {
+        $crate::FunctionType::new($ret, &[$( $arg ),*], true)
+    };
+}
+
 /// Structure to represent function types.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FunctionType(TypeRef);

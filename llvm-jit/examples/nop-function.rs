@@ -15,7 +15,7 @@ fn main() {
     // Get the type signature for void nop(void);
     // Then create it in our module.
     let void = context.void_t();
-    let function_type = FunctionType::new(void, &[], false);
+    let function_type = func!(|| -> void);
     let function = module.add_function("nop", function_type);
 
     // Create a basic block in the function and set our builder to generate code in it.
