@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
+use std::mem;
 
 use boolinator::Boolinator;
 
@@ -107,6 +108,11 @@ impl ValueRef {
     pub fn as_basic_block(&self) -> Option<BasicBlock> {
         unsafe { LLVMValueAsBasicBlock(self.0) }.wrap()
     }
+
+    /// Returns an iterator over the use of a value.
+    pub fn uses(&self) -> Uses {
+        Uses(unsafe { LLVMGetFirstUse(self.0) })
+    }
 }
 
 impl fmt::Display for ValueRef {
@@ -116,6 +122,36 @@ impl fmt::Display for ValueRef {
             "{}",
             unsafe { LLVMPrintValueToString(self.0) }.into_string()
         )
+    }
+}
+
+pub struct Use(LLVMUseRef);
+
+impl Use {
+    /// Obtain the user value for a user.
+    pub fn user(&self) -> ValueRef {
+        unsafe { LLVMGetUser(self.0) }.into()
+    }
+
+    /// Obtain the value this use corresponds to.
+    pub fn value(&self) -> ValueRef {
+        unsafe { LLVMGetUsedValue(self.0) }.into()
+    }
+}
+
+pub struct Uses(LLVMUseRef);
+
+impl Iterator for Uses {
+    type Item = Use;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0.is_null() {
+            None
+        } else {
+            let next = unsafe { LLVMGetNextUse(self.0) };
+
+            Some(Use(mem::replace(&mut self.0, next)))
+        }
     }
 }
 
@@ -169,5 +205,28 @@ impl Instruction {
     /// Obtain the instruction that occurred before this one.
     pub fn previous(&self) -> Option<Instruction> {
         unsafe { LLVMGetPreviousInstruction(self.as_raw()) }.wrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use context::Context;
+    use types::IntegerTypes;
+    use constant::{ConstantInts, ToConstantStruct};
+
+    #[test]
+    fn uses() {
+        let c = Context::new();
+        let i64_t = c.int64_t();
+        let n = i64_t.int(123);
+        let v = c.struct_of(values![n], true);
+
+        let mut uses = n.uses();
+        let u = uses.next().unwrap();
+
+        assert_eq!(u.user(), v.into());
+        assert_eq!(u.value(), n.into());
+
+        assert!(uses.next().is_none());
     }
 }
