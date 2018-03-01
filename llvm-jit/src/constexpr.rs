@@ -415,19 +415,19 @@ mod tests {
         let i = i64_t.int(123);
         let f = f64_t.real(123.0);
 
-        let bv = bool_t.vector_t(4).vector_of(types![
+        let bv = bool_t.vector_t(4).vector_of(values![
             bool_t.int(1),
             bool_t.int(0),
             bool_t.int(1),
             bool_t.int(0),
         ]);
-        let iv = i64_t.vector_t(4).vector_of(types![
+        let iv = i64_t.vector_t(4).vector_of(values![
             i64_t.int(1),
             i64_t.int(2),
             i64_t.int(3),
             i64_t.int(4),
         ]);
-        let fv = f64_t.vector_t(4).vector_of(types![
+        let fv = f64_t.vector_t(4).vector_of(values![
             f64_t.real(1.0),
             f64_t.real(2.0),
             f64_t.real(3.0),

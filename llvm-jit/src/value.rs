@@ -14,8 +14,8 @@ use utils::{AsBool, AsRaw, DisposableMessage, FromRaw, UncheckedCStr};
 
 #[macro_export]
 macro_rules! values {
-    ($($x:expr),*) => (&[ $($x.into()),* ]);
-    ($($x:expr,)*) => (&[ $($x.into()),* ]);
+    ($($x:expr),*) => (&[ $($crate::ValueRef::from($x)),* ]);
+    ($($x:expr,)*) => (&[ $($crate::ValueRef::from($x)),* ]);
 }
 
 /// Represents an individual value in LLVM IR.

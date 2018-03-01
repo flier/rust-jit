@@ -103,7 +103,7 @@ pub mod prelude {
 
     pub use attribute::AttributeGroups;
     pub use constant::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray, ToConstantStruct,
-                       ToConstantVector};
+                       ToConstantVector, ToNamedConstantStruct};
     pub use constexpr::ConstantExpr;
     pub use global::GlobalValue;
     pub use insts::InstructionBuilder;

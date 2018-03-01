@@ -15,8 +15,8 @@ use value::ValueRef;
 
 #[macro_export]
 macro_rules! types {
-    ($($x:expr),*) => (&[ $($x.into()),* ]);
-    ($($x:expr,)*) => (&[ $($x.into()),* ]);
+    ($($x:expr),*) => (&[ $($crate::TypeRef::from($x)),* ]);
+    ($($x:expr,)*) => (&[ $($crate::TypeRef::from($x)),* ]);
 }
 
 /// Each value in the LLVM IR has a type, an `TypeRef`.

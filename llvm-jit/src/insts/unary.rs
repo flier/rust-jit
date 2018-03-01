@@ -137,7 +137,7 @@ mod tests {
         let p_i64_t = i64_t.ptr_t();
         let f64_t = c.double_t();
 
-        let f_ty = FunctionType::new(c.void_t(), types![i64_t, p_i64_t, f64_t, f64_t], false);
+        let f_ty = FunctionType::new(c.void_t(), types![i64_t, p_i64_t, f64_t], false);
         let f = m.add_function("test", f_ty);
 
         let bb = f.append_basic_block_in_context("entry", &c);
@@ -146,20 +146,12 @@ mod tests {
         let arg0_i64 = f.get_param(0).unwrap();
         let arg1_p_i64 = f.get_param(1).unwrap();
         let arg2_f64 = f.get_param(2).unwrap();
-        let arg3_f64 = f.get_param(3).unwrap();
 
         test_unary_inst!(b, neg!(arg0_i64), "%neg = sub i64 0, %0");
         test_unary_inst!(b, neg_nsw!(arg0_i64), "%neg_nsw = sub nsw i64 0, %0");
         test_unary_inst!(b, neg_nuw!(arg0_i64), "%neg_nuw = sub nuw i64 0, %0");
         test_unary_inst!(b, fneg!(arg2_f64), "%fneg = fsub double -0.000000e+00, %2");
-
         test_unary_inst!(b, not!(arg0_i64), "%not = xor i64 %0, -1");
-        test_unary_inst!(
-            b,
-            not!(arg3_f64),
-            "%not1 = xor double %3, 0xFFFFFFFFFFFFFFFF"
-        );
-
         test_unary_inst!(b, is_null!(arg1_p_i64), "%is_null = icmp eq i64* %1, null");
         test_unary_inst!(
             b,

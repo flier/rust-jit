@@ -223,12 +223,12 @@ impl ConstantStruct {
     }
 }
 
-pub trait ToConstantStruct {
+pub trait ToNamedConstantStruct {
     /// Create a non-anonymous ConstantStruct from values.
     fn struct_of(&self, values: &[ValueRef]) -> ConstantStruct;
 }
 
-impl ToConstantStruct for StructType {
+impl ToNamedConstantStruct for StructType {
     fn struct_of(&self, values: &[ValueRef]) -> ConstantStruct {
         let mut values = values
             .iter()
@@ -236,6 +236,33 @@ impl ToConstantStruct for StructType {
             .collect::<Vec<LLVMValueRef>>();
 
         let ty = unsafe { LLVMConstNamedStruct(self.as_raw(), values.as_mut_ptr(), values.len() as u32) }.into();
+
+        trace!("create constant struct: {:?}", ty);
+
+        ty
+    }
+}
+
+pub trait ToConstantStruct {
+    /// Create a non-anonymous ConstantStruct from values.
+    fn struct_of(&self, values: &[ValueRef], packed: bool) -> ConstantStruct;
+}
+
+impl ToConstantStruct for Context {
+    fn struct_of(&self, values: &[ValueRef], packed: bool) -> ConstantStruct {
+        let mut values = values
+            .iter()
+            .map(|v| v.as_raw())
+            .collect::<Vec<LLVMValueRef>>();
+
+        let ty = unsafe {
+            LLVMConstStructInContext(
+                self.as_raw(),
+                values.as_mut_ptr(),
+                values.len() as u32,
+                packed.as_bool(),
+            )
+        }.into();
 
         trace!("create constant struct: {:?}", ty);
 
@@ -341,10 +368,7 @@ mod tests {
         assert!(!v.as_raw().is_null());
         assert_eq!(v.type_of(), i64_t);
         assert_eq!(v.to_string(), "i64 0");
-        assert!(matches!(
-            v.kind(),
-            llvm::LLVMValueKind::LLVMConstantIntValueKind
-        ));
+        assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMConstantIntValueKind);
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());
@@ -360,10 +384,7 @@ mod tests {
         assert!(!v.as_raw().is_null());
         assert_eq!(v.type_of(), i64_t);
         assert_eq!(v.to_string(), "i64 undef");
-        assert!(matches!(
-            v.kind(),
-            llvm::LLVMValueKind::LLVMUndefValueValueKind
-        ));
+        assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMUndefValueValueKind);
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(v.is_undef());
@@ -374,15 +395,16 @@ mod tests {
     fn null_ptr() {
         let c = Context::new();
         let i64_t = c.int64_t();
-        let v = i64_t.null_ptr();
+        let i64_ptr_t = i64_t.ptr_t();
+        let v = i64_ptr_t.null_ptr();
 
         assert!(!v.as_raw().is_null());
-        assert_eq!(v.type_of(), i64_t);
-        assert_eq!(v.to_string(), "i64 null");
-        assert!(matches!(
+        assert_eq!(v.type_of(), i64_ptr_t.into());
+        assert_eq!(v.to_string(), "i64* null");
+        assert_eq!(
             v.kind(),
             llvm::LLVMValueKind::LLVMConstantPointerNullValueKind
-        ));
+        );
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());
@@ -398,10 +420,7 @@ mod tests {
         assert!(!v.as_raw().is_null());
         assert_eq!(v.type_of(), i32_t);
         assert_eq!(v.to_string(), "i32 -123");
-        assert!(matches!(
-            v.kind(),
-            llvm::LLVMValueKind::LLVMConstantIntValueKind
-        ));
+        assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMConstantIntValueKind);
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());
@@ -420,10 +439,7 @@ mod tests {
         assert!(!v.as_raw().is_null());
         assert_eq!(v.type_of(), f32_t);
         assert_eq!(v.to_string(), "float -1.230000e+02");
-        assert!(matches!(
-            v.kind(),
-            llvm::LLVMValueKind::LLVMConstantFPValueKind
-        ));
+        assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMConstantFPValueKind);
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());
@@ -439,10 +455,10 @@ mod tests {
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"[6 x i8] c"hello\00""#);
-        assert!(matches!(
+        assert_eq!(
             v.kind(),
             llvm::LLVMValueKind::LLVMConstantDataArrayValueKind
-        ));
+        );
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());
@@ -459,10 +475,10 @@ mod tests {
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"[6 x i8] c"hello\00""#);
-        assert!(matches!(
+        assert_eq!(
             v.kind(),
             llvm::LLVMValueKind::LLVMConstantDataArrayValueKind
-        ));
+        );
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());
@@ -475,17 +491,15 @@ mod tests {
     #[test]
     fn structure() {
         let c = Context::new();
-        let v = ConstantStruct::structure(types![c.int64_t().int(123), c.str("hello")], true);
+        let i64_t = c.int64_t();
+        let v = c.struct_of(values![i64_t.int(123), c.str("hello")], true);
 
         assert!(!v.as_raw().is_null());
         assert_eq!(
             v.to_string(),
             r#"<{ i64, [6 x i8] }> <{ i64 123, [6 x i8] c"hello\00" }>"#
         );
-        assert!(matches!(
-            v.kind(),
-            llvm::LLVMValueKind::LLVMConstantStructValueKind
-        ));
+        assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMConstantStructValueKind);
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());
@@ -496,14 +510,14 @@ mod tests {
     fn array() {
         let c = Context::new();
         let i64_t = c.int64_t();
-        let v = i64_t.array_of(types![i64_t.int(123), i64_t.int(456)]);
+        let v = i64_t.array_of(values![i64_t.int(123), i64_t.int(456)]);
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"[2 x i64] [i64 123, i64 456]"#);
-        assert!(matches!(
+        assert_eq!(
             v.kind(),
             llvm::LLVMValueKind::LLVMConstantDataArrayValueKind
-        ));
+        );
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());
@@ -518,10 +532,10 @@ mod tests {
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"<2 x i64> <i64 123, i64 456>"#);
-        assert!(matches!(
+        assert_eq!(
             v.kind(),
             llvm::LLVMValueKind::LLVMConstantDataVectorValueKind
-        ));
+        );
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());
