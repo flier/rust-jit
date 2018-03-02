@@ -1,5 +1,6 @@
 use std::ffi::CString;
 use std::mem;
+use std::fmt;
 use std::ptr;
 
 use boolinator::Boolinator;
@@ -13,7 +14,7 @@ use global::GlobalValue;
 use module::Module;
 use target::{TargetData, TargetMachine};
 use types::TypeRef;
-use utils::{unchecked_cstring, AsLLVMBool, AsMutPtr, AsRaw, AsResult, DisposableMessage, FromRaw, IntoRaw};
+use utils::{unchecked_cstring, AsMutPtr, AsRaw, AsResult, DisposableMessage, FromRaw, IntoRaw, FALSE, TRUE};
 
 /// Deallocate and destroy all `ManagedStatic` variables.
 pub fn shutdown() {
@@ -28,25 +29,46 @@ inherit_from!(GenericValue, LLVMGenericValueRef);
 
 impl Drop for GenericValue {
     fn drop(&mut self) {
+        trace!("drop {:?}", self);
+
         unsafe { LLVMDisposeGenericValue(self.0) }
     }
 }
 
 impl GenericValue {
-    pub fn from_uint<T: Into<TypeRef>>(ty: T, n: u64) -> Self {
-        unsafe { LLVMCreateGenericValueOfInt(ty.into().as_raw(), n, false.as_bool()) }.into()
+    pub fn from_uint<T: fmt::Debug + Into<TypeRef>>(ty: T, n: u64) -> Self {
+        let ty = ty.into();
+        let gv = unsafe { LLVMCreateGenericValueOfInt(ty.as_raw(), n, FALSE) }.into();
+
+        trace!("{:?} from {} : {}", gv, n, ty);
+
+        gv
     }
 
-    pub fn from_int<T: Into<TypeRef>>(ty: T, n: i64) -> Self {
-        unsafe { LLVMCreateGenericValueOfInt(ty.into().as_raw(), mem::transmute(n), true.as_bool()) }.into()
+    pub fn from_int<T: fmt::Debug + Into<TypeRef>>(ty: T, n: i64) -> Self {
+        let ty = ty.into();
+        let gv = unsafe { LLVMCreateGenericValueOfInt(ty.as_raw(), mem::transmute(n), TRUE) }.into();
+
+        trace!("{:?} from {} : {}", gv, n, ty);
+
+        gv
     }
 
     pub fn from_ptr<T>(p: *const T) -> Self {
-        unsafe { LLVMCreateGenericValueOfPointer(p as *mut libc::c_void) }.into()
+        let gv = unsafe { LLVMCreateGenericValueOfPointer(p as *mut libc::c_void) }.into();
+
+        trace!("{:?} from pointer {:p}", gv, p);
+
+        gv
     }
 
     pub fn from_float<T: Into<TypeRef>>(ty: T, n: f64) -> Self {
-        unsafe { LLVMCreateGenericValueOfFloat(ty.into().as_raw(), n) }.into()
+        let ty = ty.into();
+        let gv = unsafe { LLVMCreateGenericValueOfFloat(ty.as_raw(), n) }.into();
+
+        trace!("{:?} from {} : {}", gv, n, ty);
+
+        gv
     }
 
     pub fn int_width(&self) -> u32 {
@@ -54,11 +76,11 @@ impl GenericValue {
     }
 
     pub fn to_uint(&self) -> u64 {
-        unsafe { LLVMGenericValueToInt(self.0, false.as_bool()) }
+        unsafe { LLVMGenericValueToInt(self.0, FALSE) }
     }
 
     pub fn to_int(&self) -> i64 {
-        unsafe { mem::transmute(LLVMGenericValueToInt(self.0, true.as_bool())) }
+        unsafe { mem::transmute(LLVMGenericValueToInt(self.0, TRUE)) }
     }
 
     pub fn to_ptr<T>(&self) -> *mut T {
@@ -101,18 +123,34 @@ impl Interpreter {
     }
 }
 
+/// Code generation optimization level.
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum CodeGenOptLevel {
+    None = 0,       // -O0
+    Less = 1,       // -O1
+    Moderate = 2,   // -O2, -Os
+    Aggressive = 3, // -O3
+}
+
+impl Default for CodeGenOptLevel {
+    fn default() -> Self {
+        CodeGenOptLevel::Moderate
+    }
+}
+
 #[derive(Debug)]
 pub struct JITCompiler(ExecutionEngine);
 
 inherit_from!(JITCompiler, ExecutionEngine, LLVMExecutionEngineRef);
 
 impl JITCompiler {
-    pub fn for_module(module: Module, opt_level: u32) -> Result<Self> {
+    pub fn for_module(module: Module, opt_level: CodeGenOptLevel) -> Result<Self> {
         let module = module.into_raw();
         let mut engine = ptr::null_mut();
         let mut err = DisposableMessage::new();
 
-        unsafe { LLVMCreateJITCompilerForModule(&mut engine, module, opt_level, &mut err) }
+        unsafe { LLVMCreateJITCompilerForModule(&mut engine, module, opt_level as u32, &mut err) }
             .ok_or_else(|| {
                 format!(
                     "fail to create JITCompiler for Module({:?}), {}",
@@ -277,6 +315,13 @@ impl ExecutionEngine {
     /// This is a helper function which wraps runFunction to handle the common task of
     /// starting up main with the specified rgc, argv, and envp parameters.
     pub fn run_function_as_main(&self, func: Function, args: &[&str], env_vars: &[&str]) -> i32 {
+        trace!(
+            "run function {:?} as main with args {:?} and env {:?}",
+            func,
+            args,
+            env_vars
+        );
+
         let args = args.iter().map(unchecked_cstring).collect::<Vec<CString>>();
 
         let mut argv = args.iter()
@@ -314,19 +359,16 @@ impl ExecutionEngine {
     /// (rather than runFunction) and cast the returned uint64_t to the desired function pointer type.
     /// However, for backwards compatibility MCJIT's implementation can execute 'main-like' function
     /// (i.e. those returning void or int, and taking either no arguments or (int, char*[])).
-    pub fn run_function(&self, func: Function, args: &[GenericValue]) -> GenericValue {
-        let mut args = args.iter()
-            .map(|arg| arg.as_raw())
-            .collect::<Vec<LLVMGenericValueRef>>();
+    pub fn run_function(&self, func: &Function, args: Vec<GenericValue>) -> GenericValue {
+        trace!("run function {:?} with args {:?}", func, args);
 
-        unsafe {
-            LLVMRunFunction(
-                self.as_raw(),
-                func.as_raw(),
-                args.len() as u32,
-                args.as_mut_ptr(),
-            )
-        }.into()
+        let mut args = args.into_iter()
+            .map(|arg| arg.into_raw())
+            .collect::<Vec<LLVMGenericValueRef>>();
+        let argc = args.len() as u32;
+        let args = args.as_mut_slice();
+
+        unsafe { LLVMRunFunction(self.as_raw(), func.as_raw(), argc, args.as_mut_ptr()) }.into()
     }
 
     /// Add a Module to the list of modules that we can JIT from.
@@ -698,7 +740,7 @@ mod tests {
             *err_msg = ptr::null_mut();
         }
 
-        true.as_bool()
+        TRUE
     }
     extern "C" fn mm_destroy(opaque: *mut ::libc::c_void) {
         trace!("destroy memory @ {:?}", opaque);

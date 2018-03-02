@@ -6,7 +6,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use errors::Result;
-use utils::{AsLLVMBool, AsRaw, AsResult, DisposableMessage};
+use utils::{AsRaw, AsResult, DisposableMessage, TRUE};
 
 #[derive(Debug)]
 pub struct MemoryBuffer<'a>(LLVMMemoryBufferRef, Option<&'a [u8]>);
@@ -95,14 +95,7 @@ impl<'a> MemoryBuffer<'a> {
         );
 
         MemoryBuffer(
-            unsafe {
-                LLVMCreateMemoryBufferWithMemoryRange(
-                    data.as_ptr() as *const i8,
-                    data.len(),
-                    cstr!(name),
-                    true.as_bool(),
-                )
-            },
+            unsafe { LLVMCreateMemoryBufferWithMemoryRange(data.as_ptr() as *const i8, data.len(), cstr!(name), TRUE) },
             Some(data),
         )
     }

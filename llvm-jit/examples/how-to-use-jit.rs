@@ -94,8 +94,8 @@ fn main() {
     let ee = ExecutionEngine::for_module(m).unwrap();
 
     // Call the `foo' function with no arguments:
-    let noargs = &[];
-    let gv = ee.run_function(foo_f, noargs);
+    let noargs = vec![];
+    let gv = ee.run_function(&foo_f, noargs);
 
     println!("Result: {}\n", gv.to_int());
 

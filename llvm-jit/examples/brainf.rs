@@ -627,7 +627,7 @@ fn main() {
 
             let ee = ExecutionEngine::for_module(module).unwrap();
 
-            let _gv = ee.run_function(brainf_func, &[]);
+            let _gv = ee.run_function(&brainf_func, vec![]);
         } else {
             //Get the output stream
             let output_filename = opts.opt_str("o").map_or_else(

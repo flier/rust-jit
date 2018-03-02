@@ -38,6 +38,9 @@ name = "jit-function"
 name = "how-to-use-jit"
 
 [[example]]
+name = "fibonacci"
+
+[[example]]
 name = "parallel-jit"
 
 [[example]]

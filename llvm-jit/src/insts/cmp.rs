@@ -12,7 +12,7 @@ use value::{Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ICmp<'a, L, R> {
-    op: u32, // TODO: use LLVMIntPredicate when llvm-sys update
+    op: LLVMIntPredicate,
     lhs: L,
     rhs: R,
     name: Cow<'a, str>,
@@ -20,12 +20,7 @@ pub struct ICmp<'a, L, R> {
 
 impl<'a, L, R> ICmp<'a, L, R> {
     pub fn new(op: LLVMIntPredicate, lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
-        ICmp {
-            op: op as u32,
-            lhs,
-            rhs,
-            name,
-        }
+        ICmp { op, lhs, rhs, name }
     }
 
     pub fn equals(lhs: L, rhs: R, name: Cow<'a, str>) -> Self {

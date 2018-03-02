@@ -58,11 +58,11 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
     let fib_f = module.get_or_insert_function("fib", i32_t, &[i32_t]);
 
     // Add a basic block to the function.
-    let bb = fib_f.append_basic_block_in_context("entry", &context);
+    let entry_bb = fib_f.append_basic_block_in_context("entry", &context);
 
     // Create a basic block builder with default parameters.
     let mut builder = context.create_builder();
-    builder.position_at_end(bb);
+    builder.position_at_end(entry_bb);
 
     // Get the constants.
     let one = i32_t.int(1);
@@ -79,16 +79,16 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
 
     // Create the "if (arg < 2) goto exitbb"
     builder <<= br!(
-            icmp!(SLT argx, two; "cond") => ret_bb,
+            icmp!(SLE argx, two; "cond") => ret_bb,
             _ => recurse_bb
         );
 
     // Create: ret int 1
-    builder.position(Position::AtEnd(ret_bb));
+    builder.position_at_end(ret_bb);
 
-    ret!(one).emit_to(&builder);
+    builder <<= ret!(one);
 
-    builder.position(Position::AtEnd(recurse_bb));
+    builder.position_at_end(recurse_bb);
 
     // create fib(x-1)
     let arg = sub!(argx, one; "arg").emit_to(&builder);
@@ -137,7 +137,7 @@ fn main() {
         let add1_thread = scope.spawn(|| {
             barrier.clone().wait();
 
-            let v = ee.run_function(add1_f, &[GenericValue::from_int(i32_t, 1000)])
+            let v = ee.run_function(&add1_f, vec![GenericValue::from_int(i32_t, 1000)])
                 .to_int();
 
             v
@@ -145,7 +145,7 @@ fn main() {
         let fib_thread1 = scope.spawn(|| {
             barrier.clone().wait();
 
-            let v = ee.run_function(fib_f, &[GenericValue::from_int(i32_t, 39)])
+            let v = ee.run_function(&fib_f, vec![GenericValue::from_int(i32_t, 39)])
                 .to_int();
 
             v
@@ -153,7 +153,7 @@ fn main() {
         let fib_thread2 = scope.spawn(|| {
             barrier.clone().wait();
 
-            let v = ee.run_function(fib_f, &[GenericValue::from_int(i32_t, 42)])
+            let v = ee.run_function(&fib_f, vec![GenericValue::from_int(i32_t, 42)])
                 .to_int();
 
             v

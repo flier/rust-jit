@@ -71,7 +71,7 @@ pub use attribute::{attrs, Attribute, AttributeIndex, EnumAttribute, StringAttri
 pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString, ConstantStruct, ConstantVector};
 pub use context::{Context, GlobalContext};
 pub use disasm::Disasm;
-pub use engine::{shutdown, ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJITCompiler,
+pub use engine::{shutdown, CodeGenOptLevel, ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJITCompiler,
                  MCJITCompilerOptions, MCJITMemoryManager, MCJIT};
 pub use function::{Function, FunctionType};
 pub use global::{DLLStorageClass, GlobalValue, GlobalVar, Linkage, ThreadLocalMode, Visibility};
