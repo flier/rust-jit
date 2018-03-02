@@ -15,8 +15,7 @@ fn main() {
 
     // get a type for sum function
     let i64_t = context.int64_t();
-    let argts = [i64_t, i64_t, i64_t];
-    let function_type = FunctionType::new(i64_t, &argts, false);
+    let function_type = func!(|i64_t, i64_t, i64_t| -> i64_t);
 
     // add it to our module
     let function = module.add_function("sum", function_type);

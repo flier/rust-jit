@@ -14,7 +14,7 @@ fn main() {
 
     // Create the main function: first create the type 'int ()'
     let i32_t = context.int32_t();
-    let ft = FunctionType::new(i32_t, &[], false);
+    let ft = func!(|| -> i32_t);
 
     // By passing a module as the last parameter to the Function constructor,
     // it automatically gets appended to the Module.
