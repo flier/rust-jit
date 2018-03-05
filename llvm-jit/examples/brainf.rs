@@ -81,17 +81,38 @@ const TEST_REG: &str = "test";
 
 const DEFAULT_TAPE_SIZE: usize = 65536;
 
-/// The different symbols in the BrainF language
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum Symbol {
-    None,
-    Read,
+enum Token {
+    Move(i64),
+    Change(i64),
     Write,
-    Move,
-    Change,
+    Read,
     Loop,
-    Endloop,
-    Eof,
+    EndLoop,
+    Skip(u8),
+}
+
+struct Lexer<I>(I);
+
+impl<I> Iterator for Lexer<I>
+where
+    I: Iterator<Item = u8>,
+{
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|b| match b {
+            b'>' => Token::Move(1),
+            b'<' => Token::Move(-1),
+            b'+' => Token::Change(1),
+            b'-' => Token::Change(-1),
+            b'.' => Token::Write,
+            b',' => Token::Read,
+            b'[' => Token::Loop,
+            b']' => Token::EndLoop,
+            _ => Token::Skip(b),
+        })
+    }
 }
 
 struct BrainF<'a> {
@@ -99,6 +120,7 @@ struct BrainF<'a> {
     context: &'a Context,
     module: Module,
     state: State,
+    builder: IRBuilder,
 }
 
 struct State {
@@ -107,7 +129,6 @@ struct State {
     getchar_func: Function,
     putchar_func: Function,
     brainf_func: Function,
-    brainf_bb: BasicBlock,
     end_bb: BasicBlock,
     aberror_bb: Option<BasicBlock>,
     cur_head: Instruction,
@@ -129,7 +150,7 @@ impl<'a> DerefMut for BrainF<'a> {
 
 impl<'a> BrainF<'a> {
     fn new(mem_total: usize, compile_flags: CompileFlags, context: &'a Context) -> BrainF<'a> {
-        let (module, state) = Self::gen_module(mem_total, compile_flags, context);
+        let (module, builder, state) = Self::gen_module(mem_total, compile_flags, context);
 
         debug!("generated module header:\n{}", module);
 
@@ -138,15 +159,16 @@ impl<'a> BrainF<'a> {
             context,
             module,
             state,
+            builder,
         }
     }
 
     fn parse(&mut self, code: &str) -> Result<()> {
         trace!("parsing code:\n{}", code);
 
-        let mut iter = code.trim().bytes();
+        let mut lexer = Lexer(code.trim().bytes());
 
-        self.read_loop(&mut iter, None, None, None)?;
+        self.read_loop(&mut lexer, None, None, None)?;
 
         debug!("generated module:\n{}", self.module);
 
@@ -155,8 +177,9 @@ impl<'a> BrainF<'a> {
         Ok(())
     }
 
-    fn gen_module(mem_total: usize, compile_flags: CompileFlags, context: &'a Context) -> (Module, State) {
+    fn gen_module(mem_total: usize, compile_flags: CompileFlags, context: &'a Context) -> (Module, IRBuilder, State) {
         let module = context.create_module("BrainF");
+        let builder = context.create_builder();
 
         let void_t = context.void_t();
         let bool_t = context.int1_t();
@@ -185,22 +208,21 @@ impl<'a> BrainF<'a> {
 
         let brainf_bb = brainf_func.append_basic_block_in_context(LABEL, &context);
 
-        let mut builder = context.create_builder();
-
         builder.position_at_end(brainf_bb);
 
         //%arr = malloc i8, i32 %d
         let ptr_arr = malloc!(i8_t, i32_t.int(mem_total as i64); "arr").emit_to(&builder);
 
         //call void @llvm.memset.p0i8.i32(i8 *%arr, i8 0, i32 %d, i32 1, i1 0)
-        builder <<= call!(
+        call!(
             memset_func,
             ptr_arr,
             i8_t.int(0),
             i32_t.int(mem_total as i64),
             i32_t.int(1),
             bool_t.int(0)
-        ).set_tail_call(false);
+        ).set_tail_call(false)
+            .emit_to(&builder);
 
         //%arrmax = getelementptr i8 *%arr, i32 %d
         let ptr_arrmax = compile_flags
@@ -219,10 +241,10 @@ impl<'a> BrainF<'a> {
         //call free(i8 *%arr)
         builder.position_at_end(end_bb);
 
-        builder <<= free!(ptr_arr);
+        free!(ptr_arr).emit_to(&builder);;
 
         //ret void
-        builder <<= ret!();
+        ret!().emit_to(&builder);;
 
         //Error block for array out of bounds
         let aberror_bb = if compile_flags.contains(CompileFlags::FLAG_ARRAY_BOUNDS) {
@@ -245,24 +267,28 @@ impl<'a> BrainF<'a> {
             //call i32 @puts(i8 *getelementptr([%d x i8] *@aberrormsg, i32 0, i32 0))
             let msg_ptr = gep!(aberror_msg, i32_t.null(), i32_t.null()).emit_to(&builder);
 
-            builder <<= call!(puts_func, msg_ptr).set_tail_call(false);
+            call!(puts_func, msg_ptr)
+                .set_tail_call(false)
+                .emit_to(&builder);
 
-            builder <<= br!(end_bb);
+            br!(end_bb).emit_to(&builder);
 
             Some(aberror_bb)
         } else {
             None
         };
 
+        builder.position_at_end(brainf_bb);
+
         (
             module,
+            builder,
             State {
                 ptr_arr,
                 ptr_arrmax,
                 getchar_func,
                 putchar_func,
                 brainf_func,
-                brainf_bb,
                 end_bb,
                 aberror_bb,
                 cur_head: cur_head.into(),
@@ -270,288 +296,242 @@ impl<'a> BrainF<'a> {
         )
     }
 
-    fn read_loop<I: Iterator<Item = u8>>(
+    fn read_loop<I: Iterator<Item = Token>>(
         &mut self,
-        iter: &mut I,
+        tokens: &mut I,
         phi: Option<PhiNode>,
         old_bb: Option<BasicBlock>,
         test_bb: Option<BasicBlock>,
     ) -> Result<()> {
-        let i8_t = self.context.int8_t();
-        let i32_t = self.context.int32_t();
-
         let mut line = 0;
         let mut column = 0;
-        let mut cur_sym = Symbol::None;
         let mut cur_loc = (line, column);
-        let mut next_sym = Symbol::None;
-        let mut next_loc = (line, column);
-        let mut cur_value = 0;
-        let mut next_value = 0;
+        let mut cur_tok = None;
+        let mut next_tok = None;
 
-        let mut builder = self.context.create_builder();
-
-        builder.position_at_end(self.brainf_bb);
-
-        while ![Symbol::Eof, Symbol::Endloop].contains(&cur_sym) {
-            let (sym_line, sym_column) = cur_loc;
-
-            trace!(
-                "generate code for {:?} @ {}:{}",
-                cur_sym,
-                sym_line,
-                sym_column
-            );
+        while cur_tok != Some(Token::EndLoop) {
+            if cur_tok.is_some() {
+                trace!("generate code for {:?} @ {:?}", cur_tok, cur_loc);
+            }
 
             // Write out commands
-            match cur_sym {
-                Symbol::None => {
-                    // Do nothing
-                }
-                Symbol::Read => {
-                    //%tape.%d = call i32 @getchar()
-                    let tape_0 = call!(self.getchar_func; TAPER_REG).set_tail_call(false);
+            match cur_tok {
+                None => {}
+                Some(Token::Read) => self.emit_read(),
+                Some(Token::Write) => self.emit_write(),
+                Some(Token::Move(steps)) => self.cur_head = self.emit_move(steps),
+                Some(Token::Change(delta)) => self.emit_change(delta),
+                Some(Token::Loop) => {
+                    let (phi, old_bb, test_bb) = self.emit_loop();
 
-                    //%tape.%d = trunc i32 %tape.%d to i8
-                    let tape_1 = trunc!(tape_0, i8_t; TAPER_REG);
-
-                    //store i8 %tape.%d, i8 *%head.%d
-                    builder <<= store!(tape_1, self.cur_head);
-                }
-                Symbol::Write => {
-                    //%tape.%d = load i8 *%head.%d
-                    let tape_0 = load!(self.cur_head; TAPER_REG);
-
-                    //%tape.%d = sext i8 %tape.%d to i32
-                    let tape_1 = sext!(tape_0, i32_t; TAPER_REG).emit_to(&builder);
-
-                    //call i32 @putchar(i32 %tape.%d)
-                    builder <<= call!(self.putchar_func, tape_1).set_tail_call(false);
-                }
-                Symbol::Move => {
-                    //%head.%d = getelementptr i8 *%head.%d, i32 %d
-                    self.cur_head = gep!(self.cur_head, i32_t.int(cur_value); HEAD_REG)
-                        .emit_to(&builder)
-                        .into();
-
-                    if self.compile_flags.contains(CompileFlags::FLAG_ARRAY_BOUNDS) {
-                        trace!("checking array bounds");
-
-                        //%test.%d = icmp uge i8 *%head.%d, %arrmax
-                        let test_0 = icmp!(UGE self.cur_head, self.ptr_arrmax.unwrap(); TEST_REG);
-
-                        //%test.%d = icmp ult i8 *%head.%d, %arr
-                        let test_1 = icmp!(ULT self.cur_head, self.ptr_arr; TEST_REG);
-
-                        //%test.%d = or i1 %test.%d, %test.%d
-                        let test_2 = or!(test_0, test_1; TEST_REG);
-
-                        //br i1 %test.%d, label %main.%d, label %main.%d
-                        let next_bb = self.brainf_func
-                            .append_basic_block_in_context(LABEL, &self.context);
-
-                        builder <<= br!(test_2 => self.aberror_bb.unwrap(), _ => next_bb);
-
-                        //main.%d:
-                        builder.position_at_end(next_bb);
-                    }
-                }
-                Symbol::Change => {
-                    //%tape.%d = load i8 *%head.%d
-                    let tape_0 = load!(self.cur_head; TAPER_REG);
-
-                    //%tape.%d = add i8 %tape.%d, %d
-                    let tape_1 = add!(tape_0, i8_t.int(cur_value); TAPER_REG);
-
-                    //store i8 %tape.%d, i8 *%head.%d\n"
-                    builder <<= store!(tape_1, self.cur_head);
-                }
-                Symbol::Loop => {
-                    //br label %main.%d
-                    let test_bb = self.brainf_func
-                        .append_basic_block_in_context(LABEL, &self.context);
-
-                    builder <<= br!(test_bb);
-
-                    //main.%d:
-                    let bb_0 = builder.insert_block().unwrap();
-                    let bb_1 = self.brainf_func
-                        .append_basic_block_in_context(LABEL, &self.context);
-                    builder.position_at_end(bb_1);
-
-                    // Make part of PHI instruction now, wait until end of loop to finish
-                    let phi_0 = phi!(i8_t.ptr_t(), self.cur_head => bb_0; HEAD_REG).emit_to(&builder);
-
-                    self.cur_head = phi_0.into();
-
-                    self.read_loop(iter, Some(phi_0), Some(bb_1), Some(test_bb))?;
+                    self.cur_head = phi.into();
+                    self.read_loop(tokens, Some(phi), Some(old_bb), Some(test_bb))?;
                 }
                 _ => {
-                    bail!("Error: Unknown symbol: {:?}", cur_sym);
+                    bail!("Error: Unknown token: {:?}", cur_tok);
                 }
             }
 
-            cur_sym = next_sym;
-            cur_loc = next_loc;
-            cur_value = next_value;
-            next_sym = Symbol::None;
+            cur_tok = next_tok.take();
 
-            while [Symbol::None, Symbol::Move, Symbol::Change].contains(&cur_sym) {
-                if let Some(c) = iter.next() {
-                    column += 1;
+            let can_merge_token = |token| match token {
+                None | Some(Token::Move(_)) | Some(Token::Change(_)) => true,
+                _ => false,
+            };
 
-                    match c {
-                        b'+' | b'-' => {
-                            let direction = if c == b'+' { 1 } else { -1 };
+            while can_merge_token(cur_tok) {
+                column += 1;
+                cur_loc = (line, column);
 
-                            match cur_sym {
-                                Symbol::Change => {
-                                    cur_value += direction;
-                                }
-                                Symbol::None => {
-                                    cur_sym = Symbol::Change;
-                                    cur_loc = (line, column);
-                                    cur_value = direction;
-                                }
-                                _ => {
-                                    next_sym = Symbol::Change;
-                                    next_loc = (line, column);
-                                    next_value = direction;
-                                    break;
-                                }
-                            }
-                        }
-                        b'<' | b'>' => {
-                            let direction = if c == b'>' { 1 } else { -1 };
+                next_tok = tokens.next();
 
-                            match cur_sym {
-                                Symbol::Move => {
-                                    cur_value += direction;
-                                }
-                                Symbol::None => {
-                                    cur_sym = Symbol::Move;
-                                    cur_loc = (line, column);
-                                    cur_value = direction;
-                                }
-                                _ => {
-                                    next_sym = Symbol::Move;
-                                    next_loc = (line, column);
-                                    next_value = direction;
-                                    break;
-                                }
-                            }
-                        }
-                        b',' => {
-                            if cur_sym == Symbol::None {
-                                cur_sym = Symbol::Read;
-                                cur_loc = (line, column);
-                            } else {
-                                next_sym = Symbol::Read;
-                                next_loc = (line, column);
-                            }
-                            break;
-                        }
-                        b'.' => {
-                            if cur_sym == Symbol::None {
-                                cur_sym = Symbol::Write;
-                                cur_loc = (line, column);
-                            } else {
-                                next_sym = Symbol::Write;
-                                next_loc = (line, column);
-                            }
-                            break;
-                        }
-                        b'[' => {
-                            if cur_sym == Symbol::None {
-                                cur_sym = Symbol::Loop;
-                                cur_loc = (line, column);
-                            } else {
-                                next_sym = Symbol::Loop;
-                                next_loc = (line, column);
-                            }
-                            break;
-                        }
-                        b']' => {
-                            if cur_sym == Symbol::None {
-                                cur_sym = Symbol::Endloop;
-                                next_loc = (line, column);
-                            } else {
-                                next_sym = Symbol::Endloop;
-                                next_loc = (line, column);
-                            }
-                            break;
-                        }
-                        b'\n' => {
+                match (cur_tok, next_tok) {
+                    (Some(Token::Move(cur_steps)), Some(Token::Move(next_steps))) => {
+                        trace!("merge {:?} and {:?}", cur_tok, next_tok);
+
+                        cur_tok = Some(Token::Move(cur_steps + next_steps))
+                    }
+                    (Some(Token::Change(cur_value)), Some(Token::Change(next_value))) => {
+                        trace!("merge {:?} and {:?}", cur_tok, next_tok);
+
+                        cur_tok = Some(Token::Change(cur_value + next_value))
+                    }
+                    (_, Some(Token::Skip(b))) => {
+                        if b == b'\n' {
                             line += 1;
                             column = 0;
                         }
-                        _ => {}
                     }
-                } else {
-                    if cur_sym == Symbol::None {
-                        cur_sym = Symbol::Eof;
-                        cur_loc = (line, column);
-                    } else {
-                        next_sym = Symbol::Eof;
-                        next_loc = (line, column);
+                    (_, token) => {
+                        trace!("current: {:?}, next: {:?}", cur_tok, token);
+
+                        break;
                     }
+                }
+
+                if next_tok.is_none() {
                     break;
                 }
             }
+
+            if cur_tok.is_none() && next_tok.is_none() {
+                break;
+            }
         }
 
-        if cur_sym == Symbol::Endloop {
+        if cur_tok == Some(Token::EndLoop) {
             if phi.is_none() {
                 bail!("Error: Extra ']'");
             }
 
-            trace!("generate code for {:?} @ {}:{}", cur_sym, line, column);
+            trace!("generate code for {:?} @ {:?}", cur_tok, cur_loc);
 
-            // Write loop test
-
-            //br label %main.%d
-            builder <<= br!(test_bb.unwrap());
-
-            //main.%d:
-
-            //%head.%d = phi i8 *[%head.%d, %main.%d], [%head.%d, %main.%d]
-            //Finish phi made at beginning of loop
-            phi.unwrap()
-                .add_incoming(self.cur_head, builder.insert_block().unwrap());
-
-            let head_0 = phi;
-
-            //%tape.%d = load i8 *%head.%d
-            let tape_0 = load!(head_0.unwrap(); TAPER_REG);
-
-            //%test.%d = icmp eq i8 %tape.%d, 0
-            let test_0 = icmp!(EQ tape_0, i8_t.int(0); TEST_REG);
-
-            //br i1 %test.%d, label %main.%d, label %main.%d
-            let bb_0 = self.brainf_func
-                .append_basic_block_in_context(LABEL, &self.context);
-
-            builder.position_at_end(test_bb.unwrap());
-
-            builder <<= br!(test_0 => bb_0, _ => old_bb.unwrap());
-
-            //main.%d:
-            builder.position_at_end(bb_0);
-
-            //%head.%d = phi i8 *[%head.%d, %main.%d]
-            let phi_1 = phi!(i8_t.ptr_t(), head_0.unwrap() => test_bb.unwrap()).emit_to(&builder);
-
-            self.cur_head = phi_1.into();
+            self.cur_head = self.emit_end_loop(phi.unwrap(), old_bb.unwrap(), test_bb.unwrap())
         } else {
             if phi.is_some() {
                 bail!("Error: Missing ']'")
             }
 
             //End of the program, so go to return block
-            builder <<= br!(self.end_bb);
+            self.builder <<= br!(self.end_bb);
         }
 
         Ok(())
+    }
+
+    fn emit_read(&self) {
+        let i8_t = self.context.int8_t();
+
+        //%tape.%d = call i32 @getchar()
+        let tape_0 = call!(self.getchar_func; TAPER_REG).set_tail_call(false);
+
+        //%tape.%d = trunc i32 %tape.%d to i8
+        let tape_1 = trunc!(tape_0, i8_t; TAPER_REG);
+
+        //store i8 %tape.%d, i8 *%head.%d
+        store!(tape_1, self.cur_head).emit_to(&self.builder);
+    }
+
+    fn emit_write(&self) {
+        let i32_t = self.context.int32_t();
+
+        //%tape.%d = load i8 *%head.%d
+        let tape_0 = load!(self.cur_head; TAPER_REG);
+
+        //%tape.%d = sext i8 %tape.%d to i32
+        let tape_1 = sext!(tape_0, i32_t; TAPER_REG).emit_to(&self.builder);
+
+        //call i32 @putchar(i32 %tape.%d)
+        call!(self.putchar_func, tape_1)
+            .set_tail_call(false)
+            .emit_to(&self.builder);
+    }
+
+    fn emit_move(&self, steps: i64) -> Instruction {
+        let i32_t = self.context.int32_t();
+
+        //%head.%d = getelementptr i8 *%head.%d, i32 %d
+        let cur_head = gep!(self.cur_head, i32_t.int(steps); HEAD_REG)
+            .emit_to(&self.builder)
+            .into();
+
+        if self.compile_flags.contains(CompileFlags::FLAG_ARRAY_BOUNDS) {
+            trace!("checking array bounds");
+
+            //%test.%d = icmp uge i8 *%head.%d, %arrmax
+            let test_0 = icmp!(UGE self.cur_head, self.ptr_arrmax.unwrap(); TEST_REG);
+
+            //%test.%d = icmp ult i8 *%head.%d, %arr
+            let test_1 = icmp!(ULT self.cur_head, self.ptr_arr; TEST_REG);
+
+            //%test.%d = or i1 %test.%d, %test.%d
+            let test_2 = or!(test_0, test_1; TEST_REG);
+
+            //br i1 %test.%d, label %main.%d, label %main.%d
+            let next_bb = self.brainf_func
+                .append_basic_block_in_context(LABEL, &self.context);
+
+            br!(test_2 => self.aberror_bb.unwrap(), _ => next_bb).emit_to(&self.builder);
+
+            //main.%d:
+            self.builder.position_at_end(next_bb);
+        }
+
+        cur_head
+    }
+
+    fn emit_change(&self, delta: i64) {
+        let i8_t = self.context.int8_t();
+
+        //%tape.%d = load i8 *%head.%d
+        let tape_0 = load!(self.cur_head; TAPER_REG);
+
+        //%tape.%d = add i8 %tape.%d, %d
+        let tape_1 = add!(tape_0, i8_t.int(delta); TAPER_REG);
+
+        //store i8 %tape.%d, i8 *%head.%d\n"
+        store!(tape_1, self.cur_head).emit_to(&self.builder);
+    }
+
+    fn emit_loop(&self) -> (PhiNode, BasicBlock, BasicBlock) {
+        let i8_t = self.context.int8_t();
+
+        //br label %main.%d
+        let test_bb = self.brainf_func
+            .append_basic_block_in_context(LABEL, &self.context);
+
+        br!(test_bb).emit_to(&self.builder);
+
+        //main.%d:
+        let old_bb = self.builder.insert_block().unwrap();
+
+        let bb_1 = self.brainf_func
+            .append_basic_block_in_context(LABEL, &self.context);
+        self.builder.position_at_end(bb_1);
+
+        // Make part of PHI instruction now, wait until end of loop to finish
+        let phi = phi!(i8_t.ptr_t(), self.cur_head => old_bb; HEAD_REG).emit_to(&self.builder);
+
+        (phi, old_bb, test_bb)
+    }
+
+    fn emit_end_loop(&self, phi: PhiNode, old_bb: BasicBlock, test_bb: BasicBlock) -> Instruction {
+        let i8_t = self.context.int8_t();
+
+        // Write loop test
+
+        //br label %main.%d
+        br!(test_bb).emit_to(&self.builder);
+
+        //main.%d:
+
+        //%head.%d = phi i8 *[%head.%d, %main.%d], [%head.%d, %main.%d]
+        //Finish phi made at beginning of loop
+        phi.add_incoming(self.cur_head, self.builder.insert_block().unwrap());
+
+        let head_0 = phi;
+
+        //%tape.%d = load i8 *%head.%d
+        let tape_0 = load!(head_0; TAPER_REG);
+
+        //%test.%d = icmp eq i8 %tape.%d, 0
+        let test_0 = icmp!(EQ tape_0, i8_t.int(0); TEST_REG);
+
+        //br i1 %test.%d, label %main.%d, label %main.%d
+        let bb_0 = self.brainf_func
+            .append_basic_block_in_context(LABEL, &self.context);
+
+        self.builder.position_at_end(test_bb);
+
+        br!(test_0 => bb_0, _ => old_bb).emit_to(&self.builder);
+
+        //main.%d:
+        self.builder.position_at_end(bb_0);
+
+        //%head.%d = phi i8 *[%head.%d, %main.%d]
+        phi!(i8_t.ptr_t(), head_0 => test_bb)
+            .emit_to(&self.builder)
+            .into()
     }
 }
 
@@ -592,25 +572,32 @@ fn main() {
 
     match parse_cmdline(program, args) {
         Ok(Some(opts)) => {
-            let (input_filename, _input_files) = opts.free.split_first().unwrap();
+            let (code, input) = match opts.free.split_first() {
+                None => {
+                    debug!("read input from STDIN");
 
-            let mut code = String::new();
+                    let stdin = io::stdin();
+                    let mut handle = stdin.lock();
+                    let mut code = String::new();
 
-            if input_filename == "-" {
-                debug!("read input from STDIN");
+                    handle.read_to_string(&mut code).unwrap();
 
-                let stdin = io::stdin();
-                let mut handle = stdin.lock();
+                    (code, Path::new("stdin"))
+                }
+                Some((filename, _)) if Path::new(filename).exists() => {
+                    debug!("read input from file: {}", filename);
 
-                handle.read_to_string(&mut code).unwrap();
-            } else {
-                debug!("read input from file: {}", input_filename);
+                    let mut code = String::new();
 
-                File::open(input_filename)
-                    .unwrap()
-                    .read_to_string(&mut code)
-                    .unwrap();
-            }
+                    File::open(filename)
+                        .unwrap()
+                        .read_to_string(&mut code)
+                        .unwrap();
+
+                    (code, Path::new(filename))
+                }
+                Some((code, _)) => (code.to_owned(), Path::new("expr")),
+            };
 
             let tape_size = opts.opt_str("tape-size")
                 .map_or(DEFAULT_TAPE_SIZE, |s| s.parse().unwrap());
@@ -628,44 +615,41 @@ fn main() {
             let context = Context::new();
             let mut brainf = BrainF::new(tape_size, compile_flags, &context);
 
-            brainf.parse(&code).unwrap();
-
-            let module = brainf.module;
-
-            //Write it out
-            if opts.opt_present("jit") {
-                NativeTarget::init().unwrap();
-                NativeAsmPrinter::init().unwrap();
-
-                println!("------- Running JIT -------");
-
-                let brainf_func = module.get_function("brainf").unwrap();
-
-                let ee = ExecutionEngine::for_module(module).unwrap();
-
-                let _gv = ee.run_function(&brainf_func, vec![]);
+            if let Err(err) = brainf.parse(&code) {
+                eprintln!("Fail to generate module, {}", err);
             } else {
-                //Get the output stream
-                let output_filename = opts.opt_str("o").map_or_else(
-                    || {
-                        // Use default filename.
-                        Path::new(if input_filename == "-" {
-                            "a"
-                        } else {
-                            input_filename.as_str()
-                        }).with_extension("bc")
-                    },
-                    |filename| Path::new(filename.as_str()).to_owned(),
-                );
+                let module = brainf.module;
 
-                debug!("write output to file: {:?}", output_filename);
+                //Write it out
+                if opts.opt_present("jit") {
+                    NativeTarget::init().unwrap();
+                    NativeAsmPrinter::init().unwrap();
 
-                module.write_bitcode(output_filename).unwrap();
+                    println!("------- Running JIT -------");
+
+                    let brainf_func = module.get_function("brainf").unwrap();
+
+                    let ee = ExecutionEngine::for_module(module).unwrap();
+
+                    let gv = ee.run_function(&brainf_func, vec![]);
+
+                    println!("Result: {}", gv.to_int());
+
+                    jit::shutdown();
+                } else {
+                    //Get the output stream
+                    let output_filename = opts.opt_str("o").map_or_else(
+                        || input.with_extension("bc"),
+                        |filename| Path::new(filename.as_str()).to_owned(),
+                    );
+
+                    debug!("write output to file: {:?}", output_filename);
+
+                    module.write_bitcode(output_filename).unwrap();
+                }
             }
-
-            jit::shutdown();
         }
         Ok(None) => {}
-        Err(err) => eprintln!("{}", err),
+        Err(err) => eprintln!("Fail to parse command line, {}", err),
     }
 }
