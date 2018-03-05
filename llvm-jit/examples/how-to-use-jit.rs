@@ -85,10 +85,7 @@ fn main() {
     // Create the return instruction and add it to the basic block.
     builder <<= ret!(add1_call_res);
 
-    println!(
-        "We just constructed this LLVM module:\n\n{}\n\nRunning foo: ",
-        m
-    );
+    println!("We just constructed this LLVM module:\n\n{}\n\nRunning foo: ", m);
 
     // Now we create the JIT.
     let ee = ExecutionEngine::for_module(m).unwrap();

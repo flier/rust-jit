@@ -121,10 +121,7 @@ fn main() {
     let add1_f = create_add1(&context, &module);
     let fib_f = create_fib_function(&context, &module);
 
-    println!(
-        "We just constructed this LLVM module:\n\n{}\n\nRunning: ",
-        module
-    );
+    println!("We just constructed this LLVM module:\n\n{}\n\nRunning: ", module);
 
     // Now we create the JIT.
     let ee = ExecutionEngine::for_module(module).unwrap();

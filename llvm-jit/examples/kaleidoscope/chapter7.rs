@@ -90,9 +90,7 @@ mod lexer {
 
     impl<I: Iterator> Lexer<I> {
         pub fn new(iter: I) -> Self {
-            Lexer {
-                iter: iter.backable(),
-            }
+            Lexer { iter: iter.backable() }
         }
     }
 
@@ -124,10 +122,7 @@ mod lexer {
                     self.iter.step_back();
 
                     // identifier: [a-zA-Z][a-zA-Z0-9]*
-                    let s: String = self.iter
-                        .by_ref()
-                        .take_while(|c| c.is_alphanumeric())
-                        .collect();
+                    let s: String = self.iter.by_ref().take_while(|c| c.is_alphanumeric()).collect();
 
                     self.iter.step_back();
 
@@ -148,20 +143,14 @@ mod lexer {
                     self.iter.step_back();
 
                     // number: [0-9.]+
-                    let s: String = self.iter
-                        .by_ref()
-                        .take_while(|&c| c.is_digit(10) || c == '.')
-                        .collect();
+                    let s: String = self.iter.by_ref().take_while(|&c| c.is_digit(10) || c == '.').collect();
 
                     self.iter.step_back();
 
                     Token::Number(s.parse().unwrap())
                 } else if c == '#' {
                     // Comment until end of line.
-                    let s: String = self.iter
-                        .by_ref()
-                        .take_while(|&c| c != '\n' && c != '\r')
-                        .collect();
+                    let s: String = self.iter.by_ref().take_while(|&c| c != '\n' && c != '\r').collect();
 
                     Token::Comment(s.to_owned())
                 } else {
@@ -570,11 +559,7 @@ mod parser {
 
             let or_else = self.parse_expression()?;
 
-            Ok(Box::new(ast::IfExpr {
-                cond,
-                then,
-                or_else,
-            }))
+            Ok(Box::new(ast::IfExpr { cond, then, or_else }))
         }
 
         /// forexpr ::= 'for' identifier '=' expr ',' expr (',' expr)? 'in' expression
@@ -1083,10 +1068,7 @@ mod codegen {
             if let Some(func) = gen.get_function(&self.callee) {
                 // If argument mismatch error.
                 if self.args.len() != func.param_count() {
-                    bail!(ErrorKind::IncorrectArguments(
-                        self.args.len(),
-                        func.param_count(),
-                    ))
+                    bail!(ErrorKind::IncorrectArguments(self.args.len(), func.param_count(),))
                 }
 
                 let mut args = vec![];
@@ -1187,8 +1169,7 @@ mod codegen {
 
             // Within the loop, the variable is defined equal to the PHI node.
             // If it shadows an existing variable, we have to restore it, so save it now.
-            let old_value = gen.named_values
-                .insert(self.var_name.clone(), alloca.into());
+            let old_value = gen.named_values.insert(self.var_name.clone(), alloca.into());
 
             // Emit the body of the loop.
             // This, like any other expr, can change the current BB.
@@ -1495,11 +1476,9 @@ impl KaleidoscopeJIT {
 
     pub fn add_module(&mut self, module: Module) -> Result<jit::ModuleHandle> {
         let ctx = self as *mut KaleidoscopeJIT;
-        let handle = self.engine.add_eagerly_compiled_ir(
-            module,
-            Some(symbol_resolver_callback),
-            Some(unsafe { &mut *ctx }),
-        )?;
+        let handle =
+            self.engine
+                .add_eagerly_compiled_ir(module, Some(symbol_resolver_callback), Some(unsafe { &mut *ctx }))?;
 
         self.modules.push(handle);
 

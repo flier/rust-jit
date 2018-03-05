@@ -64,9 +64,7 @@ mod lexer {
 
     impl<I: Iterator> Lexer<I> {
         pub fn new(iter: I) -> Self {
-            Lexer {
-                iter: iter.backable(),
-            }
+            Lexer { iter: iter.backable() }
         }
     }
 
@@ -98,10 +96,7 @@ mod lexer {
                     self.iter.step_back();
 
                     // identifier: [a-zA-Z][a-zA-Z0-9]*
-                    let s: String = self.iter
-                        .by_ref()
-                        .take_while(|c| c.is_alphanumeric())
-                        .collect();
+                    let s: String = self.iter.by_ref().take_while(|c| c.is_alphanumeric()).collect();
 
                     self.iter.step_back();
 
@@ -114,20 +109,14 @@ mod lexer {
                     self.iter.step_back();
 
                     // number: [0-9.]+
-                    let s: String = self.iter
-                        .by_ref()
-                        .take_while(|&c| c.is_digit(10) || c == '.')
-                        .collect();
+                    let s: String = self.iter.by_ref().take_while(|&c| c.is_digit(10) || c == '.').collect();
 
                     self.iter.step_back();
 
                     Token::Number(s.parse().unwrap())
                 } else if c == '#' {
                     // Comment until end of line.
-                    let s: String = self.iter
-                        .by_ref()
-                        .take_while(|&c| c != '\n' && c != '\r')
-                        .collect();
+                    let s: String = self.iter.by_ref().take_while(|&c| c != '\n' && c != '\r').collect();
 
                     Token::Comment(s.to_owned())
                 } else {
@@ -308,27 +297,27 @@ mod parser {
     }
 
     macro_rules! match_token {
-        ($self_:ident, $token:pat => $code:block, $msg:expr) => {
+        ($self_: ident, $token: pat => $code: block, $msg: expr) => {
             match $self_.cur_token {
                 $token => $code,
-                ref token => bail!(ErrorKind::UnexpectedToken($msg.into(), token.clone()))
+                ref token => bail!(ErrorKind::UnexpectedToken($msg.into(), token.clone())),
             }
-        }
+        };
     }
 
     macro_rules! eat_token {
-        ($self_:ident, $token:pat => $code:block, $msg:expr) => {
+        ($self_: ident, $token: pat => $code: block, $msg: expr) => {
             match_token!($self_, $token => {
-                $self_.next_token();
+                                $self_.next_token();
 
-                $code
-            }, $msg)
+                                $code
+                            }, $msg)
         };
-        ($self_:ident, $token:pat, $msg:expr) => {
+        ($self_: ident, $token: pat, $msg: expr) => {
             match_token!($self_, $token => {
-                $self_.next_token();
-            }, $msg)
-        }
+                                $self_.next_token();
+                            }, $msg)
+        };
     }
 
     impl<I> Parser<I>
@@ -613,10 +602,7 @@ mod codegen {
             if let Some(func) = gen.module.get_function(&self.callee) {
                 // If argument mismatch error.
                 if self.args.len() != func.param_count() {
-                    bail!(ErrorKind::IncorrectArguments(
-                        self.args.len(),
-                        func.param_count(),
-                    ))
+                    bail!(ErrorKind::IncorrectArguments(self.args.len(), func.param_count(),))
                 }
 
                 let mut args = vec![];
