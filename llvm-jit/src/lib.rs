@@ -76,7 +76,6 @@ pub use engine::{shutdown, CodeGenOptLevel, ExecutionEngine, GenericValue, Inter
 pub use function::{Function, FunctionType};
 pub use global::{DLLStorageClass, GlobalValue, GlobalVar, Linkage, ThreadLocalMode, Visibility};
 pub use insts::{IRBuilder, Position};
-pub use intrinsics::{Intrinsic, IntrinsicId};
 pub use membuf::MemoryBuffer;
 pub use metadata::{MDKindId, MDNode, MDString, Metadata};
 pub use module::{AddressSpace, Module};
@@ -107,7 +106,7 @@ pub mod prelude {
     pub use constexpr::ConstantExpr;
     pub use global::GlobalValue;
     pub use insts::InstructionBuilder;
-    pub use intrinsics::Intrinsics;
+    pub use intrinsics::IntrinsicId;
     pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType, ToPointerType, ToStructType,
                     ToVectorType};
     pub use utils::{AsRaw, IntoRaw};
