@@ -49,7 +49,7 @@ where
     T: Into<TypeRef>,
     N: Into<Cow<'a, str>>,
 {
-    VaArg::new(args.into(), ty.into(), name.into())
+    VaArg::new(args, ty.into(), name.into())
 }
 
 /// The `va_arg` instruction is used to access arguments passed through the “variable argument” area

@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::fmt;
-use std::mem;
 
 use llvm::{LLVMIntPredicate, LLVMRealPredicate};
 use llvm::core::*;
@@ -77,7 +76,7 @@ where
         unsafe {
             LLVMBuildICmp(
                 builder.as_raw(),
-                mem::transmute(self.op),
+                self.op,
                 self.lhs.emit_to(builder).into().as_raw(),
                 self.rhs.emit_to(builder).into().as_raw(),
                 cstr!(self.name),
@@ -156,7 +155,7 @@ macro_rules! icmp {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FCmp<'a, L, R> {
-    op: u32, // TODO: use LLVMRealPredicate when llvm-sys update
+    op: LLVMRealPredicate,
     lhs: L,
     rhs: R,
     name: Cow<'a, str>,
@@ -164,12 +163,7 @@ pub struct FCmp<'a, L, R> {
 
 impl<'a, L, R> FCmp<'a, L, R> {
     pub fn new(op: LLVMRealPredicate, lhs: L, rhs: R, name: Cow<'a, str>) -> Self {
-        FCmp {
-            op: op as u32,
-            lhs,
-            rhs,
-            name,
-        }
+        FCmp { op, lhs, rhs, name }
     }
 }
 
@@ -186,7 +180,7 @@ where
         unsafe {
             LLVMBuildFCmp(
                 builder.as_raw(),
-                mem::transmute(self.op),
+                self.op,
                 self.lhs.emit_to(builder).into().as_raw(),
                 self.rhs.emit_to(builder).into().as_raw(),
                 cstr!(self.name),

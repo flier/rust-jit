@@ -21,7 +21,7 @@ pub struct Switch<V> {
 impl<V> Switch<V> {
     pub fn on(v: V) -> Self {
         Switch {
-            v: v,
+            v,
             dest: None,
             cases: vec![],
         }

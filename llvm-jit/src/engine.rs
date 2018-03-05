@@ -433,14 +433,14 @@ impl ExecutionEngine {
     /// that want to have an LLVM global overlay existing data in memory.
     /// Values to be mapped should be named, and have external or weak linkage.
     /// Mappings are automatically removed when their GlobalValue is destroyed.
-    pub fn add_global_mapping<V: GlobalValue, T>(&self, var: V, addr: *const T) {
+    pub fn add_global_mapping<V: GlobalValue, T>(&self, var: &V, addr: *const T) {
         unsafe { LLVMAddGlobalMapping(self.as_raw(), var.as_raw(), addr as *mut libc::c_void) }
     }
 
     /// This returns the address of the specified global value.
     ///
     /// This may involve code generation if it's a function.
-    pub fn get_ptr_to_global<V: GlobalValue, T>(&self, var: V) -> *mut T {
+    pub fn get_ptr_to_global<V: GlobalValue, T>(&self, var: &V) -> *mut T {
         unsafe { LLVMGetPointerToGlobal(self.as_raw(), var.as_raw()) as *mut T }
     }
 
@@ -634,10 +634,10 @@ mod tests {
         let v: i64 = 123;
 
         {
-            ee.add_global_mapping(x, &v);
+            ee.add_global_mapping(&x, &v);
         }
 
-        assert_eq!(unsafe { ptr::read::<i64>(ee.get_ptr_to_global(x)) }, 123);
+        assert_eq!(unsafe { ptr::read::<i64>(ee.get_ptr_to_global(&x)) }, 123);
         assert_eq!(ee.get_global_value_address("x").unwrap() as *const i64, &v);
     }
 

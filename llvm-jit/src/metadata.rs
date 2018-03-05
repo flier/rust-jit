@@ -57,7 +57,7 @@ inherit_from!(MDNode, ValueRef, LLVMValueRef);
 
 impl Context {
     /// Obtain Metadata as a Value.
-    pub fn as_value<T: AsRaw<RawType = LLVMMetadataRef>>(&self, metadata: T) -> ValueRef {
+    pub fn as_value<T: AsRaw<RawType = LLVMMetadataRef>>(&self, metadata: &T) -> ValueRef {
         unsafe { LLVMMetadataAsValue(self.as_raw(), metadata.as_raw()) }.into()
     }
 

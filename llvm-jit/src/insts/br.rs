@@ -48,7 +48,7 @@ impl<T> CondBr<T> {
 
     pub fn on(cond: T) -> Self {
         CondBr {
-            cond: cond,
+            cond,
             then: None,
             or_else: None,
         }
@@ -107,7 +107,7 @@ impl<T> IndirectBr<T> {
 
     pub fn on(addr: T) -> Self {
         IndirectBr {
-            addr: addr,
+            addr,
             dests: vec![],
         }
     }
@@ -161,7 +161,7 @@ impl BranchInst {
     }
 
     /// Set the condition of a branch instruction.
-    pub fn set_cond<V: AsValueRef>(&self, cond: V) {
+    pub fn set_cond<V: AsValueRef>(&self, cond: &V) {
         unsafe { LLVMSetCondition(self.as_raw(), cond.as_raw()) }
     }
 }
@@ -194,7 +194,7 @@ impl IRBuilder {
     where
         T: InstructionBuilder + fmt::Debug,
     {
-        CondBr::new(cond, then, or_else).emit_to(&self)
+        CondBr::new(cond, then, or_else).emit_to(self)
     }
 
     /// The `indirectbr` instruction implements an indirect branch to a label within the current function, whose address is specified by “address”.
@@ -203,7 +203,7 @@ impl IRBuilder {
         T: InstructionBuilder + fmt::Debug,
         I: IntoIterator<Item = BasicBlock>,
     {
-        IndirectBr::new(addr, dests).emit_to(&self)
+        IndirectBr::new(addr, dests).emit_to(self)
     }
 }
 

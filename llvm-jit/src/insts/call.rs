@@ -29,9 +29,9 @@ pub struct Call<'a> {
 impl<'a> Call<'a> {
     pub fn new(func: Function, args: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
         Call {
-            func: func,
-            args: args,
-            name: name,
+            func,
+            args,
+            name,
             tail_call: false,
         }
     }

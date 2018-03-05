@@ -23,7 +23,7 @@ impl<T: Into<ValueRef>> InstructionBuilder for T {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Position {
     To(BasicBlock, Option<Instruction>),
     Before(Instruction),

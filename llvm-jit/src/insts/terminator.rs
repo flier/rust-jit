@@ -27,7 +27,7 @@ impl<'a> LandingPad<'a> {
             personality_fn,
             name,
             clauses: vec![],
-            cleanup: cleanup,
+            cleanup,
         }
     }
 

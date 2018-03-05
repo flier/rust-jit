@@ -32,11 +32,11 @@ impl<'a> Invoke<'a> {
     /// with the possibility of control flow transfer to either the ‘normal‘ label or the ‘exception‘ label.
     pub fn new(func: Function, args: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
         Invoke {
-            func: func,
-            args: args,
+            func,
+            args,
             then: None,
             unwind: None,
-            name: name,
+            name,
         }
     }
 

@@ -211,7 +211,7 @@ impl TargetMachine {
     }
 
     /// Emits an asm or object file for the given module to the filename.
-    pub fn emit_to_file<M, P>(&self, module: M, path: P, codegen: CodeGenFileType) -> Result<()>
+    pub fn emit_to_file<M, P>(&self, module: &M, path: P, codegen: CodeGenFileType) -> Result<()>
     where
         M: AsRaw<RawType = LLVMModuleRef>,
         P: AsRef<Path>,
@@ -230,7 +230,7 @@ impl TargetMachine {
     }
 
     /// Emits an asm or object file for the given module to the filename.
-    pub fn emit_to_memory_buffer<M>(&self, module: M, codegen: CodeGenFileType) -> Result<MemoryBuffer>
+    pub fn emit_to_memory_buffer<M>(&self, module: &M, codegen: CodeGenFileType) -> Result<MemoryBuffer>
     where
         M: AsRaw<RawType = LLVMModuleRef>,
     {
@@ -243,7 +243,7 @@ impl TargetMachine {
     }
 
     /// Adds the target-specific analysis passes to the pass manager.
-    pub fn add_analysis_passes<P>(&self, passmgr: P)
+    pub fn add_analysis_passes<P>(&self, passmgr: &P)
     where
         P: AsRaw<RawType = LLVMPassManagerRef>,
     {
@@ -323,32 +323,32 @@ impl TargetData {
     }
 
     /// Computes the size of a type in bits for a target.
-    pub fn size_of_type_in_bits<T: AsTypeRef>(&self, ty: T) -> usize {
+    pub fn size_of_type_in_bits<T: AsTypeRef>(&self, ty: &T) -> usize {
         unsafe { LLVMSizeOfTypeInBits(self.as_raw(), ty.as_raw()) as usize }
     }
 
     /// Computes the storage size of a type in bytes for a target.
-    pub fn storage_size_of_type<T: AsTypeRef>(&self, ty: T) -> usize {
+    pub fn storage_size_of_type<T: AsTypeRef>(&self, ty: &T) -> usize {
         unsafe { LLVMStoreSizeOfType(self.as_raw(), ty.as_raw()) as usize }
     }
 
     /// Computes the ABI size of a type in bytes for a target.
-    pub fn abi_size_of_type<T: AsTypeRef>(&self, ty: T) -> usize {
+    pub fn abi_size_of_type<T: AsTypeRef>(&self, ty: &T) -> usize {
         unsafe { LLVMABISizeOfType(self.as_raw(), ty.as_raw()) as usize }
     }
 
     /// Computes the ABI alignment of a type in bytes for a target.
-    pub fn abi_alignment_of_type<T: AsTypeRef>(&self, ty: T) -> usize {
+    pub fn abi_alignment_of_type<T: AsTypeRef>(&self, ty: &T) -> usize {
         unsafe { LLVMABIAlignmentOfType(self.as_raw(), ty.as_raw()) as usize }
     }
 
     /// Computes the call frame alignment of a type in bytes for a target.
-    pub fn call_frame_alignment_of_type<T: AsTypeRef>(&self, ty: T) -> usize {
+    pub fn call_frame_alignment_of_type<T: AsTypeRef>(&self, ty: &T) -> usize {
         unsafe { LLVMCallFrameAlignmentOfType(self.as_raw(), ty.as_raw()) as usize }
     }
 
     /// Computes the preferred alignment of a type in bytes for a target.
-    pub fn preferred_alignment_of_type<T: AsTypeRef>(&self, ty: T) -> usize {
+    pub fn preferred_alignment_of_type<T: AsTypeRef>(&self, ty: &T) -> usize {
         unsafe { LLVMPreferredAlignmentOfType(self.as_raw(), ty.as_raw()) as usize }
     }
 
@@ -375,7 +375,7 @@ impl Module {
     }
 
     /// Set the data layout for a module.
-    pub fn set_data_layout(&self, layout: TargetData) {
+    pub fn set_data_layout(&self, layout: &TargetData) {
         unsafe { LLVMSetModuleDataLayout(self.as_raw(), layout.as_raw()) }
     }
 }

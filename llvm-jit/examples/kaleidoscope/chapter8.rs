@@ -1544,14 +1544,14 @@ fn main() {
 
         let passmgr = CodeGenerator::create_pass_manager(&gen.module);
 
-        target_machine.add_analysis_passes(passmgr);
+        target_machine.add_analysis_passes(&passmgr);
 
         let obj_file = opts.opt_str("o").unwrap_or_else(|| "output.o".to_owned());
 
         debug!("emit object file: {}", obj_file);
 
         target_machine
-            .emit_to_file(gen.module, &obj_file, LLVMCodeGenFileType::LLVMObjectFile)
+            .emit_to_file(&gen.module, &obj_file, LLVMCodeGenFileType::LLVMObjectFile)
             .unwrap();
 
         println!("wrote to object file: {}", obj_file);
