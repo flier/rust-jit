@@ -28,9 +28,9 @@ pub struct SharedModule(LLVMSharedModuleRef);
 
 inherit_from!(SharedModule, LLVMSharedModuleRef);
 
-impl<T: AsRaw<RawType = LLVMModuleRef>> From<T> for SharedModule {
+impl<T: IntoRaw<RawType = LLVMModuleRef>> From<T> for SharedModule {
     fn from(module: T) -> Self {
-        SharedModule(unsafe { LLVMOrcMakeSharedModule(module.as_raw()) })
+        SharedModule(unsafe { LLVMOrcMakeSharedModule(module.into_raw()) })
     }
 }
 
