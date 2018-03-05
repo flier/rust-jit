@@ -2,12 +2,11 @@ use std::env;
 use std::path::Path;
 use std::ptr;
 
-use boolinator::Boolinator;
 use libc::c_void;
 use llvm::support::*;
 
 use errors::Result;
-use utils::{AsBool, AsPtr};
+use utils::{AsPtr, AsResult};
 
 pub struct Symbols {}
 
@@ -22,7 +21,6 @@ impl Symbols {
         debug!("load library: {:?}", filename);
 
         unsafe { LLVMLoadLibraryPermanently(cpath!(filename)) }
-            .as_bool()
             .ok_or_else(|| format!("fail to load library {:?}", filename).into())
     }
 
@@ -33,7 +31,6 @@ impl Symbols {
         debug!("load executable: {:?}", filename);
 
         unsafe { LLVMLoadLibraryPermanently(ptr::null()) }
-            .as_bool()
             .ok_or_else(|| format!("fail to load executable {:?}", filename).into())
     }
 
