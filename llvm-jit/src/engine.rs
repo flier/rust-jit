@@ -588,7 +588,7 @@ mod tests {
 
         // run function
         assert_that!(
-            ee.run_function(pi, &[]).to_float(f64_t),
+            ee.run_function(&pi, vec![]).to_float(f64_t),
             is(close_to(f64::consts::PI, f64::EPSILON))
         );
     }
