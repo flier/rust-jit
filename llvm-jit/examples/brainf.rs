@@ -334,12 +334,12 @@ impl<'a> BrainF<'a> {
 
             cur_tok = next_tok.take();
 
-            let can_merge_token = |token| match token {
+            let need_more = |token| match token {
                 None | Some(Token::Move(_)) | Some(Token::Change(_)) => true,
                 _ => false,
             };
 
-            while can_merge_token(cur_tok) {
+            while need_more(cur_tok) {
                 column += 1;
                 cur_loc = (line, column);
 
@@ -347,12 +347,12 @@ impl<'a> BrainF<'a> {
 
                 match (cur_tok, next_tok) {
                     (Some(Token::Move(cur_steps)), Some(Token::Move(next_steps))) => {
-                        trace!("merge {:?} and {:?}", cur_tok, next_tok);
+                        trace!("merge {:?} with {:?} @ {:?}", cur_tok, next_tok, cur_loc);
 
                         cur_tok = Some(Token::Move(cur_steps + next_steps))
                     }
                     (Some(Token::Change(cur_value)), Some(Token::Change(next_value))) => {
-                        trace!("merge {:?} and {:?}", cur_tok, next_tok);
+                        trace!("merge {:?} with {:?} @ {:?}", cur_tok, next_tok, cur_loc);
 
                         cur_tok = Some(Token::Change(cur_value + next_value))
                     }
@@ -363,7 +363,7 @@ impl<'a> BrainF<'a> {
                         }
                     }
                     (_, token) => {
-                        trace!("current: {:?}, next: {:?}", cur_tok, token);
+                        trace!("current: {:?}, next: {:?} @ {:?}", cur_tok, token, cur_loc);
 
                         break;
                     }
