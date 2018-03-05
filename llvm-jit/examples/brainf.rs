@@ -35,7 +35,6 @@ extern crate boolinator;
 #[macro_use]
 extern crate error_chain;
 extern crate getopts;
-extern crate hexplay;
 #[macro_use]
 extern crate llvm_jit as jit;
 extern crate llvm_sys as llvm;
@@ -52,7 +51,6 @@ use std::path::Path;
 
 use boolinator::Boolinator;
 use getopts::{Matches, Options};
-use hexplay::HexViewBuilder;
 
 use jit::insts::*;
 use jit::prelude::*;
@@ -144,10 +142,7 @@ impl<'a> BrainF<'a> {
     }
 
     fn parse(&mut self, code: &str) -> Result<()> {
-        debug!(
-            "parsing code:\n{}",
-            HexViewBuilder::new(code.as_bytes()).row_width(16).finish()
-        );
+        trace!("parsing code:\n{}", code);
 
         let mut iter = code.trim().bytes();
 
@@ -164,7 +159,7 @@ impl<'a> BrainF<'a> {
         let module = context.create_module("BrainF");
 
         let void_t = context.void_t();
-        let i1_t = context.int1_t();
+        let bool_t = context.int1_t();
         let i8_t = context.int8_t();
         let i32_t = context.int32_t();
 
@@ -172,9 +167,9 @@ impl<'a> BrainF<'a> {
 
         //declare void @llvm.memset.p0i8.i32(i8 *, i8, i32, i32, i1)
         let memset_func = module.get_or_insert_function(
-            "llvm.memset.p0i8.i32",
+            IntrinsicId::memset.name(),
             void_t,
-            types![i8_t.ptr_t(), i8_t, i32_t, i32_t, i1_t],
+            types![i8_t.ptr_t(), i8_t, i32_t, i32_t, bool_t],
         );
 
         //declare i32 @getchar()
@@ -204,7 +199,7 @@ impl<'a> BrainF<'a> {
             i8_t.int(0),
             i32_t.int(mem_total as i64),
             i32_t.int(1),
-            i1_t.int(0)
+            bool_t.int(0)
         ).set_tail_call(false);
 
         //%arrmax = getelementptr i8 *%arr, i32 %d
@@ -230,34 +225,34 @@ impl<'a> BrainF<'a> {
         builder <<= ret!();
 
         //Error block for array out of bounds
-        let aberror_bb = compile_flags
-            .contains(CompileFlags::FLAG_ARRAY_BOUNDS)
-            .as_some({
-                //@aberrormsg = internal constant [%d x i8] c"\00"
-                let msg = context.str("Error: The head has left the tape.");
+        let aberror_bb = if compile_flags.contains(CompileFlags::FLAG_ARRAY_BOUNDS) {
+            //@aberrormsg = internal constant [%d x i8] c"\00"
+            let msg = context.str("Error: The head has left the tape.");
 
-                let aberror_msg = module.add_global_var("aberrormsg", msg.type_of());
+            let aberror_msg = module.add_global_var("aberrormsg", msg.type_of());
 
-                aberror_msg.set_linkage(llvm::LLVMLinkage::LLVMInternalLinkage);
-                aberror_msg.set_initializer(msg);
+            aberror_msg.set_linkage(llvm::LLVMLinkage::LLVMInternalLinkage);
+            aberror_msg.set_initializer(msg);
 
-                //declare i32 @puts(i8 *)
-                let puts_func = module.get_or_insert_function("puts", i32_t, types![i8_t.ptr_t()]);
+            //declare i32 @puts(i8 *)
+            let puts_func = module.get_or_insert_function("puts", i32_t, types![i8_t.ptr_t()]);
 
-                //brainf.aberror:
-                let aberror_bb = brainf_func.append_basic_block_in_context(format!("{}.aberror", LABEL), &context);
+            //brainf.aberror:
+            let aberror_bb = brainf_func.append_basic_block_in_context(format!("{}.aberror", LABEL), &context);
 
-                builder.position_at_end(aberror_bb);
+            builder.position_at_end(aberror_bb);
 
-                //call i32 @puts(i8 *getelementptr([%d x i8] *@aberrormsg, i32 0, i32 0))
-                let msg_ptr = gep!(aberror_msg, i32_t.null(), i32_t.null()).emit_to(&builder);
+            //call i32 @puts(i8 *getelementptr([%d x i8] *@aberrormsg, i32 0, i32 0))
+            let msg_ptr = gep!(aberror_msg, i32_t.null(), i32_t.null()).emit_to(&builder);
 
-                builder <<= call!(puts_func, msg_ptr).set_tail_call(false);
+            builder <<= call!(puts_func, msg_ptr).set_tail_call(false);
 
-                builder <<= br!(end_bb);
+            builder <<= br!(end_bb);
 
-                aberror_bb
-            });
+            Some(aberror_bb)
+        } else {
+            None
+        };
 
         (
             module,
@@ -285,19 +280,28 @@ impl<'a> BrainF<'a> {
         let i8_t = self.context.int8_t();
         let i32_t = self.context.int32_t();
 
-        let mut cur_sym = Symbol::None;
-        let mut next_sym = Symbol::None;
-        let mut cur_value = 0;
-        let mut next_value = 0;
         let mut line = 0;
         let mut column = 0;
+        let mut cur_sym = Symbol::None;
+        let mut cur_loc = (line, column);
+        let mut next_sym = Symbol::None;
+        let mut next_loc = (line, column);
+        let mut cur_value = 0;
+        let mut next_value = 0;
 
         let mut builder = self.context.create_builder();
 
         builder.position_at_end(self.brainf_bb);
 
         while ![Symbol::Eof, Symbol::Endloop].contains(&cur_sym) {
-            trace!("generate code for {:?}", cur_sym);
+            let (sym_line, sym_column) = cur_loc;
+
+            trace!(
+                "generate code for {:?} @ {}:{}",
+                cur_sym,
+                sym_line,
+                sym_column
+            );
 
             // Write out commands
             match cur_sym {
@@ -388,12 +392,11 @@ impl<'a> BrainF<'a> {
             }
 
             cur_sym = next_sym;
+            cur_loc = next_loc;
             cur_value = next_value;
             next_sym = Symbol::None;
 
-            let mut terminated = ![Symbol::None, Symbol::Move, Symbol::Change].contains(&cur_sym);
-
-            while !terminated {
+            while [Symbol::None, Symbol::Move, Symbol::Change].contains(&cur_sym) {
                 if let Some(c) = iter.next() {
                     column += 1;
 
@@ -407,12 +410,14 @@ impl<'a> BrainF<'a> {
                                 }
                                 Symbol::None => {
                                     cur_sym = Symbol::Change;
+                                    cur_loc = (line, column);
                                     cur_value = direction;
                                 }
                                 _ => {
                                     next_sym = Symbol::Change;
+                                    next_loc = (line, column);
                                     next_value = direction;
-                                    terminated = true;
+                                    break;
                                 }
                             }
                         }
@@ -425,62 +430,72 @@ impl<'a> BrainF<'a> {
                                 }
                                 Symbol::None => {
                                     cur_sym = Symbol::Move;
+                                    cur_loc = (line, column);
                                     cur_value = direction;
                                 }
                                 _ => {
                                     next_sym = Symbol::Move;
+                                    next_loc = (line, column);
                                     next_value = direction;
-                                    terminated = true;
+                                    break;
                                 }
                             }
                         }
                         b',' => {
                             if cur_sym == Symbol::None {
-                                cur_sym = Symbol::Read
+                                cur_sym = Symbol::Read;
+                                cur_loc = (line, column);
                             } else {
-                                next_sym = Symbol::Read
+                                next_sym = Symbol::Read;
+                                next_loc = (line, column);
                             }
-                            terminated = true;
+                            break;
                         }
                         b'.' => {
                             if cur_sym == Symbol::None {
-                                cur_sym = Symbol::Write
+                                cur_sym = Symbol::Write;
+                                cur_loc = (line, column);
                             } else {
-                                next_sym = Symbol::Write
+                                next_sym = Symbol::Write;
+                                next_loc = (line, column);
                             }
-                            terminated = true;
+                            break;
                         }
                         b'[' => {
                             if cur_sym == Symbol::None {
-                                cur_sym = Symbol::Loop
+                                cur_sym = Symbol::Loop;
+                                cur_loc = (line, column);
                             } else {
-                                next_sym = Symbol::Loop
+                                next_sym = Symbol::Loop;
+                                next_loc = (line, column);
                             }
-                            terminated = true;
+                            break;
                         }
                         b']' => {
                             if cur_sym == Symbol::None {
-                                cur_sym = Symbol::Endloop
+                                cur_sym = Symbol::Endloop;
+                                next_loc = (line, column);
                             } else {
-                                next_sym = Symbol::Endloop
+                                next_sym = Symbol::Endloop;
+                                next_loc = (line, column);
                             }
-                            terminated = true;
+                            break;
                         }
                         b'\n' => {
                             line += 1;
                             column = 0;
                         }
-                        _ => {
-                            // trace!("Ignore other characters: `{}`", c)
-                        }
+                        _ => {}
                     }
                 } else {
                     if cur_sym == Symbol::None {
-                        cur_sym = Symbol::Eof
+                        cur_sym = Symbol::Eof;
+                        cur_loc = (line, column);
                     } else {
-                        next_sym = Symbol::Eof
+                        next_sym = Symbol::Eof;
+                        next_loc = (line, column);
                     }
-                    terminated = true;
+                    break;
                 }
             }
         }
@@ -490,7 +505,7 @@ impl<'a> BrainF<'a> {
                 bail!("Error: Extra ']'");
             }
 
-            trace!("generate code for {:?}", cur_sym);
+            trace!("generate code for {:?} @ {}:{}", cur_sym, line, column);
 
             // Write loop test
 
@@ -575,78 +590,82 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let (program, args) = args.split_first().unwrap();
 
-    if let Some(opts) = parse_cmdline(program, args).unwrap() {
-        let (input_filename, _input_files) = opts.free.split_first().unwrap();
+    match parse_cmdline(program, args) {
+        Ok(Some(opts)) => {
+            let (input_filename, _input_files) = opts.free.split_first().unwrap();
 
-        let mut code = String::new();
+            let mut code = String::new();
 
-        if input_filename == "-" {
-            debug!("read input from STDIN");
+            if input_filename == "-" {
+                debug!("read input from STDIN");
 
-            let stdin = io::stdin();
-            let mut handle = stdin.lock();
+                let stdin = io::stdin();
+                let mut handle = stdin.lock();
 
-            handle.read_to_string(&mut code).unwrap();
-        } else {
-            debug!("read input from file: {}", input_filename);
+                handle.read_to_string(&mut code).unwrap();
+            } else {
+                debug!("read input from file: {}", input_filename);
 
-            File::open(input_filename)
-                .unwrap()
-                .read_to_string(&mut code)
-                .unwrap();
+                File::open(input_filename)
+                    .unwrap()
+                    .read_to_string(&mut code)
+                    .unwrap();
+            }
+
+            let tape_size = opts.opt_str("tape-size")
+                .map_or(DEFAULT_TAPE_SIZE, |s| s.parse().unwrap());
+
+            //Gather the compile flags
+            let compile_flags = if opts.opt_present("abc") {
+                debug!("array bounds checking enabled");
+
+                CompileFlags::FLAG_ARRAY_BOUNDS
+            } else {
+                CompileFlags::empty()
+            };
+
+            //Read the BrainF program
+            let context = Context::new();
+            let mut brainf = BrainF::new(tape_size, compile_flags, &context);
+
+            brainf.parse(&code).unwrap();
+
+            let module = brainf.module;
+
+            //Write it out
+            if opts.opt_present("jit") {
+                NativeTarget::init().unwrap();
+                NativeAsmPrinter::init().unwrap();
+
+                println!("------- Running JIT -------");
+
+                let brainf_func = module.get_function("brainf").unwrap();
+
+                let ee = ExecutionEngine::for_module(module).unwrap();
+
+                let _gv = ee.run_function(&brainf_func, vec![]);
+            } else {
+                //Get the output stream
+                let output_filename = opts.opt_str("o").map_or_else(
+                    || {
+                        // Use default filename.
+                        Path::new(if input_filename == "-" {
+                            "a"
+                        } else {
+                            input_filename.as_str()
+                        }).with_extension("bc")
+                    },
+                    |filename| Path::new(filename.as_str()).to_owned(),
+                );
+
+                debug!("write output to file: {:?}", output_filename);
+
+                module.write_bitcode(output_filename).unwrap();
+            }
+
+            jit::shutdown();
         }
-
-        let tape_size = opts.opt_str("tape-size")
-            .map_or(DEFAULT_TAPE_SIZE, |s| s.parse().unwrap());
-
-        //Gather the compile flags
-        let compile_flags = if opts.opt_present("abc") {
-            debug!("array bounds checking enabled");
-
-            CompileFlags::FLAG_ARRAY_BOUNDS
-        } else {
-            CompileFlags::empty()
-        };
-
-        //Read the BrainF program
-        let context = Context::new();
-        let mut brainf = BrainF::new(tape_size, compile_flags, &context);
-
-        brainf.parse(&code).unwrap();
-
-        let module = brainf.module;
-
-        //Write it out
-        if opts.opt_present("jit") {
-            NativeTarget::init().unwrap();
-            NativeAsmPrinter::init().unwrap();
-
-            println!("------- Running JIT -------");
-
-            let brainf_func = module.get_function("brainf").unwrap();
-
-            let ee = ExecutionEngine::for_module(module).unwrap();
-
-            let _gv = ee.run_function(&brainf_func, vec![]);
-        } else {
-            //Get the output stream
-            let output_filename = opts.opt_str("o").map_or_else(
-                || {
-                    // Use default filename.
-                    Path::new(if input_filename == "-" {
-                        "a"
-                    } else {
-                        input_filename.as_str()
-                    }).with_extension("bc")
-                },
-                |filename| Path::new(filename.as_str()).to_owned(),
-            );
-
-            debug!("write output to file: {:?}", output_filename);
-
-            module.write_bitcode(output_filename).unwrap();
-        }
-
-        jit::shutdown();
+        Ok(None) => {}
+        Err(err) => eprintln!("{}", err),
     }
 }
