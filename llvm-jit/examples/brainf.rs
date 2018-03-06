@@ -150,7 +150,7 @@ impl<'a> DerefMut for BrainF<'a> {
 
 impl<'a> BrainF<'a> {
     fn new(mem_total: usize, compile_flags: CompileFlags, context: &'a Context) -> BrainF<'a> {
-        let (module, builder, state) = Self::gen_module(mem_total, compile_flags, context);
+        let (module, builder, state) = Self::header(mem_total, compile_flags, context);
 
         debug!("generated module header:\n{}", module);
 
@@ -177,9 +177,8 @@ impl<'a> BrainF<'a> {
         Ok(())
     }
 
-    fn gen_module(mem_total: usize, compile_flags: CompileFlags, context: &'a Context) -> (Module, IRBuilder, State) {
+    fn header(mem_total: usize, compile_flags: CompileFlags, context: &'a Context) -> (Module, IRBuilder, State) {
         let module = context.create_module("BrainF");
-        let builder = context.create_builder();
 
         let void_t = context.void_t();
         let bool_t = context.int1_t();
@@ -206,9 +205,11 @@ impl<'a> BrainF<'a> {
         //define void @brainf()
         let brainf_func = module.get_or_insert_function("brainf", void_t, types![]);
 
-        let brainf_bb = brainf_func.append_basic_block_in_context(LABEL, &context);
+        let entry_bb = brainf_func.append_basic_block_in_context(format!("{}.entry", LABEL), &context);
 
-        builder.position_at_end(brainf_bb);
+        let builder = context.create_builder();
+
+        builder.position_at_end(entry_bb);
 
         //%arr = malloc i8, i32 %d
         let ptr_arr = malloc!(i8_t, i32_t.int(mem_total as i64); "arr").emit_to(&builder);
@@ -278,7 +279,7 @@ impl<'a> BrainF<'a> {
             None
         };
 
-        builder.position_at_end(brainf_bb);
+        builder.position_at_end(entry_bb);
 
         (
             module,
@@ -299,7 +300,7 @@ impl<'a> BrainF<'a> {
     fn read_loop<I: Iterator<Item = Token>>(
         &mut self,
         tokens: &mut I,
-        phi: Option<PhiNode>,
+        phi: Option<Phi<'a>>,
         old_bb: Option<BasicBlock>,
         test_bb: Option<BasicBlock>,
     ) -> Result<()> {
@@ -310,25 +311,23 @@ impl<'a> BrainF<'a> {
         let mut next_tok = None;
 
         while cur_tok != Some(Token::EndLoop) {
-            if cur_tok.is_some() {
-                trace!("generate code for {:?} @ {:?}", cur_tok, cur_loc);
-            }
+            if let Some(token) = cur_tok {
+                trace!("generate code for {:?} @ {:?}", token, cur_loc);
 
-            // Write out commands
-            match cur_tok {
-                None => {}
-                Some(Token::Read) => self.emit_read(),
-                Some(Token::Write) => self.emit_write(),
-                Some(Token::Move(steps)) => self.cur_head = self.emit_move(steps),
-                Some(Token::Change(delta)) => self.emit_change(delta),
-                Some(Token::Loop) => {
-                    let (phi, old_bb, test_bb) = self.emit_loop();
+                // Write out commands
+                match token {
+                    Token::Read => self.emit_read(),
+                    Token::Write => self.emit_write(),
+                    Token::Move(steps) => self.cur_head = self.emit_move(steps),
+                    Token::Change(delta) => self.emit_change(delta),
+                    Token::Loop => {
+                        let (phi, old_bb, test_bb) = self.emit_loop();
 
-                    self.cur_head = phi.into();
-                    self.read_loop(tokens, Some(phi), Some(old_bb), Some(test_bb))?;
-                }
-                _ => {
-                    bail!("Error: Unknown token: {:?}", cur_tok);
+                        self.read_loop(tokens, Some(phi), Some(old_bb), Some(test_bb))?;
+                    }
+                    _ => {
+                        bail!("Error: Unknown token: {:?}", token);
+                    }
                 }
             }
 
@@ -431,18 +430,16 @@ impl<'a> BrainF<'a> {
         let i32_t = self.context.int32_t();
 
         //%head.%d = getelementptr i8 *%head.%d, i32 %d
-        let cur_head = gep!(self.cur_head, i32_t.int(steps); HEAD_REG)
-            .emit_to(&self.builder)
-            .into();
+        let cur_head = gep!(self.cur_head, i32_t.int(steps); HEAD_REG).emit_to(&self.builder);
 
         if self.compile_flags.contains(CompileFlags::FLAG_ARRAY_BOUNDS) {
             trace!("checking array bounds");
 
             //%test.%d = icmp uge i8 *%head.%d, %arrmax
-            let test_0 = icmp!(UGE self.cur_head, self.ptr_arrmax.unwrap(); TEST_REG);
+            let test_0 = icmp!(UGE cur_head, self.ptr_arrmax.unwrap(); TEST_REG);
 
             //%test.%d = icmp ult i8 *%head.%d, %arr
-            let test_1 = icmp!(ULT self.cur_head, self.ptr_arr; TEST_REG);
+            let test_1 = icmp!(ULT cur_head, self.ptr_arr; TEST_REG);
 
             //%test.%d = or i1 %test.%d, %test.%d
             let test_2 = or!(test_0, test_1; TEST_REG);
@@ -457,7 +454,7 @@ impl<'a> BrainF<'a> {
             self.builder.position_at_end(next_bb);
         }
 
-        cur_head
+        cur_head.into()
     }
 
     fn emit_change(&self, delta: i64) {
@@ -473,29 +470,29 @@ impl<'a> BrainF<'a> {
         store!(tape_1, self.cur_head).emit_to(&self.builder);
     }
 
-    fn emit_loop(&self) -> (PhiNode, BasicBlock, BasicBlock) {
+    fn emit_loop(&self) -> (Phi<'a>, BasicBlock, BasicBlock) {
         let i8_t = self.context.int8_t();
 
         //br label %main.%d
         let test_bb = self.brainf_func
-            .append_basic_block_in_context(LABEL, &self.context);
+            .append_basic_block_in_context(format!("{}.loop.test", LABEL), &self.context);
 
         br!(test_bb).emit_to(&self.builder);
 
         //main.%d:
         let old_bb = self.builder.insert_block().unwrap();
 
-        let bb_1 = self.brainf_func
-            .append_basic_block_in_context(LABEL, &self.context);
-        self.builder.position_at_end(bb_1);
+        let loop_bb = self.brainf_func
+            .append_basic_block_in_context(format!("{}.loop.entry", LABEL), &self.context);
+        self.builder.position_at_end(loop_bb);
 
         // Make part of PHI instruction now, wait until end of loop to finish
-        let phi = phi!(i8_t.ptr_t(), self.cur_head => old_bb; HEAD_REG).emit_to(&self.builder);
+        let phi = phi!(i8_t.ptr_t(), self.cur_head => old_bb; HEAD_REG);
 
-        (phi, old_bb, test_bb)
+        (phi, loop_bb, test_bb)
     }
 
-    fn emit_end_loop(&self, phi: PhiNode, old_bb: BasicBlock, test_bb: BasicBlock) -> Instruction {
+    fn emit_end_loop(&self, phi: Phi, old_bb: BasicBlock, test_bb: BasicBlock) -> Instruction {
         let i8_t = self.context.int8_t();
 
         // Write loop test
@@ -505,11 +502,12 @@ impl<'a> BrainF<'a> {
 
         //main.%d:
 
+        self.builder.position_at_end(test_bb);
+
         //%head.%d = phi i8 *[%head.%d, %main.%d], [%head.%d, %main.%d]
         //Finish phi made at beginning of loop
-        phi.add_incoming(self.cur_head, self.builder.insert_block().unwrap());
-
-        let head_0 = phi;
+        let head_0 = phi.add_incoming(self.cur_head.into(), old_bb)
+            .emit_to(&self.builder);
 
         //%tape.%d = load i8 *%head.%d
         let tape_0 = load!(head_0; TAPER_REG);
@@ -518,15 +516,13 @@ impl<'a> BrainF<'a> {
         let test_0 = icmp!(EQ tape_0, i8_t.int(0); TEST_REG);
 
         //br i1 %test.%d, label %main.%d, label %main.%d
-        let bb_0 = self.brainf_func
-            .append_basic_block_in_context(LABEL, &self.context);
+        let loop_end_bb = self.brainf_func
+            .append_basic_block_in_context(format!("{}.loop.end", LABEL), &self.context);
 
-        self.builder.position_at_end(test_bb);
-
-        br!(test_0 => bb_0, _ => old_bb).emit_to(&self.builder);
+        br!(test_0 => loop_end_bb, _ => old_bb).emit_to(&self.builder);
 
         //main.%d:
-        self.builder.position_at_end(bb_0);
+        self.builder.position_at_end(loop_end_bb);
 
         //%head.%d = phi i8 *[%head.%d, %main.%d]
         phi!(i8_t.ptr_t(), head_0 => test_bb)
