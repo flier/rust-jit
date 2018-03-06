@@ -95,7 +95,7 @@ impl fmt::Display for TypeRef {
 pub type IntegerType = TypeRef;
 
 impl IntegerType {
-    pub fn width(&self) -> u32 {
+    pub fn bit_width(&self) -> u32 {
         unsafe { LLVMGetIntTypeWidth(self.0) }
     }
 }
@@ -588,13 +588,13 @@ mod tests {
         assert_eq!(GlobalContext::int128_t().to_string(), "i128");
         assert_eq!(GlobalContext::int_type(512).to_string(), "i512");
 
-        assert_eq!(GlobalContext::int1_t().width(), 1);
-        assert_eq!(GlobalContext::int8_t().width(), 8);
-        assert_eq!(GlobalContext::int16_t().width(), 16);
-        assert_eq!(GlobalContext::int32_t().width(), 32);
-        assert_eq!(GlobalContext::int64_t().width(), 64);
-        assert_eq!(GlobalContext::int128_t().width(), 128);
-        assert_eq!(GlobalContext::int_type(512).width(), 512);
+        assert_eq!(GlobalContext::int1_t().bit_width(), 1);
+        assert_eq!(GlobalContext::int8_t().bit_width(), 8);
+        assert_eq!(GlobalContext::int16_t().bit_width(), 16);
+        assert_eq!(GlobalContext::int32_t().bit_width(), 32);
+        assert_eq!(GlobalContext::int64_t().bit_width(), 64);
+        assert_eq!(GlobalContext::int128_t().bit_width(), 128);
+        assert_eq!(GlobalContext::int_type(512).bit_width(), 512);
 
         assert_eq!(GlobalContext::half_t().to_string(), "half");
         assert_eq!(GlobalContext::float_t().to_string(), "float");
@@ -622,13 +622,13 @@ mod tests {
         assert_eq!(c.int128_t().to_string(), "i128");
         assert_eq!(c.int_type(512).to_string(), "i512");
 
-        assert_eq!(c.int1_t().width(), 1);
-        assert_eq!(c.int8_t().width(), 8);
-        assert_eq!(c.int16_t().width(), 16);
-        assert_eq!(c.int32_t().width(), 32);
-        assert_eq!(c.int64_t().width(), 64);
-        assert_eq!(c.int128_t().width(), 128);
-        assert_eq!(c.int_type(512).width(), 512);
+        assert_eq!(c.int1_t().bit_width(), 1);
+        assert_eq!(c.int8_t().bit_width(), 8);
+        assert_eq!(c.int16_t().bit_width(), 16);
+        assert_eq!(c.int32_t().bit_width(), 32);
+        assert_eq!(c.int64_t().bit_width(), 64);
+        assert_eq!(c.int128_t().bit_width(), 128);
+        assert_eq!(c.int_type(512).bit_width(), 512);
 
         assert!(matches!(
             c.int1_t().kind(),

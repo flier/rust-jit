@@ -1,10 +1,12 @@
 mod gen;
+mod name;
 
 pub use self::gen::IntrinsicId;
 
 use std::mem;
 
-use llvm::core::*;
+use llvm::core::LLVMGetIntrinsicID;
+
 use boolinator::Boolinator;
 
 use function::Function;
