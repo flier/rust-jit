@@ -65,9 +65,8 @@ impl TypeRef {
                 } else {
                     s.push_str("sl");
 
-                    for i in 0..ty.element_count() {
-                        s.push_str(&ty.element_type(i).unwrap().mangled_name())
-                    }
+                    ty.elements()
+                        .for_each(|element| s.push_str(&element.mangled_name()))
                 };
 
                 // Ensure nested structs are distinguishable.
@@ -132,10 +131,7 @@ mod tests {
             StructType::new(types![i8_t, i8_t.ptr_t()], true).mangled_name(),
             "sli8p0i8s"
         );
-         assert_eq!(
-             ctxt.empty_struct_t("test").mangled_name(),
-            "s_tests"
-        );
+        assert_eq!(ctxt.empty_struct_t("test").mangled_name(), "s_tests");
 
         assert_eq!(
             FunctionType::new(i8_t, types![i8_t.ptr_t()], true).mangled_name(),

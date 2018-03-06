@@ -3,6 +3,7 @@ use std::fmt;
 use std::ptr;
 
 use boolinator::Boolinator;
+
 use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
@@ -358,7 +359,6 @@ impl StructType {
         self
     }
 
-    /// Get the elements within a structure.
     pub fn element_types(&self) -> Vec<TypeRef> {
         let count = unsafe { LLVMCountStructElementTypes(self.as_raw()) };
         let mut elements: Vec<LLVMTypeRef> = vec![ptr::null_mut(); count as usize];
@@ -379,6 +379,17 @@ impl StructType {
             .and_option_from(|| unsafe { LLVMStructGetTypeAtIndex(self.as_raw(), index as u32) }.wrap())
     }
 
+    /// Get the elements within a structure.
+    pub fn elements(&self) -> ElementTypes {
+        let count = unsafe { LLVMCountStructElementTypes(self.as_raw()) };
+
+        ElementTypes {
+            ty: self.as_raw(),
+            index: 0,
+            count,
+        }
+    }
+
     /// Determine whether a structure is packed.
     pub fn is_packed(&self) -> bool {
         unsafe { LLVMIsPackedStruct(self.as_raw()) }.as_bool()
@@ -387,6 +398,28 @@ impl StructType {
     /// Determine whether a structure is opaque.
     pub fn is_opaque(&self) -> bool {
         unsafe { LLVMIsOpaqueStruct(self.as_raw()) }.as_bool()
+    }
+}
+
+pub struct ElementTypes {
+    ty: LLVMTypeRef,
+    index: u32,
+    count: u32,
+}
+
+impl Iterator for ElementTypes {
+    type Item = TypeRef;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.count {
+            None
+        } else {
+            let ty = unsafe { LLVMStructGetTypeAtIndex(self.ty, self.index) };
+
+            self.index += 1;
+
+            Some(TypeRef(ty))
+        }
     }
 }
 
