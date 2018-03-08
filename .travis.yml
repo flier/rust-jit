@@ -21,6 +21,7 @@ matrix:
           packages:
             - clang-5.0
             - g++-5
+            - llvm-5.0-dev
           sources:
             - ubuntu-toolchain-r-test
             - llvm-toolchain-trusty-5.0
@@ -28,9 +29,10 @@ matrix:
               key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
 
 env:
-  - RUST_LOG=llvm
-  - RUST_BACKTRACE=full
-  - LLVM_SYS_50_FFI_WORKAROUND=1
+  global:
+    - RUST_LOG=llvm
+    - RUST_BACKTRACE=full
+    - LLVM_SYS_50_FFI_WORKAROUND=1
 
 install:
   - |
@@ -40,7 +42,8 @@ install:
       brew install llvm
       export LLVM_SYS_50_PREFIX=`brew --prefix llvm`
     fi
-  - $LLVM_SYS_50_PREFIX/bin/llvm-config --version
+  - export PATH=$LLVM_SYS_50_PREFIX/bin:$PATH
+  - llvm-config --version
 
 cache: cargo
 
