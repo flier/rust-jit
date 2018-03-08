@@ -188,11 +188,7 @@ impl<'a> BrainF<'a> {
         //Function prototypes
 
         //declare void @llvm.memset.p0i8.i32(i8 *, i8, i32, i32, i1)
-        let memset_func = module.get_or_insert_function(
-            IntrinsicId::memset.name(),
-            void_t,
-            types![i8_t.ptr_t(), i8_t, i32_t, i32_t, bool_t],
-        );
+        let memset_func = module.intrinsic_declaration(IntrinsicId::memset, types![i8_t.ptr_t(), i32_t]);
 
         //declare i32 @getchar()
         let getchar_func = module.get_or_insert_function("getchar", i32_t, types![]);
@@ -625,11 +621,9 @@ fn main() {
 
                     let brainf_func = module.get_function("brainf").unwrap();
 
-                    let ee = ExecutionEngine::for_module(module).unwrap();
-
-                    let gv = ee.run_function(&brainf_func, vec![]);
-
-                    println!("Result: {}", gv.to_int());
+                    ExecutionEngine::for_module(module)
+                        .unwrap()
+                        .run_function(&brainf_func, vec![]);
 
                     jit::shutdown();
                 } else {

@@ -14,6 +14,7 @@ bitflags = "1.0"
 boolinator = "2.4"
 hexplay = "0.2"
 libc = "0.2"
+nom = "3.2"
 llvm-sys = "50"
 
 clippy = {version = "*", optional = true}

@@ -11,6 +11,7 @@ use llvm::prelude::*;
 use constant::ConstantInt;
 use context::{Context, GlobalContext};
 use module::AddressSpace;
+use function::FunctionType;
 use utils::{AsBool, AsLLVMBool, AsRaw, DisposableMessage, FromRaw, UncheckedCStr};
 use value::ValueRef;
 
@@ -81,6 +82,161 @@ impl TypeRef {
     pub fn size_of(&self) -> ConstantInt {
         unsafe { LLVMSizeOf(self.0) }.into()
     }
+
+    /// Return the basic size of this type if it is a primitive type. These are
+    /// fixed by LLVM and are not target-dependent.
+    /// This will return zero if the type does not have a size or is not a
+    /// primitive type.
+    pub fn primitive_size_in_bits(&self) -> Option<usize> {
+        match self.kind() {
+            LLVMTypeKind::LLVMHalfTypeKind => Some(16),
+            LLVMTypeKind::LLVMFloatTypeKind => Some(32),
+            LLVMTypeKind::LLVMDoubleTypeKind | LLVMTypeKind::LLVMX86_MMXTypeKind => Some(64),
+            LLVMTypeKind::LLVMX86_FP80TypeKind => Some(80),
+            LLVMTypeKind::LLVMFP128TypeKind | LLVMTypeKind::LLVMPPC_FP128TypeKind => Some(128),
+            LLVMTypeKind::LLVMIntegerTypeKind => Some(self.bit_width()),
+            LLVMTypeKind::LLVMVectorTypeKind => VectorType(*self).bit_width(),
+            _ => None,
+        }
+    }
+
+    /// Return true if this is 'void'.
+    pub fn is_void_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMVoidTypeKind
+    }
+
+    /// Return true if this is 'half', a 16-bit IEEE fp type.
+    pub fn is_half_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMHalfTypeKind
+    }
+
+    /// Return true if this is 'float', a 32-bit IEEE fp type.
+    pub fn is_float_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMFloatTypeKind
+    }
+
+    /// Return true if this is 'double', a 64-bit IEEE fp type.
+    pub fn is_double_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMDoubleTypeKind
+    }
+
+    /// Return true if this is x86 long double.
+    pub fn is_x86_fp80_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMX86_FP80TypeKind
+    }
+
+    /// Return true if this is 'fp128'.
+    pub fn is_fp128_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMFP128TypeKind
+    }
+
+    /// Return true if this is powerpc long double.
+    pub fn is_ppc_fp128_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMPPC_FP128TypeKind
+    }
+
+    /// Return true if this is one of the six floating-point types
+    pub fn is_floating_point_ty(&self) -> bool {
+        match self.kind() {
+            LLVMTypeKind::LLVMHalfTypeKind
+            | LLVMTypeKind::LLVMFloatTypeKind
+            | LLVMTypeKind::LLVMDoubleTypeKind
+            | LLVMTypeKind::LLVMX86_FP80TypeKind
+            | LLVMTypeKind::LLVMFP128TypeKind
+            | LLVMTypeKind::LLVMPPC_FP128TypeKind => true,
+            _ => false,
+        }
+    }
+
+    /// Return true if this is 'label'.
+    pub fn is_label_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMLabelTypeKind
+    }
+
+    /// True if this is an instance of IntegerType.
+    pub fn is_integer_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMIntegerTypeKind
+    }
+
+    /// True if this is an instance of FunctionType.
+    pub fn is_func_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMFunctionTypeKind
+    }
+
+    /// True if this is an instance of StructType.
+    pub fn is_struct_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMStructTypeKind
+    }
+
+    /// True if this is an instance of ArrayType.
+    pub fn is_array_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMArrayTypeKind
+    }
+
+    /// True if this is an instance of PointerType.
+    pub fn is_pointer_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMPointerTypeKind
+    }
+
+    /// True if this is an instance of VectorType.
+    pub fn is_vector_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMVectorTypeKind
+    }
+
+    /// Return true if this is 'metadata'.
+    pub fn is_metadata_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMMetadataTypeKind
+    }
+
+    /// Return true if this is X86 MMX.
+    pub fn is_x86_mmx_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMX86_MMXTypeKind
+    }
+
+    /// Return true if this is 'token'.
+    pub fn is_token_ty(&self) -> bool {
+        self.kind() == LLVMTypeKind::LLVMTokenTypeKind
+    }
+
+    pub fn as_struct_ty(&self) -> Option<StructType> {
+        if self.kind() == LLVMTypeKind::LLVMStructTypeKind {
+            Some((*self).into())
+        } else {
+            None
+        }
+    }
+
+    pub fn as_array_ty(&self) -> Option<ArrayType> {
+        if self.kind() == LLVMTypeKind::LLVMArrayTypeKind {
+            Some((*self).into())
+        } else {
+            None
+        }
+    }
+
+    pub fn as_ptr_ty(&self) -> Option<PointerType> {
+        if self.kind() == LLVMTypeKind::LLVMPointerTypeKind {
+            Some((*self).into())
+        } else {
+            None
+        }
+    }
+
+    pub fn as_vector_ty(&self) -> Option<VectorType> {
+        if self.kind() == LLVMTypeKind::LLVMVectorTypeKind {
+            Some((*self).into())
+        } else {
+            None
+        }
+    }
+
+    pub fn as_func_ty(&self) -> Option<FunctionType> {
+        if self.kind() == LLVMTypeKind::LLVMFunctionTypeKind {
+            Some((*self).into())
+        } else {
+            None
+        }
+    }
 }
 
 impl fmt::Display for TypeRef {
@@ -96,8 +252,8 @@ impl fmt::Display for TypeRef {
 pub type IntegerType = TypeRef;
 
 impl IntegerType {
-    pub fn bit_width(&self) -> u32 {
-        unsafe { LLVMGetIntTypeWidth(self.0) }
+    pub fn bit_width(&self) -> usize {
+        unsafe { LLVMGetIntTypeWidth(self.0) as usize }
     }
 }
 
@@ -126,8 +282,8 @@ impl GlobalContext {
         TypeRef(unsafe { LLVMInt128Type() })
     }
 
-    pub fn int_type(bits: u32) -> IntegerType {
-        TypeRef(unsafe { LLVMIntType(bits) })
+    pub fn int_type(bits: usize) -> IntegerType {
+        TypeRef(unsafe { LLVMIntType(bits as u32) })
     }
 }
 
@@ -151,7 +307,7 @@ pub trait IntegerTypes {
     /// a 64-bit integer.
     fn int128_t(&self) -> IntegerType;
 
-    fn int_type(&self, bits: u32) -> IntegerType;
+    fn int_type(&self, bits: usize) -> IntegerType;
 }
 
 impl IntegerTypes for Context {
@@ -179,8 +335,8 @@ impl IntegerTypes for Context {
         TypeRef(unsafe { LLVMInt128TypeInContext(self.as_raw()) })
     }
 
-    fn int_type(&self, bits: u32) -> IntegerType {
-        TypeRef(unsafe { LLVMIntTypeInContext(self.as_raw(), bits) })
+    fn int_type(&self, bits: usize) -> IntegerType {
+        TypeRef(unsafe { LLVMIntTypeInContext(self.as_raw(), bits as u32) })
     }
 }
 
@@ -558,8 +714,63 @@ inherit_type_ref!(VectorType);
 
 impl VectorType {
     /// Obtain the number of elements in a vector type.
-    pub fn size(&self) -> usize {
+    pub fn len(&self) -> usize {
         unsafe { LLVMGetVectorSize(self.as_raw()) as usize }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Return the number of bits in the Vector type.
+    /// Returns zero when the vector is a vector of pointers.
+    pub fn bit_width(&self) -> Option<usize> {
+        self.element_type()
+            .primitive_size_in_bits()
+            .map(|size| size * self.len())
+    }
+
+    /// This method gets a `VectorType` with the same number of elements as
+    /// the input type, and the element type is an integer type of the same width
+    /// as the input element type.
+    pub fn integer_vector_t(&self) -> VectorType {
+        let bits = self.element_type()
+            .primitive_size_in_bits()
+            .unwrap_or_default();
+
+        self.context().int_type(bits).vector_t(self.len())
+    }
+
+    /// This method is like `integer_vector_t` except that the element types are
+    /// twice as wide as the elements in the input type.
+    pub fn extended_element_vector_t(&self) -> VectorType {
+        let bits = self.element_type()
+            .primitive_size_in_bits()
+            .unwrap_or_default() * 2;
+
+        self.context().int_type(bits).vector_t(self.len())
+    }
+
+    /// This method is like `integer_vector_t` except that the element types are
+    /// half as wide as the elements in the input type.
+    pub fn truncated_element_vector_t(&self) -> VectorType {
+        let bits = self.element_type()
+            .primitive_size_in_bits()
+            .unwrap_or_default() / 2;
+
+        self.context().int_type(bits).vector_t(self.len())
+    }
+
+    /// This method returns a VectorType with half as many elements as the
+    /// input type and the same element type.
+    pub fn half_elements_vector_t(&self) -> VectorType {
+        self.element_type().vector_t(self.len() / 2)
+    }
+
+    /// This method returns a VectorType with twice as many elements as the
+    /// input type and the same element type.
+    pub fn double_elements_vector_t(&self) -> VectorType {
+        self.element_type().vector_t(self.len() * 2)
     }
 }
 
@@ -851,6 +1062,7 @@ mod tests {
         assert!(!t.as_raw().is_null());
         assert!(matches!(t.kind(), llvm::LLVMTypeKind::LLVMVectorTypeKind));
         assert_eq!(t.element_type(), i64_t);
-        assert_eq!(t.size(), 8);
+        assert_eq!(t.len(), 8);
+        assert_eq!(t.bit_width().unwrap(), 512);
     }
 }

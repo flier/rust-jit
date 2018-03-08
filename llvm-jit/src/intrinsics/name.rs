@@ -1,7 +1,26 @@
 use llvm::LLVMTypeKind;
 
-use types::{ArrayType, IntegerType, PointerType, SequentialType, StructType, TypeRef, VectorType};
+use types::{ArrayType, PointerType, SequentialType, StructType, TypeRef, VectorType};
 use function::FunctionType;
+use intrinsics::IntrinsicId;
+use intrinsics::gen::INTRINSIC_NAMES;
+
+impl IntrinsicId {
+    /// Return the LLVM name for an intrinsic, such as "llvm.ppc.altivec.lvx".
+    pub fn name(&self) -> &str {
+        INTRINSIC_NAMES[*self as usize - 1]
+    }
+
+    pub fn name_of(&self, param_types: &[TypeRef]) -> String {
+        let mut s = self.name().to_owned();
+
+        for ty in param_types {
+            s.push_str(&format!(".{}", ty.mangled_name()))
+        }
+
+        s
+    }
+}
 
 impl TypeRef {
     /// Returns a stable mangling for the type specified for use in the name
@@ -31,11 +50,7 @@ impl TypeRef {
             LLVMTypeKind::LLVMTokenTypeKind => "token".to_owned(),
             LLVMTypeKind::LLVMMetadataTypeKind => "Metadata".to_owned(),
             LLVMTypeKind::LLVMX86_MMXTypeKind => "x86mmx".to_owned(),
-            LLVMTypeKind::LLVMIntegerTypeKind => {
-                let ty = IntegerType::from(*self);
-
-                format!("i{}", ty.bit_width())
-            }
+            LLVMTypeKind::LLVMIntegerTypeKind => format!("i{}", self.bit_width()),
             LLVMTypeKind::LLVMPointerTypeKind => {
                 let ty = PointerType::from(*self);
 
@@ -53,7 +68,7 @@ impl TypeRef {
             LLVMTypeKind::LLVMVectorTypeKind => {
                 let ty = VectorType::from(*self);
 
-                format!("v{}{}", ty.size(), ty.element_type().mangled_name())
+                format!("v{}{}", ty.len(), ty.element_type().mangled_name())
             }
             LLVMTypeKind::LLVMStructTypeKind => {
                 let ty = StructType::from(*self);
@@ -99,6 +114,7 @@ mod tests {
     use types::*;
     use context::Context;
     use function::FunctionType;
+    use intrinsics::IntrinsicId;
 
     #[test]
     fn mangled_type() {
@@ -136,6 +152,23 @@ mod tests {
         assert_eq!(
             FunctionType::new(i8_t, types![i8_t.ptr_t()], true).mangled_name(),
             "f_i8p0i8varargf"
+        );
+    }
+
+    #[test]
+    fn intrinsic_name() {
+        assert_eq!(IntrinsicId::memset.name(), "llvm.memset");
+    }
+
+    #[test]
+    fn mangled_func() {
+        let ctxt = Context::new();
+        let i8_t = ctxt.int8_t();
+        let i32_t = ctxt.int32_t();
+
+        assert_eq!(
+            IntrinsicId::memset.name_of(types![i8_t.ptr_t(), i32_t]),
+            "llvm.memset.p0i8.i32"
         );
     }
 }

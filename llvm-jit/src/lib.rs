@@ -15,6 +15,9 @@ extern crate libc;
 extern crate llvm_sys;
 #[macro_use]
 extern crate log;
+#[macro_use(alt, alt_complete, call, complete, do_parse, eof, error_position, error_node_position, named, named_args,
+            many_m_n, many_till, map, switch, tag, value)]
+extern crate nom;
 
 #[doc(hidden)]
 pub mod llvm {
