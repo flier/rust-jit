@@ -1,35 +1,35 @@
 use std::borrow::Cow;
-use std::fmt;
 
 use llvm::core::*;
 
-use insts::{IRBuilder, InstructionBuilder};
-use utils::AsRaw;
+use insts::{AstNode, IRBuilder, InstructionBuilder};
+use utils::{AsRaw, IntoRaw};
 use value::Instruction;
 
 /// This instruction extracts a single (scalar) element from a `VectorType` value
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExtractElement<'a, V, I> {
-    vector: V,
-    index: I,
+pub struct ExtractElement<'a> {
+    vector: Box<AstNode<'a>>,
+    index: Box<AstNode<'a>>,
     name: Cow<'a, str>,
 }
 
-impl<'a, V, I> ExtractElement<'a, V, I> {
-    pub fn new(vector: V, index: I, name: Cow<'a, str>) -> Self {
+impl<'a> ExtractElement<'a> {
+    pub fn new<V, I, N>(vector: V, index: I, name: N) -> Self
+    where
+        V: Into<AstNode<'a>>,
+        I: Into<AstNode<'a>>,
+        N: Into<Cow<'a, str>>,
+    {
         ExtractElement {
-            vector,
-            index,
-            name,
+            vector: Box::new(vector.into()),
+            index: Box::new(index.into()),
+            name: name.into(),
         }
     }
 }
 
-impl<'a, V, I> InstructionBuilder for ExtractElement<'a, V, I>
-where
-    V: InstructionBuilder + fmt::Debug,
-    I: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for ExtractElement<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -38,8 +38,8 @@ where
         unsafe {
             LLVMBuildExtractElement(
                 builder.as_raw(),
-                self.vector.emit_to(builder).into().as_raw(),
-                self.index.emit_to(builder).into().as_raw(),
+                self.vector.emit_to(builder).into_raw(),
+                self.index.emit_to(builder).into_raw(),
                 cstr!(self.name),
             )
         }.into()
@@ -47,11 +47,13 @@ where
 }
 
 /// The `extractelement` instruction extracts a single scalar element from a vector at a specified index.
-pub fn extract_element<'a, V, I, N>(vector: V, index: I, name: N) -> ExtractElement<'a, V, I>
+pub fn extract_element<'a, V, I, N>(vector: V, index: I, name: N) -> ExtractElement<'a>
 where
+    V: Into<AstNode<'a>>,
+    I: Into<AstNode<'a>>,
     N: Into<Cow<'a, str>>,
 {
-    ExtractElement::new(vector, index, name.into())
+    ExtractElement::new(vector, index, name)
 }
 
 /// The `extractelement` instruction extracts a single scalar element from a vector at a specified index.
@@ -67,30 +69,31 @@ macro_rules! extract_element {
 
 /// This instruction inserts a single (scalar) element into a `VectorType` value
 #[derive(Clone, Debug, PartialEq)]
-pub struct InsertElement<'a, V, E, I> {
-    vector: V,
-    element: E,
-    index: I,
+pub struct InsertElement<'a> {
+    vector: Box<AstNode<'a>>,
+    element: Box<AstNode<'a>>,
+    index: Box<AstNode<'a>>,
     name: Cow<'a, str>,
 }
 
-impl<'a, V, E, I> InsertElement<'a, V, E, I> {
-    pub fn new(vector: V, element: E, index: I, name: Cow<'a, str>) -> Self {
+impl<'a> InsertElement<'a> {
+    pub fn new<V, E, I, N>(vector: V, element: E, index: I, name: N) -> Self
+    where
+        V: Into<AstNode<'a>>,
+        E: Into<AstNode<'a>>,
+        I: Into<AstNode<'a>>,
+        N: Into<Cow<'a, str>>,
+    {
         InsertElement {
-            vector,
-            element,
-            index,
-            name,
+            vector: Box::new(vector.into()),
+            element: Box::new(element.into()),
+            index: Box::new(index.into()),
+            name: name.into(),
         }
     }
 }
 
-impl<'a, V, E, I> InstructionBuilder for InsertElement<'a, V, E, I>
-where
-    V: InstructionBuilder + fmt::Debug,
-    E: InstructionBuilder + fmt::Debug,
-    I: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for InsertElement<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -99,9 +102,9 @@ where
         unsafe {
             LLVMBuildInsertElement(
                 builder.as_raw(),
-                self.vector.emit_to(builder).into().as_raw(),
-                self.element.emit_to(builder).into().as_raw(),
-                self.index.emit_to(builder).into().as_raw(),
+                self.vector.emit_to(builder).into_raw(),
+                self.element.emit_to(builder).into_raw(),
+                self.index.emit_to(builder).into_raw(),
                 cstr!(self.name),
             )
         }.into()
@@ -109,11 +112,14 @@ where
 }
 
 /// The `insertelement` instruction inserts a scalar element into a vector at a specified index.
-pub fn insert_element<'a, V, E, I, N>(vector: V, element: E, index: I, name: N) -> InsertElement<'a, V, E, I>
+pub fn insert_element<'a, V, E, I, N>(vector: V, element: E, index: I, name: N) -> InsertElement<'a>
 where
+    V: Into<AstNode<'a>>,
+    E: Into<AstNode<'a>>,
+    I: Into<AstNode<'a>>,
     N: Into<Cow<'a, str>>,
 {
-    InsertElement::new(vector, element, index, name.into())
+    InsertElement::new(vector, element, index, name)
 }
 
 /// The `insertelement` instruction inserts a scalar element into a vector at a specified index.
@@ -129,25 +135,31 @@ macro_rules! insert_element {
 
 /// This instruction constructs a fixed permutation of two input vectors.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ShuffleVector<'a, V1, V2, M> {
-    v1: V1,
-    v2: V2,
-    mask: M,
+pub struct ShuffleVector<'a> {
+    v1: Box<AstNode<'a>>,
+    v2: Box<AstNode<'a>>,
+    mask: Box<AstNode<'a>>,
     name: Cow<'a, str>,
 }
 
-impl<'a, V1, V2, M> ShuffleVector<'a, V1, V2, M> {
-    pub fn new(v1: V1, v2: V2, mask: M, name: Cow<'a, str>) -> Self {
-        ShuffleVector { v1, v2, mask, name }
+impl<'a> ShuffleVector<'a> {
+    pub fn new<V1, V2, M, N>(v1: V1, v2: V2, mask: M, name: N) -> Self
+    where
+        V1: Into<AstNode<'a>>,
+        V2: Into<AstNode<'a>>,
+        M: Into<AstNode<'a>>,
+        N: Into<Cow<'a, str>>,
+    {
+        ShuffleVector {
+            v1: Box::new(v1.into()),
+            v2: Box::new(v2.into()),
+            mask: Box::new(mask.into()),
+            name: name.into(),
+        }
     }
 }
 
-impl<'a, V1, V2, M> InstructionBuilder for ShuffleVector<'a, V1, V2, M>
-where
-    V1: InstructionBuilder + fmt::Debug,
-    V2: InstructionBuilder + fmt::Debug,
-    M: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for ShuffleVector<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -156,9 +168,9 @@ where
         unsafe {
             LLVMBuildShuffleVector(
                 builder.as_raw(),
-                self.v1.emit_to(builder).into().as_raw(),
-                self.v2.emit_to(builder).into().as_raw(),
-                self.mask.emit_to(builder).into().as_raw(),
+                self.v1.emit_to(builder).into_raw(),
+                self.v2.emit_to(builder).into_raw(),
+                self.mask.emit_to(builder).into_raw(),
                 cstr!(self.name),
             )
         }.into()
@@ -167,11 +179,14 @@ where
 
 /// The `shufflevector` instruction constructs a permutation of elements from two input vectors,
 /// returning a vector with the same element type as the input and length that is the same as the shuffle mask.
-pub fn shuffle_vector<'a, V1, V2, M, N>(v1: V1, v2: V2, mask: M, name: N) -> ShuffleVector<'a, V1, V2, M>
+pub fn shuffle_vector<'a, V1, V2, M, N>(v1: V1, v2: V2, mask: M, name: N) -> ShuffleVector<'a>
 where
+    V1: Into<AstNode<'a>>,
+    V2: Into<AstNode<'a>>,
+    M: Into<AstNode<'a>>,
     N: Into<Cow<'a, str>>,
 {
-    ShuffleVector::new(v1, v2, mask, name.into())
+    ShuffleVector::new(v1, v2, mask, name)
 }
 
 /// The `shufflevector` instruction constructs a permutation of elements from two input vectors,
@@ -190,8 +205,8 @@ impl IRBuilder {
     /// The `extractelement` instruction extracts a single scalar element from a vector at a specified index.
     pub fn extract_element<'a, V, I, N>(&self, vector: V, index: I, name: N) -> Instruction
     where
-        V: InstructionBuilder + fmt::Debug,
-        I: InstructionBuilder + fmt::Debug,
+        V: Into<AstNode<'a>>,
+        I: Into<AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
         extract_element(vector, index, name).emit_to(self)
@@ -200,9 +215,9 @@ impl IRBuilder {
     /// The `insertelement` instruction inserts a scalar element into a vector at a specified index.
     pub fn insert_element<'a, V, E, I, N>(&self, vector: V, element: E, index: I, name: N) -> Instruction
     where
-        V: InstructionBuilder + fmt::Debug,
-        E: InstructionBuilder + fmt::Debug,
-        I: InstructionBuilder + fmt::Debug,
+        V: Into<AstNode<'a>>,
+        E: Into<AstNode<'a>>,
+        I: Into<AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
         insert_element(vector, element, index, name).emit_to(self)
@@ -212,9 +227,9 @@ impl IRBuilder {
     /// returning a vector with the same element type as the input and length that is the same as the shuffle mask.
     pub fn shuffle_vector<'a, V1, V2, M, N>(&self, v1: V1, v2: V2, mask: M, name: N) -> Instruction
     where
-        V1: InstructionBuilder + fmt::Debug,
-        V2: InstructionBuilder + fmt::Debug,
-        M: InstructionBuilder + fmt::Debug,
+        V1: Into<AstNode<'a>>,
+        V2: Into<AstNode<'a>>,
+        M: Into<AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
         shuffle_vector(v1, v2, mask, name).emit_to(self)

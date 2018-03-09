@@ -1,31 +1,36 @@
 use std::borrow::Cow;
-use std::fmt;
 
 use llvm::core::*;
 
-use insts::{IRBuilder, InstructionBuilder};
+use insts::{AstNode, IRBuilder, InstructionBuilder};
 use types::TypeRef;
-use utils::AsRaw;
+use utils::{AsRaw, IntoRaw};
 use value::Instruction;
 
 /// The `va_arg` instruction is used to access arguments passed through the “variable argument” area of a function call. It is used to implement the `va_arg` macro in C.
 #[derive(Clone, Debug, PartialEq)]
-pub struct VaArg<'a, V> {
-    args: V,
+pub struct VaArg<'a> {
+    args: Box<AstNode<'a>>,
     ty: TypeRef,
     name: Cow<'a, str>,
 }
 
-impl<'a, V> VaArg<'a, V> {
-    pub fn new(args: V, ty: TypeRef, name: Cow<'a, str>) -> Self {
-        VaArg { args, ty, name }
+impl<'a> VaArg<'a> {
+    pub fn new<V, T, N>(args: V, ty: T, name: N) -> Self
+    where
+        V: Into<AstNode<'a>>,
+        T: Into<TypeRef>,
+        N: Into<Cow<'a, str>>,
+    {
+        VaArg {
+            args: Box::new(args.into()),
+            ty: ty.into(),
+            name: name.into(),
+        }
     }
 }
 
-impl<'a, V> InstructionBuilder for VaArg<'a, V>
-where
-    V: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for VaArg<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -34,8 +39,8 @@ where
         unsafe {
             LLVMBuildVAArg(
                 builder.as_raw(),
-                self.args.emit_to(builder).into().as_raw(),
-                self.ty.as_raw(),
+                self.args.emit_to(builder).into_raw(),
+                self.ty.into_raw(),
                 cstr!(self.name),
             )
         }.into()
@@ -44,12 +49,13 @@ where
 
 /// The `va_arg` instruction is used to access arguments passed through the “variable argument” area
 /// of a function call. It is used to implement the `va_arg` macro in C.
-pub fn va_arg<'a, V, T, N>(args: V, ty: T, name: N) -> VaArg<'a, V>
+pub fn va_arg<'a, V, T, N>(args: V, ty: T, name: N) -> VaArg<'a>
 where
+    V: Into<AstNode<'a>>,
     T: Into<TypeRef>,
     N: Into<Cow<'a, str>>,
 {
-    VaArg::new(args, ty.into(), name.into())
+    VaArg::new(args, ty, name)
 }
 
 /// The `va_arg` instruction is used to access arguments passed through the “variable argument” area
@@ -69,7 +75,7 @@ impl IRBuilder {
     /// of a function call. It is used to implement the `va_arg` macro in C.
     pub fn va_arg<'a, V, T, N>(&self, args: V, ty: T, name: N) -> Instruction
     where
-        V: InstructionBuilder + fmt::Debug,
+        V: Into<AstNode<'a>>,
         T: Into<TypeRef>,
         N: Into<Cow<'a, str>>,
     {

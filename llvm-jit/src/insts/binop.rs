@@ -1,29 +1,37 @@
+use std::borrow::Cow;
+
 use llvm::core::*;
 
-use insts::builder::InstructionBuilder;
-use utils::AsRaw;
+use insts::{AstNode, InstructionBuilder};
+use utils::{AsRaw, IntoRaw};
 
 macro_rules! define_binary_operator {
     ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
         #[doc=$comment]
         #[derive(Clone, Debug, PartialEq)]
-        pub struct $operator<'a, LHS, RHS>
+        pub struct $operator<'a>
         {
-            lhs: LHS,
-            rhs: RHS,
-            name: ::std::borrow::Cow<'a, str>,
+            lhs: Box<AstNode<'a>>,
+            rhs: Box<AstNode<'a>>,
+            name: Cow<'a, str>,
         }
 
-        impl<'a, LHS, RHS> $operator<'a, LHS, RHS> {
-            pub fn new(lhs: LHS, rhs: RHS, name: ::std::borrow::Cow<'a, str>) -> Self {
-                $operator { lhs, rhs, name }
+        impl<'a> $operator<'a> {
+            pub fn new<LHS, RHS, N>(lhs: LHS, rhs: RHS, name: N) -> Self
+            where
+                LHS: Into<AstNode<'a>>,
+                RHS: Into<AstNode<'a>>,
+                N: Into<Cow<'a, str>>
+            {
+                $operator {
+                    lhs: Box::new(lhs.into()),
+                    rhs: Box::new(rhs.into()),
+                    name: name.into(),
+                }
             }
         }
 
-        impl<'a, LHS, RHS> $crate::insts::InstructionBuilder for $operator<'a, LHS, RHS>
-        where
-            LHS: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
-            RHS: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
+        impl<'a> $crate::insts::InstructionBuilder for $operator<'a>
         {
             type Target = $crate::Instruction;
 
@@ -33,8 +41,8 @@ macro_rules! define_binary_operator {
                 unsafe {
                     $func(
                         builder.as_raw(),
-                        self.lhs.emit_to(builder).into().as_raw(),
-                        self.rhs.emit_to(builder).into().as_raw(),
+                        self.lhs.emit_to(builder).into_raw(),
+                        self.rhs.emit_to(builder).into_raw(),
                         cstr!(self.name),
                     )
                 }.into()
@@ -42,9 +50,11 @@ macro_rules! define_binary_operator {
         }
 
         #[doc=$comment]
-        pub fn $alias<'a, LHS, RHS, N>(lhs: LHS, rhs: RHS, name: N) -> $operator<'a, LHS, RHS>
+        pub fn $alias<'a, LHS, RHS, N>(lhs: LHS, rhs: RHS, name: N) -> $operator<'a>
         where
-            N: Into<::std::borrow::Cow<'a, str>>
+            LHS: Into<AstNode<'a>>,
+            RHS: Into<AstNode<'a>>,
+            N: Into<Cow<'a, str>>
         {
             $crate::insts::$operator::new(lhs, rhs, name.into())
         }
@@ -64,11 +74,11 @@ macro_rules! define_binary_operator {
             #[doc=$comment]
             pub fn $alias<'a, LHS, RHS, N>(&self, lhs: LHS, rhs: RHS, name: N) -> $crate::Instruction
             where
-                LHS: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
-                RHS: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
-                N: Into<::std::borrow::Cow<'a, str>>
+                LHS: Into<AstNode<'a>>,
+                RHS: Into<AstNode<'a>>,
+                N: Into<Cow<'a, str>>
             {
-                $crate::insts::$alias(lhs, rhs, name.into()).emit_to(self)
+                $crate::insts::$alias(lhs, rhs, name).emit_to(self)
             }
         }
     )

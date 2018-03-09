@@ -1,12 +1,11 @@
-use std::fmt;
 use std::ptr;
 
 use llvm::core::*;
 use llvm::prelude::*;
 
 use block::BasicBlock;
-use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsBool, AsRaw, FromRaw};
+use insts::{AstNode, IRBuilder, InstructionBuilder};
+use utils::{AsBool, AsRaw, FromRaw, IntoRaw};
 use value::{AsValueRef, Instruction, ValueRef};
 
 /// Create an unconditional `br label X` instruction.
@@ -25,30 +24,36 @@ impl InstructionBuilder for Br {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe { LLVMBuildBr(builder.as_raw(), self.0.as_raw()) }.into()
+        unsafe { LLVMBuildBr(builder.as_raw(), self.0.into_raw()) }.into()
     }
 }
 
 /// Create a conditional `br cond, trueDest, falseDest` instruction.
 #[derive(Clone, Debug, PartialEq)]
-pub struct CondBr<T> {
-    cond: T,
+pub struct CondBr<'a> {
+    cond: Box<AstNode<'a>>,
     then: Option<BasicBlock>,
     or_else: Option<BasicBlock>,
 }
 
-impl<T> CondBr<T> {
-    pub fn new(cond: T, then: Option<BasicBlock>, or_else: Option<BasicBlock>) -> CondBr<T> {
+impl<'a> CondBr<'a> {
+    pub fn new<T>(cond: T, then: Option<BasicBlock>, or_else: Option<BasicBlock>) -> CondBr<'a>
+    where
+        T: Into<AstNode<'a>>,
+    {
         CondBr {
-            cond,
+            cond: Box::new(cond.into()),
             then,
             or_else,
         }
     }
 
-    pub fn on(cond: T) -> Self {
+    pub fn on<T>(cond: T) -> Self
+    where
+        T: Into<AstNode<'a>>,
+    {
         CondBr {
-            cond,
+            cond: Box::new(cond.into()),
             then: None,
             or_else: None,
         }
@@ -65,10 +70,7 @@ impl<T> CondBr<T> {
     }
 }
 
-impl<T> InstructionBuilder for CondBr<T>
-where
-    T: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for CondBr<'a> {
     type Target = BranchInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -77,9 +79,9 @@ where
         unsafe {
             LLVMBuildCondBr(
                 builder.as_raw(),
-                self.cond.emit_to(builder).into().as_raw(),
-                self.then.map_or(ptr::null_mut(), |bb| bb.as_raw()),
-                self.or_else.map_or(ptr::null_mut(), |bb| bb.as_raw()),
+                self.cond.emit_to(builder).into_raw(),
+                self.then.map_or(ptr::null_mut(), |bb| bb.into_raw()),
+                self.or_else.map_or(ptr::null_mut(), |bb| bb.into_raw()),
             )
         }.into()
     }
@@ -88,26 +90,30 @@ where
 /// Create an indirect branch instruction with the specified address operand,
 /// with an optional hint for the number of destinations that will be added (for efficient allocation).
 #[derive(Clone, Debug, PartialEq)]
-pub struct IndirectBr<T> {
-    addr: T,
+pub struct IndirectBr<'a> {
+    addr: Box<AstNode<'a>>,
     dests: Vec<BasicBlock>,
 }
 
-impl<T> IndirectBr<T> {
+impl<'a> IndirectBr<'a> {
     /// The `indirectbr` instruction implements an indirect branch to a label within the current function, whose address is specified by “address”.
-    pub fn new<I>(addr: T, dests: I) -> Self
+    pub fn new<T, I>(addr: T, dests: I) -> Self
     where
+        T: Into<AstNode<'a>>,
         I: IntoIterator<Item = BasicBlock>,
     {
         IndirectBr {
-            addr,
+            addr: Box::new(addr.into()),
             dests: dests.into_iter().collect(),
         }
     }
 
-    pub fn on(addr: T) -> Self {
+    pub fn on<T>(addr: T) -> Self
+    where
+        T: Into<AstNode<'a>>,
+    {
         IndirectBr {
-            addr,
+            addr: Box::new(addr.into()),
             dests: vec![],
         }
     }
@@ -119,10 +125,7 @@ impl<T> IndirectBr<T> {
     }
 }
 
-impl<T> InstructionBuilder for IndirectBr<T>
-where
-    T: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for IndirectBr<'a> {
     type Target = BranchInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -131,13 +134,13 @@ where
         let br: BranchInst = unsafe {
             LLVMBuildIndirectBr(
                 builder.as_raw(),
-                self.addr.emit_to(builder).into().as_raw(),
+                self.addr.emit_to(builder).into_raw(),
                 self.dests.len() as u32,
             )
         }.into();
 
         for dest in &self.dests {
-            unsafe { LLVMAddDestination(br.as_raw(), dest.as_raw()) }
+            unsafe { LLVMAddDestination(br.into_raw(), dest.into_raw()) }
         }
 
         br
@@ -190,17 +193,17 @@ impl IRBuilder {
     }
 
     /// The conditional branch form of the `br` instruction takes a single `i1` value and two `label` values.
-    pub fn cond_br<T>(&self, cond: T, then: Option<BasicBlock>, or_else: Option<BasicBlock>) -> BranchInst
+    pub fn cond_br<'a, T>(&self, cond: T, then: Option<BasicBlock>, or_else: Option<BasicBlock>) -> BranchInst
     where
-        T: InstructionBuilder + fmt::Debug,
+        T: Into<AstNode<'a>>,
     {
         CondBr::new(cond, then, or_else).emit_to(self)
     }
 
     /// The `indirectbr` instruction implements an indirect branch to a label within the current function, whose address is specified by “address”.
-    pub fn indirect_br<T, I>(&self, addr: T, dests: I) -> BranchInst
+    pub fn indirect_br<'a, T, I>(&self, addr: T, dests: I) -> BranchInst
     where
-        T: InstructionBuilder + fmt::Debug,
+        T: Into<AstNode<'a>>,
         I: IntoIterator<Item = BasicBlock>,
     {
         IndirectBr::new(addr, dests).emit_to(self)

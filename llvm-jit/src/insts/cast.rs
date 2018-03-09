@@ -1,27 +1,37 @@
+use std::borrow::Cow;
+
 use llvm::core::*;
 
-use insts::builder::InstructionBuilder;
-use utils::AsRaw;
+use insts::{AstNode, InstructionBuilder};
+use utils::{AsRaw, IntoRaw};
+use types::TypeRef;
 
 macro_rules! define_cast_instruction {
     ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
         #[doc=$comment]
         #[derive(Clone, Debug, PartialEq)]
-        pub struct $operator<'a, T> {
-            value: T,
-            dest_ty: $crate::TypeRef,
-            name: ::std::borrow::Cow<'a, str>,
+        pub struct $operator<'a> {
+            value: Box<AstNode<'a>>,
+            dest_ty: TypeRef,
+            name: Cow<'a, str>,
         }
 
-        impl<'a, T> $operator<'a, T> {
-            pub fn new(value: T, dest_ty: $crate::TypeRef, name: ::std::borrow::Cow<'a, str>) -> Self {
-                $operator { value, dest_ty, name }
+        impl<'a> $operator<'a> {
+            pub fn new<V, T, N>(value: V, dest_ty: T, name: N) -> Self
+            where
+                V: Into<AstNode<'a>>,
+                T: Into<TypeRef>,
+                N: Into<Cow<'a, str>>,
+            {
+                $operator {
+                    value: Box::new(value.into()),
+                    dest_ty: dest_ty.into(),
+                    name: name.into(),
+                }
             }
         }
 
-        impl<'a, T> $crate::insts::InstructionBuilder for $operator<'a, T>
-        where
-            T: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
+        impl<'a> $crate::insts::InstructionBuilder for $operator<'a>
         {
             type Target = $crate::Instruction;
 
@@ -31,8 +41,8 @@ macro_rules! define_cast_instruction {
                 unsafe {
                     $func(
                         builder.as_raw(),
-                        self.value.emit_to(builder).into().as_raw(),
-                        self.dest_ty.as_raw(),
+                        self.value.emit_to(builder).into_raw(),
+                        self.dest_ty.into_raw(),
                         cstr!(self.name),
                     )
                 }.into()
@@ -40,13 +50,13 @@ macro_rules! define_cast_instruction {
         }
 
         #[doc=$comment]
-        pub fn $alias<'a, V, T, N>(value: V, ty: T, name: N) -> $operator<'a, V>
+        pub fn $alias<'a, V, T, N>(value: V, ty: T, name: N) -> $operator<'a>
         where
-            V: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
-            T: Into<$crate::TypeRef>,
-            N: Into<::std::borrow::Cow<'a, str>>
+            V: Into<AstNode<'a>>,
+            T: Into<TypeRef>,
+            N: Into<Cow<'a, str>>
         {
-            $crate::insts::$operator::new(value, ty.into(), name.into())
+            $crate::insts::$operator::new(value, ty, name)
         }
 
         #[doc=$comment]
@@ -64,9 +74,9 @@ macro_rules! define_cast_instruction {
             #[doc=$comment]
             pub fn $alias<'a, V, T, N>(&self, value: V, ty: T, name: N) -> $crate::Instruction
             where
-                V: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
-                T: Into<$crate::TypeRef>,
-                N: Into<::std::borrow::Cow<'a, str>>
+                V: Into<AstNode<'a>>,
+                T: Into<TypeRef>,
+                N: Into<Cow<'a, str>>
             {
                 $crate::insts::$alias(value, ty, name).emit_to(self)
             }

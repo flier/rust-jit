@@ -4,30 +4,38 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use block::BasicBlock;
-use insts::{IRBuilder, InstructionBuilder};
+use insts::{AstNode, IRBuilder, InstructionBuilder};
 use types::TypeRef;
-use utils::AsRaw;
+use utils::{AsRaw, IntoRaw};
 use value::{Instruction, ValueRef};
 
 /// The `phi` instruction is used to implement the φ node in the SSA graph representing the function.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Phi<'a> {
     ty: TypeRef,
-    incomings: Vec<(ValueRef, BasicBlock)>,
+    incomings: Vec<(AstNode<'a>, BasicBlock)>,
     name: Cow<'a, str>,
 }
 
 impl<'a> Phi<'a> {
-    pub fn new(ty: TypeRef, name: Cow<'a, str>) -> Self {
+    pub fn new<T, N>(ty: T, name: N) -> Self
+    where
+        T: Into<TypeRef>,
+        N: Into<Cow<'a, str>>,
+    {
         Phi {
-            ty,
-            incomings: Vec::new(),
-            name,
+            ty: ty.into(),
+            incomings: vec![],
+            name: name.into(),
         }
     }
 
-    pub fn add_incoming(mut self, value: ValueRef, block: BasicBlock) -> Self {
-        self.incomings.push((value, block));
+    pub fn add_incoming<V, B>(mut self, value: V, block: B) -> Self
+    where
+        V: Into<AstNode<'a>>,
+        B: Into<BasicBlock>,
+    {
+        self.incomings.push((value.into(), block.into()));
         self
     }
 }
@@ -38,13 +46,14 @@ impl<'a> InstructionBuilder for Phi<'a> {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        let phi: PhiNode = unsafe { LLVMBuildPhi(builder.as_raw(), self.ty.as_raw(), cstr!(self.name)) }.into();
+        let phi: PhiNode = unsafe { LLVMBuildPhi(builder.as_raw(), self.ty.into_raw(), cstr!(self.name)) }.into();
+        let count = self.incomings.len();
 
-        let (mut values, mut blocks) = self.incomings.iter().fold(
+        let (mut values, mut blocks) = self.incomings.into_iter().fold(
             (Vec::new(), Vec::new()),
-            |(mut values, mut blocks), &(value, block)| {
-                values.push(value.as_raw());
-                blocks.push(block.as_raw());
+            |(mut values, mut blocks), (value, block)| {
+                values.push(value.emit_to(builder).into_raw());
+                blocks.push(block.into_raw());
                 (values, blocks)
             },
         );
@@ -54,7 +63,7 @@ impl<'a> InstructionBuilder for Phi<'a> {
                 phi.as_raw(),
                 values.as_mut_ptr(),
                 blocks.as_mut_ptr(),
-                self.incomings.len() as u32,
+                count as u32,
             )
         }
 
@@ -115,13 +124,13 @@ where
     T: Into<TypeRef>,
     N: Into<Cow<'a, str>>,
 {
-    Phi::new(ty.into(), name.into())
+    Phi::new(ty, name)
 }
 
 #[macro_export]
 macro_rules! phi {
     ( $ty:expr, $( $value:expr => $block:expr ),* ; $name:expr ) => ({
-        $crate::insts::phi($ty, $name) $( .add_incoming( $value.into(), $block.into() ) )*
+        $crate::insts::phi($ty, $name) $( .add_incoming( $value, $block ) )*
     });
     ( $ty:expr, $( $value:expr => $block:expr ),* ) => ({
         phi!( $ty, $( $value => $block ),* ; "phi" )

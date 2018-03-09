@@ -1,14 +1,13 @@
 use std::borrow::Cow;
-use std::fmt;
 use std::ptr;
 
 use llvm::core::*;
 use llvm::prelude::*;
 
 use function::Function;
-use insts::{IRBuilder, InstructionBuilder};
+use insts::{AstNode, IRBuilder, InstructionBuilder};
 use types::TypeRef;
-use utils::{AsLLVMBool, AsRaw};
+use utils::{AsLLVMBool, AsRaw, IntoRaw};
 use value::{Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -21,11 +20,16 @@ pub struct LandingPad<'a> {
 }
 
 impl<'a> LandingPad<'a> {
-    pub fn new(result_ty: TypeRef, personality_fn: Option<Function>, name: Cow<'a, str>, cleanup: bool) -> Self {
+    pub fn new<T, F, N>(result_ty: T, personality_fn: Option<F>, name: N, cleanup: bool) -> Self
+    where
+        T: Into<TypeRef>,
+        F: Into<Function>,
+        N: Into<Cow<'a, str>>,
+    {
         LandingPad {
-            result_ty,
-            personality_fn,
-            name,
+            result_ty: result_ty.into(),
+            personality_fn: personality_fn.map(|f| f.into()),
+            name: name.into(),
             clauses: vec![],
             cleanup,
         }
@@ -51,24 +55,25 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
 
         let clauses = self.clauses
             .iter()
-            .map(|clause| clause.as_raw())
+            .map(|clause| clause.into_raw())
             .collect::<Vec<LLVMValueRef>>();
 
         let landingpad: LandingPadInst = unsafe {
             LLVMBuildLandingPad(
                 builder.as_raw(),
-                self.result_ty.as_raw(),
-                self.personality_fn.map_or(ptr::null_mut(), |f| f.as_raw()),
+                self.result_ty.into_raw(),
+                self.personality_fn
+                    .map_or(ptr::null_mut(), |f| f.into_raw()),
                 clauses.len() as u32,
                 cstr!(self.name),
             )
         }.into();
 
         for clause in &self.clauses {
-            unsafe { LLVMAddClause(landingpad.as_raw(), clause.as_raw()) }
+            unsafe { LLVMAddClause(landingpad.into_raw(), clause.into_raw()) }
         }
 
-        unsafe { LLVMSetCleanup(landingpad.as_raw(), self.cleanup.as_bool()) }
+        unsafe { LLVMSetCleanup(landingpad.into_raw(), self.cleanup.as_bool()) }
 
         landingpad
     }
@@ -102,12 +107,7 @@ where
     F: Into<Function>,
     N: Into<Cow<'a, str>>,
 {
-    LandingPad::new(
-        result_ty.into(),
-        personality_fn.map(|f| f.into()),
-        name.into(),
-        cleanup,
-    )
+    LandingPad::new(result_ty, personality_fn, name, cleanup)
 }
 
 #[macro_export]
@@ -127,30 +127,33 @@ macro_rules! landing_pad {
 }
 
 /// The `resume` instruction is a terminator instruction that has no successors.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Resume<V>(V);
+#[derive(Clone, Debug, PartialEq)]
+pub struct Resume<'a>(Box<AstNode<'a>>);
 
-impl<V> Resume<V> {
-    pub fn new(result: V) -> Self {
-        Resume(result)
+impl<'a> Resume<'a> {
+    pub fn new<V>(result: V) -> Self
+    where
+        V: Into<AstNode<'a>>,
+    {
+        Resume(Box::new(result.into()))
     }
 }
 
-impl<V> InstructionBuilder for Resume<V>
-where
-    V: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for Resume<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe { LLVMBuildResume(builder.as_raw(), self.0.emit_to(builder).into().as_raw()) }.into()
+        unsafe { LLVMBuildResume(builder.as_raw(), self.0.emit_to(builder).into_raw()) }.into()
     }
 }
 
 /// The `resume` instruction is a terminator instruction that has no successors.
-pub fn resume<V>(result: V) -> Resume<V> {
+pub fn resume<'a, V>(result: V) -> Resume<'a>
+where
+    V: Into<AstNode<'a>>,
+{
     Resume::new(result)
 }
 
@@ -204,9 +207,9 @@ impl IRBuilder {
     }
 
     /// The `resume` instruction is a terminator instruction that has no successors.
-    pub fn resume<V>(&self, result: V) -> Instruction
+    pub fn resume<'a, V>(&self, result: V) -> Instruction
     where
-        V: InstructionBuilder + fmt::Debug,
+        V: Into<AstNode<'a>>,
     {
         resume(result).emit_to(self)
     }

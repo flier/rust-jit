@@ -1,34 +1,34 @@
 use std::borrow::Cow;
-use std::fmt;
 
 use llvm::core::*;
 
-use insts::{IRBuilder, InstructionBuilder};
-use utils::AsRaw;
+use insts::{AstNode, IRBuilder, InstructionBuilder};
+use utils::{AsRaw, IntoRaw};
 use value::Instruction;
 
 /// This instruction extracts a struct member or array element value from an aggregate value.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ExtractValue<'a, T> {
-    aggregate: T,
+pub struct ExtractValue<'a> {
+    aggregate: Box<AstNode<'a>>,
     index: u32,
     name: Cow<'a, str>,
 }
 
-impl<'a, T> ExtractValue<'a, T> {
-    pub fn new(aggregate: T, index: u32, name: Cow<'a, str>) -> Self {
+impl<'a> ExtractValue<'a> {
+    pub fn new<T, N>(aggregate: T, index: u32, name: N) -> Self
+    where
+        T: Into<AstNode<'a>>,
+        N: Into<Cow<'a, str>>,
+    {
         ExtractValue {
-            aggregate,
+            aggregate: Box::new(aggregate.into()),
             index,
-            name,
+            name: name.into(),
         }
     }
 }
 
-impl<'a, T> InstructionBuilder for ExtractValue<'a, T>
-where
-    T: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for ExtractValue<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -37,7 +37,7 @@ where
         unsafe {
             LLVMBuildExtractValue(
                 builder.as_raw(),
-                self.aggregate.emit_to(builder).into().as_raw(),
+                self.aggregate.emit_to(builder).into_raw(),
                 self.index,
                 cstr!(self.name),
             )
@@ -46,8 +46,12 @@ where
 }
 
 /// The `extractvalue` instruction extracts the value of a member field from an aggregate value.
-pub fn extract_value<'a, T, N: Into<Cow<'a, str>>>(aggregate: T, index: u32, name: N) -> ExtractValue<'a, T> {
-    ExtractValue::new(aggregate, index, name.into())
+pub fn extract_value<'a, T, N>(aggregate: T, index: u32, name: N) -> ExtractValue<'a>
+where
+    T: Into<AstNode<'a>>,
+    N: Into<Cow<'a, str>>,
+{
+    ExtractValue::new(aggregate, index, name)
 }
 
 #[macro_export]
@@ -62,29 +66,30 @@ macro_rules! extract_value {
 
 /// This instruction inserts a struct field of array element value into an aggregate value.
 #[derive(Clone, Debug, PartialEq)]
-pub struct InsertValue<'a, T, E> {
-    aggregate: T,
-    element: E,
+pub struct InsertValue<'a> {
+    aggregate: Box<AstNode<'a>>,
+    element: Box<AstNode<'a>>,
     index: u32,
     name: Cow<'a, str>,
 }
 
-impl<'a, T, E> InsertValue<'a, T, E> {
-    pub fn new(aggregate: T, element: E, index: u32, name: Cow<'a, str>) -> Self {
+impl<'a> InsertValue<'a> {
+    pub fn new<T, E, N>(aggregate: T, element: E, index: u32, name: N) -> Self
+    where
+        T: Into<AstNode<'a>>,
+        E: Into<AstNode<'a>>,
+        N: Into<Cow<'a, str>>,
+    {
         InsertValue {
-            aggregate,
-            element,
+            aggregate: Box::new(aggregate.into()),
+            element: Box::new(element.into()),
             index,
-            name,
+            name: name.into(),
         }
     }
 }
 
-impl<'a, T, E> InstructionBuilder for InsertValue<'a, T, E>
-where
-    T: InstructionBuilder + fmt::Debug,
-    E: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for InsertValue<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -93,8 +98,8 @@ where
         unsafe {
             LLVMBuildInsertValue(
                 builder.as_raw(),
-                self.aggregate.emit_to(builder).into().as_raw(),
-                self.element.emit_to(builder).into().as_raw(),
+                self.aggregate.emit_to(builder).into_raw(),
+                self.element.emit_to(builder).into_raw(),
                 self.index,
                 cstr!(self.name),
             )
@@ -103,13 +108,13 @@ where
 }
 
 /// The `insertvalue` instruction inserts a value into a member field in an aggregate value.
-pub fn insert_value<'a, T, E, N: Into<Cow<'a, str>>>(
-    aggregate: T,
-    element: E,
-    index: u32,
-    name: N,
-) -> InsertValue<'a, T, E> {
-    InsertValue::new(aggregate, element, index, name.into())
+pub fn insert_value<'a, T, E, N>(aggregate: T, element: E, index: u32, name: N) -> InsertValue<'a>
+where
+    T: Into<AstNode<'a>>,
+    E: Into<AstNode<'a>>,
+    N: Into<Cow<'a, str>>,
+{
+    InsertValue::new(aggregate, element, index, name)
 }
 
 #[macro_export]
@@ -126,7 +131,7 @@ impl IRBuilder {
     /// The `extractvalue` instruction extracts the value of a member field from an aggregate value.
     pub fn extract_value<'a, T, N>(&self, aggregate: T, index: u32, name: N) -> Instruction
     where
-        T: InstructionBuilder + fmt::Debug,
+        T: Into<AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
         extract_value(aggregate, index, name).emit_to(self)
@@ -135,8 +140,8 @@ impl IRBuilder {
     /// The `insertvalue` instruction inserts a value into a member field in an aggregate value.
     pub fn insert_value<'a, T, E, N>(&self, aggregate: T, element: E, index: u32, name: N) -> Instruction
     where
-        T: InstructionBuilder + fmt::Debug,
-        E: InstructionBuilder + fmt::Debug,
+        T: Into<AstNode<'a>>,
+        E: Into<AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
         insert_value(aggregate, element, index, name).emit_to(self)

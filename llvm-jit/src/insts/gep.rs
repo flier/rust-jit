@@ -1,58 +1,68 @@
 use std::borrow::Cow;
-use std::fmt;
 
 use llvm::core::*;
 use llvm::prelude::*;
 
-use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsBool, AsLLVMBool, AsRaw};
+use insts::{AstNode, IRBuilder, InstructionBuilder};
+use utils::{AsBool, AsLLVMBool, AsRaw, IntoRaw};
 use value::{Instruction, ValueRef};
 
 /// an instruction for type-safe pointer arithmetic to access elements of arrays and structs
 #[derive(Clone, Debug, PartialEq)]
-pub struct GetElementPtr<'a, P> {
-    ptr: P,
-    gep: GEP,
+pub struct GetElementPtr<'a> {
+    ptr: Box<AstNode<'a>>,
+    gep: GEP<'a>,
     name: Cow<'a, str>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-enum GEP {
-    Indices(Vec<ValueRef>),
-    InBounds(Vec<ValueRef>),
+enum GEP<'a> {
+    Indices(Vec<AstNode<'a>>),
+    InBounds(Vec<AstNode<'a>>),
     Struct(u32),
 }
 
-impl<'a, P> GetElementPtr<'a, P> {
-    pub fn new(ptr: P, indices: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
+impl<'a> GetElementPtr<'a> {
+    pub fn new<P, I, N>(ptr: P, indices: I, name: N) -> Self
+    where
+        P: Into<AstNode<'a>>,
+        I: IntoIterator<Item = AstNode<'a>>,
+        N: Into<Cow<'a, str>>,
+    {
         GetElementPtr {
-            ptr,
-            gep: GEP::Indices(indices),
-            name,
+            ptr: Box::new(ptr.into()),
+            gep: GEP::Indices(indices.into_iter().collect()),
+            name: name.into(),
         }
     }
 
-    pub fn in_bounds(ptr: P, indices: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
+    pub fn in_bounds<P, I, N>(ptr: P, indices: I, name: N) -> Self
+    where
+        P: Into<AstNode<'a>>,
+        I: IntoIterator<Item = AstNode<'a>>,
+        N: Into<Cow<'a, str>>,
+    {
         GetElementPtr {
-            ptr,
-            gep: GEP::InBounds(indices),
-            name,
+            ptr: Box::new(ptr.into()),
+            gep: GEP::InBounds(indices.into_iter().collect()),
+            name: name.into(),
         }
     }
 
-    pub fn in_struct(ptr: P, index: u32, name: Cow<'a, str>) -> Self {
+    pub fn in_struct<P, N>(ptr: P, index: u32, name: N) -> Self
+    where
+        P: Into<AstNode<'a>>,
+        N: Into<Cow<'a, str>>,
+    {
         GetElementPtr {
-            ptr,
+            ptr: Box::new(ptr.into()),
             gep: GEP::Struct(index),
-            name,
+            name: name.into(),
         }
     }
 }
 
-impl<'a, P> InstructionBuilder for GetElementPtr<'a, P>
-where
-    P: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for GetElementPtr<'a> {
     type Target = GetElementPtrInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -60,21 +70,29 @@ where
 
         unsafe {
             match self.gep {
-                GEP::Indices(ref indices) | GEP::InBounds(ref indices) => {
+                GEP::Indices(indices) => {
                     let mut indices = indices
-                        .iter()
-                        .map(|v| v.as_raw())
+                        .into_iter()
+                        .map(|v| v.emit_to(builder).into_raw())
                         .collect::<Vec<LLVMValueRef>>();
 
-                    let gep = if let GEP::Indices(_) = self.gep {
-                        LLVMBuildGEP
-                    } else {
-                        LLVMBuildInBoundsGEP
-                    };
-
-                    gep(
+                    LLVMBuildGEP(
                         builder.as_raw(),
-                        self.ptr.emit_to(builder).into().as_raw(),
+                        self.ptr.emit_to(builder).into_raw(),
+                        indices.as_mut_ptr(),
+                        indices.len() as u32,
+                        cstr!(self.name),
+                    )
+                }
+                GEP::InBounds(indices) => {
+                    let mut indices = indices
+                        .into_iter()
+                        .map(|v| v.emit_to(builder).into_raw())
+                        .collect::<Vec<LLVMValueRef>>();
+
+                    LLVMBuildInBoundsGEP(
+                        builder.as_raw(),
+                        self.ptr.emit_to(builder).into_raw(),
                         indices.as_mut_ptr(),
                         indices.len() as u32,
                         cstr!(self.name),
@@ -82,7 +100,7 @@ where
                 }
                 GEP::Struct(index) => LLVMBuildStructGEP(
                     builder.as_raw(),
-                    self.ptr.emit_to(builder).into().as_raw(),
+                    self.ptr.emit_to(builder).into_raw(),
                     index,
                     cstr!(self.name),
                 ),
@@ -131,10 +149,10 @@ impl GetElementPtrInst {
 #[macro_export]
 macro_rules! gep {
     ($ptr:expr, $( $index:expr ),* ; $name:expr) => ({
-        $crate::insts::GetElementPtr::new($ptr, vec![ $( $index.into() ),* ], $name.into())
+        $crate::insts::GetElementPtr::new($ptr, vec![ $( $index.into() ),* ], $name)
     });
     (inbounds $ptr:expr, $( $index:expr ),* ; $name:expr) => ({
-        $crate::insts::GetElementPtr::in_bounds($ptr, vec![ $( $index.into() ),* ], $name.into())
+        $crate::insts::GetElementPtr::in_bounds($ptr, vec![ $( $index.into() ),* ], $name)
     });
 
     ($ptr:expr, $( $index:expr ),*) => ({
@@ -148,7 +166,7 @@ macro_rules! gep {
 #[macro_export]
 macro_rules! struct_gep {
     ($struct_ptr:expr, $index:expr ; $name:expr) => ({
-        $crate::insts::GetElementPtr::in_struct($struct_ptr, $index, $name.into())
+        $crate::insts::GetElementPtr::in_struct($struct_ptr, $index, $name)
     });
     ($struct_ptr:expr, $index:expr) => ({
         struct_gep!($struct_ptr, $index; "struct_gep")
@@ -156,29 +174,30 @@ macro_rules! struct_gep {
 }
 
 impl IRBuilder {
-    pub fn gep<'a, P, I, N>(&self, ptr: P, indices: Vec<ValueRef>, name: N) -> GetElementPtrInst
+    pub fn gep<'a, P, I, N>(&self, ptr: P, indices: I, name: N) -> GetElementPtrInst
     where
-        P: InstructionBuilder + fmt::Debug,
+        P: Into<AstNode<'a>>,
+        I: IntoIterator<Item = AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
-        GetElementPtr::new(ptr, indices.into_iter().collect(), name.into()).emit_to(self)
+        GetElementPtr::new(ptr, indices, name).emit_to(self)
     }
 
-    pub fn gep_in_bounds<'a, P, I, N>(&self, ptr: P, indices: Vec<ValueRef>, name: N) -> GetElementPtrInst
+    pub fn gep_in_bounds<'a, P, I, N>(&self, ptr: P, indices: I, name: N) -> GetElementPtrInst
     where
-        P: InstructionBuilder + fmt::Debug,
+        P: Into<AstNode<'a>>,
+        I: IntoIterator<Item = AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
-        GetElementPtr::in_bounds(ptr, indices.into_iter().collect(), name.into()).emit_to(self)
+        GetElementPtr::in_bounds(ptr, indices, name).emit_to(self)
     }
 
-    pub fn gep_in_struct<'a, P, I, N>(&self, ptr: P, index: I, name: N) -> GetElementPtrInst
+    pub fn gep_in_struct<'a, P, N>(&self, ptr: P, index: u32, name: N) -> GetElementPtrInst
     where
-        P: InstructionBuilder + fmt::Debug,
-        I: Into<u32>,
+        P: Into<AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
-        GetElementPtr::in_struct(ptr, index.into(), name.into()).emit_to(self)
+        GetElementPtr::in_struct(ptr, index, name).emit_to(self)
     }
 }
 

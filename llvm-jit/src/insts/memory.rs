@@ -1,42 +1,47 @@
 use std::borrow::Cow;
-use std::fmt;
 
 use llvm::core::*;
 use llvm::prelude::*;
 
-use insts::{IRBuilder, InstructionBuilder};
+use insts::{AstNode, IRBuilder, InstructionBuilder};
 use types::TypeRef;
-use utils::AsRaw;
+use utils::{AsRaw, IntoRaw};
 use value::{Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Malloc<'a, V> {
+pub struct Malloc<'a> {
     ty: TypeRef,
-    size: Option<V>,
+    size: Option<Box<AstNode<'a>>>,
     name: Cow<'a, str>,
 }
 
-impl<'a, V> Malloc<'a, V> {
-    pub fn new(ty: TypeRef, name: Cow<'a, str>) -> Self {
+impl<'a> Malloc<'a> {
+    pub fn new<T, N>(ty: T, name: N) -> Self
+    where
+        T: Into<TypeRef>,
+        N: Into<Cow<'a, str>>,
+    {
         Malloc {
-            ty,
+            ty: ty.into(),
             size: None,
-            name,
+            name: name.into(),
         }
     }
-    pub fn array(ty: TypeRef, size: V, name: Cow<'a, str>) -> Self {
+    pub fn array<T, V, N>(ty: T, size: V, name: N) -> Self
+    where
+        T: Into<TypeRef>,
+        V: Into<AstNode<'a>>,
+        N: Into<Cow<'a, str>>,
+    {
         Malloc {
-            ty,
-            size: Some(size),
-            name,
+            ty: ty.into(),
+            size: Some(Box::new(size.into())),
+            name: name.into(),
         }
     }
 }
 
-impl<'a, V> InstructionBuilder for Malloc<'a, V>
-where
-    V: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for Malloc<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -47,7 +52,7 @@ where
                 LLVMBuildArrayMalloc(
                     builder.as_raw(),
                     self.ty.as_raw(),
-                    size.emit_to(builder).into().as_raw(),
+                    size.emit_to(builder).into_raw(),
                     cstr!(self.name),
                 )
             } else {
@@ -61,10 +66,10 @@ where
 #[macro_export]
 macro_rules! malloc {
     ($ty:expr; $name:expr) => ({
-        $crate::insts::Malloc::<ValueRef>::new($ty.into(), $name.into())
+        $crate::insts::Malloc::new($ty, $name)
     });
     ($array_ty:expr, $size:expr; $name:expr) => ({
-        $crate::insts::Malloc::array($array_ty.into(), $size, $name.into())
+        $crate::insts::Malloc::array($array_ty, $size, $name)
     });
 
     ($ty:expr) => ({
@@ -76,33 +81,39 @@ macro_rules! malloc {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Alloca<'a, V> {
+pub struct Alloca<'a> {
     ty: TypeRef,
-    size: Option<V>,
+    size: Option<Box<AstNode<'a>>>,
     name: Cow<'a, str>,
 }
 
-impl<'a, V> Alloca<'a, V> {
-    pub fn new(ty: TypeRef, name: Cow<'a, str>) -> Self {
+impl<'a> Alloca<'a> {
+    pub fn new<T, N>(ty: T, name: N) -> Self
+    where
+        T: Into<TypeRef>,
+        N: Into<Cow<'a, str>>,
+    {
         Alloca {
-            ty,
+            ty: ty.into(),
             size: None,
-            name,
+            name: name.into(),
         }
     }
-    pub fn array(ty: TypeRef, size: V, name: Cow<'a, str>) -> Self {
+    pub fn array<T, V, N>(ty: T, size: V, name: N) -> Self
+    where
+        T: Into<TypeRef>,
+        V: Into<AstNode<'a>>,
+        N: Into<Cow<'a, str>>,
+    {
         Alloca {
-            ty,
-            size: Some(size),
-            name,
+            ty: ty.into(),
+            size: Some(Box::new(size.into())),
+            name: name.into(),
         }
     }
 }
 
-impl<'a, V> InstructionBuilder for Alloca<'a, V>
-where
-    V: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for Alloca<'a> {
     type Target = AllocaInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -113,7 +124,7 @@ where
                 LLVMBuildArrayAlloca(
                     builder.as_raw(),
                     self.ty.as_raw(),
-                    size.emit_to(builder).into().as_raw(),
+                    size.emit_to(builder).into_raw(),
                     cstr!(self.name),
                 )
             } else {
@@ -142,10 +153,10 @@ impl AllocaInst {
 #[macro_export]
 macro_rules! alloca {
     ($ty:expr; $name:expr) => ({
-        $crate::insts::Alloca::<ValueRef>::new($ty.into(), $name.into())
+        $crate::insts::Alloca::new($ty, $name)
     });
     ($array_ty:expr, $size:expr; $name:expr) => ({
-        $crate::insts::Alloca::array($array_ty.into(), $size, $name.into())
+        $crate::insts::Alloca::array($array_ty, $size, $name)
     });
 
     ($ty:expr) => ({
@@ -156,30 +167,33 @@ macro_rules! alloca {
     });
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Free<V>(V);
+#[derive(Clone, Debug, PartialEq)]
+pub struct Free<'a>(Box<AstNode<'a>>);
 
-impl<V> Free<V> {
-    pub fn new(ptr: V) -> Self {
-        Free(ptr)
+impl<'a> Free<'a> {
+    pub fn new<V>(ptr: V) -> Self
+    where
+        V: Into<AstNode<'a>>,
+    {
+        Free(Box::new(ptr.into()))
     }
 }
 
-impl<V> InstructionBuilder for Free<V>
-where
-    V: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for Free<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe { LLVMBuildFree(builder.as_raw(), self.0.emit_to(builder).into().as_raw()) }.into()
+        unsafe { LLVMBuildFree(builder.as_raw(), self.0.emit_to(builder).into_raw()) }.into()
     }
 }
 
 /// Deallocates the memory allocation pointed to by ptr.
-pub fn free<P>(ptr: P) -> Free<P> {
+pub fn free<'a, P>(ptr: P) -> Free<'a>
+where
+    P: Into<AstNode<'a>>,
+{
     Free::new(ptr)
 }
 
@@ -191,21 +205,25 @@ macro_rules! free {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Load<'a, V> {
-    ptr: V,
+pub struct Load<'a> {
+    ptr: Box<AstNode<'a>>,
     name: Cow<'a, str>,
 }
 
-impl<'a, V> Load<'a, V> {
-    pub fn new(ptr: V, name: Cow<'a, str>) -> Self {
-        Load { ptr, name }
+impl<'a> Load<'a> {
+    pub fn new<V, N>(ptr: V, name: N) -> Self
+    where
+        V: Into<AstNode<'a>>,
+        N: Into<Cow<'a, str>>,
+    {
+        Load {
+            ptr: Box::new(ptr.into()),
+            name: name.into(),
+        }
     }
 }
 
-impl<'a, V> InstructionBuilder for Load<'a, V>
-where
-    V: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for Load<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -214,7 +232,7 @@ where
         unsafe {
             LLVMBuildLoad(
                 builder.as_raw(),
-                self.ptr.emit_to(builder).into().as_raw(),
+                self.ptr.emit_to(builder).into_raw(),
                 cstr!(self.name),
             )
         }.into()
@@ -222,11 +240,12 @@ where
 }
 
 /// The `load` instruction is used to read from memory.
-pub fn load<'a, P, N>(ptr: P, name: N) -> Load<'a, P>
+pub fn load<'a, P, N>(ptr: P, name: N) -> Load<'a>
 where
+    P: Into<AstNode<'a>>,
     N: Into<Cow<'a, str>>,
 {
-    Load::new(ptr, name.into())
+    Load::new(ptr, name)
 }
 
 #[macro_export]
@@ -240,22 +259,25 @@ macro_rules! load {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Store<V, P> {
-    value: V,
-    ptr: P,
+pub struct Store<'a> {
+    value: Box<AstNode<'a>>,
+    ptr: Box<AstNode<'a>>,
 }
 
-impl<V, P> Store<V, P> {
-    pub fn new(value: V, ptr: P) -> Self {
-        Store { value, ptr }
+impl<'a> Store<'a> {
+    pub fn new<V, P>(value: V, ptr: P) -> Self
+    where
+        V: Into<AstNode<'a>>,
+        P: Into<AstNode<'a>>,
+    {
+        Store {
+            value: Box::new(value.into()),
+            ptr: Box::new(ptr.into()),
+        }
     }
 }
 
-impl<V, P> InstructionBuilder for Store<V, P>
-where
-    V: InstructionBuilder + fmt::Debug,
-    P: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for Store<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -264,15 +286,19 @@ where
         unsafe {
             LLVMBuildStore(
                 builder.as_raw(),
-                self.value.emit_to(builder).into().as_raw(),
-                self.ptr.emit_to(builder).into().as_raw(),
+                self.value.emit_to(builder).into_raw(),
+                self.ptr.emit_to(builder).into_raw(),
             )
         }.into()
     }
 }
 
 /// The `store` instruction is used to write to memory.
-pub fn store<V, P>(value: V, ptr: P) -> Store<V, P> {
+pub fn store<'a, V, P>(value: V, ptr: P) -> Store<'a>
+where
+    V: Into<AstNode<'a>>,
+    P: Into<AstNode<'a>>,
+{
     Store::new(value, ptr)
 }
 
@@ -288,20 +314,20 @@ impl IRBuilder {
     pub fn malloc<'a, T, V, N>(&self, ty: T, size: Option<V>, name: N) -> Instruction
     where
         T: Into<TypeRef>,
-        V: InstructionBuilder + fmt::Debug,
+        V: Into<AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
         if let Some(size) = size {
-            Malloc::array(ty.into(), size, name.into())
+            Malloc::array(ty, size, name)
         } else {
-            Malloc::new(ty.into(), name.into())
+            Malloc::new(ty, name)
         }.emit_to(self)
     }
 
     /// Deallocates the memory allocation pointed to by ptr.
-    pub fn free<P>(&self, ptr: P) -> Instruction
+    pub fn free<'a, P>(&self, ptr: P) -> Instruction
     where
-        P: InstructionBuilder + fmt::Debug,
+        P: Into<AstNode<'a>>,
     {
         free(ptr).emit_to(self)
     }
@@ -311,30 +337,30 @@ impl IRBuilder {
     pub fn alloca<'a, T, V, N>(&self, ty: T, size: Option<V>, name: N) -> AllocaInst
     where
         T: Into<TypeRef>,
-        V: InstructionBuilder + fmt::Debug,
+        V: Into<AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
         if let Some(size) = size {
-            Alloca::array(ty.into(), size, name.into())
+            Alloca::array(ty, size, name)
         } else {
-            Alloca::new(ty.into(), name.into())
+            Alloca::new(ty, name)
         }.emit_to(self)
     }
 
     /// The `load` instruction is used to read from memory.
     pub fn load<'a, P, N>(&self, ptr: P, name: N) -> Instruction
     where
-        P: InstructionBuilder + fmt::Debug,
+        P: Into<AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
         load(ptr, name).emit_to(self)
     }
 
     /// The `store` instruction is used to write to memory.
-    pub fn store<V, P>(&self, value: V, ptr: P) -> Instruction
+    pub fn store<'a, V, P>(&self, value: V, ptr: P) -> Instruction
     where
-        V: InstructionBuilder + fmt::Debug,
-        P: InstructionBuilder + fmt::Debug,
+        V: Into<AstNode<'a>>,
+        P: Into<AstNode<'a>>,
     {
         store(value, ptr).emit_to(self)
     }

@@ -1,10 +1,9 @@
 use std::borrow::Cow;
-use std::fmt;
 
 use llvm::core::*;
 
-use insts::{IRBuilder, InstructionBuilder};
-use utils::AsRaw;
+use insts::{AstNode, IRBuilder, InstructionBuilder};
+use utils::{AsRaw, IntoRaw};
 use value::Instruction;
 
 /// The `select` instruction is used to choose one value based on a condition, without IR-level branching.
@@ -15,30 +14,31 @@ use value::Instruction;
 /// - If the condition is a vector of i1, then the value arguments must be vectors of the same size, and the selection is done element by element.
 /// - If the condition is an i1 and the value arguments are vectors of the same size, then an entire vector is selected.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Select<'a, C, T, E> {
-    cond: C,
-    then: T,
-    or_else: E,
+pub struct Select<'a> {
+    cond: Box<AstNode<'a>>,
+    then: Box<AstNode<'a>>,
+    or_else: Box<AstNode<'a>>,
     name: Cow<'a, str>,
 }
 
-impl<'a, C, T, E> Select<'a, C, T, E> {
-    pub fn new(cond: C, then: T, or_else: E, name: Cow<'a, str>) -> Self {
+impl<'a> Select<'a> {
+    pub fn new<C, T, E, N>(cond: C, then: T, or_else: E, name: N) -> Self
+    where
+        C: Into<AstNode<'a>>,
+        T: Into<AstNode<'a>>,
+        E: Into<AstNode<'a>>,
+        N: Into<Cow<'a, str>>,
+    {
         Select {
-            cond,
-            then,
-            or_else,
-            name,
+            cond: Box::new(cond.into()),
+            then: Box::new(then.into()),
+            or_else: Box::new(or_else.into()),
+            name: name.into(),
         }
     }
 }
 
-impl<'a, C, T, E> InstructionBuilder for Select<'a, C, T, E>
-where
-    C: InstructionBuilder + fmt::Debug,
-    T: InstructionBuilder + fmt::Debug,
-    E: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for Select<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -47,9 +47,9 @@ where
         unsafe {
             LLVMBuildSelect(
                 builder.as_raw(),
-                self.cond.emit_to(builder).into().as_raw(),
-                self.then.emit_to(builder).into().as_raw(),
-                self.or_else.emit_to(builder).into().as_raw(),
+                self.cond.emit_to(builder).into_raw(),
+                self.then.emit_to(builder).into_raw(),
+                self.or_else.emit_to(builder).into_raw(),
                 cstr!(self.name),
             )
         }.into()
@@ -66,11 +66,14 @@ where
 /// - If the condition is a vector of i1, then the value arguments must be vectors of the same size,
 /// and the selection is done element by element.
 /// - If the condition is an i1 and the value arguments are vectors of the same size, then an entire vector is selected.
-pub fn select<'a, C, T, E, N>(cond: C, then: T, or_else: E, name: N) -> Select<'a, C, T, E>
+pub fn select<'a, C, T, E, N>(cond: C, then: T, or_else: E, name: N) -> Select<'a>
 where
+    C: Into<AstNode<'a>>,
+    T: Into<AstNode<'a>>,
+    E: Into<AstNode<'a>>,
     N: Into<Cow<'a, str>>,
 {
-    Select::new(cond, then, or_else, name.into())
+    Select::new(cond, then, or_else, name)
 }
 
 /// The `select` instruction is used to choose one value based on a condition, without IR-level branching.
@@ -108,9 +111,9 @@ impl IRBuilder {
     /// then an entire vector is selected.
     pub fn select<'a, C, T, E, N>(&self, cond: C, then: T, or_else: E, name: N) -> Instruction
     where
-        C: InstructionBuilder + fmt::Debug,
-        T: InstructionBuilder + fmt::Debug,
-        E: InstructionBuilder + fmt::Debug,
+        C: Into<AstNode<'a>>,
+        T: Into<AstNode<'a>>,
+        E: Into<AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
         select(cond, then, or_else, name).emit_to(self)

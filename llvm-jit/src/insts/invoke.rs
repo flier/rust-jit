@@ -6,8 +6,8 @@ use llvm::prelude::*;
 
 use block::BasicBlock;
 use function::Function;
-use insts::{CallSite, IRBuilder, InstructionBuilder};
-use utils::AsRaw;
+use insts::{AstNode, CallSite, IRBuilder, InstructionBuilder};
+use utils::{AsRaw, IntoRaw};
 use value::{Instruction, ValueRef};
 
 /// This instruction is designed to operate as a standard `call` instruction in most regards.
@@ -21,7 +21,7 @@ use value::{Instruction, ValueRef};
 #[derive(Clone, Debug, PartialEq)]
 pub struct Invoke<'a> {
     func: Function,
-    args: Vec<ValueRef>,
+    args: Vec<AstNode<'a>>,
     then: Option<BasicBlock>,
     unwind: Option<BasicBlock>,
     name: Cow<'a, str>,
@@ -30,13 +30,17 @@ pub struct Invoke<'a> {
 impl<'a> Invoke<'a> {
     /// The ‘invoke‘ instruction causes control to transfer to a specified function,
     /// with the possibility of control flow transfer to either the ‘normal‘ label or the ‘exception‘ label.
-    pub fn new(func: Function, args: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
+    pub fn new<F, N>(func: F, args: Vec<AstNode<'a>>, name: N) -> Self
+    where
+        F: Into<Function>,
+        N: Into<Cow<'a, str>>,
+    {
         Invoke {
-            func,
+            func: func.into(),
             args,
             then: None,
             unwind: None,
-            name,
+            name: name.into(),
         }
     }
 
@@ -58,8 +62,8 @@ impl<'a> InstructionBuilder for Invoke<'a> {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         let mut args = self.args
-            .iter()
-            .map(|arg| arg.as_raw())
+            .into_iter()
+            .map(|arg| arg.emit_to(builder).into_raw())
             .collect::<Vec<LLVMValueRef>>();
 
         unsafe {
@@ -110,10 +114,10 @@ impl InvokeInst {
 pub fn invoke<'a, F, I, N>(func: F, args: I, name: N) -> Invoke<'a>
 where
     F: Into<Function>,
-    I: IntoIterator<Item = ValueRef>,
+    I: IntoIterator<Item = AstNode<'a>>,
     N: Into<Cow<'a, str>>,
 {
-    Invoke::new(func.into(), args.into_iter().collect(), name.into())
+    Invoke::new(func, args.into_iter().collect(), name)
 }
 
 /// The `invoke` instruction causes control to transfer to a specified function,
@@ -153,7 +157,7 @@ impl IRBuilder {
     pub fn invoke<'a, F, I, N>(&self, func: F, args: I, name: N) -> InvokeInst
     where
         F: Into<Function>,
-        I: IntoIterator<Item = ValueRef>,
+        I: IntoIterator<Item = AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
         Invoke::new(func.into(), args.into_iter().collect(), name.into()).emit_to(self)

@@ -1,17 +1,14 @@
-use std::fmt;
-use std::mem;
-
 use llvm::{LLVMAtomicOrdering, LLVMAtomicRMWBinOp};
 use llvm::core::*;
 
-use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsLLVMBool, AsRaw};
+use insts::{AstNode, IRBuilder, InstructionBuilder};
+use utils::{AsLLVMBool, AsRaw, IntoRaw};
 use value::Instruction;
 
 /// The `fence` instruction is used to introduce happens-before edges between operations.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Fence {
-    ordering: u32, // TODO: LLVMAtomicOrdering
+    ordering: LLVMAtomicOrdering,
     single_thread: bool,
 }
 
@@ -19,7 +16,7 @@ impl Fence {
     /// The `fence` instruction is used to introduce happens-before edges between operations.
     pub fn new(ordering: LLVMAtomicOrdering, single_thread: bool) -> Self {
         Fence {
-            ordering: ordering as u32,
+            ordering,
             single_thread,
         }
     }
@@ -34,7 +31,7 @@ impl InstructionBuilder for Fence {
         unsafe {
             LLVMBuildFence(
                 builder.as_raw(),
-                mem::transmute(self.ordering),
+                self.ordering,
                 self.single_thread.as_bool(),
                 cstr!(""),
             )
@@ -43,31 +40,37 @@ impl InstructionBuilder for Fence {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AtomicRMW<P, V> {
-    op: u32, // TODO: LLVMAtomicRMWBinOp
-    ptr: P,
-    value: V,
-    ordering: u32, // TODO: LLVMAtomicOrdering
+pub struct AtomicRMW<'a> {
+    op: LLVMAtomicRMWBinOp,
+    ptr: Box<AstNode<'a>>,
+    value: Box<AstNode<'a>>,
+    ordering: LLVMAtomicOrdering,
     single_thread: bool,
 }
 
-impl<P, V> AtomicRMW<P, V> {
-    pub fn new(op: LLVMAtomicRMWBinOp, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Self {
+impl<'a> AtomicRMW<'a> {
+    pub fn new<P, V>(
+        op: LLVMAtomicRMWBinOp,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Self
+    where
+        P: Into<AstNode<'a>>,
+        V: Into<AstNode<'a>>,
+    {
         AtomicRMW {
-            op: op as u32,
-            ptr,
-            value,
-            ordering: ordering as u32,
+            op,
+            ptr: Box::new(ptr.into()),
+            value: Box::new(value.into()),
+            ordering,
             single_thread,
         }
     }
 }
 
-impl<P, V> InstructionBuilder for AtomicRMW<P, V>
-where
-    P: InstructionBuilder + fmt::Debug,
-    V: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for AtomicRMW<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -76,10 +79,10 @@ where
         unsafe {
             LLVMBuildAtomicRMW(
                 builder.as_raw(),
-                mem::transmute(self.op),
-                self.ptr.emit_to(builder).into().as_raw(),
-                self.value.emit_to(builder).into().as_raw(),
-                mem::transmute(self.ordering),
+                self.op,
+                self.ptr.emit_to(builder).into_raw(),
+                self.value.emit_to(builder).into_raw(),
+                self.ordering,
                 self.single_thread.as_bool(),
             )
         }.into()
@@ -87,41 +90,41 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AtomicCmpXchg<P, C, N> {
-    ptr: P,
-    cmp: C,
-    new: N,
-    success_ordering: u32, // TODO: LLVMAtomicOrdering
-    failure_ordering: u32, // TODO: LLVMAtomicOrdering
+pub struct AtomicCmpXchg<'a> {
+    ptr: Box<AstNode<'a>>,
+    cmp: Box<AstNode<'a>>,
+    new: Box<AstNode<'a>>,
+    success_ordering: LLVMAtomicOrdering,
+    failure_ordering: LLVMAtomicOrdering,
     single_thread: bool,
 }
 
-impl<P, C, N> AtomicCmpXchg<P, C, N> {
-    pub fn new(
+impl<'a> AtomicCmpXchg<'a> {
+    pub fn new<P, C, N>(
         ptr: P,
         cmp: C,
         new: N,
         success_ordering: LLVMAtomicOrdering,
         failure_ordering: LLVMAtomicOrdering,
         single_thread: bool,
-    ) -> Self {
+    ) -> Self
+    where
+        P: Into<AstNode<'a>>,
+        C: Into<AstNode<'a>>,
+        N: Into<AstNode<'a>>,
+    {
         AtomicCmpXchg {
-            ptr,
-            cmp,
-            new,
-            success_ordering: success_ordering as u32,
-            failure_ordering: failure_ordering as u32,
+            ptr: Box::new(ptr.into()),
+            cmp: Box::new(cmp.into()),
+            new: Box::new(new.into()),
+            success_ordering,
+            failure_ordering,
             single_thread,
         }
     }
 }
 
-impl<P, C, N> InstructionBuilder for AtomicCmpXchg<P, C, N>
-where
-    P: InstructionBuilder + fmt::Debug,
-    C: InstructionBuilder + fmt::Debug,
-    N: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for AtomicCmpXchg<'a> {
     type Target = Instruction;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -130,11 +133,11 @@ where
         unsafe {
             LLVMBuildAtomicCmpXchg(
                 builder.as_raw(),
-                self.ptr.emit_to(builder).into().as_raw(),
-                self.cmp.emit_to(builder).into().as_raw(),
-                self.new.emit_to(builder).into().as_raw(),
-                mem::transmute(self.success_ordering),
-                mem::transmute(self.failure_ordering),
+                self.ptr.emit_to(builder).into_raw(),
+                self.cmp.emit_to(builder).into_raw(),
+                self.new.emit_to(builder).into_raw(),
+                self.success_ordering,
+                self.failure_ordering,
                 self.single_thread.as_bool(),
             )
         }.into()
@@ -237,7 +240,7 @@ impl IRBuilder {
     }
 
     /// The `atomicrmw` instruction is used to atomically modify memory.
-    pub fn atomic_rmw<P, V>(
+    pub fn atomic_rmw<'a, P, V>(
         &self,
         op: LLVMAtomicRMWBinOp,
         ptr: P,
@@ -246,8 +249,8 @@ impl IRBuilder {
         single_thread: bool,
     ) -> Instruction
     where
-        P: InstructionBuilder + fmt::Debug,
-        V: InstructionBuilder + fmt::Debug,
+        P: Into<AstNode<'a>>,
+        V: Into<AstNode<'a>>,
     {
         AtomicRMW::new(op, ptr, value, ordering, single_thread).emit_to(self)
     }
@@ -255,10 +258,16 @@ impl IRBuilder {
     /// The `atomicrmw` instruction is used to atomically modify memory.
     ///
     /// xchg: *ptr = val
-    pub fn atomic_xchg<P, V>(&self, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Instruction
+    pub fn atomic_xchg<'a, P, V>(
+        &self,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
     where
-        P: InstructionBuilder + fmt::Debug,
-        V: InstructionBuilder + fmt::Debug,
+        P: Into<AstNode<'a>>,
+        V: Into<AstNode<'a>>,
     {
         self.atomic_rmw(
             LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpXchg,
@@ -272,10 +281,16 @@ impl IRBuilder {
     /// The `atomicrmw` instruction is used to atomically modify memory.
     ///
     /// add: *ptr = *ptr + val
-    pub fn atomic_add<P, V>(&self, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Instruction
+    pub fn atomic_add<'a, P, V>(
+        &self,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
     where
-        P: InstructionBuilder + fmt::Debug,
-        V: InstructionBuilder + fmt::Debug,
+        P: Into<AstNode<'a>>,
+        V: Into<AstNode<'a>>,
     {
         self.atomic_rmw(
             LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAdd,
@@ -289,10 +304,16 @@ impl IRBuilder {
     /// The `atomicrmw` instruction is used to atomically modify memory.
     ///
     /// sub: *ptr = *ptr - val
-    pub fn atomic_sub<P, V>(&self, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Instruction
+    pub fn atomic_sub<'a, P, V>(
+        &self,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
     where
-        P: InstructionBuilder + fmt::Debug,
-        V: InstructionBuilder + fmt::Debug,
+        P: Into<AstNode<'a>>,
+        V: Into<AstNode<'a>>,
     {
         self.atomic_rmw(
             LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpSub,
@@ -306,10 +327,16 @@ impl IRBuilder {
     /// The `atomicrmw` instruction is used to atomically modify memory.
     ///
     /// and: *ptr = *ptr & val
-    pub fn atomic_and<P, V>(&self, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Instruction
+    pub fn atomic_and<'a, P, V>(
+        &self,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
     where
-        P: InstructionBuilder + fmt::Debug,
-        V: InstructionBuilder + fmt::Debug,
+        P: Into<AstNode<'a>>,
+        V: Into<AstNode<'a>>,
     {
         self.atomic_rmw(
             LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpAnd,
@@ -323,10 +350,16 @@ impl IRBuilder {
     /// The `atomicrmw` instruction is used to atomically modify memory.
     ///
     /// nand: *ptr = ~(*ptr & val)
-    pub fn atomic_nand<P, V>(&self, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Instruction
+    pub fn atomic_nand<'a, P, V>(
+        &self,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
     where
-        P: InstructionBuilder + fmt::Debug,
-        V: InstructionBuilder + fmt::Debug,
+        P: Into<AstNode<'a>>,
+        V: Into<AstNode<'a>>,
     {
         self.atomic_rmw(
             LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpNand,
@@ -340,10 +373,16 @@ impl IRBuilder {
     /// The `atomicrmw` instruction is used to atomically modify memory.
     ///
     /// or: *ptr = *ptr | val
-    pub fn atomic_or<P, V>(&self, ptr: P, value: V, ordering: LLVMAtomicOrdering, single_thread: bool) -> Instruction
+    pub fn atomic_or<'a, P, V>(
+        &self,
+        ptr: P,
+        value: V,
+        ordering: LLVMAtomicOrdering,
+        single_thread: bool,
+    ) -> Instruction
     where
-        P: InstructionBuilder + fmt::Debug,
-        V: InstructionBuilder + fmt::Debug,
+        P: Into<AstNode<'a>>,
+        V: Into<AstNode<'a>>,
     {
         self.atomic_rmw(
             LLVMAtomicRMWBinOp::LLVMAtomicRMWBinOpOr,
@@ -358,7 +397,7 @@ impl IRBuilder {
     ///
     /// It loads a value in memory and compares it to a given value.
     /// If they are equal, it tries to store a new value into the memory.
-    pub fn cmpxchg<P, C, N>(
+    pub fn cmpxchg<'a, P, C, N>(
         &self,
         ptr: P,
         cmp: C,
@@ -368,9 +407,9 @@ impl IRBuilder {
         single_thread: bool,
     ) -> Instruction
     where
-        P: InstructionBuilder + fmt::Debug,
-        C: InstructionBuilder + fmt::Debug,
-        N: InstructionBuilder + fmt::Debug,
+        P: Into<AstNode<'a>>,
+        C: Into<AstNode<'a>>,
+        N: Into<AstNode<'a>>,
     {
         AtomicCmpXchg::new(
             ptr,

@@ -1,35 +1,40 @@
-use std::fmt;
 use std::ptr;
 
 use llvm::core::*;
 use llvm::prelude::*;
 
 use block::BasicBlock;
-use insts::{IRBuilder, InstructionBuilder};
-use utils::AsRaw;
+use insts::{AstNode, IRBuilder, InstructionBuilder};
+use utils::{AsRaw, IntoRaw};
 use value::{Instruction, ValueRef};
 
 /// Create a switch instruction with the specified value, default dest,
 /// and with a hint for the number of cases that will be added (for efficient allocation).
 #[derive(Clone, Debug, PartialEq)]
-pub struct Switch<V> {
-    v: V,
+pub struct Switch<'a> {
+    value: Box<AstNode<'a>>,
     dest: Option<BasicBlock>,
-    cases: Vec<(ValueRef, BasicBlock)>,
+    cases: Vec<(AstNode<'a>, BasicBlock)>,
 }
 
-impl<V> Switch<V> {
-    pub fn on(v: V) -> Self {
+impl<'a> Switch<'a> {
+    pub fn on<V>(value: V) -> Self
+    where
+        V: Into<AstNode<'a>>,
+    {
         Switch {
-            v,
+            value: Box::new(value.into()),
             dest: None,
             cases: vec![],
         }
     }
 
     /// Add a case to the switch instruction
-    pub fn case(mut self, on: ValueRef, dest: BasicBlock) -> Self {
-        self.cases.push((on, dest));
+    pub fn case<V>(mut self, cond: V, dest: BasicBlock) -> Self
+    where
+        V: Into<AstNode<'a>>,
+    {
+        self.cases.push((cond.into(), dest));
         self
     }
 
@@ -39,10 +44,7 @@ impl<V> Switch<V> {
     }
 }
 
-impl<V> InstructionBuilder for Switch<V>
-where
-    V: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for Switch<'a> {
     type Target = SwitchInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
@@ -51,14 +53,20 @@ where
         let switch: SwitchInst = unsafe {
             LLVMBuildSwitch(
                 builder.as_raw(),
-                self.v.emit_to(builder).into().as_raw(),
+                self.value.emit_to(builder).into_raw(),
                 self.dest.map_or(ptr::null_mut(), |bb| bb.as_raw()),
                 self.cases.len() as u32,
             )
         }.into();
 
-        for &(on, dest) in &self.cases {
-            unsafe { LLVMAddCase(switch.as_raw(), on.as_raw(), dest.as_raw()) }
+        for (cond, dest) in self.cases {
+            unsafe {
+                LLVMAddCase(
+                    switch.as_raw(),
+                    cond.emit_to(builder).into_raw(),
+                    dest.as_raw(),
+                )
+            }
         }
 
         switch
@@ -89,7 +97,10 @@ impl SwitchInst {
 }
 
 /// The `switch` instruction is used to transfer control flow to one of several different places.
-pub fn switch<V>(v: V) -> Switch<V> {
+pub fn switch<'a, V>(v: V) -> Switch<'a>
+where
+    V: Into<AstNode<'a>>,
+{
     Switch::on(v)
 }
 
@@ -97,21 +108,21 @@ pub fn switch<V>(v: V) -> Switch<V> {
 #[macro_export]
 macro_rules! switch {
     ($cond:expr; _ => $default:expr , $( $on:expr => $dest:expr ),*) => ({
-        $crate::insts::switch($cond).default($default) $( .case($on.into(), $dest) )*
+        $crate::insts::switch($cond).default($default) $( .case($on, $dest) )*
     });
     ($cond:expr; _ => $default:expr) => ({
         $crate::insts::switch($cond).default($default)
     });
     ($cond:expr; $( $on:expr => $dest:expr ),*) => ({
-        $crate::insts::switch($cond) $( .case($on.into(), $dest) )*
+        $crate::insts::switch($cond) $( .case($on, $dest) )*
     });
 }
 
 impl IRBuilder {
     /// The `switch` instruction is used to transfer control flow to one of several different places.
-    pub fn switch<V>(&self, v: V) -> SwitchInst
+    pub fn switch<'a, V>(&self, v: V) -> SwitchInst
     where
-        V: InstructionBuilder + fmt::Debug,
+        V: Into<AstNode<'a>>,
     {
         switch(v).emit_to(self)
     }

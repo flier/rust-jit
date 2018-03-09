@@ -6,8 +6,8 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use function::Function;
-use insts::{IRBuilder, InstructionBuilder};
-use utils::{AsBool, AsLLVMBool, AsRaw};
+use insts::{AstNode, IRBuilder, InstructionBuilder};
+use utils::{AsBool, AsLLVMBool, AsRaw, IntoRaw};
 use value::{AsValueRef, Instruction, ValueRef};
 
 /// This instruction is designed to operate as a standard `call` instruction in most regards.
@@ -21,17 +21,23 @@ use value::{AsValueRef, Instruction, ValueRef};
 #[derive(Clone, Debug, PartialEq)]
 pub struct Call<'a> {
     func: Function,
-    args: Vec<ValueRef>,
+    args: Vec<AstNode<'a>>,
     name: Cow<'a, str>,
     tail_call: bool,
 }
 
 impl<'a> Call<'a> {
-    pub fn new(func: Function, args: Vec<ValueRef>, name: Cow<'a, str>) -> Self {
+    pub fn new<F, I, T, N>(func: F, args: I, name: N) -> Self
+    where
+        F: Into<Function>,
+        I: IntoIterator<Item = T>,
+        T: Into<AstNode<'a>>,
+        N: Into<Cow<'a, str>>,
+    {
         Call {
-            func,
-            args,
-            name,
+            func: func.into(),
+            args: args.into_iter().map(|arg| arg.into()).collect(),
+            name: name.into(),
             tail_call: false,
         }
     }
@@ -55,14 +61,14 @@ impl<'a> InstructionBuilder for Call<'a> {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         let mut args = self.args
-            .iter()
-            .map(|arg| arg.as_raw())
+            .into_iter()
+            .map(|arg| arg.emit_to(builder).into_raw())
             .collect::<Vec<LLVMValueRef>>();
 
         let call: CallInst = unsafe {
             LLVMBuildCall(
                 builder.as_raw(),
-                self.func.as_raw(),
+                self.func.into_raw(),
                 args.as_mut_ptr(),
                 args.len() as u32,
                 cstr!(self.name),
@@ -118,22 +124,23 @@ impl CallInst {
     }
 }
 
-pub fn call<'a, F, I, N>(func: F, args: I, name: N) -> Call<'a>
+pub fn call<'a, F, I, T, N>(func: F, args: I, name: N) -> Call<'a>
 where
     F: Into<Function>,
-    I: IntoIterator<Item = ValueRef>,
+    I: IntoIterator<Item = T>,
+    T: Into<AstNode<'a>>,
     N: Into<Cow<'a, str>>,
 {
-    Call::new(func.into(), args.into_iter().collect(), name.into())
+    Call::new(func, args, name)
 }
 
 #[macro_export]
 macro_rules! call {
     ($func:expr, $( $arg:expr ),*; $name:expr) => ({
-        $crate::insts::call($func, vec![ $( $arg.into() ),* ], $name)
+        $crate::insts::call($func, vec![ $( $crate::insts::AstNode::from($arg) ),* ], $name)
     });
     ($func:expr ; $name:expr) => ({
-        $crate::insts::call($func, vec![], $name)
+        $crate::insts::call($func, Vec::<$crate::insts::AstNode>::new(), $name)
     });
     ($func:expr, $( $arg:expr ),*) => ({
         call!($func, $( $arg ),*; "")
@@ -144,10 +151,11 @@ macro_rules! call {
 }
 
 impl IRBuilder {
-    pub fn call<'a, F, I, N>(&self, func: F, args: I, name: N) -> CallInst
+    pub fn call<'a, F, I, T, N>(&self, func: F, args: I, name: N) -> CallInst
     where
         F: Into<Function>,
-        I: IntoIterator<Item = ValueRef>,
+        I: IntoIterator<Item = T>,
+        T: Into<AstNode<'a>>,
         N: Into<Cow<'a, str>>,
     {
         call(func, args, name).emit_to(self)

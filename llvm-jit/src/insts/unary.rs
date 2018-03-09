@@ -1,26 +1,33 @@
+use std::borrow::Cow;
+
 use llvm::core::*;
 
-use insts::builder::InstructionBuilder;
-use utils::AsRaw;
+use insts::{AstNode, InstructionBuilder};
+use utils::{AsRaw, IntoRaw};
 
 macro_rules! define_unary_instruction {
     ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
         #[doc=$comment]
         #[derive(Clone, Debug, PartialEq)]
-        pub struct $operator<'a, V> {
-            value: V,
-            name: ::std::borrow::Cow<'a, str>,
+        pub struct $operator<'a> {
+            value: Box<AstNode<'a>>,
+            name: Cow<'a, str>,
         }
 
-        impl<'a, V> $operator<'a, V> {
-            pub fn new(value: V, name: ::std::borrow::Cow<'a, str>) -> Self {
-                $operator { value, name }
+        impl<'a> $operator<'a> {
+            pub fn new<V, N>(value: V, name: N) -> Self
+            where
+                V: Into<AstNode<'a>>,
+                N: Into<Cow<'a, str>>,
+            {
+                $operator {
+                    value: Box::new(value.into()),
+                    name: name.into(),
+                }
             }
         }
 
-        impl<'a, V> $crate::insts::InstructionBuilder for $operator<'a, V>
-        where
-            V: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
+        impl<'a> $crate::insts::InstructionBuilder for $operator<'a>
         {
             type Target = $crate::Instruction;
 
@@ -30,7 +37,7 @@ macro_rules! define_unary_instruction {
                 unsafe {
                     $func(
                         builder.as_raw(),
-                        self.value.emit_to(builder).into().as_raw(),
+                        self.value.emit_to(builder).into_raw(),
                         cstr!(self.name),
                     )
                 }.into()
@@ -38,11 +45,12 @@ macro_rules! define_unary_instruction {
         }
 
         #[doc=$comment]
-        pub fn $alias<'a, V, N>(value: V, name: N) -> $operator<'a, V>
+        pub fn $alias<'a, V, N>(value: V, name: N) -> $operator<'a>
         where
-            N: Into<::std::borrow::Cow<'a, str>>
+            V: Into<AstNode<'a>>,
+            N: Into<Cow<'a, str>>
         {
-            $crate::insts::$operator::new(value.into(), name.into())
+            $crate::insts::$operator::new(value, name)
         }
 
         #[doc=$comment]
@@ -64,8 +72,8 @@ macro_rules! define_unary_instruction {
                 name: N
             ) -> $crate::Instruction
             where
-                V: $crate::insts::InstructionBuilder + ::std::fmt::Debug,
-                N: Into<::std::borrow::Cow<'a, str>>
+                V: Into<AstNode<'a>>,
+                N: Into<Cow<'a, str>>
             {
                 $alias(value, name).emit_to(self)
             }

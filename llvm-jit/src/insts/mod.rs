@@ -41,7 +41,10 @@ mod vector;
 mod aggregate;
 #[macro_use]
 mod atomic;
+mod ast;
+mod ir;
 
+pub use self::ast::AstNode;
 pub use self::aggregate::{extract_value, insert_value, ExtractValue, InsertValue};
 pub use self::atomic::{AtomicCmpXchg, AtomicRMW, Fence};
 pub use self::binop::*;

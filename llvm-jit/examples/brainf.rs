@@ -502,7 +502,7 @@ impl<'a> BrainF<'a> {
 
         //%head.%d = phi i8 *[%head.%d, %main.%d], [%head.%d, %main.%d]
         //Finish phi made at beginning of loop
-        let head_0 = phi.add_incoming(self.cur_head.into(), old_bb)
+        let head_0 = phi.add_incoming(self.cur_head, old_bb)
             .emit_to(&self.builder);
 
         //%tape.%d = load i8 *%head.%d

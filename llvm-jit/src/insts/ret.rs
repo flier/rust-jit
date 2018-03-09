@@ -1,11 +1,9 @@
-use std::fmt;
-
 use llvm::core::*;
 use llvm::prelude::*;
 
 use block::BasicBlock;
-use insts::{IRBuilder, InstructionBuilder};
-use utils::AsRaw;
+use insts::{AstNode, IRBuilder, InstructionBuilder};
+use utils::{AsRaw, IntoRaw};
 use value::{Instruction, ValueRef};
 
 /// Create a 'ret void' instruction.
@@ -24,24 +22,24 @@ impl InstructionBuilder for RetVoid {
 
 /// Create a 'ret <val>' instruction.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Ret<T>(T);
+pub struct Ret<'a>(Box<AstNode<'a>>);
 
-impl<T> Ret<T> {
-    pub fn new(result: T) -> Self {
-        Ret(result)
+impl<'a> Ret<'a> {
+    pub fn new<T>(result: T) -> Self
+    where
+        T: Into<AstNode<'a>>,
+    {
+        Ret(Box::new(result.into()))
     }
 }
 
-impl<T> InstructionBuilder for Ret<T>
-where
-    T: InstructionBuilder + fmt::Debug,
-{
+impl<'a> InstructionBuilder for Ret<'a> {
     type Target = TerminatorInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe { LLVMBuildRet(builder.as_raw(), self.0.emit_to(builder).into().as_raw()) }.into()
+        unsafe { LLVMBuildRet(builder.as_raw(), self.0.emit_to(builder).into_raw()) }.into()
     }
 }
 
@@ -50,24 +48,24 @@ where
 /// return value one value at a time, and a ret instruction to return
 /// the resulting aggregate value.
 #[derive(Clone, Debug, PartialEq)]
-pub struct AggregateRet(Vec<ValueRef>);
+pub struct AggregateRet<'a>(Vec<AstNode<'a>>);
 
-impl AggregateRet {
-    pub fn new(results: Vec<ValueRef>) -> Self {
+impl<'a> AggregateRet<'a> {
+    pub fn new(results: Vec<AstNode<'a>>) -> Self {
         AggregateRet(results)
     }
 }
 
-impl InstructionBuilder for AggregateRet {
+impl<'a> InstructionBuilder for AggregateRet<'a> {
     type Target = TerminatorInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
         let mut values = self.0
-            .iter()
-            .map(|v| v.as_raw())
-            .collect::<Vec<LLVMValueRef>>();
+            .into_iter()
+            .map(|v| v.emit_to(builder).into_raw())
+            .collect::<Vec<_>>();
 
         unsafe { LLVMBuildAggregateRet(builder.as_raw(), values.as_mut_ptr(), values.len() as u32) }.into()
     }
@@ -120,17 +118,17 @@ impl IRBuilder {
     }
 
     /// The ‘ret‘ instruction is used to return control flow (and optionally a value) from a function back to the caller.
-    pub fn ret<T>(&self, result: T) -> TerminatorInst
+    pub fn ret<'a, T>(&self, result: T) -> TerminatorInst
     where
-        T: InstructionBuilder + fmt::Debug,
+        T: Into<AstNode<'a>>,
     {
-        Ret::new(result).emit_to(self)
+        Ret::new(result.into()).emit_to(self)
     }
 
     /// The ‘ret‘ instruction is used to return control flow (and optionally a value) from a function back to the caller.
-    pub fn aggregate_ret<I>(&self, values: I) -> TerminatorInst
+    pub fn aggregate_ret<'a, I>(&self, values: I) -> TerminatorInst
     where
-        I: IntoIterator<Item = ValueRef>,
+        I: IntoIterator<Item = AstNode<'a>>,
     {
         AggregateRet::new(values.into_iter().collect()).emit_to(self)
     }
