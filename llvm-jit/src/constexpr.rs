@@ -1,5 +1,5 @@
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Not, Rem, Sub};
-use std::cmp::{PartialEq, PartialOrd};
+use std::cmp::{Ordering, PartialEq, PartialOrd};
 
 use llvm::*;
 use llvm::core::*;
@@ -523,6 +523,25 @@ macro_rules! impl_const_int_operators {
                 ConstantExpr::icmp(self, LLVMIntPredicate::LLVMIntEQ, rhs)
             }
         }
+
+        impl PartialOrd<$type> for ConstantInt {
+            fn partial_cmp(&self, other: & $type) -> Option<Ordering> {
+                let rhs = self.type_of().int_value(*other as u64, $signed).into();
+                let lt = if $signed {
+                    LLVMIntPredicate::LLVMIntSLT
+                } else {
+                    LLVMIntPredicate::LLVMIntULT
+                };
+
+                Some(if ConstantExpr::icmp(self, lt, rhs) {
+                    Ordering::Less
+                } else if ConstantExpr::icmp(self, LLVMIntPredicate::LLVMIntEQ, rhs) {
+                    Ordering::Equal
+                } else {
+                    Ordering::Greater
+                })
+            }
+        }
     };
 }
 
@@ -594,6 +613,7 @@ macro_rules! impl_const_floating_point_operators {
                 ConstantExpr::fadd(&self, self.type_of().real(rhs as f64).into()).into()
             }
         }
+
         impl Sub<$type> for ConstantFP {
             type Output = Self;
 
@@ -601,6 +621,7 @@ macro_rules! impl_const_floating_point_operators {
                 ConstantExpr::fsub(&self, self.type_of().real(rhs as f64).into()).into()
             }
         }
+
         impl Mul<$type> for ConstantFP {
             type Output = Self;
 
@@ -608,6 +629,7 @@ macro_rules! impl_const_floating_point_operators {
                 ConstantExpr::fmul(&self, self.type_of().real(rhs as f64).into()).into()
             }
         }
+
         impl Div<$type> for ConstantFP {
             type Output = Self;
 
@@ -615,6 +637,7 @@ macro_rules! impl_const_floating_point_operators {
                 ConstantExpr::fdiv(&self, self.type_of().real(rhs as f64).into()).into()
             }
         }
+
         impl Rem<$type> for ConstantFP {
             type Output = Self;
 
@@ -628,6 +651,20 @@ macro_rules! impl_const_floating_point_operators {
                 let rhs = self.type_of().real(*other as f64).into();
 
                 ConstantExpr::fcmp(self, LLVMRealPredicate::LLVMRealOEQ, rhs)
+            }
+        }
+
+        impl PartialOrd<$type> for ConstantFP {
+            fn partial_cmp(&self, other: & $type) -> Option<Ordering> {
+                let rhs = self.type_of().real(*other as f64).into();
+
+                Some(if ConstantExpr::fcmp(self, LLVMRealPredicate::LLVMRealOLT, rhs) {
+                    Ordering::Less
+                } else if ConstantExpr::fcmp(self, LLVMRealPredicate::LLVMRealOEQ, rhs) {
+                    Ordering::Equal
+                } else {
+                    Ordering::Greater
+                })
             }
         }
     };
@@ -840,5 +877,9 @@ mod tests {
 
         assert_eq!(f, 123.0);
         assert!(fv.eq(&fv.into()));
+
+        // ord
+        assert!(i < 456);
+        assert!(f < 456.0);
     }
 }
