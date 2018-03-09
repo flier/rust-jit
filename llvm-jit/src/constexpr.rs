@@ -460,7 +460,6 @@ macro_rules! impl_const_int_operators {
                 ConstantExpr::mul(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
             }
         }
-
         impl Div<$type> for ConstantInt {
             type Output = Self;
 
@@ -474,7 +473,19 @@ macro_rules! impl_const_int_operators {
                 }
             }
         }
+        impl Rem<$type> for ConstantInt {
+            type Output = Self;
 
+            fn rem(self, rhs: $type) -> Self::Output {
+                let rhs = self.type_of().int_value(rhs as u64, $signed).into();
+
+                if $signed {
+                    ConstantExpr::srem(&self, rhs).into()
+                } else {
+                    ConstantExpr::urem(&self, rhs).into()
+                }
+            }
+        }
         impl BitAnd<$type> for ConstantInt {
             type Output = Self;
 
@@ -734,6 +745,15 @@ mod tests {
         assert_eq!(
             iv.sdiv(iv.neg().into()).to_string(),
             "<4 x i64> <i64 -1, i64 -1, i64 -1, i64 -1>"
+        );
+
+        // rem
+        assert_eq!(i % 2, i64_t.int(1));
+        assert_eq!(i % -2, i64_t.int(1));
+        assert_eq!(iv.urem(iv.into()).to_string(), "<4 x i64> zeroinitializer");
+        assert_eq!(
+            iv.srem(iv.neg().into()).to_string(),
+            "<4 x i64> zeroinitializer"
         );
 
         // and
