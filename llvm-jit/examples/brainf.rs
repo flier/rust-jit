@@ -203,7 +203,7 @@ impl<'a> BrainF<'a> {
 
         let entry_bb = brainf_func.append_basic_block_in_context(format!("{}.entry", LABEL), &context);
 
-        let builder = context.create_builder();
+        let mut builder = context.create_builder();
 
         builder.position_at_end(entry_bb);
 
@@ -211,15 +211,14 @@ impl<'a> BrainF<'a> {
         let ptr_arr = malloc!(i8_t, i32_t.int(mem_total as i64); "arr").emit_to(&builder);
 
         //call void @llvm.memset.p0i8.i32(i8 *%arr, i8 0, i32 %d, i32 1, i1 0)
-        call!(
+        builder <<= call!(
             memset_func,
             ptr_arr,
             i8_t.int(0),
             i32_t.int(mem_total as i64),
             i32_t.int(1),
             bool_t.int(0)
-        ).set_tail_call(false)
-            .emit_to(&builder);
+        ).set_tail_call(false);
 
         //%arrmax = getelementptr i8 *%arr, i32 %d
         let ptr_arrmax = compile_flags
@@ -238,10 +237,10 @@ impl<'a> BrainF<'a> {
         //call free(i8 *%arr)
         builder.position_at_end(end_bb);
 
-        free!(ptr_arr).emit_to(&builder);;
+        builder <<= free!(ptr_arr);
 
         //ret void
-        ret!().emit_to(&builder);;
+        builder <<= ret!();
 
         //Error block for array out of bounds
         let aberror_bb = if compile_flags.contains(CompileFlags::FLAG_ARRAY_BOUNDS) {
@@ -262,13 +261,10 @@ impl<'a> BrainF<'a> {
             builder.position_at_end(aberror_bb);
 
             //call i32 @puts(i8 *getelementptr([%d x i8] *@aberrormsg, i32 0, i32 0))
-            let msg_ptr = gep!(aberror_msg, i32_t.null(), i32_t.null()).emit_to(&builder);
+            let msg_ptr = gep!(aberror_msg, i32_t.null(), i32_t.null());
 
-            call!(puts_func, msg_ptr)
-                .set_tail_call(false)
-                .emit_to(&builder);
-
-            br!(end_bb).emit_to(&builder);
+            builder <<= call!(puts_func, msg_ptr).set_tail_call(false);
+            builder <<= br!(end_bb);
 
             Some(aberror_bb)
         } else {
@@ -414,7 +410,7 @@ impl<'a> BrainF<'a> {
         let tape_0 = load!(self.cur_head; TAPER_REG);
 
         //%tape.%d = sext i8 %tape.%d to i32
-        let tape_1 = sext!(tape_0, i32_t; TAPER_REG).emit_to(&self.builder);
+        let tape_1 = sext!(tape_0, i32_t; TAPER_REG);
 
         //call i32 @putchar(i32 %tape.%d)
         call!(self.putchar_func, tape_1)
