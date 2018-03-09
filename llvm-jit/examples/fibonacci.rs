@@ -62,11 +62,11 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
     builder.position_at_end(recurse_bb);
 
     // create fib(x-1)
-    let arg = sub!(argx, one; "arg").emit_to(&builder);
+    let arg = sub!(argx, one; "arg");
     let call_fib_x1 = call!(fib_f, arg; "fibx1");
 
     // create fib(x-2)
-    let arg = sub!(argx, two; "arg").emit_to(&builder);
+    let arg = sub!(argx, two; "arg");
     let call_fib_x2 = call!(fib_f, arg; "fibx2");
 
     // fib(x-1)+fib(x-2)
@@ -94,7 +94,10 @@ fn main() {
 
     //module.verify().unwrap();
 
-    println!("We just constructed this LLVM module:\n\n{}\n\nRunning: ", module);
+    println!(
+        "We just constructed this LLVM module:\n\n{}\n\nRunning: ",
+        module
+    );
 
     // Now we create the JIT.
     let ee = ExecutionEngine::for_module(module).unwrap();
