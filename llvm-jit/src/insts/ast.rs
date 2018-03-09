@@ -222,7 +222,7 @@ macro_rules! impl_ast_node {
 }
 
 impl_ast_node!(ValueRef);
-impl_ast_node!(Instruction);
+impl_ast_node!(BlockAddress => ValueRef);
 impl_ast_node!(Constant);
 impl_ast_node!(ConstantInt => Constant);
 impl_ast_node!(ConstantFP => Constant);
@@ -231,7 +231,8 @@ impl_ast_node!(ConstantStruct => Constant);
 impl_ast_node!(ConstantArray => Constant);
 impl_ast_node!(ConstantVector => Constant);
 impl_ast_node!(GlobalVar => Constant);
-impl_ast_node!(BlockAddress => ValueRef);
+impl_ast_node!(InlineAsm => Constant);
+impl_ast_node!(Instruction);
 impl_ast_node!(AllocaInst => Instruction);
 impl_ast_node!(BranchInst => Instruction);
 impl_ast_node!(CallInst => Instruction);
