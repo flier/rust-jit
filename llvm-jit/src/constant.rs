@@ -277,13 +277,14 @@ pub trait ConstantDataSequential: AsValueRef {
     }
 }
 
+impl ConstantDataSequential for ConstantArray {}
+impl ConstantDataSequential for ConstantVector {}
+
 /// Constant Array Declarations.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ConstantArray(Constant);
 
 impl_constant!(ConstantArray, Constant);
-
-impl ConstantDataSequential for ConstantArray {}
 
 pub trait ToConstantArray {
     /// Create a ConstantArray from values.
@@ -310,8 +311,6 @@ impl ToConstantArray for TypeRef {
 pub struct ConstantVector(Constant);
 
 impl_constant!(ConstantVector, Constant);
-
-impl ConstantDataSequential for ConstantVector {}
 
 impl ConstantVector {
     /// Create a ConstantVector from values.
