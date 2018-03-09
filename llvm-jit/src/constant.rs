@@ -8,8 +8,6 @@ use context::Context;
 use types::{FloatingPointType, IntegerType, StructType, TypeRef};
 use utils::{from_unchecked_cstr, AsBool, AsLLVMBool, AsRaw, FromRaw};
 use value::{AsValueRef, ValueRef};
-use module::Module;
-use function::FunctionType;
 
 pub trait AsConstant: AsValueRef {
     fn as_const(&self) -> &Constant;
@@ -354,32 +352,6 @@ macro_rules! vector {
 pub struct InlineAsm(Constant);
 
 impl_constant!(InlineAsm, Constant);
-
-impl Module {
-    pub fn inline_asm<S: AsRef<str>>(&self, code: S) {
-        unsafe { LLVMSetModuleInlineAsm(self.as_raw(), cstr!(code)) }
-    }
-}
-
-impl FunctionType {
-    pub fn inline_asm<S: AsRef<str>>(
-        &self,
-        code: S,
-        constraints: S,
-        side_effects: bool,
-        align_stack: bool,
-    ) -> InlineAsm {
-        unsafe {
-            LLVMConstInlineAsm(
-                self.as_raw(),
-                cstr!(code),
-                cstr!(constraints),
-                side_effects.as_bool(),
-                align_stack.as_bool(),
-            )
-        }.into()
-    }
-}
 
 #[cfg(test)]
 mod tests {

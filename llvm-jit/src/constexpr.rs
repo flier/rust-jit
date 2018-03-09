@@ -2,10 +2,11 @@ use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
 
-use constant::{AsConstant, Constant, ConstantInt, ConstantVector};
+use constant::{AsConstant, Constant, ConstantInt, ConstantVector, InlineAsm};
 use types::TypeRef;
 use utils::{AsLLVMBool, AsRaw};
-use value::ValueRef;
+use module::Module;
+use function::FunctionType;
 
 pub trait ConstantExpr {
     fn neg(&self) -> Constant;
@@ -384,15 +385,27 @@ impl ConstantVector {
     }
 }
 
-impl TypeRef {
-    pub fn inline_asm(&self, asm: &str, constraints: &str, has_side_effects: bool, is_align_stack: bool) -> ValueRef {
+impl Module {
+    pub fn inline_asm<S: AsRef<str>>(&self, code: S) {
+        unsafe { LLVMSetModuleInlineAsm(self.as_raw(), cstr!(code)) }
+    }
+}
+
+impl FunctionType {
+    pub fn inline_asm<S: AsRef<str>>(
+        &self,
+        code: S,
+        constraints: S,
+        side_effects: bool,
+        align_stack: bool,
+    ) -> InlineAsm {
         unsafe {
             LLVMConstInlineAsm(
                 self.as_raw(),
-                cstr!(asm),
+                cstr!(code),
                 cstr!(constraints),
-                has_side_effects.as_bool(),
-                is_align_stack.as_bool(),
+                side_effects.as_bool(),
+                align_stack.as_bool(),
             )
         }.into()
     }

@@ -71,7 +71,8 @@ mod object;
 mod bitcode;
 
 pub use attribute::{attrs, Attribute, AttributeIndex, EnumAttribute, StringAttribute};
-pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString, ConstantStruct, ConstantVector};
+pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString, ConstantStruct, ConstantVector,
+                   InlineAsm};
 pub use context::{Context, GlobalContext};
 pub use disasm::Disasm;
 pub use engine::{shutdown, CodeGenOptLevel, ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJITCompiler,
