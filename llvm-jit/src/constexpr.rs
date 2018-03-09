@@ -1,4 +1,5 @@
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Not, Rem, Sub};
+use std::cmp::{PartialEq, PartialOrd};
 
 use llvm::*;
 use llvm::core::*;
@@ -61,9 +62,9 @@ pub trait ConstantExpr {
 
     fn frem(&self, other: Constant) -> Constant;
 
-    fn icmp(&self, predicate: LLVMIntPredicate, other: Constant) -> Constant;
+    fn icmp(&self, predicate: LLVMIntPredicate, other: Constant) -> bool;
 
-    fn fcmp(&self, predicate: LLVMRealPredicate, other: Constant) -> Constant;
+    fn fcmp(&self, predicate: LLVMRealPredicate, other: Constant) -> bool;
 
     fn and(&self, other: Constant) -> Constant;
 
@@ -227,12 +228,12 @@ impl<T: AsConstant> ConstantExpr for T {
         unsafe { LLVMConstFRem(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn icmp(&self, predicate: LLVMIntPredicate, other: Constant) -> Constant {
-        unsafe { LLVMConstICmp(predicate, self.as_raw(), other.as_raw()) }.into()
+    fn icmp(&self, predicate: LLVMIntPredicate, other: Constant) -> bool {
+        ConstantInt::from(unsafe { LLVMConstICmp(predicate, self.as_raw(), other.as_raw()) }).bool()
     }
 
-    fn fcmp(&self, predicate: LLVMRealPredicate, other: Constant) -> Constant {
-        unsafe { LLVMConstFCmp(predicate, self.as_raw(), other.as_raw()) }.into()
+    fn fcmp(&self, predicate: LLVMRealPredicate, other: Constant) -> bool {
+        ConstantInt::from(unsafe { LLVMConstFCmp(predicate, self.as_raw(), other.as_raw()) }).bool()
     }
 
     fn and(&self, other: Constant) -> Constant {
@@ -446,6 +447,7 @@ macro_rules! impl_const_int_operators {
                 ConstantExpr::add(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
             }
         }
+
         impl Sub<$type> for ConstantInt {
             type Output = Self;
 
@@ -453,6 +455,7 @@ macro_rules! impl_const_int_operators {
                 ConstantExpr::sub(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
             }
         }
+
         impl Mul<$type> for ConstantInt {
             type Output = Self;
 
@@ -460,6 +463,7 @@ macro_rules! impl_const_int_operators {
                 ConstantExpr::mul(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
             }
         }
+
         impl Div<$type> for ConstantInt {
             type Output = Self;
 
@@ -473,6 +477,7 @@ macro_rules! impl_const_int_operators {
                 }
             }
         }
+
         impl Rem<$type> for ConstantInt {
             type Output = Self;
 
@@ -486,6 +491,7 @@ macro_rules! impl_const_int_operators {
                 }
             }
         }
+
         impl BitAnd<$type> for ConstantInt {
             type Output = Self;
 
@@ -507,6 +513,14 @@ macro_rules! impl_const_int_operators {
 
             fn bitxor(self, rhs: $type) -> Self::Output {
                 ConstantExpr::xor(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
+            }
+        }
+
+        impl PartialEq<$type> for ConstantInt {
+            fn eq(&self, other: & $type) -> bool {
+                let rhs = self.type_of().int_value(*other as u64, $signed).into();
+
+                ConstantExpr::icmp(self, LLVMIntPredicate::LLVMIntEQ, rhs)
             }
         }
     };
@@ -606,6 +620,14 @@ macro_rules! impl_const_floating_point_operators {
 
             fn rem(self, rhs: $type) -> Self::Output {
                 ConstantExpr::frem(&self, self.type_of().real(rhs as f64).into()).into()
+            }
+        }
+
+        impl PartialEq<$type> for ConstantFP {
+            fn eq(&self, other: & $type) -> bool {
+                let rhs = self.type_of().real(*other as f64).into();
+
+                ConstantExpr::fcmp(self, LLVMRealPredicate::LLVMRealOEQ, rhs)
             }
         }
     };
@@ -811,5 +833,12 @@ mod tests {
             fv.frem(fv.into()).to_string(),
             "<4 x double> zeroinitializer"
         );
+
+        // eq
+        assert_eq!(i, 123);
+        assert!(iv.eq(&iv.into()));
+
+        assert_eq!(f, 123.0);
+        assert!(fv.eq(&fv.into()));
     }
 }

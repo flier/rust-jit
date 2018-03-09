@@ -78,13 +78,17 @@ impl_constant!(ConstantInt, Constant);
 
 impl ConstantInt {
     /// Obtain the zero extended value for an integer constant value.
-    pub fn zero_extended(&self) -> u64 {
+    pub fn uint(&self) -> u64 {
         unsafe { LLVMConstIntGetZExtValue(self.as_raw()) }
     }
 
     /// Obtain the sign extended value for an integer constant value.
-    pub fn sign_extended(&self) -> i64 {
+    pub fn int(&self) -> i64 {
         unsafe { LLVMConstIntGetSExtValue(self.as_raw()) }
+    }
+
+    pub fn bool(&self) -> bool {
+        self.int() != 0
     }
 }
 
@@ -430,8 +434,8 @@ mod tests {
         assert!(!v.is_undef());
         assert!(!v.is_null());
 
-        assert_eq!(v.zero_extended(), 0xffff_ff85);
-        assert_eq!(v.sign_extended(), -123);
+        assert_eq!(v.uint(), 0xffff_ff85);
+        assert_eq!(v.int(), -123);
     }
 
     #[test]
