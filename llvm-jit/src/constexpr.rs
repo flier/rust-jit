@@ -1,8 +1,10 @@
+use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Not, Rem, Sub};
+
 use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
 
-use constant::{AsConstant, Constant, ConstantInt, ConstantVector, InlineAsm};
+use constant::{AsConstant, Constant, ConstantFP, ConstantFPs, ConstantInt, ConstantInts, ConstantVector, InlineAsm};
 use types::TypeRef;
 use utils::{AsLLVMBool, AsRaw};
 use module::Module;
@@ -371,6 +373,236 @@ impl<T: AsConstant> ConstantExpr for T {
     }
 }
 
+impl Neg for ConstantInt {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        ConstantExpr::neg(&self).into()
+    }
+}
+
+impl Not for ConstantInt {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        ConstantExpr::not(&self).into()
+    }
+}
+
+impl Add for ConstantInt {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        ConstantExpr::add(&self, rhs.into()).into()
+    }
+}
+
+impl Sub for ConstantInt {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        ConstantExpr::sub(&self, rhs.into()).into()
+    }
+}
+
+impl Mul for ConstantInt {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        ConstantExpr::mul(&self, rhs.into()).into()
+    }
+}
+
+impl BitAnd for ConstantInt {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        ConstantExpr::and(&self, rhs.into()).into()
+    }
+}
+
+impl BitOr for ConstantInt {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        ConstantExpr::or(&self, rhs.into()).into()
+    }
+}
+
+impl BitXor for ConstantInt {
+    type Output = Self;
+
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        ConstantExpr::xor(&self, rhs.into()).into()
+    }
+}
+
+macro_rules! impl_const_int_operators {
+    ($type:ty, $signed:expr) => {
+        impl Add<$type> for ConstantInt {
+            type Output = Self;
+
+            fn add(self, rhs: $type) -> Self::Output {
+                ConstantExpr::add(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
+            }
+        }
+        impl Sub<$type> for ConstantInt {
+            type Output = Self;
+
+            fn sub(self, rhs: $type) -> Self::Output {
+                ConstantExpr::sub(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
+            }
+        }
+        impl Mul<$type> for ConstantInt {
+            type Output = Self;
+
+            fn mul(self, rhs: $type) -> Self::Output {
+                ConstantExpr::mul(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
+            }
+        }
+
+        impl Div<$type> for ConstantInt {
+            type Output = Self;
+
+            fn div(self, rhs: $type) -> Self::Output {
+                let rhs = self.type_of().int_value(rhs as u64, $signed).into();
+
+                if $signed {
+                    ConstantExpr::sdiv(&self, rhs).into()
+                } else {
+                    ConstantExpr::udiv(&self, rhs).into()
+                }
+            }
+        }
+
+        impl BitAnd<$type> for ConstantInt {
+            type Output = Self;
+
+            fn bitand(self, rhs: $type) -> Self::Output {
+                ConstantExpr::and(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
+            }
+        }
+
+        impl BitOr<$type> for ConstantInt {
+            type Output = Self;
+
+            fn bitor(self, rhs: $type) -> Self::Output {
+                ConstantExpr::or(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
+            }
+        }
+
+        impl BitXor<$type> for ConstantInt {
+            type Output = Self;
+
+            fn bitxor(self, rhs: $type) -> Self::Output {
+                ConstantExpr::xor(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
+            }
+        }
+    };
+}
+
+impl_const_int_operators!(u8, false);
+impl_const_int_operators!(u16, false);
+impl_const_int_operators!(u32, false);
+impl_const_int_operators!(u64, false);
+impl_const_int_operators!(usize, false);
+impl_const_int_operators!(i8, true);
+impl_const_int_operators!(i16, true);
+impl_const_int_operators!(i32, true);
+impl_const_int_operators!(i64, true);
+impl_const_int_operators!(isize, true);
+
+impl Neg for ConstantFP {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        ConstantExpr::fneg(&self).into()
+    }
+}
+
+impl Add for ConstantFP {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        ConstantExpr::fadd(&self, rhs.into()).into()
+    }
+}
+
+impl Sub for ConstantFP {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        ConstantExpr::fsub(&self, rhs.into()).into()
+    }
+}
+
+impl Mul for ConstantFP {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        ConstantExpr::fmul(&self, rhs.into()).into()
+    }
+}
+
+impl Div for ConstantFP {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        ConstantExpr::fdiv(&self, rhs.into()).into()
+    }
+}
+
+impl Rem for ConstantFP {
+    type Output = Self;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        ConstantExpr::frem(&self, rhs.into()).into()
+    }
+}
+
+macro_rules! impl_const_floating_point_operators {
+    ($type:ty) => {
+        impl Add<$type> for ConstantFP {
+            type Output = Self;
+
+            fn add(self, rhs: $type) -> Self::Output {
+                ConstantExpr::fadd(&self, self.type_of().real(rhs as f64).into()).into()
+            }
+        }
+        impl Sub<$type> for ConstantFP {
+            type Output = Self;
+
+            fn sub(self, rhs: $type) -> Self::Output {
+                ConstantExpr::fsub(&self, self.type_of().real(rhs as f64).into()).into()
+            }
+        }
+        impl Mul<$type> for ConstantFP {
+            type Output = Self;
+
+            fn mul(self, rhs: $type) -> Self::Output {
+                ConstantExpr::fmul(&self, self.type_of().real(rhs as f64).into()).into()
+            }
+        }
+        impl Div<$type> for ConstantFP {
+            type Output = Self;
+
+            fn div(self, rhs: $type) -> Self::Output {
+                ConstantExpr::fdiv(&self, self.type_of().real(rhs as f64).into()).into()
+            }
+        }
+        impl Rem<$type> for ConstantFP {
+            type Output = Self;
+
+            fn rem(self, rhs: $type) -> Self::Output {
+                ConstantExpr::frem(&self, self.type_of().real(rhs as f64).into()).into()
+            }
+        }
+    };
+}
+
+impl_const_floating_point_operators!(f32);
+impl_const_floating_point_operators!(f64);
+
 impl ConstantVector {
     pub fn extract_element(&self, index: ConstantInt) -> Constant {
         unsafe { LLVMConstExtractElement(self.as_raw(), index.as_raw()) }.into()
@@ -440,6 +672,12 @@ mod tests {
             i64_t.int(3),
             i64_t.int(4),
         ]);
+        let iv2 = i64_t.vector_t(4).vector_of(values![
+            i64_t.int(6),
+            i64_t.int(7),
+            i64_t.int(8),
+            i64_t.int(9),
+        ]);
         let fv = f64_t.vector_t(4).vector_of(values![
             f64_t.real(1.0),
             f64_t.real(2.0),
@@ -448,41 +686,110 @@ mod tests {
         ]);
 
         // neg
-        assert_eq!(i.neg().to_string(), "i64 -123");
+        assert_eq!(-i, i64_t.int(-123));
         assert_eq!(
             iv.neg().to_string(),
             "<4 x i64> <i64 -1, i64 -2, i64 -3, i64 -4>"
         );
 
         // fneg
-        assert_eq!(f.fneg().to_string(), "double -1.230000e+02");
+        assert_eq!(-f, f64_t.real(-123.0));
         assert_eq!(
             fv.fneg().to_string(),
             "<4 x double> <double -1.000000e+00, double -2.000000e+00, double -3.000000e+00, double -4.000000e+00>"
         );
 
         // not
-        assert_eq!(b.not().to_string(), "i1 false");
+        assert_eq!(!b, bool_t.int(0));
         assert_eq!(
             bv.not().to_string(),
             "<4 x i1> <i1 false, i1 true, i1 false, i1 true>"
         );
 
         // add
-        assert_eq!(i.add(i64_t.int(456).into()).to_string(), "i64 579");
+        assert_eq!(i + 456, i64_t.int(123 + 456));
         assert_eq!(
             iv.add(iv.into()).to_string(),
             "<4 x i64> <i64 2, i64 4, i64 6, i64 8>"
         );
 
-        // fadd
+        // sub
+        assert_eq!(i - 456, i64_t.int(123 - 456));
+        assert_eq!(iv.sub(iv.into()).to_string(), "<4 x i64> zeroinitializer");
+
+        // mul
+        assert_eq!(i * 2, i64_t.int(123 * 2));
         assert_eq!(
-            f.fadd(f64_t.real(456.0).into()).to_string(),
-            "double 5.790000e+02"
+            iv.mul(iv.into()).to_string(),
+            "<4 x i64> <i64 1, i64 4, i64 9, i64 16>"
         );
+
+        // div
+        assert_eq!(i / 2, i64_t.int(123 / 2));
+        assert_eq!(i / -2, i64_t.int(123 / -2));
+        assert_eq!(
+            iv.udiv(iv.into()).to_string(),
+            "<4 x i64> <i64 1, i64 1, i64 1, i64 1>"
+        );
+        assert_eq!(
+            iv.sdiv(iv.neg().into()).to_string(),
+            "<4 x i64> <i64 -1, i64 -1, i64 -1, i64 -1>"
+        );
+
+        // and
+        assert_eq!(i & 456, i64_t.int(123 & 456));
+        assert_eq!(
+            iv.and(iv2.into()).to_string(),
+            "<4 x i64> <i64 0, i64 2, i64 0, i64 0>"
+        );
+
+        // or
+        assert_eq!(i | 456, i64_t.int(123 | 456));
+        assert_eq!(
+            iv.or(iv2.into()).to_string(),
+            "<4 x i64> <i64 7, i64 7, i64 11, i64 13>"
+        );
+
+        // xor
+        assert_eq!(i ^ 456, i64_t.int(123 ^ 456));
+        assert_eq!(
+            iv.xor(iv2.into()).to_string(),
+            "<4 x i64> <i64 7, i64 5, i64 11, i64 13>"
+        );
+
+        // fadd
+        assert_eq!(f + 456.0, f64_t.real(123.0 + 456.0));
         assert_eq!(
             fv.fadd(fv.into()).to_string(),
             "<4 x double> <double 2.000000e+00, double 4.000000e+00, double 6.000000e+00, double 8.000000e+00>"
+        );
+
+        // fsub
+        assert_eq!(f - 456.0, f64_t.real(123.0 - 456.0));
+        assert_eq!(
+            fv.fsub(fv.into()).to_string(),
+            "<4 x double> zeroinitializer"
+        );
+
+        // fmul
+        assert_eq!(f * 2.0, f64_t.real(123.0 * 2.0));
+        assert_eq!(
+            fv.fmul(fv.into()).to_string(),
+            "<4 x double> <double 1.000000e+00, double 4.000000e+00, double 9.000000e+00, double 1.600000e+01>"
+        );
+
+        // fdiv
+        assert_eq!(f / 2.0, f64_t.real(123.0 / 2.0));
+        assert_eq!(
+            fv.fdiv(fv.into()).to_string(),
+            "<4 x double> <double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00>"
+        );
+
+        // frem
+        assert_eq!(f % 2.0, f64_t.real(123.0 % 2.0));
+        assert_eq!(
+            fv.frem(fv.into()).to_string(),
+            "<4 x double> zeroinitializer"
         );
     }
 }
