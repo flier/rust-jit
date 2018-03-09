@@ -56,7 +56,8 @@ pub use self::cmp::{FCmp, FCmpInst, ICmp, ICmpInst};
 pub use self::gep::{GetElementPtr, GetElementPtrInst};
 pub use self::globalstr::{global_str, global_str_ptr, GlobalString, GlobalStringPtr};
 pub use self::invoke::{invoke, Invoke, InvokeInst};
-pub use self::memory::{free, load, store, Alloca, AllocaInst, Free, Load, Malloc, Store};
+pub use self::memory::{free, load, store, Alloca, AllocaInst, Free, Load, LoadInst, Malloc, MemAccessInst, Store,
+                       StoreInst};
 pub use self::phi::{phi, Phi, PhiNode};
 pub use self::ret::{AggregateRet, Ret, RetVoid, TerminatorInst};
 pub use self::select::{select, Select};

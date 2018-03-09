@@ -1,11 +1,12 @@
 use std::borrow::Cow;
 
+use llvm::LLVMAtomicOrdering;
 use llvm::core::*;
 use llvm::prelude::*;
 
 use insts::{AstNode, IRBuilder, InstructionBuilder};
 use types::TypeRef;
-use utils::{AsRaw, IntoRaw};
+use utils::{AsBool, AsLLVMBool, AsRaw, IntoRaw};
 use value::{Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -208,6 +209,8 @@ macro_rules! free {
 pub struct Load<'a> {
     ptr: Box<AstNode<'a>>,
     name: Cow<'a, str>,
+    volatile: bool,
+    ordering: LLVMAtomicOrdering,
 }
 
 impl<'a> Load<'a> {
@@ -219,25 +222,52 @@ impl<'a> Load<'a> {
         Load {
             ptr: Box::new(ptr.into()),
             name: name.into(),
+            volatile: false,
+            ordering: LLVMAtomicOrdering::LLVMAtomicOrderingNotAtomic,
         }
+    }
+
+    pub fn with_volatile(mut self) -> Self {
+        self.volatile = true;
+        self
+    }
+
+    pub fn with_aotmic_ordering(mut self, ordering: LLVMAtomicOrdering) -> Self {
+        self.ordering = ordering;
+        self
     }
 }
 
 impl<'a> InstructionBuilder for Load<'a> {
-    type Target = Instruction;
+    type Target = LoadInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe {
+        let inst: LoadInst = unsafe {
             LLVMBuildLoad(
                 builder.as_raw(),
                 self.ptr.emit_to(builder).into_raw(),
                 cstr!(self.name),
             )
-        }.into()
+        }.into();
+
+        if self.volatile {
+            inst.set_volatile(self.volatile)
+        }
+
+        if self.ordering != LLVMAtomicOrdering::LLVMAtomicOrderingNotAtomic {
+            inst.set_atomic_ordering(self.ordering)
+        }
+
+        inst
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LoadInst(Instruction);
+
+inherit_from!(LoadInst, Instruction, ValueRef, LLVMValueRef);
 
 /// The `load` instruction is used to read from memory.
 pub fn load<'a, P, N>(ptr: P, name: N) -> Load<'a>
@@ -262,6 +292,8 @@ macro_rules! load {
 pub struct Store<'a> {
     value: Box<AstNode<'a>>,
     ptr: Box<AstNode<'a>>,
+    volatile: bool,
+    ordering: LLVMAtomicOrdering,
 }
 
 impl<'a> Store<'a> {
@@ -273,25 +305,52 @@ impl<'a> Store<'a> {
         Store {
             value: Box::new(value.into()),
             ptr: Box::new(ptr.into()),
+            volatile: false,
+            ordering: LLVMAtomicOrdering::LLVMAtomicOrderingNotAtomic,
         }
+    }
+
+    pub fn with_volatile(mut self) -> Self {
+        self.volatile = true;
+        self
+    }
+
+    pub fn with_aotmic_ordering(mut self, ordering: LLVMAtomicOrdering) -> Self {
+        self.ordering = ordering;
+        self
     }
 }
 
 impl<'a> InstructionBuilder for Store<'a> {
-    type Target = Instruction;
+    type Target = StoreInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe {
+        let inst: StoreInst = unsafe {
             LLVMBuildStore(
                 builder.as_raw(),
                 self.value.emit_to(builder).into_raw(),
                 self.ptr.emit_to(builder).into_raw(),
             )
-        }.into()
+        }.into();
+
+        if self.volatile {
+            inst.set_volatile(self.volatile)
+        }
+
+        if self.ordering != LLVMAtomicOrdering::LLVMAtomicOrderingNotAtomic {
+            inst.set_atomic_ordering(self.ordering)
+        }
+
+        inst
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StoreInst(Instruction);
+
+inherit_from!(StoreInst, Instruction, ValueRef, LLVMValueRef);
 
 /// The `store` instruction is used to write to memory.
 pub fn store<'a, V, P>(value: V, ptr: P) -> Store<'a>
@@ -348,7 +407,7 @@ impl IRBuilder {
     }
 
     /// The `load` instruction is used to read from memory.
-    pub fn load<'a, P, N>(&self, ptr: P, name: N) -> Instruction
+    pub fn load<'a, P, N>(&self, ptr: P, name: N) -> LoadInst
     where
         P: Into<AstNode<'a>>,
         N: Into<Cow<'a, str>>,
@@ -357,7 +416,7 @@ impl IRBuilder {
     }
 
     /// The `store` instruction is used to write to memory.
-    pub fn store<'a, V, P>(&self, value: V, ptr: P) -> Instruction
+    pub fn store<'a, V, P>(&self, value: V, ptr: P) -> StoreInst
     where
         V: Into<AstNode<'a>>,
         P: Into<AstNode<'a>>,
@@ -366,8 +425,30 @@ impl IRBuilder {
     }
 }
 
+pub trait MemAccessInst: AsRaw<RawType = LLVMValueRef> {
+    fn is_volatile(&self) -> bool {
+        unsafe { LLVMGetVolatile(self.as_raw()) }.as_bool()
+    }
+
+    fn set_volatile(&self, v: bool) {
+        unsafe { LLVMSetVolatile(self.as_raw(), v.as_bool()) }
+    }
+
+    fn atomic_ordering(&self) -> LLVMAtomicOrdering {
+        unsafe { LLVMGetOrdering(self.as_raw()) }
+    }
+
+    fn set_atomic_ordering(&self, ordering: LLVMAtomicOrdering) {
+        unsafe { LLVMSetOrdering(self.as_raw(), ordering) }
+    }
+}
+
+impl MemAccessInst for LoadInst {}
+impl MemAccessInst for StoreInst {}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
     use insts::*;
     use prelude::*;
 
@@ -427,17 +508,45 @@ mod tests {
             "%array_alloca = alloca i64, i64 123"
         );
 
+        let load = load!(arg0_p_i64).emit_to(&builder);
+
+        assert_eq!(load.to_string().trim(), "%load = load i64, i64* %0");
+
+        assert!(!load.is_volatile());
         assert_eq!(
-            load!(arg0_p_i64).emit_to(&builder).to_string().trim(),
-            "%load = load i64, i64* %0"
+            load.atomic_ordering(),
+            LLVMAtomicOrdering::LLVMAtomicOrderingNotAtomic
         );
 
+        load.set_volatile(true);
         assert_eq!(
-            store!(i64_t.int(123), arg0_p_i64)
-                .emit_to(&builder)
-                .to_string()
-                .trim(),
-            "store i64 123, i64* %0"
+            load.to_string().trim(),
+            "%load = load volatile i64, i64* %0"
+        );
+
+        load.set_atomic_ordering(LLVMAtomicOrdering::LLVMAtomicOrderingAcquire);
+        assert_eq!(
+            load.to_string().trim(),
+            "%load = load atomic volatile i64, i64* %0 acquire"
+        );
+
+        let store = store!(i64_t.int(123), arg0_p_i64).emit_to(&builder);
+
+        assert_eq!(store.to_string().trim(), "store i64 123, i64* %0");
+
+        assert!(!store.is_volatile());
+        assert_eq!(
+            store.atomic_ordering(),
+            LLVMAtomicOrdering::LLVMAtomicOrderingNotAtomic
+        );
+
+        store.set_volatile(true);
+        assert_eq!(store.to_string().trim(), "store volatile i64 123, i64* %0");
+
+        store.set_atomic_ordering(LLVMAtomicOrdering::LLVMAtomicOrderingRelease);
+        assert_eq!(
+            store.to_string().trim(),
+            "store atomic volatile i64 123, i64* %0 release"
         );
     }
 }
