@@ -34,6 +34,28 @@ macro_rules! impl_constant {
     );
 }
 
+impl ValueRef {
+    pub fn as_constant_fp(&self) -> Option<ConstantFP> {
+        unsafe { LLVMIsAConstantFP(self.as_raw()) }.wrap()
+    }
+
+    pub fn as_constant_int(&self) -> Option<ConstantInt> {
+        unsafe { LLVMIsAConstantInt(self.as_raw()) }.wrap()
+    }
+
+    pub fn as_constant_array(&self) -> Option<ConstantArray> {
+        unsafe { LLVMIsAConstantArray(self.as_raw()) }.wrap()
+    }
+
+    pub fn as_constant_vector(&self) -> Option<ConstantVector> {
+        unsafe { LLVMIsAConstantVector(self.as_raw()) }.wrap()
+    }
+
+    pub fn as_constant_struct(&self) -> Option<ConstantStruct> {
+        unsafe { LLVMIsAConstantStruct(self.as_raw()) }.wrap()
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Constant(ValueRef);
 
