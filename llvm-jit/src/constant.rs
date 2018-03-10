@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::mem;
 
+use llvm::LLVMOpcode;
 use llvm::core::*;
 use llvm::prelude::*;
 
@@ -60,6 +61,13 @@ impl ValueRef {
 pub struct Constant(ValueRef);
 
 impl_constant!(Constant);
+
+impl Constant {
+    /// Obtain the code opcode for the constant.
+    pub fn opcode(&self) -> LLVMOpcode {
+        unsafe { LLVMGetConstOpcode(self.as_raw()) }
+    }
+}
 
 pub trait Constants {
     /// Obtain a constant value referring to the null instance of a type.
