@@ -6,68 +6,58 @@ use insts::{AstNode, IRBuilder, InstructionBuilder};
 use utils::{AsRaw, IntoRaw};
 use value::{Instruction, ValueRef};
 
-/// Create a 'ret void' instruction.
+/// Create a 'ret' instruction.
 #[derive(Clone, Debug, PartialEq)]
-pub struct RetVoid;
+pub struct Ret<'a>(Return<'a>);
 
-impl InstructionBuilder for RetVoid {
-    type Target = Instruction;
+impl<'a> Ret<'a> {
+    pub fn void() -> Self {
+        Ret(Return::Void)
+    }
 
-    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
-        trace!("{:?} emit instruction: {:?}", builder, self);
+    pub fn new<V>(value: V) -> Self
+    where
+        V: Into<AstNode<'a>>,
+    {
+        Ret(Return::Value(Box::new(value.into())))
+    }
 
-        unsafe { LLVMBuildRetVoid(builder.as_raw()) }.into()
+    pub fn aggregate<I, V>(values: I) -> Self
+    where
+        I: IntoIterator<Item = V>,
+        V: Into<AstNode<'a>>,
+    {
+        Ret(Return::Aggregate(
+            values.into_iter().map(|v| v.into()).collect(),
+        ))
     }
 }
 
-/// Create a 'ret <val>' instruction.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Ret<'a>(Box<AstNode<'a>>);
-
-impl<'a> Ret<'a> {
-    pub fn new<T>(result: T) -> Self
-    where
-        T: Into<AstNode<'a>>,
-    {
-        Ret(Box::new(result.into()))
-    }
+enum Return<'a> {
+    Void,
+    Value(Box<AstNode<'a>>),
+    Aggregate(Vec<AstNode<'a>>),
 }
 
 impl<'a> InstructionBuilder for Ret<'a> {
-    type Target = TerminatorInst;
+    type Target = ReturnInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe { LLVMBuildRet(builder.as_raw(), self.0.emit_to(builder).into_raw()) }.into()
-    }
-}
+        match self.0 {
+            Return::Void => unsafe { LLVMBuildRetVoid(builder.as_raw()) }.into(),
+            Return::Value(value) => unsafe { LLVMBuildRet(builder.as_raw(), value.emit_to(builder).into_raw()) }.into(),
+            Return::Aggregate(values) => {
+                let mut values = values
+                    .into_iter()
+                    .map(|v| v.emit_to(builder).into_raw())
+                    .collect::<Vec<_>>();
 
-/// Create a sequence of N insertvalue instructions,
-/// with one Value from the retVals array each, that build a aggregate
-/// return value one value at a time, and a ret instruction to return
-/// the resulting aggregate value.
-#[derive(Clone, Debug, PartialEq)]
-pub struct AggregateRet<'a>(Vec<AstNode<'a>>);
-
-impl<'a> AggregateRet<'a> {
-    pub fn new(results: Vec<AstNode<'a>>) -> Self {
-        AggregateRet(results)
-    }
-}
-
-impl<'a> InstructionBuilder for AggregateRet<'a> {
-    type Target = TerminatorInst;
-
-    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
-        trace!("{:?} emit instruction: {:?}", builder, self);
-
-        let mut values = self.0
-            .into_iter()
-            .map(|v| v.emit_to(builder).into_raw())
-            .collect::<Vec<_>>();
-
-        unsafe { LLVMBuildAggregateRet(builder.as_raw(), values.as_mut_ptr(), values.len() as u32) }.into()
+                unsafe { LLVMBuildAggregateRet(builder.as_raw(), values.as_mut_ptr(), values.len() as u32) }.into()
+            }
+        }
     }
 }
 
@@ -77,11 +67,11 @@ impl<'a> InstructionBuilder for AggregateRet<'a> {
 /// These terminator instructions typically yield a `void` value: they produce control flow,
 /// not values (the one exception being the `invoke` instruction).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct TerminatorInst(Instruction);
+pub struct ReturnInst(Instruction);
 
-inherit_from!(TerminatorInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(ReturnInst, Instruction, ValueRef, LLVMValueRef);
 
-impl TerminatorInst {
+impl ReturnInst {
     /// Return the successors that this terminator has.
     pub fn successors(&self) -> Vec<BasicBlock> {
         let count = unsafe { LLVMGetNumSuccessors(self.as_raw()) };
@@ -101,24 +91,24 @@ impl TerminatorInst {
 #[macro_export]
 macro_rules! ret {
     () => {
-        $crate::insts::RetVoid
+        $crate::insts::Ret::void()
     };
     ($result:expr) => {
         $crate::insts::Ret::new($result)
     };
     ($( $result:expr ),*) => {
-        $crate::insts::AggregateRet::new(vec![$( $result.into() ),*])
+        $crate::insts::Ret::aggregate(vec![$( $crate::insts::AstNode::from($result) ),*])
     }
 }
 
 impl IRBuilder {
     /// The ‘ret‘ instruction is used to return control flow (and optionally a value) from a function back to the caller.
-    pub fn ret_void(&self) -> Instruction {
-        RetVoid.emit_to(self)
+    pub fn ret_void(&self) -> ReturnInst {
+        Ret::void().emit_to(self)
     }
 
     /// The ‘ret‘ instruction is used to return control flow (and optionally a value) from a function back to the caller.
-    pub fn ret<'a, T>(&self, result: T) -> TerminatorInst
+    pub fn ret<'a, T>(&self, result: T) -> ReturnInst
     where
         T: Into<AstNode<'a>>,
     {
@@ -126,11 +116,12 @@ impl IRBuilder {
     }
 
     /// The ‘ret‘ instruction is used to return control flow (and optionally a value) from a function back to the caller.
-    pub fn aggregate_ret<'a, I>(&self, values: I) -> TerminatorInst
+    pub fn aggregate_ret<'a, I, V>(&self, values: I) -> ReturnInst
     where
-        I: IntoIterator<Item = AstNode<'a>>,
+        I: IntoIterator<Item = V>,
+        V: Into<AstNode<'a>>,
     {
-        AggregateRet::new(values.into_iter().collect()).emit_to(self)
+        Ret::aggregate(values).emit_to(self)
     }
 }
 

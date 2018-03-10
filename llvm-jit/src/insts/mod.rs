@@ -42,6 +42,7 @@ mod aggregate;
 #[macro_use]
 mod atomic;
 mod ast;
+#[macro_use]
 mod ir;
 
 pub use self::ast::AstNode;
@@ -59,7 +60,7 @@ pub use self::invoke::{invoke, Invoke, InvokeInst};
 pub use self::memory::{free, load, store, Alloca, AllocaInst, Free, Load, LoadInst, Malloc, MemAccessInst, Store,
                        StoreInst};
 pub use self::phi::{phi, Phi, PhiNode};
-pub use self::ret::{AggregateRet, Ret, RetVoid, TerminatorInst};
+pub use self::ret::{Ret, ReturnInst};
 pub use self::select::{select, Select};
 pub use self::switch::{switch, Switch, SwitchInst};
 pub use self::terminator::{landing_pad, resume, unreachable, LandingPad, LandingPadInst, Resume, Unreachable};

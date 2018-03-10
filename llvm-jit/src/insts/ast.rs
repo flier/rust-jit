@@ -10,9 +10,7 @@ pub enum AstNode<'a> {
     Instruction(Instruction),
     Constant(Constant),
     // Terminators
-    RetVoid(RetVoid),
     Ret(Ret<'a>),
-    AggregateRet(AggregateRet<'a>),
     Br(Br),
     CondBr(CondBr<'a>),
     Switch(Switch<'a>),
@@ -109,9 +107,7 @@ impl<'a> InstructionBuilder for AstNode<'a> {
             AstNode::ValueRef(node) => node,
             AstNode::Instruction(node) => node.into(),
             AstNode::Constant(node) => node.into(),
-            AstNode::RetVoid(node) => node.emit_to(builder).into(),
             AstNode::Ret(node) => node.emit_to(builder).into(),
-            AstNode::AggregateRet(node) => node.emit_to(builder).into(),
             AstNode::Br(node) => node.emit_to(builder).into(),
             AstNode::CondBr(node) => node.emit_to(builder).into(),
             AstNode::Switch(node) => node.emit_to(builder).into(),
@@ -243,12 +239,10 @@ impl_ast_node!(StoreInst => Instruction);
 impl_ast_node!(GetElementPtrInst => Instruction);
 impl_ast_node!(InvokeInst => Instruction);
 impl_ast_node!(PhiNode => Instruction);
-impl_ast_node!(TerminatorInst => Instruction);
+impl_ast_node!(ReturnInst => Instruction);
 impl_ast_node!(SwitchInst => Instruction);
 impl_ast_node!(LandingPadInst => Instruction);
-impl_ast_node!(RetVoid);
 impl_ast_node!(Ret<'a>);
-impl_ast_node!(AggregateRet<'a>);
 impl_ast_node!(Br);
 impl_ast_node!(CondBr<'a>);
 impl_ast_node!(Switch<'a>);

@@ -5,7 +5,7 @@ use llvm::prelude::*;
 
 use context::Context;
 use function::Function;
-use insts::TerminatorInst;
+use insts::ReturnInst;
 use utils::{AsRaw, FromRaw, UncheckedCStr};
 use value::{BlockAddress, Instruction, ValueRef};
 
@@ -37,7 +37,7 @@ impl BasicBlock {
     }
 
     /// Obtain the terminator instruction for a basic block.
-    pub fn terminator(&self) -> Option<TerminatorInst> {
+    pub fn terminator(&self) -> Option<ReturnInst> {
         unsafe { LLVMGetBasicBlockTerminator(self.0) }.wrap()
     }
 
