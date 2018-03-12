@@ -33,7 +33,7 @@
 extern crate bitflags;
 extern crate boolinator;
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 extern crate getopts;
 #[macro_use]
 extern crate llvm_jit as jit;
@@ -56,17 +56,7 @@ use jit::insts::*;
 use jit::prelude::*;
 use jit::target::*;
 
-error_chain! {
-    foreign_links {
-        Io(::std::io::Error);
-
-        Opts(::getopts::Fail);
-    }
-
-    links {
-        Jit(::jit::errors::Error, ::jit::errors::ErrorKind);
-    }
-}
+pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 
 bitflags! {
     struct CompileFlags : u32 {

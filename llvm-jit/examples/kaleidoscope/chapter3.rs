@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 #[macro_use]
 extern crate llvm_jit as jit;
 #[macro_use]
@@ -14,26 +14,22 @@ mod lines;
 //===----------------------------------------------------------------------===//
 
 mod errors {
-    error_chain!{
-        errors {
-            UnexpectedToken(msg: String, token: ::lexer::Token) {
-                description("unexpected token")
-                display("{}, but got unexpected token: '{:?}'", msg, token)
-            }
-            UnknownVariable(name: String) {
-                description("unknown variable")
-                display("unknown variable: {}", name)
-            }
-            UnknownFunction(name: String) {
-                description("unknown function")
-                display("unknown function: {}", name)
-            }
-            IncorrectArguments(passed: usize, expected: usize) {
-                description("incorrect arguments passed")
-                display("incorrect arguments, passed {}, expected {}", passed, expected)
-            }
-        }
+    #[derive(Fail, Debug)]
+    pub enum ErrorKind {
+        #[fail(display = "{}, but got unexpected token: {:?}", _0, _1)]
+        UnexpectedToken(String, ::lexer::Token),
+
+        #[fail(display = "unknown variable: {}", _0)]
+        UnknownVariable(String),
+
+        #[fail(display = "unknown function: {}", _0)]
+        UnknownFunction(String),
+
+        #[fail(display = "incorrect arguments, passed {}, expected {}", _0, _1)]
+        IncorrectArguments(usize, usize),
     }
+
+    pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -308,15 +304,15 @@ mod parser {
     macro_rules! eat_token {
         ($self_: ident, $token: pat => $code: block, $msg: expr) => {
             match_token!($self_, $token => {
-                                $self_.next_token();
+                                                        $self_.next_token();
 
-                                $code
-                            }, $msg)
+                                                        $code
+                                                    }, $msg)
         };
         ($self_: ident, $token: pat, $msg: expr) => {
             match_token!($self_, $token => {
-                                $self_.next_token();
-                            }, $msg)
+                                                        $self_.next_token();
+                                                    }, $msg)
         };
     }
 

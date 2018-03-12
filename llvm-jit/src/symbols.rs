@@ -21,7 +21,7 @@ impl Symbols {
         debug!("load library: {:?}", filename);
 
         unsafe { LLVMLoadLibraryPermanently(cpath!(filename)) }
-            .ok_or_else(|| format!("fail to load library {:?}", filename).into())
+            .ok_or_else(|| format_err!("fail to load library {:?}", filename))
     }
 
     /// This function load’the host process itself, making its exported symbols available for execution.
@@ -31,7 +31,7 @@ impl Symbols {
         debug!("load executable: {:?}", filename);
 
         unsafe { LLVMLoadLibraryPermanently(ptr::null()) }
-            .ok_or_else(|| format!("fail to load executable {:?}", filename).into())
+            .ok_or_else(|| format_err!("fail to load executable {:?}", filename))
     }
 
     /// This functions permanently adds the symbol with the value.

@@ -48,11 +48,11 @@ impl<'a> MemoryBuffer<'a> {
 
         unsafe { LLVMCreateMemoryBufferWithContentsOfFile(cpath!(path), &mut buf, &mut msg) }
             .ok_or_else(|| {
-                format!(
+                format_err!(
                     "fail to create memory buffer from file {:?}, {}",
                     path,
                     msg.into_string(),
-                ).into()
+                )
             })
             .map(|_| buf.into())
     }
@@ -66,10 +66,10 @@ impl<'a> MemoryBuffer<'a> {
 
         unsafe { LLVMCreateMemoryBufferWithSTDIN(&mut buf, &mut msg) }
             .ok_or_else(|| {
-                format!(
+                format_err!(
                     "fail to create memory buffer from STDIN, {}",
                     msg.into_string(),
-                ).into()
+                )
             })
             .map(|_| buf.into())
     }

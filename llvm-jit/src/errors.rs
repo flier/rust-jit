@@ -1,24 +1,22 @@
+use std::result::Result as StdResult;
+
+use failure::Error;
+
 use types::TypeRef;
 
-error_chain! {
-    foreign_links {
-        Nul(::std::ffi::NulError);
-        Io(::std::io::Error);
-        Utf8(::std::str::Utf8Error);
-        FromBytesWithNul(::std::ffi::FromBytesWithNulError);
-        Parse(::nom::Err);
-    }
-    errors {
-        OutOfRange(index: usize) {
-            description("index out of range")
-            display("index out of range: '{}'", index)
-        }
-        UnexpectedType(ty: TypeRef) {
-            description("unexpected type")
-            display("unexpected type: '{}'", ty)
-        }
-    }
+#[derive(Debug, Fail)]
+pub enum JitError {
+    #[fail(display = "index out of range: {}", _0)]
+    OutOfRange(usize),
+
+    #[fail(display = "unexpected type: '{}'", _0)]
+    UnexpectedType(TypeRef),
+
+    #[fail(display = "fail to parse: '{}'", _0)]
+    Parse(::nom::ErrorKind),
 }
+
+pub type Result<T> = StdResult<T, Error>;
 
 macro_rules! hexdump {
     ($buf:expr) => (hexdump!($buf, 0));

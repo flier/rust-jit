@@ -2,20 +2,15 @@
 extern crate log;
 extern crate pretty_env_logger;
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 extern crate getopts;
 
 use std::env;
 
+use failure::Error;
 use getopts::{Matches, Options};
 
-error_chain! {
-    foreign_links {
-        Opts(::getopts::Fail);
-    }
-}
-
-fn parse_cmdline(program: &str, args: &[String]) -> Result<Option<Matches>> {
+fn parse_cmdline(program: &str, args: &[String]) -> Result<Option<Matches>, Error> {
     let mut opts = Options::new();
 
      opts.optflag("h", "help", "print this help menu");

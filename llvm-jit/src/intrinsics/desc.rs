@@ -4,9 +4,10 @@ use std::borrow::Cow;
 use std::mem;
 
 use nom;
+use failure::Error;
 
 use context::Context;
-use errors::{Error, ErrorKind, Result};
+use errors::{ JitError, Result};
 use function::FunctionType;
 use intrinsics::gen::{IntrinsicId, IIT_LONG_ENCODING_TABLE, IIT_TABLE};
 use types::*;
@@ -84,7 +85,7 @@ impl ArgKind {
             ArgKind::AnyFloat if ty.is_floating_point_ty() => Ok(ty),
             ArgKind::AnyVector if ty.is_vector_ty() => Ok(ty),
             ArgKind::AnyPointer if ty.is_pointer_ty() => Ok(ty),
-            _ => bail!(ErrorKind::UnexpectedType(ty)),
+            _ => bail!(JitError::UnexpectedType(ty)),
         }
     }
 }
@@ -140,7 +141,7 @@ impl ArgumentInfo {
     pub fn checked_type(&self, arg_types: &[TypeRef]) -> Result<TypeRef> {
         arg_types
             .get(self.index)
-            .ok_or_else(|| ErrorKind::OutOfRange(self.index).into())
+            .ok_or_else(|| JitError::OutOfRange(self.index).into())
             .and_then(|&ty| self.kind.check_type(*ty))
     }
 }
@@ -186,7 +187,7 @@ enum IITDescriptor {
 
 impl IITDescriptor {
     pub fn parse<'a>(input: &'a [u8]) -> Result<(IITDescriptor, Vec<IITDescriptor>)> {
-        parse_descripters(input).to_result().map_err(Error::from)
+        parse_descripters(input).to_result().map_err(|err| JitError::Parse(err).into())
     }
 
     pub fn decode_fixed_type(&self, ctxt: &Context, arg_types: &[TypeRef]) -> Result<TypeRef> {
@@ -244,7 +245,7 @@ impl IITDescriptor {
                 let ty = arg.checked_type(arg_types)?;
 
                 Ok(ty.as_vector_ty()
-                    .ok_or_else(|| Error::from(ErrorKind::UnexpectedType(ty)))?
+                    .ok_or_else(|| Error::from(JitError::UnexpectedType(ty)))?
                     .half_elements_vector_t()
                     .into())
             }
@@ -252,7 +253,7 @@ impl IITDescriptor {
                 let ty = arg.checked_type(arg_types)?;
                 let element_ty = element.decode_fixed_type(ctxt, arg_types)?;
                 let count = ty.as_vector_ty()
-                    .ok_or_else(|| Error::from(ErrorKind::UnexpectedType(ty)))?
+                    .ok_or_else(|| Error::from(JitError::UnexpectedType(ty)))?
                     .len();
 
                 Ok(element_ty.vector_t(count).into())
@@ -265,14 +266,14 @@ impl IITDescriptor {
             IITDescriptor::PtrToElement(ref arg) => {
                 let ty = arg.checked_type(arg_types)?;
                 let vt = ty.as_vector_ty()
-                    .ok_or_else(|| Error::from(ErrorKind::UnexpectedType(ty)))?;
+                    .ok_or_else(|| Error::from(JitError::UnexpectedType(ty)))?;
 
                 Ok(vt.element_type().ptr_t().into())
             }
             IITDescriptor::VecOfAnyPtrsToElt(arg_num, _) => arg_types
                 .get(arg_num)
                 .cloned()
-                .ok_or_else(|| Error::from(ErrorKind::OutOfRange(arg_num))),
+                .ok_or_else(|| Error::from(JitError::OutOfRange(arg_num))),
         }
     }
 }

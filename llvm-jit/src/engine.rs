@@ -109,11 +109,11 @@ impl Interpreter {
 
         unsafe { LLVMCreateInterpreterForModule(&mut engine, module, &mut err) }
             .ok_or_else(|| {
-                format!(
+                format_err!(
                     "fail to create interpreter for Module({:?}), {}",
                     module,
                     err.into_string()
-                ).into()
+                )
             })
             .map(|_| {
                 trace!("create Interpreter({:?}) for Module({:?})", engine, module);
@@ -152,11 +152,11 @@ impl JITCompiler {
 
         unsafe { LLVMCreateJITCompilerForModule(&mut engine, module, opt_level as u32, &mut err) }
             .ok_or_else(|| {
-                format!(
+                format_err!(
                     "fail to create JITCompiler for Module({:?}), {}",
                     module,
                     err.into_string()
-                ).into()
+                )
             })
             .map(|_| {
                 trace!("create JITCompiler({:?}) for Module({:?})", engine, module);
@@ -238,11 +238,11 @@ impl MCJITCompiler {
                 &mut err,
             )
         }.ok_or_else(|| {
-            format!(
+            format_err!(
                 "fail to create MCJITCompiler for Module({:?}), {}",
                 module,
                 err.into_string()
-            ).into()
+            )
         })
             .map(|_| {
                 trace!(
@@ -281,11 +281,11 @@ impl ExecutionEngine {
 
         unsafe { LLVMCreateExecutionEngineForModule(&mut engine, module, &mut err) }
             .ok_or_else(|| {
-                format!(
+                format_err!(
                     "fail to create execution engine for Module({:?}), {}",
                     module,
                     err.into_string()
-                ).into()
+                )
             })
             .map(|_| {
                 trace!(
@@ -387,7 +387,7 @@ impl ExecutionEngine {
         let mut err = DisposableMessage::new();
 
         unsafe { LLVMRemoveModule(self.0, module, &mut out, &mut err) }
-            .ok_or_else(|| format!("fail to remove {:?}, {}", module, err.into_string()).into())
+            .ok_or_else(|| format_err!("fail to remove {:?}, {}", module, err.into_string()))
             .map(|_| {
                 trace!("remove Module({:?}) from {:?}", module, self);
 

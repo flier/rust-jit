@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 #[macro_use]
 extern crate log;
 extern crate pretty_env_logger;
@@ -12,14 +12,13 @@ mod lines;
 //===----------------------------------------------------------------------===//
 
 mod errors {
-    error_chain!{
-        errors {
-            UnexpectedToken(msg: String, token: ::lexer::Token) {
-                description("unexpected token")
-                display("{}, but got unexpected token: '{:?}'", msg, token)
-            }
-        }
+    #[derive(Fail, Debug)]
+    pub enum ErrorKind {
+        #[fail(display = "{}, but got unexpected token: {:?}", _0, _1)]
+        UnexpectedToken(String, ::lexer::Token),
     }
+
+    pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -300,15 +299,15 @@ mod parser {
     macro_rules! eat_token {
         ($self_: ident, $token: pat => $code: block, $msg: expr) => {
             match_token!($self_, $token => {
-                                $self_.next_token();
+                                                                $self_.next_token();
 
-                                $code
-                            }, $msg)
+                                                                $code
+                                                            }, $msg)
         };
         ($self_: ident, $token: pat, $msg: expr) => {
             match_token!($self_, $token => {
-                                $self_.next_token();
-                            }, $msg)
+                                                                $self_.next_token();
+                                                            }, $msg)
         };
     }
 
@@ -387,12 +386,10 @@ mod parser {
 
                                         continue;
                                     }
-                                    ref token => {
-                                        bail!(ErrorKind::UnexpectedToken(
-                                            "Expected `)` or `,` in argument list".into(),
-                                            token.clone(),
-                                        ));
-                                    }
+                                    ref token => bail!(ErrorKind::UnexpectedToken(
+                                        "Expected `)` or `,` in argument list".into(),
+                                        token.clone(),
+                                    )),
                                 }
                             }
                         }
@@ -413,12 +410,10 @@ mod parser {
                 Token::Identifier(_) => self.parse_identifier_expr(),
                 Token::Number(_) => self.parse_number_expr(),
                 Token::Character('(') => self.parse_paren_expr(),
-                ref token => {
-                    bail!(ErrorKind::UnexpectedToken(
-                        "Expected `identifier`, `number` or `(`".into(),
-                        token.clone(),
-                    ));
-                }
+                ref token => bail!(ErrorKind::UnexpectedToken(
+                    "Expected `identifier`, `number` or `(`".into(),
+                    token.clone(),
+                )),
             }
         }
 

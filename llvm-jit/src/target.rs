@@ -4,6 +4,7 @@ use std::path::Path;
 use std::ptr;
 
 use boolinator::Boolinator;
+use failure::err_msg;
 use llvm::prelude::*;
 use llvm::target::*;
 use llvm::target_machine::*;
@@ -52,7 +53,7 @@ impl Target {
         let mut msg = DisposableMessage::new();
 
         unsafe { LLVMGetTargetFromTriple(cstr!(triple), &mut target, &mut msg) }
-            .ok_or_else(|| msg.into_string().into())
+            .ok_or_else(|| err_msg(msg.into_string()))
             .map(|_| {
                 let target = target.into();
 
@@ -226,7 +227,7 @@ impl TargetMachine {
                 codegen,
                 &mut err,
             )
-        }.ok_or_else(|| format!("fail to emit to file, {}", err.into_string()).into())
+        }.ok_or_else(|| format_err!("fail to emit to file, {}", err.into_string()))
     }
 
     /// Emits an asm or object file for the given module to the filename.
@@ -238,7 +239,7 @@ impl TargetMachine {
         let mut buf = ptr::null_mut();
 
         unsafe { LLVMTargetMachineEmitToMemoryBuffer(self.as_raw(), module.as_raw(), codegen, &mut err, &mut buf) }
-            .ok_or_else(|| format!("fail to emit to memory buffer, {}", err.into_string()).into())
+            .ok_or_else(|| format_err!("fail to emit to memory buffer, {}", err.into_string()))
             .map(|_| buf.into())
     }
 
@@ -395,7 +396,7 @@ macro_rules! define_target {
 
         impl $name {
             pub fn init() -> $crate::errors::Result<()> {
-                (unsafe { $init() } == 0).ok_or_else(|| $err.into())
+                (unsafe { $init() } == 0).ok_or_else(|| err_msg($err))
             }
         }
     };

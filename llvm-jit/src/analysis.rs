@@ -16,7 +16,7 @@ impl Module {
                 LLVMVerifierFailureAction::LLVMReturnStatusAction,
                 &mut msg,
             )
-        }.ok_or_else(|| format!("verify {:?} failed, {}", self, msg.into_string()).into())
+        }.ok_or_else(|| format_err!("verify {:?} failed, {}", self, msg.into_string()))
     }
 }
 
@@ -30,7 +30,7 @@ impl Function {
                 self.as_raw(),
                 LLVMVerifierFailureAction::LLVMReturnStatusAction,
             )
-        }.ok_or_else(|| format!("verify {:?} failed", self).into())
+        }.ok_or_else(|| format_err!("verify {:?} failed", self))
     }
 
     /// Open a ghostview window displaying the CFG of the given function.

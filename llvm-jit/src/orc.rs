@@ -2,11 +2,12 @@ use std::borrow::Cow;
 use std::mem;
 use std::ptr;
 
+use failure::Error;
 use boolinator::Boolinator;
 use llvm::orc::*;
 use llvm::prelude::*;
 
-use errors::{Error, Result};
+use errors::{Result};
 use module::Module;
 use object::ObjectFile;
 use target::TargetMachine;
@@ -91,7 +92,7 @@ impl JITStack {
     }
 
     pub fn err(&self) -> Error {
-        format!("ORC JIT error, {}", self.err_msg()).into()
+        format_err!("ORC JIT error, {}", self.err_msg())
     }
 
     /// Mangle the given symbol.

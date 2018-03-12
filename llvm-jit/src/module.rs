@@ -93,12 +93,12 @@ impl Module {
         let mut err = DisposableMessage::new();
 
         unsafe { LLVMPrintModuleToFile(self.as_raw(), cpath!(filename), &mut err) }.ok_or_else(|| {
-            format!(
+            format_err!(
                 "fail to print {:?} to file `{:?}`, {}",
                 self,
                 filename,
                 err.into_string()
-            ).into()
+            )
         })
     }
 

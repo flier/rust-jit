@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
 extern crate libc;
 #[macro_use]
 extern crate llvm_jit as jit;
@@ -15,30 +15,22 @@ mod lines;
 //===----------------------------------------------------------------------===//
 
 mod errors {
-    error_chain!{
-        links {
-            Jit(::jit::errors::Error, ::jit::errors::ErrorKind);
-        }
+    #[derive(Fail, Debug)]
+    pub enum ErrorKind {
+        #[fail(display = "{}, but got unexpected token: {:?}", _0, _1)]
+        UnexpectedToken(String, ::lexer::Token),
 
-        errors {
-            UnexpectedToken(msg: String, token: ::lexer::Token) {
-                description("unexpected token")
-                display("{}, but got unexpected token: '{:?}'", msg, token)
-            }
-            UnknownVariable(name: String) {
-                description("unknown variable")
-                display("unknown variable: {}", name)
-            }
-            UnknownFunction(name: String) {
-                description("unknown function")
-                display("unknown function: {}", name)
-            }
-            IncorrectArguments(passed: usize, expected: usize) {
-                description("incorrect arguments passed")
-                display("incorrect arguments, passed {}, expected {}", passed, expected)
-            }
-        }
+        #[fail(display = "unknown variable: {}", _0)]
+        UnknownVariable(String),
+
+        #[fail(display = "unknown function: {}", _0)]
+        UnknownFunction(String),
+
+        #[fail(display = "incorrect arguments, passed {}, expected {}", _0, _1)]
+        IncorrectArguments(usize, usize),
     }
+
+    pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 }
 
 //===----------------------------------------------------------------------===//

@@ -22,7 +22,7 @@ impl GlobalContext {
         let mut msg = DisposableMessage::new();
 
         unsafe { LLVMParseBitcode(buf.as_raw(), &mut module, &mut msg) }
-            .ok_or_else(|| format!("fail to parse bitcode, {}", msg.into_string()).into())
+            .ok_or_else(|| format_err!("fail to parse bitcode, {}", msg.into_string()))
             .map(|_| module.into())
     }
 
@@ -32,7 +32,7 @@ impl GlobalContext {
         let mut msg = DisposableMessage::new();
 
         unsafe { LLVMGetBitcodeModule(buf.into_raw(), &mut module, &mut msg) }
-            .ok_or_else(|| format!("fail to get bitcode module, {}", msg.into_string()).into())
+            .ok_or_else(|| format_err!("fail to get bitcode module, {}", msg.into_string()))
             .map(|_| module.into())
     }
 }
@@ -44,7 +44,7 @@ impl Context {
         let mut msg = DisposableMessage::new();
 
         unsafe { LLVMParseIRInContext(self.as_raw(), buf.into_raw(), &mut module, &mut msg) }
-            .ok_or_else(|| format!("fail to parse IR code, {}", msg.into_string()).into())
+            .ok_or_else(|| format_err!("fail to parse IR code, {}", msg.into_string()))
             .map(|_| module.into())
     }
 
@@ -54,7 +54,7 @@ impl Context {
         let mut msg = DisposableMessage::new();
 
         unsafe { LLVMParseBitcodeInContext(self.as_raw(), buf.as_raw(), &mut module, &mut msg) }
-            .ok_or_else(|| format!("fail to parse bitcode, {}", msg.into_string()).into())
+            .ok_or_else(|| format_err!("fail to parse bitcode, {}", msg.into_string()))
             .map(|_| module.into())
     }
 
@@ -65,7 +65,7 @@ impl Context {
 
         unsafe {
             LLVMGetBitcodeModuleInContext(self.as_raw(), buf.into_raw(), &mut module, &mut msg)
-                .ok_or_else(|| format!("fail to get bitcode module, {}", msg.into_string()).into())
+                .ok_or_else(|| format_err!("fail to get bitcode module, {}", msg.into_string()))
                 .map(|_| module.into())
         }
     }
@@ -77,7 +77,7 @@ impl Module {
         let path = path.as_ref();
 
         (unsafe { LLVMWriteBitcodeToFile(self.as_raw(), cpath!(path)) } == 0)
-            .ok_or_else(|| format!("fail to write bitcode to file {:?}", path).into())
+            .ok_or_else(|| format_err!("fail to write bitcode to file {:?}", path))
     }
 
     /// Writes a module to a new memory buffer.
@@ -94,7 +94,6 @@ mod tests {
     use tempfile::NamedTempFile;
 
     use super::*;
-    use errors::{Error, ErrorKind};
     use insts::Position;
     use prelude::*;
 
@@ -168,15 +167,6 @@ mod tests {
                 .is_some()
         );
 
-        let err = GlobalContext::get_bitcode_module(MemoryBuffer::from_bytes(b"", "bitcode")).err();
-
-        match err {
-            Some(Error(ErrorKind::Msg(msg), _)) => {
-                assert_eq!(msg, "fail to get bitcode module, Invalid bitcode signature");
-            }
-            _ => {
-                panic!(err);
-            }
-        }
+        assert!(GlobalContext::get_bitcode_module(MemoryBuffer::from_bytes(b"", "bitcode")).is_err());
     }
 }
