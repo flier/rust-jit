@@ -10,8 +10,8 @@ use llvm::prelude::*;
 
 use constant::ConstantInt;
 use context::{Context, GlobalContext};
-use module::AddressSpace;
 use function::FunctionType;
+use module::AddressSpace;
 use utils::{AsBool, AsLLVMBool, AsRaw, DisposableMessage, FromRaw, UncheckedCStr};
 use value::ValueRef;
 
@@ -31,9 +31,9 @@ unsafe impl Sync for TypeRef {}
 inherit_from!(TypeRef, LLVMTypeRef);
 
 macro_rules! inherit_type_ref {
-    ($ty:ident) => {
+    ($ty: ident) => {
         inherit_from!($ty, TypeRef, LLVMTypeRef);
-    }
+    };
 }
 
 pub type TypeKind = LLVMTypeKind;
@@ -241,11 +241,7 @@ impl TypeRef {
 
 impl fmt::Display for TypeRef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            unsafe { LLVMPrintTypeToString(self.0) }.into_string()
-        )
+        write!(f, "{}", unsafe { LLVMPrintTypeToString(self.0) }.into_string())
     }
 }
 
@@ -442,6 +438,12 @@ impl GlobalContext {
 }
 
 pub trait OtherTypes {
+    /// Create a token type in a context.
+    fn token_t(&self) -> OtherType;
+
+    /// Create a metadata type in a context.
+    fn metadata_t(&self) -> OtherType;
+
     /// Create a void type in a context.
     fn void_t(&self) -> OtherType;
 
@@ -453,16 +455,24 @@ pub trait OtherTypes {
 }
 
 impl OtherTypes for Context {
+    fn token_t(&self) -> OtherType {
+        unsafe { LLVMTokenTypeInContext(self.as_raw()) }.into()
+    }
+
+    fn metadata_t(&self) -> OtherType {
+        unsafe { LLVMMetadataTypeInContext(self.as_raw()) }.into()
+    }
+
     fn void_t(&self) -> OtherType {
-        TypeRef(unsafe { LLVMVoidTypeInContext(self.as_raw()) })
+        unsafe { LLVMVoidTypeInContext(self.as_raw()) }.into()
     }
 
     fn label_t(&self) -> OtherType {
-        TypeRef(unsafe { LLVMLabelTypeInContext(self.as_raw()) })
+        unsafe { LLVMLabelTypeInContext(self.as_raw()) }.into()
     }
 
     fn x86_mmx_t(&self) -> OtherType {
-        TypeRef(unsafe { LLVMX86MMXTypeInContext(self.as_raw()) })
+        unsafe { LLVMX86MMXTypeInContext(self.as_raw()) }.into()
     }
 }
 
@@ -475,18 +485,9 @@ inherit_type_ref!(StructType);
 impl StructType {
     /// Create a new structure type in the global context.
     pub fn new(elements: &[TypeRef], packed: bool) -> Self {
-        let mut elements = elements
-            .iter()
-            .map(|t| t.as_raw())
-            .collect::<Vec<LLVMTypeRef>>();
+        let mut elements = elements.iter().map(|t| t.as_raw()).collect::<Vec<LLVMTypeRef>>();
 
-        let t = unsafe {
-            LLVMStructType(
-                elements.as_mut_ptr(),
-                elements.len() as u32,
-                packed.as_bool(),
-            )
-        };
+        let t = unsafe { LLVMStructType(elements.as_mut_ptr(), elements.len() as u32, packed.as_bool()) };
 
         StructType(TypeRef(t))
     }
@@ -498,10 +499,7 @@ impl StructType {
 
     /// Set the contents of a structure type.
     pub fn set_body(self, elements: &[TypeRef], packed: bool) -> Self {
-        let mut elements = elements
-            .iter()
-            .map(|t| t.as_raw())
-            .collect::<Vec<LLVMTypeRef>>();
+        let mut elements = elements.iter().map(|t| t.as_raw()).collect::<Vec<LLVMTypeRef>>();
 
         unsafe {
             LLVMStructSetBody(
@@ -593,10 +591,7 @@ pub trait ToStructType {
 
 impl ToStructType for Context {
     fn struct_t(&self, elements: &[TypeRef], packed: bool) -> StructType {
-        let mut elements = elements
-            .iter()
-            .map(|t| t.as_raw())
-            .collect::<Vec<LLVMTypeRef>>();
+        let mut elements = elements.iter().map(|t| t.as_raw()).collect::<Vec<LLVMTypeRef>>();
 
         let ty = unsafe {
             LLVMStructTypeInContext(
@@ -734,9 +729,7 @@ impl VectorType {
     /// the input type, and the element type is an integer type of the same width
     /// as the input element type.
     pub fn integer_vector_t(&self) -> VectorType {
-        let bits = self.element_type()
-            .primitive_size_in_bits()
-            .unwrap_or_default();
+        let bits = self.element_type().primitive_size_in_bits().unwrap_or_default();
 
         self.context().int_type(bits).vector_t(self.len())
     }
@@ -744,9 +737,7 @@ impl VectorType {
     /// This method is like `integer_vector_t` except that the element types are
     /// twice as wide as the elements in the input type.
     pub fn extended_element_vector_t(&self) -> VectorType {
-        let bits = self.element_type()
-            .primitive_size_in_bits()
-            .unwrap_or_default() * 2;
+        let bits = self.element_type().primitive_size_in_bits().unwrap_or_default() * 2;
 
         self.context().int_type(bits).vector_t(self.len())
     }
@@ -754,9 +745,7 @@ impl VectorType {
     /// This method is like `integer_vector_t` except that the element types are
     /// half as wide as the elements in the input type.
     pub fn truncated_element_vector_t(&self) -> VectorType {
-        let bits = self.element_type()
-            .primitive_size_in_bits()
-            .unwrap_or_default() / 2;
+        let bits = self.element_type().primitive_size_in_bits().unwrap_or_default() / 2;
 
         self.context().int_type(bits).vector_t(self.len())
     }
@@ -800,10 +789,7 @@ mod tests {
         let void_t = c.void_t();
 
         assert!(!void_t.as_raw().is_null());
-        assert!(matches!(
-            void_t.kind(),
-            llvm::LLVMTypeKind::LLVMVoidTypeKind
-        ));
+        assert!(matches!(void_t.kind(), llvm::LLVMTypeKind::LLVMVoidTypeKind));
         assert!(!void_t.is_sized());
         assert!(!void_t.context().as_raw().is_null());
 
@@ -812,10 +798,7 @@ mod tests {
         let i64_t = c.int64_t();
 
         assert!(!i64_t.as_raw().is_null());
-        assert!(matches!(
-            i64_t.kind(),
-            llvm::LLVMTypeKind::LLVMIntegerTypeKind
-        ));
+        assert!(matches!(i64_t.kind(), llvm::LLVMTypeKind::LLVMIntegerTypeKind));
         assert!(i64_t.is_sized());
         assert!(!i64_t.context().as_raw().is_null());
 
@@ -874,30 +857,12 @@ mod tests {
         assert_eq!(c.int128_t().bit_width(), 128);
         assert_eq!(c.int_type(512).bit_width(), 512);
 
-        assert!(matches!(
-            c.int1_t().kind(),
-            llvm::LLVMTypeKind::LLVMIntegerTypeKind
-        ));
-        assert!(matches!(
-            c.int8_t().kind(),
-            llvm::LLVMTypeKind::LLVMIntegerTypeKind
-        ));
-        assert!(matches!(
-            c.int16_t().kind(),
-            llvm::LLVMTypeKind::LLVMIntegerTypeKind
-        ));
-        assert!(matches!(
-            c.int32_t().kind(),
-            llvm::LLVMTypeKind::LLVMIntegerTypeKind
-        ));
-        assert!(matches!(
-            c.int64_t().kind(),
-            llvm::LLVMTypeKind::LLVMIntegerTypeKind
-        ));
-        assert!(matches!(
-            c.int128_t().kind(),
-            llvm::LLVMTypeKind::LLVMIntegerTypeKind
-        ));
+        assert!(matches!(c.int1_t().kind(), llvm::LLVMTypeKind::LLVMIntegerTypeKind));
+        assert!(matches!(c.int8_t().kind(), llvm::LLVMTypeKind::LLVMIntegerTypeKind));
+        assert!(matches!(c.int16_t().kind(), llvm::LLVMTypeKind::LLVMIntegerTypeKind));
+        assert!(matches!(c.int32_t().kind(), llvm::LLVMTypeKind::LLVMIntegerTypeKind));
+        assert!(matches!(c.int64_t().kind(), llvm::LLVMTypeKind::LLVMIntegerTypeKind));
+        assert!(matches!(c.int128_t().kind(), llvm::LLVMTypeKind::LLVMIntegerTypeKind));
         assert!(matches!(
             c.int_type(512).kind(),
             llvm::LLVMTypeKind::LLVMIntegerTypeKind
@@ -915,26 +880,14 @@ mod tests {
         assert_eq!(c.fp128_t().to_string(), "fp128");
         assert_eq!(c.ppc_fp128_t().to_string(), "ppc_fp128");
 
-        assert!(matches!(
-            c.half_t().kind(),
-            llvm::LLVMTypeKind::LLVMHalfTypeKind
-        ));
-        assert!(matches!(
-            c.float_t().kind(),
-            llvm::LLVMTypeKind::LLVMFloatTypeKind
-        ));
-        assert!(matches!(
-            c.double_t().kind(),
-            llvm::LLVMTypeKind::LLVMDoubleTypeKind
-        ));
+        assert!(matches!(c.half_t().kind(), llvm::LLVMTypeKind::LLVMHalfTypeKind));
+        assert!(matches!(c.float_t().kind(), llvm::LLVMTypeKind::LLVMFloatTypeKind));
+        assert!(matches!(c.double_t().kind(), llvm::LLVMTypeKind::LLVMDoubleTypeKind));
         assert!(matches!(
             c.x86_fp80_t().kind(),
             llvm::LLVMTypeKind::LLVMX86_FP80TypeKind
         ));
-        assert!(matches!(
-            c.fp128_t().kind(),
-            llvm::LLVMTypeKind::LLVMFP128TypeKind
-        ));
+        assert!(matches!(c.fp128_t().kind(), llvm::LLVMTypeKind::LLVMFP128TypeKind));
         assert!(matches!(
             c.ppc_fp128_t().kind(),
             llvm::LLVMTypeKind::LLVMPPC_FP128TypeKind
@@ -949,18 +902,9 @@ mod tests {
         assert_eq!(c.label_t().to_string(), "label");
         assert_eq!(c.x86_mmx_t().to_string(), "x86_mmx");
 
-        assert!(matches!(
-            c.void_t().kind(),
-            llvm::LLVMTypeKind::LLVMVoidTypeKind
-        ));
-        assert!(matches!(
-            c.label_t().kind(),
-            llvm::LLVMTypeKind::LLVMLabelTypeKind
-        ));
-        assert!(matches!(
-            c.x86_mmx_t().kind(),
-            llvm::LLVMTypeKind::LLVMX86_MMXTypeKind
-        ));
+        assert!(matches!(c.void_t().kind(), llvm::LLVMTypeKind::LLVMVoidTypeKind));
+        assert!(matches!(c.label_t().kind(), llvm::LLVMTypeKind::LLVMLabelTypeKind));
+        assert!(matches!(c.x86_mmx_t().kind(), llvm::LLVMTypeKind::LLVMX86_MMXTypeKind));
     }
 
     fn struct_in_global_context() {
