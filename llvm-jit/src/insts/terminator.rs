@@ -62,8 +62,7 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
             LLVMBuildLandingPad(
                 builder.as_raw(),
                 self.result_ty.into_raw(),
-                self.personality_fn
-                    .map_or(ptr::null_mut(), |f| f.into_raw()),
+                self.personality_fn.map_or(ptr::null_mut(), |f| f.into_raw()),
                 clauses.len() as u32,
                 cstr!(self.name),
             )
@@ -112,18 +111,18 @@ where
 
 #[macro_export]
 macro_rules! landing_pad {
-    ($ty:expr, $personality:expr; $name:expr) => (
+    ($ty: expr, $personality: expr; $name: expr) => {
         $crate::insts::landing_pad($ty, Some($personality), $name, false)
-    );
-    ($ty:expr; $name:expr) => (
+    };
+    ($ty: expr; $name: expr) => {
         $crate::insts::landing_pad($ty, None, $name, false)
-    );
-    ($ty:expr, $personality:expr) => (
+    };
+    ($ty: expr, $personality: expr) => {
         landing_pad!($ty, $personality; "landingpad")
-    );
-    ($ty:expr) => (
+    };
+    ($ty: expr) => {
         landing_pad!($ty; "landingpad")
-    );
+    };
 }
 
 /// The `resume` instruction is a terminator instruction that has no successors.
@@ -159,9 +158,9 @@ where
 
 #[macro_export]
 macro_rules! resume {
-    ($result:expr) => (
+    ($result: expr) => {
         $crate::insts::resume($result)
-    )
+    };
 }
 
 /// The `unreachable` instruction is used to inform the optimizer that a particular portion of the code is not reachable.
@@ -239,15 +238,9 @@ mod tests {
         let i64_t = context.int64_t();
 
         assert_eq!(
-            resume!(i64_t.uint(123))
-                .emit_to(&builder)
-                .to_string()
-                .trim(),
+            resume!(i64_t.uint(123)).emit_to(&builder).to_string().trim(),
             "resume i64 123"
         );
-        assert_eq!(
-            unreachable().emit_to(&builder).to_string().trim(),
-            "unreachable"
-        );
+        assert_eq!(unreachable().emit_to(&builder).to_string().trim(), "unreachable");
     }
 }

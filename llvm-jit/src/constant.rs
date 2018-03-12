@@ -15,7 +15,7 @@ pub trait AsConstant: AsValueRef {
 }
 
 macro_rules! impl_constant {
-    ($ty:ident) => (
+    ($ty: ident) => {
         inherit_value_ref!($ty);
 
         impl AsConstant for $ty {
@@ -23,8 +23,8 @@ macro_rules! impl_constant {
                 &self
             }
         }
-    );
-    ($ty:ident, $parent:ty) => (
+    };
+    ($ty: ident, $parent: ty) => {
         inherit_value_ref!($ty, $parent);
 
         impl AsConstant for $ty {
@@ -32,7 +32,7 @@ macro_rules! impl_constant {
                 &self.0
             }
         }
-    );
+    };
 }
 
 impl ValueRef {
@@ -244,10 +244,7 @@ impl_constant!(ConstantStruct, Constant);
 impl ConstantStruct {
     /// Create a ConstantStruct in the global Context.
     pub fn structure(values: &[ValueRef], packed: bool) -> Self {
-        let mut values = values
-            .iter()
-            .map(|v| v.as_raw())
-            .collect::<Vec<LLVMValueRef>>();
+        let mut values = values.iter().map(|v| v.as_raw()).collect::<Vec<LLVMValueRef>>();
 
         let ty = unsafe { LLVMConstStruct(values.as_mut_ptr(), values.len() as u32, packed.as_bool()) }.into();
 
@@ -264,10 +261,7 @@ pub trait ToNamedConstantStruct {
 
 impl ToNamedConstantStruct for StructType {
     fn struct_of(&self, values: &[ValueRef]) -> ConstantStruct {
-        let mut values = values
-            .iter()
-            .map(|v| v.as_raw())
-            .collect::<Vec<LLVMValueRef>>();
+        let mut values = values.iter().map(|v| v.as_raw()).collect::<Vec<LLVMValueRef>>();
 
         let ty = unsafe { LLVMConstNamedStruct(self.as_raw(), values.as_mut_ptr(), values.len() as u32) }.into();
 
@@ -284,10 +278,7 @@ pub trait ToConstantStruct {
 
 impl ToConstantStruct for Context {
     fn struct_of(&self, values: &[ValueRef], packed: bool) -> ConstantStruct {
-        let mut values = values
-            .iter()
-            .map(|v| v.as_raw())
-            .collect::<Vec<LLVMValueRef>>();
+        let mut values = values.iter().map(|v| v.as_raw()).collect::<Vec<LLVMValueRef>>();
 
         let ty = unsafe {
             LLVMConstStructInContext(
@@ -327,10 +318,7 @@ pub trait ToConstantArray {
 
 impl ToConstantArray for TypeRef {
     fn array_of(&self, values: &[ValueRef]) -> ConstantArray {
-        let mut values = values
-            .iter()
-            .map(|v| v.as_raw())
-            .collect::<Vec<LLVMValueRef>>();
+        let mut values = values.iter().map(|v| v.as_raw()).collect::<Vec<LLVMValueRef>>();
 
         let ty = unsafe { LLVMConstArray(self.as_raw(), values.as_mut_ptr(), values.len() as u32) }.into();
 
@@ -349,10 +337,7 @@ impl_constant!(ConstantVector, Constant);
 impl ConstantVector {
     /// Create a ConstantVector from values.
     pub fn new(values: &[ValueRef]) -> ConstantVector {
-        let mut values = values
-            .iter()
-            .map(|v| v.as_raw())
-            .collect::<Vec<LLVMValueRef>>();
+        let mut values = values.iter().map(|v| v.as_raw()).collect::<Vec<LLVMValueRef>>();
 
         let ty = unsafe { LLVMConstVector(values.as_mut_ptr(), values.len() as u32) }.into();
 
@@ -439,10 +424,7 @@ mod tests {
         assert!(!v.as_raw().is_null());
         assert_eq!(v.type_of(), i64_ptr_t.into());
         assert_eq!(v.to_string(), "i64* null");
-        assert_eq!(
-            v.kind(),
-            llvm::LLVMValueKind::LLVMConstantPointerNullValueKind
-        );
+        assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMConstantPointerNullValueKind);
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());
@@ -493,10 +475,7 @@ mod tests {
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"[6 x i8] c"hello\00""#);
-        assert_eq!(
-            v.kind(),
-            llvm::LLVMValueKind::LLVMConstantDataArrayValueKind
-        );
+        assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMConstantDataArrayValueKind);
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());
@@ -513,10 +492,7 @@ mod tests {
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"[6 x i8] c"hello\00""#);
-        assert_eq!(
-            v.kind(),
-            llvm::LLVMValueKind::LLVMConstantDataArrayValueKind
-        );
+        assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMConstantDataArrayValueKind);
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());
@@ -552,10 +528,7 @@ mod tests {
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"[2 x i64] [i64 123, i64 456]"#);
-        assert_eq!(
-            v.kind(),
-            llvm::LLVMValueKind::LLVMConstantDataArrayValueKind
-        );
+        assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMConstantDataArrayValueKind);
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());
@@ -570,10 +543,7 @@ mod tests {
 
         assert!(!v.as_raw().is_null());
         assert_eq!(v.to_string(), r#"<2 x i64> <i64 123, i64 456>"#);
-        assert_eq!(
-            v.kind(),
-            llvm::LLVMValueKind::LLVMConstantDataVectorValueKind
-        );
+        assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMConstantDataVectorValueKind);
         assert_eq!(v.name(), Some("".into()));
         assert!(v.is_constant());
         assert!(!v.is_undef());

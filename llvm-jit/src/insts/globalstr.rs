@@ -43,12 +43,12 @@ where
 
 #[macro_export]
 macro_rules! global_str {
-    ($s:expr; $name:expr) => (
+    ($s: expr; $name: expr) => {
         $crate::insts::global_str($s, $name)
-    );
-    ($s:expr) => {
+    };
+    ($s: expr) => {
         $crate::insts::global_str($s, "")
-    }
+    };
 }
 
 /// Same as `GlobalString`, but return a pointer with "i8*" type instead of a pointer to array of i8.
@@ -86,12 +86,12 @@ where
 
 #[macro_export]
 macro_rules! global_str_ptr {
-    ($s:expr; $name:expr) => (
+    ($s: expr; $name: expr) => {
         $crate::insts::global_str_ptr($s, $name)
-    );
-    ($s:expr) => {
+    };
+    ($s: expr) => {
         $crate::insts::global_str_ptr($s, "")
-    }
+    };
 }
 
 impl IRBuilder {

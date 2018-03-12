@@ -2,12 +2,12 @@ use std::borrow::Cow;
 use std::mem;
 use std::ptr;
 
-use failure::Error;
 use boolinator::Boolinator;
+use failure::Error;
 use llvm::orc::*;
 use llvm::prelude::*;
 
-use errors::{Result};
+use errors::Result;
 use module::Module;
 use object::ObjectFile;
 use target::TargetMachine;

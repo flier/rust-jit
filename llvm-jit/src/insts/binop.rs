@@ -6,11 +6,10 @@ use insts::{AstNode, InstructionBuilder};
 use utils::{AsRaw, IntoRaw};
 
 macro_rules! define_binary_operator {
-    ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
+    ($operator: ident, $func: path, $alias: ident, $comment: expr) => {
         #[doc=$comment]
         #[derive(Clone, Debug, PartialEq)]
-        pub struct $operator<'a>
-        {
+        pub struct $operator<'a> {
             lhs: Box<AstNode<'a>>,
             rhs: Box<AstNode<'a>>,
             name: Cow<'a, str>,
@@ -21,7 +20,7 @@ macro_rules! define_binary_operator {
             where
                 LHS: Into<AstNode<'a>>,
                 RHS: Into<AstNode<'a>>,
-                N: Into<Cow<'a, str>>
+                N: Into<Cow<'a, str>>,
             {
                 $operator {
                     lhs: Box::new(lhs.into()),
@@ -31,11 +30,10 @@ macro_rules! define_binary_operator {
             }
         }
 
-        impl<'a> $crate::insts::InstructionBuilder for $operator<'a>
-        {
+        impl<'a> $crate::insts::InstructionBuilder for $operator<'a> {
             type Target = $crate::Instruction;
 
-            fn emit_to(self, builder: & $crate::insts::IRBuilder) -> Self::Target {
+            fn emit_to(self, builder: &$crate::insts::IRBuilder) -> Self::Target {
                 trace!("{:?} emit instruction: {:?}", builder, self);
 
                 unsafe {
@@ -54,7 +52,7 @@ macro_rules! define_binary_operator {
         where
             LHS: Into<AstNode<'a>>,
             RHS: Into<AstNode<'a>>,
-            N: Into<Cow<'a, str>>
+            N: Into<Cow<'a, str>>,
         {
             $crate::insts::$operator::new(lhs, rhs, name.into())
         }
@@ -62,12 +60,12 @@ macro_rules! define_binary_operator {
         #[doc=$comment]
         #[macro_export]
         macro_rules! $alias {
-            ($lhs:expr, $rhs:expr; $name:expr) => (
+            ($lhs: expr,$rhs: expr; $name: expr) => {
                 $crate::insts::$alias($lhs, $rhs, $name)
-            );
-            ($lhs:expr, $rhs:expr) => (
+            };
+            ($lhs: expr,$rhs: expr) => {
                 $crate::insts::$alias($lhs, $rhs, stringify!($alias))
-            );
+            };
         }
 
         impl $crate::insts::IRBuilder {
@@ -76,12 +74,12 @@ macro_rules! define_binary_operator {
             where
                 LHS: Into<AstNode<'a>>,
                 RHS: Into<AstNode<'a>>,
-                N: Into<Cow<'a, str>>
+                N: Into<Cow<'a, str>>,
             {
                 $crate::insts::$alias(lhs, rhs, name).emit_to(self)
             }
         }
-    )
+    };
 }
 
 define_binary_operator!(
@@ -255,12 +253,15 @@ mod tests {
     use prelude::*;
 
     macro_rules! test_bin_op {
-        ($builder:ident, $name:ident ( $arg0_i64:ident, $arg1_i64:ident ), $display:expr) => (
+        ($builder: ident, $name: ident($arg0_i64: ident, $arg1_i64: ident), $display: expr) => {
             assert_eq!(
-                $name ( $arg0_i64, $arg1_i64, stringify!($name) ).emit_to(& $builder).to_string().trim(),
+                $name($arg0_i64, $arg1_i64, stringify!($name))
+                    .emit_to(&$builder)
+                    .to_string()
+                    .trim(),
                 $display
             )
-        );
+        };
     }
 
     #[test]
@@ -284,56 +285,24 @@ mod tests {
         let arg3_f64 = f.get_param(3).unwrap();
 
         test_bin_op!(b, add(arg0_i64, arg1_i64), "%add = add i64 %0, %1");
-        test_bin_op!(
-            b,
-            add_nsw(arg0_i64, arg1_i64),
-            "%add_nsw = add nsw i64 %0, %1"
-        );
-        test_bin_op!(
-            b,
-            add_nuw(arg0_i64, arg1_i64),
-            "%add_nuw = add nuw i64 %0, %1"
-        );
+        test_bin_op!(b, add_nsw(arg0_i64, arg1_i64), "%add_nsw = add nsw i64 %0, %1");
+        test_bin_op!(b, add_nuw(arg0_i64, arg1_i64), "%add_nuw = add nuw i64 %0, %1");
         test_bin_op!(b, fadd(arg2_f64, arg3_f64), "%fadd = fadd double %2, %3");
 
         test_bin_op!(b, sub(arg0_i64, arg1_i64), "%sub = sub i64 %0, %1");
-        test_bin_op!(
-            b,
-            sub_nsw(arg0_i64, arg1_i64),
-            "%sub_nsw = sub nsw i64 %0, %1"
-        );
-        test_bin_op!(
-            b,
-            sub_nuw(arg0_i64, arg1_i64),
-            "%sub_nuw = sub nuw i64 %0, %1"
-        );
+        test_bin_op!(b, sub_nsw(arg0_i64, arg1_i64), "%sub_nsw = sub nsw i64 %0, %1");
+        test_bin_op!(b, sub_nuw(arg0_i64, arg1_i64), "%sub_nuw = sub nuw i64 %0, %1");
         test_bin_op!(b, fsub(arg2_f64, arg3_f64), "%fsub = fsub double %2, %3");
 
         test_bin_op!(b, mul(arg0_i64, arg1_i64), "%mul = mul i64 %0, %1");
-        test_bin_op!(
-            b,
-            mul_nsw(arg0_i64, arg1_i64),
-            "%mul_nsw = mul nsw i64 %0, %1"
-        );
-        test_bin_op!(
-            b,
-            mul_nuw(arg0_i64, arg1_i64),
-            "%mul_nuw = mul nuw i64 %0, %1"
-        );
+        test_bin_op!(b, mul_nsw(arg0_i64, arg1_i64), "%mul_nsw = mul nsw i64 %0, %1");
+        test_bin_op!(b, mul_nuw(arg0_i64, arg1_i64), "%mul_nuw = mul nuw i64 %0, %1");
         test_bin_op!(b, fmul(arg2_f64, arg3_f64), "%fmul = fmul double %2, %3");
 
         test_bin_op!(b, udiv(arg0_i64, arg1_i64), "%udiv = udiv i64 %0, %1");
-        test_bin_op!(
-            b,
-            udiv_exact(arg0_i64, arg1_i64),
-            "%udiv_exact = udiv exact i64 %0, %1"
-        );
+        test_bin_op!(b, udiv_exact(arg0_i64, arg1_i64), "%udiv_exact = udiv exact i64 %0, %1");
         test_bin_op!(b, sdiv(arg0_i64, arg1_i64), "%sdiv = sdiv i64 %0, %1");
-        test_bin_op!(
-            b,
-            sdiv_exact(arg0_i64, arg1_i64),
-            "%sdiv_exact = sdiv exact i64 %0, %1"
-        );
+        test_bin_op!(b, sdiv_exact(arg0_i64, arg1_i64), "%sdiv_exact = sdiv exact i64 %0, %1");
         test_bin_op!(b, fdiv(arg2_f64, arg3_f64), "%fdiv = fdiv double %2, %3");
 
         test_bin_op!(b, urem(arg0_i64, arg1_i64), "%urem = urem i64 %0, %1");

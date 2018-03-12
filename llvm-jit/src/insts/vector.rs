@@ -59,12 +59,12 @@ where
 /// The `extractelement` instruction extracts a single scalar element from a vector at a specified index.
 #[macro_export]
 macro_rules! extract_element {
-    ($vector:expr, $index:expr ; $name:expr) => (
+    ($vector: expr, $index: expr; $name: expr) => {
         $crate::insts::extract_element($vector, $index, $name)
-    );
-    ($vector:expr, $index:expr) => (
+    };
+    ($vector: expr, $index: expr) => {
         extract_element!($vector, $index ; "extract_element")
-    )
+    };
 }
 
 /// This instruction inserts a single (scalar) element into a `VectorType` value
@@ -125,12 +125,12 @@ where
 /// The `insertelement` instruction inserts a scalar element into a vector at a specified index.
 #[macro_export]
 macro_rules! insert_element {
-    ($vector:expr, $element:expr, $index:expr ; $name:expr) => (
+    ($vector: expr, $element: expr, $index: expr; $name: expr) => {
         $crate::insts::insert_element($vector, $element, $index, $name)
-    );
-    ($vector:expr, $element:expr, $index:expr) => (
+    };
+    ($vector: expr, $element: expr, $index: expr) => {
         insert_element!($vector, $element, $index ; "insert_element")
-    )
+    };
 }
 
 /// This instruction constructs a fixed permutation of two input vectors.
@@ -193,12 +193,12 @@ where
 /// returning a vector with the same element type as the input and length that is the same as the shuffle mask.
 #[macro_export]
 macro_rules! shuffle_vector {
-    ($v1:expr, $v2:expr, $mask:expr ; $name:expr) => (
+    ($v1: expr, $v2: expr, $mask: expr; $name: expr) => {
         $crate::insts::shuffle_vector($v1, $v2, $mask, $name)
-    );
-    ($v1:expr, $v2:expr, $mask:expr) => (
+    };
+    ($v1: expr, $v2: expr, $mask: expr) => {
         shuffle_vector!($v1, $v2, $mask ; "shuffle_vector")
-    )
+    };
 }
 
 impl IRBuilder {
@@ -248,11 +248,7 @@ mod tests {
         let builder = context.create_builder();
 
         let i64_t = context.int64_t();
-        let function_type = FunctionType::new(
-            context.void_t(),
-            types![i64_t.vector_t(3), i64_t.vector_t(3)],
-            false,
-        );
+        let function_type = FunctionType::new(context.void_t(), types![i64_t.vector_t(3), i64_t.vector_t(3)], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);
@@ -264,10 +260,7 @@ mod tests {
         let idx = i64_t.int(1);
 
         assert_eq!(
-            extract_element!(arg0_vector, idx)
-                .emit_to(&builder)
-                .to_string()
-                .trim(),
+            extract_element!(arg0_vector, idx).emit_to(&builder).to_string().trim(),
             "%extract_element = extractelement <3 x i64> %0, i64 1"
         );
 

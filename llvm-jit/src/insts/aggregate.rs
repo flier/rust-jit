@@ -56,12 +56,12 @@ where
 
 #[macro_export]
 macro_rules! extract_value {
-    ($aggregate:expr, $index:expr; $name:expr) => (
+    ($aggregate: expr, $index: expr; $name: expr) => {
         $crate::insts::extract_value($aggregate, $index as u32, $name)
-    );
-    ($aggregate:expr, $index:expr) => {
+    };
+    ($aggregate: expr, $index: expr) => {
         extract_value!($aggregate, $index; "extract_value")
-    }
+    };
 }
 
 /// This instruction inserts a struct field of array element value into an aggregate value.
@@ -119,12 +119,12 @@ where
 
 #[macro_export]
 macro_rules! insert_value {
-    ($aggregate:expr, $element:expr, $index:expr; $name:expr) => (
+    ($aggregate: expr, $element: expr, $index: expr; $name: expr) => {
         $crate::insts::insert_value($aggregate, $element, $index as u32, $name)
-    );
-    ($aggregate:expr, $element:expr, $index:expr) => {
+    };
+    ($aggregate: expr, $element: expr, $index: expr) => {
         insert_value!($aggregate, $element, $index; "insert_value")
-    }
+    };
 }
 
 impl IRBuilder {
@@ -173,18 +173,12 @@ mod tests {
         let arg1_struct = function.get_param(1).unwrap();
 
         assert_eq!(
-            extract_value!(arg0_array, 1)
-                .emit_to(&builder)
-                .to_string()
-                .trim(),
+            extract_value!(arg0_array, 1).emit_to(&builder).to_string().trim(),
             "%extract_value = extractvalue [4 x i64] %0, 1"
         );
 
         assert_eq!(
-            extract_value!(arg1_struct, 1)
-                .emit_to(&builder)
-                .to_string()
-                .trim(),
+            extract_value!(arg1_struct, 1).emit_to(&builder).to_string().trim(),
             "%extract_value1 = extractvalue { i32, i64 } %1, 1"
         );
 

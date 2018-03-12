@@ -167,10 +167,7 @@ mod tests {
         assert!(x.is_declaration());
         assert!(matches!(x.linkage(), LLVMLinkage::LLVMExternalLinkage));
         assert_eq!(x.section(), None);
-        assert!(matches!(
-            x.visibility(),
-            LLVMVisibility::LLVMDefaultVisibility
-        ));
+        assert!(matches!(x.visibility(), LLVMVisibility::LLVMDefaultVisibility));
         assert!(matches!(
             x.dll_storage_class(),
             LLVMDLLStorageClass::LLVMDefaultStorageClass

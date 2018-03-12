@@ -62,12 +62,12 @@ where
 /// of a function call. It is used to implement the `va_arg` macro in C.
 #[macro_export]
 macro_rules! va_arg {
-    ($args:expr, $ty:expr ; $name:expr) => (
+    ($args: expr, $ty: expr; $name: expr) => {
         $crate::insts::va_arg($args, $ty, $name)
-    );
-    ($args:expr, $ty:expr) => (
+    };
+    ($args: expr, $ty: expr) => {
         va_arg!($args, $ty ; "va_arg")
-    )
+    };
 }
 
 impl IRBuilder {

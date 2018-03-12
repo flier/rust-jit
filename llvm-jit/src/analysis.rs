@@ -25,12 +25,8 @@ impl Function {
     ///
     /// Useful for debugging.
     pub fn verify(&self) -> Result<()> {
-        unsafe {
-            LLVMVerifyFunction(
-                self.as_raw(),
-                LLVMVerifierFailureAction::LLVMReturnStatusAction,
-            )
-        }.ok_or_else(|| format_err!("verify {:?} failed", self))
+        unsafe { LLVMVerifyFunction(self.as_raw(), LLVMVerifierFailureAction::LLVMReturnStatusAction) }
+            .ok_or_else(|| format_err!("verify {:?} failed", self))
     }
 
     /// Open a ghostview window displaying the CFG of the given function.

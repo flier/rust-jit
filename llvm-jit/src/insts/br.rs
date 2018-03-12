@@ -96,7 +96,8 @@ pub struct IndirectBr<'a> {
 }
 
 impl<'a> IndirectBr<'a> {
-    /// The `indirectbr` instruction implements an indirect branch to a label within the current function, whose address is specified by “address”.
+    /// The `indirectbr` instruction implements an indirect branch to a label within the current function,
+    /// whose address is specified by “address”.
     pub fn new<T, I>(addr: T, dests: I) -> Self
     where
         T: Into<AstNode<'a>>,
@@ -187,7 +188,8 @@ macro_rules! br {
 }
 
 impl IRBuilder {
-    /// The `br` instruction is used to cause control flow to transfer to a different basic block in the current function.
+    /// The `br` instruction is used to cause control flow to transfer
+    /// to a different basic block in the current function.
     pub fn br(&self, dest: BasicBlock) -> BranchInst {
         Br::new(dest).emit_to(self)
     }
@@ -200,7 +202,8 @@ impl IRBuilder {
         CondBr::new(cond, then, or_else).emit_to(self)
     }
 
-    /// The `indirectbr` instruction implements an indirect branch to a label within the current function, whose address is specified by “address”.
+    /// The `indirectbr` instruction implements an indirect branch to a label within the current function,
+    /// whose address is specified by “address”.
     pub fn indirect_br<'a, T, I>(&self, addr: T, dests: I) -> BranchInst
     where
         T: Into<AstNode<'a>>,
@@ -231,10 +234,7 @@ mod tests {
         // unconditional branch
         let next = function.append_basic_block_in_context("next", &context);
 
-        assert_eq!(
-            br!(next).emit_to(&builder).to_string().trim(),
-            "br label %next"
-        );
+        assert_eq!(br!(next).emit_to(&builder).to_string().trim(), "br label %next");
     }
 
     #[test]

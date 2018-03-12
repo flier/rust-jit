@@ -6,7 +6,7 @@ use insts::{AstNode, InstructionBuilder};
 use utils::{AsRaw, IntoRaw};
 
 macro_rules! define_unary_instruction {
-    ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
+    ($operator: ident, $func: path, $alias: ident, $comment: expr) => {
         #[doc=$comment]
         #[derive(Clone, Debug, PartialEq)]
         pub struct $operator<'a> {
@@ -27,11 +27,10 @@ macro_rules! define_unary_instruction {
             }
         }
 
-        impl<'a> $crate::insts::InstructionBuilder for $operator<'a>
-        {
+        impl<'a> $crate::insts::InstructionBuilder for $operator<'a> {
             type Target = $crate::Instruction;
 
-            fn emit_to(self, builder: & $crate::insts::IRBuilder) -> Self::Target {
+            fn emit_to(self, builder: &$crate::insts::IRBuilder) -> Self::Target {
                 trace!("{:?} emit instruction: {:?}", builder, self);
 
                 unsafe {
@@ -48,7 +47,7 @@ macro_rules! define_unary_instruction {
         pub fn $alias<'a, V, N>(value: V, name: N) -> $operator<'a>
         where
             V: Into<AstNode<'a>>,
-            N: Into<Cow<'a, str>>
+            N: Into<Cow<'a, str>>,
         {
             $crate::insts::$operator::new(value, name)
         }
@@ -56,29 +55,25 @@ macro_rules! define_unary_instruction {
         #[doc=$comment]
         #[macro_export]
         macro_rules! $alias {
-            ($value:expr; $name:expr) => (
+            ($value: expr; $name: expr) => {
                 $crate::insts::$alias($value, $name)
-            );
-            ($value:expr) => (
+            };
+            ($value: expr) => {
                 $crate::insts::$alias($value, stringify!($alias))
-            )
+            };
         }
 
         impl $crate::insts::IRBuilder {
             #[doc=$comment]
-            pub fn $alias<'a, V, N>(
-                &self,
-                value: V,
-                name: N
-            ) -> $crate::Instruction
+            pub fn $alias<'a, V, N>(&self, value: V, name: N) -> $crate::Instruction
             where
                 V: Into<AstNode<'a>>,
-                N: Into<Cow<'a, str>>
+                N: Into<Cow<'a, str>>,
             {
                 $alias(value, name).emit_to(self)
             }
         }
-    )
+    };
 }
 
 define_unary_instruction!(
@@ -130,9 +125,15 @@ mod tests {
     use prelude::*;
 
     macro_rules! test_unary_inst {
-        ($builder:ident, $name:ident !( $arg0_i64:ident ), $display:expr) => (
-            assert_eq!( $name !( $arg0_i64 ; stringify!($name) ).emit_to(& $builder).to_string().trim(), $display )
-        )
+        ($builder: ident, $name: ident !($arg0_i64: ident), $display: expr) => {
+            assert_eq!(
+                $name !( $arg0_i64 ; stringify!($name) )
+                    .emit_to(&$builder)
+                    .to_string()
+                    .trim(),
+                $display
+            )
+        };
     }
 
     #[test]
@@ -161,10 +162,6 @@ mod tests {
         test_unary_inst!(b, fneg!(arg2_f64), "%fneg = fsub double -0.000000e+00, %2");
         test_unary_inst!(b, not!(arg0_i64), "%not = xor i64 %0, -1");
         test_unary_inst!(b, is_null!(arg1_p_i64), "%is_null = icmp eq i64* %1, null");
-        test_unary_inst!(
-            b,
-            is_not_null!(arg1_p_i64),
-            "%is_not_null = icmp ne i64* %1, null"
-        );
+        test_unary_inst!(b, is_not_null!(arg1_p_i64), "%is_not_null = icmp ne i64* %1, null");
     }
 }

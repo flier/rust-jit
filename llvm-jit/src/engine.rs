@@ -1,6 +1,6 @@
 use std::ffi::CString;
-use std::mem;
 use std::fmt;
+use std::mem;
 use std::ptr;
 
 use boolinator::Boolinator;
@@ -245,11 +245,7 @@ impl MCJITCompiler {
             )
         })
             .map(|_| {
-                trace!(
-                    "create MCJITCompiler({:?}) for Module({:?})",
-                    engine,
-                    module
-                );
+                trace!("create MCJITCompiler({:?}) for Module({:?})", engine, module);
 
                 MCJITCompiler(ExecutionEngine(engine))
             })
@@ -288,11 +284,7 @@ impl ExecutionEngine {
                 )
             })
             .map(|_| {
-                trace!(
-                    "create ExecutionEngine({:?}) for Module({:?})",
-                    engine,
-                    module
-                );
+                trace!("create ExecutionEngine({:?}) for Module({:?})", engine, module);
 
                 engine.into()
             })
@@ -330,10 +322,7 @@ impl ExecutionEngine {
 
         argv.push(ptr::null());
 
-        let env_vars = env_vars
-            .iter()
-            .map(unchecked_cstring)
-            .collect::<Vec<CString>>();
+        let env_vars = env_vars.iter().map(unchecked_cstring).collect::<Vec<CString>>();
 
         let mut environ = env_vars
             .iter()
@@ -615,10 +604,7 @@ mod tests {
 
         let ee = ExecutionEngine::for_module(m).unwrap();
 
-        assert_eq!(
-            ee.run_function_as_main(main, &["123", "456", "789"], &[]),
-            3
-        );
+        assert_eq!(ee.run_function_as_main(main, &["123", "456", "789"], &[]), 3);
     }
 
     #[test]
@@ -648,10 +634,7 @@ mod tests {
             let aligned = (size + alignment - 1) / alignment * alignment;
 
             MemorySection(
-                mmap::MemoryMap::new(
-                    aligned,
-                    &[mmap::MapOption::MapWritable, mmap::MapOption::MapExecutable],
-                ).unwrap(),
+                mmap::MemoryMap::new(aligned, &[mmap::MapOption::MapWritable, mmap::MapOption::MapExecutable]).unwrap(),
             )
         }
 
@@ -718,10 +701,7 @@ mod tests {
             "allocated {} bytes (align to {}) {} data section `{}` #{} @ {:?}",
             size,
             alignment,
-            is_read_only
-                .as_bool()
-                .as_some("readonly")
-                .unwrap_or("writable"),
+            is_read_only.as_bool().as_some("readonly").unwrap_or("writable"),
             section_name.as_str(),
             section_id,
             p,
@@ -757,13 +737,8 @@ mod tests {
 
         let mut opts = MCJITCompilerOptions::default();
         let mut ctxt = MemoryManager::default();
-        let mm = MCJITMemoryManager::new(
-            Some(&mut ctxt),
-            mm_alloc_code,
-            mm_alloc_data,
-            mm_finalize,
-            mm_destroy,
-        ).unwrap();
+        let mm =
+            MCJITMemoryManager::new(Some(&mut ctxt), mm_alloc_code, mm_alloc_data, mm_finalize, mm_destroy).unwrap();
 
         opts.MCJMM = mm.into_raw();
 

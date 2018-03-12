@@ -65,12 +65,7 @@ impl<'a> MemoryBuffer<'a> {
         trace!("MemoryBuffer from STDIN");
 
         unsafe { LLVMCreateMemoryBufferWithSTDIN(&mut buf, &mut msg) }
-            .ok_or_else(|| {
-                format_err!(
-                    "fail to create memory buffer from STDIN, {}",
-                    msg.into_string(),
-                )
-            })
+            .ok_or_else(|| format_err!("fail to create memory buffer from STDIN, {}", msg.into_string(),))
             .map(|_| buf.into())
     }
 

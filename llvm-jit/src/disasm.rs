@@ -141,11 +141,7 @@ impl Disasm {
     }
 
     pub fn disasm_insts<'a, T: 'a + AsRef<[u8]>>(&'a self, cur: &'a mut Cursor<T>, pc: u64) -> DisasmInstIter<'a, T> {
-        DisasmInstIter {
-            disasm: self,
-            cur,
-            pc,
-        }
+        DisasmInstIter { disasm: self, cur, pc }
     }
 }
 
@@ -210,10 +206,7 @@ mod tests {
         let insts = vec![0x48, 0x8d, 0x05, 0xd1, 0xff, 0xff, 0xff];
         let mut cur = Cursor::new(&insts);
 
-        assert_eq!(
-            disasm.disasm_inst(&mut cur, 0).unwrap(),
-            "\tleaq\t-47(%rip), %rax"
-        );
+        assert_eq!(disasm.disasm_inst(&mut cur, 0).unwrap(), "\tleaq\t-47(%rip), %rax");
 
         let mut cur = Cursor::new(&insts);
 

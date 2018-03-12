@@ -66,19 +66,19 @@ impl<'a> InstructionBuilder for Malloc<'a> {
 /// Invoke `malloc` function to allocates memory on the heap, need to be expicity released by its caller.
 #[macro_export]
 macro_rules! malloc {
-    ($ty:expr; $name:expr) => ({
+    ($ty: expr; $name: expr) => {{
         $crate::insts::Malloc::new($ty, $name)
-    });
-    ($array_ty:expr, $size:expr; $name:expr) => ({
+    }};
+    ($array_ty: expr, $size: expr; $name: expr) => {{
         $crate::insts::Malloc::array($array_ty, $size, $name)
-    });
+    }};
 
-    ($ty:expr) => ({
+    ($ty: expr) => {{
         malloc!($ty ; "malloc")
-    });
-    ($array_ty:expr, $size:expr) => ({
+    }};
+    ($array_ty: expr, $size: expr) => {{
         malloc!($array_ty, $size ; "array_malloc")
-    });
+    }};
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -153,19 +153,19 @@ impl AllocaInst {
 /// The object is always allocated in the generic address space (address space zero).
 #[macro_export]
 macro_rules! alloca {
-    ($ty:expr; $name:expr) => ({
+    ($ty: expr; $name: expr) => {{
         $crate::insts::Alloca::new($ty, $name)
-    });
-    ($array_ty:expr, $size:expr; $name:expr) => ({
+    }};
+    ($array_ty: expr, $size: expr; $name: expr) => {{
         $crate::insts::Alloca::array($array_ty, $size, $name)
-    });
+    }};
 
-    ($ty:expr) => ({
+    ($ty: expr) => {{
         alloca!($ty ; "alloca")
-    });
-    ($array_ty:expr, $size:expr) => ({
+    }};
+    ($array_ty: expr, $size: expr) => {{
         alloca!($array_ty, $size ; "array_alloca")
-    });
+    }};
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -200,9 +200,9 @@ where
 
 #[macro_export]
 macro_rules! free {
-    ($ptr:expr) => (
+    ($ptr: expr) => {
         $crate::insts::free($ptr)
-    )
+    };
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -244,13 +244,8 @@ impl<'a> InstructionBuilder for Load<'a> {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        let inst: LoadInst = unsafe {
-            LLVMBuildLoad(
-                builder.as_raw(),
-                self.ptr.emit_to(builder).into_raw(),
-                cstr!(self.name),
-            )
-        }.into();
+        let inst: LoadInst =
+            unsafe { LLVMBuildLoad(builder.as_raw(), self.ptr.emit_to(builder).into_raw(), cstr!(self.name)) }.into();
 
         if self.volatile {
             inst.set_volatile(self.volatile)
@@ -280,12 +275,12 @@ where
 
 #[macro_export]
 macro_rules! load {
-    ($ptr:expr; $name:expr) => (
+    ($ptr: expr; $name: expr) => {
         $crate::insts::load($ptr, $name)
-    );
-    ($ptr:expr) => {
+    };
+    ($ptr: expr) => {
         load!($ptr; "load")
-    }
+    };
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -363,9 +358,9 @@ where
 
 #[macro_export]
 macro_rules! store {
-    ($value:expr, $ptr:expr) => {
+    ($value: expr, $ptr: expr) => {
         $crate::insts::store($value, $ptr)
-    }
+    };
 }
 
 impl IRBuilder {
@@ -501,10 +496,7 @@ mod tests {
         assert_eq!(alloca.allocated_type(), i64_t);
 
         assert_eq!(
-            alloca!(i64_t, i64_t.int(123))
-                .emit_to(&builder)
-                .to_string()
-                .trim(),
+            alloca!(i64_t, i64_t.int(123)).emit_to(&builder).to_string().trim(),
             "%array_alloca = alloca i64, i64 123"
         );
 
@@ -513,16 +505,10 @@ mod tests {
         assert_eq!(load.to_string().trim(), "%load = load i64, i64* %0");
 
         assert!(!load.is_volatile());
-        assert_eq!(
-            load.atomic_ordering(),
-            LLVMAtomicOrdering::LLVMAtomicOrderingNotAtomic
-        );
+        assert_eq!(load.atomic_ordering(), LLVMAtomicOrdering::LLVMAtomicOrderingNotAtomic);
 
         load.set_volatile(true);
-        assert_eq!(
-            load.to_string().trim(),
-            "%load = load volatile i64, i64* %0"
-        );
+        assert_eq!(load.to_string().trim(), "%load = load volatile i64, i64* %0");
 
         load.set_atomic_ordering(LLVMAtomicOrdering::LLVMAtomicOrderingAcquire);
         assert_eq!(
@@ -535,10 +521,7 @@ mod tests {
         assert_eq!(store.to_string().trim(), "store i64 123, i64* %0");
 
         assert!(!store.is_volatile());
-        assert_eq!(
-            store.atomic_ordering(),
-            LLVMAtomicOrdering::LLVMAtomicOrderingNotAtomic
-        );
+        assert_eq!(store.atomic_ordering(), LLVMAtomicOrdering::LLVMAtomicOrderingNotAtomic);
 
         store.set_volatile(true);
         assert_eq!(store.to_string().trim(), "store volatile i64 123, i64* %0");

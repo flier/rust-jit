@@ -27,9 +27,7 @@ impl<'a> Ret<'a> {
         I: IntoIterator<Item = V>,
         V: Into<AstNode<'a>>,
     {
-        Ret(Return::Aggregate(
-            values.into_iter().map(|v| v.into()).collect(),
-        ))
+        Ret(Return::Aggregate(values.into_iter().map(|v| v.into()).collect()))
     }
 }
 
@@ -102,12 +100,14 @@ macro_rules! ret {
 }
 
 impl IRBuilder {
-    /// The ‘ret‘ instruction is used to return control flow (and optionally a value) from a function back to the caller.
+    /// The ‘ret‘ instruction is used to return control flow (and optionally a value)
+    /// from a function back to the caller.
     pub fn ret_void(&self) -> ReturnInst {
         Ret::void().emit_to(self)
     }
 
-    /// The ‘ret‘ instruction is used to return control flow (and optionally a value) from a function back to the caller.
+    /// The ‘ret‘ instruction is used to return control flow (and optionally a value)
+    /// from a function back to the caller.
     pub fn ret<'a, T>(&self, result: T) -> ReturnInst
     where
         T: Into<AstNode<'a>>,
@@ -115,7 +115,8 @@ impl IRBuilder {
         Ret::new(result.into()).emit_to(self)
     }
 
-    /// The ‘ret‘ instruction is used to return control flow (and optionally a value) from a function back to the caller.
+    /// The ‘ret‘ instruction is used to return control flow (and optionally a value)
+    /// from a function back to the caller.
     pub fn aggregate_ret<'a, I, V>(&self, values: I) -> ReturnInst
     where
         I: IntoIterator<Item = V>,

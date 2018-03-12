@@ -62,10 +62,10 @@ macro_rules! ir_each_token {
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
     use constant::ConstantInts;
-    use types::IntegerTypes;
+    use context::Context;
     use insts::*;
+    use types::IntegerTypes;
 
     #[test]
     fn ir_code() {

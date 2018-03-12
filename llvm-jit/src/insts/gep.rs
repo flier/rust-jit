@@ -165,12 +165,12 @@ macro_rules! gep {
 
 #[macro_export]
 macro_rules! struct_gep {
-    ($struct_ptr:expr, $index:expr ; $name:expr) => ({
+    ($struct_ptr: expr, $index: expr; $name: expr) => {{
         $crate::insts::GetElementPtr::in_struct($struct_ptr, $index, $name)
-    });
-    ($struct_ptr:expr, $index:expr) => ({
+    }};
+    ($struct_ptr: expr, $index: expr) => {{
         struct_gep!($struct_ptr, $index; "struct_gep")
-    });
+    }};
 }
 
 impl IRBuilder {
@@ -229,10 +229,7 @@ mod tests {
         let p_struct = alloca!(struct_t; "p_struct").emit_to(&builder);
 
         assert_eq!(
-            gep!(p_array, i64_t.int(1))
-                .emit_to(&builder)
-                .to_string()
-                .trim(),
+            gep!(p_array, i64_t.int(1)).emit_to(&builder).to_string().trim(),
             "%gep = getelementptr [4 x i64], [4 x i64]* %p_array, i64 1"
         );
 
@@ -245,10 +242,7 @@ mod tests {
         );
 
         assert_eq!(
-            struct_gep!(p_struct, 1)
-                .emit_to(&builder)
-                .to_string()
-                .trim(),
+            struct_gep!(p_struct, 1).emit_to(&builder).to_string().trim(),
             "%struct_gep = getelementptr inbounds %struct, %struct* %p_struct, i32 0, i32 1"
         );
 

@@ -427,8 +427,7 @@ impl<'a> BrainF<'a> {
             let test_2 = or!(test_0, test_1; TEST_REG);
 
             //br i1 %test.%d, label %main.%d, label %main.%d
-            let next_bb = self.brainf_func
-                .append_basic_block_in_context(LABEL, &self.context);
+            let next_bb = self.brainf_func.append_basic_block_in_context(LABEL, &self.context);
 
             br!(test_2 => self.aberror_bb.unwrap(), _ => next_bb).emit_to(&self.builder);
 
@@ -488,8 +487,7 @@ impl<'a> BrainF<'a> {
 
         //%head.%d = phi i8 *[%head.%d, %main.%d], [%head.%d, %main.%d]
         //Finish phi made at beginning of loop
-        let head_0 = phi.add_incoming(self.cur_head, old_bb)
-            .emit_to(&self.builder);
+        let head_0 = phi.add_incoming(self.cur_head, old_bb).emit_to(&self.builder);
 
         //%tape.%d = load i8 *%head.%d
         let tape_0 = load!(head_0; TAPER_REG);
@@ -507,9 +505,7 @@ impl<'a> BrainF<'a> {
         self.builder.position_at_end(loop_end_bb);
 
         //%head.%d = phi i8 *[%head.%d, %main.%d]
-        phi!(i8_t.ptr_t(), head_0 => test_bb)
-            .emit_to(&self.builder)
-            .into()
+        phi!(i8_t.ptr_t(), head_0 => test_bb).emit_to(&self.builder).into()
     }
 }
 
@@ -567,10 +563,7 @@ fn main() {
 
                     let mut code = String::new();
 
-                    File::open(filename)
-                        .unwrap()
-                        .read_to_string(&mut code)
-                        .unwrap();
+                    File::open(filename).unwrap().read_to_string(&mut code).unwrap();
 
                     (code, Path::new(filename))
                 }

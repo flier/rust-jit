@@ -3,11 +3,11 @@
 use std::borrow::Cow;
 use std::mem;
 
-use nom;
 use failure::Error;
+use nom;
 
 use context::Context;
-use errors::{ JitError, Result};
+use errors::{JitError, Result};
 use function::FunctionType;
 use intrinsics::gen::{IntrinsicId, IIT_LONG_ENCODING_TABLE, IIT_TABLE};
 use types::*;
@@ -25,11 +25,7 @@ impl IntrinsicId {
             .collect::<Result<Vec<TypeRef>>>()?;
 
         if !arg_tys.is_empty() && arg_tys.last().map_or(false, |ty| ty.is_void_ty()) {
-            Ok(FunctionType::new(
-                result_ty,
-                &arg_tys[..arg_tys.len() - 2],
-                true,
-            ))
+            Ok(FunctionType::new(result_ty, &arg_tys[..arg_tys.len() - 2], true))
         } else {
             Ok(FunctionType::new(result_ty, &arg_tys, false))
         }
@@ -187,7 +183,9 @@ enum IITDescriptor {
 
 impl IITDescriptor {
     pub fn parse<'a>(input: &'a [u8]) -> Result<(IITDescriptor, Vec<IITDescriptor>)> {
-        parse_descripters(input).to_result().map_err(|err| JitError::Parse(err).into())
+        parse_descripters(input)
+            .to_result()
+            .map_err(|err| JitError::Parse(err).into())
     }
 
     pub fn decode_fixed_type(&self, ctxt: &Context, arg_types: &[TypeRef]) -> Result<TypeRef> {
@@ -624,9 +622,7 @@ mod tests {
     #[test]
     fn decode_info_table_entries() {
         assert_eq!(
-            IntrinsicId::addressofreturnaddress
-                .info_table_entries()
-                .as_ref(),
+            IntrinsicId::addressofreturnaddress.info_table_entries().as_ref(),
             IIT_ADDRESS_OF_RETURN_ADDRESS.as_slice()
         );
         assert!(
@@ -634,10 +630,7 @@ mod tests {
                 .info_table_entries()
                 .starts_with(IIT_ANNOTATION.as_slice())
         );
-        assert_eq!(
-            IntrinsicId::memset.info_table_entries().as_ref(),
-            IIT_MEMSET.as_slice()
-        );
+        assert_eq!(IntrinsicId::memset.info_table_entries().as_ref(), IIT_MEMSET.as_slice());
 
         for id in (0..IIT_TABLE.len()).map(|n| IntrinsicId::from(n as u32 + 1)) {
             assert!(!id.info_table_entries().is_empty());
@@ -648,10 +641,7 @@ mod tests {
     fn parse_descriptors() {
         assert_eq!(
             IITDescriptor::parse(IIT_ADDRESS_OF_RETURN_ADDRESS.as_slice()).unwrap(),
-            (
-                IITDescriptor::Pointer(Box::new(IITDescriptor::Integer(8)), 0),
-                vec![],
-            )
+            (IITDescriptor::Pointer(Box::new(IITDescriptor::Integer(8)), 0), vec![],)
         );
 
         assert_eq!(
@@ -682,10 +672,7 @@ mod tests {
         );
 
         for &(input, ref descriptor) in DESCRIPTORS.iter() {
-            assert_eq!(
-                parse_descripter(input).unwrap(),
-                (&[][..], descriptor.clone())
-            );
+            assert_eq!(parse_descripter(input).unwrap(), (&[][..], descriptor.clone()));
         }
     }
 
@@ -719,39 +706,27 @@ mod tests {
         );
 
         assert_eq!(
-            IITDescriptor::Integer(1)
-                .decode_fixed_type(&ctxt, &[])
-                .unwrap(),
+            IITDescriptor::Integer(1).decode_fixed_type(&ctxt, &[]).unwrap(),
             ctxt.int1_t()
         );
         assert_eq!(
-            IITDescriptor::Integer(8)
-                .decode_fixed_type(&ctxt, &[])
-                .unwrap(),
+            IITDescriptor::Integer(8).decode_fixed_type(&ctxt, &[]).unwrap(),
             ctxt.int8_t()
         );
         assert_eq!(
-            IITDescriptor::Integer(16)
-                .decode_fixed_type(&ctxt, &[])
-                .unwrap(),
+            IITDescriptor::Integer(16).decode_fixed_type(&ctxt, &[]).unwrap(),
             ctxt.int16_t()
         );
         assert_eq!(
-            IITDescriptor::Integer(32)
-                .decode_fixed_type(&ctxt, &[])
-                .unwrap(),
+            IITDescriptor::Integer(32).decode_fixed_type(&ctxt, &[]).unwrap(),
             ctxt.int32_t()
         );
         assert_eq!(
-            IITDescriptor::Integer(64)
-                .decode_fixed_type(&ctxt, &[])
-                .unwrap(),
+            IITDescriptor::Integer(64).decode_fixed_type(&ctxt, &[]).unwrap(),
             ctxt.int64_t()
         );
         assert_eq!(
-            IITDescriptor::Integer(128)
-                .decode_fixed_type(&ctxt, &[])
-                .unwrap(),
+            IITDescriptor::Integer(128).decode_fixed_type(&ctxt, &[]).unwrap(),
             ctxt.int128_t()
         );
 
@@ -814,10 +789,8 @@ mod tests {
             int8_t.vector_t(2).into()
         );
         assert_eq!(
-            IITDescriptor::SameVecWidthArgument(
-                Box::new(IITDescriptor::Integer(16)),
-                ArgumentInfo::any_vector(0)
-            ).decode_fixed_type(&ctxt, types![int8_t.vector_t(4)])
+            IITDescriptor::SameVecWidthArgument(Box::new(IITDescriptor::Integer(16)), ArgumentInfo::any_vector(0))
+                .decode_fixed_type(&ctxt, types![int8_t.vector_t(4)])
                 .unwrap(),
             int16_t.vector_t(4).into()
         );

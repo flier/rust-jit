@@ -45,8 +45,8 @@ mod ast;
 #[macro_use]
 mod ir;
 
-pub use self::ast::AstNode;
 pub use self::aggregate::{extract_value, insert_value, ExtractValue, InsertValue};
+pub use self::ast::AstNode;
 pub use self::atomic::{AtomicCmpXchg, AtomicRMW, Fence};
 pub use self::binop::*;
 pub use self::br::{Br, BranchInst, CondBr, IndirectBr};

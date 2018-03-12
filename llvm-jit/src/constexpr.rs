@@ -1,15 +1,15 @@
-use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Not, Rem, Sub};
 use std::cmp::{Ordering, PartialEq, PartialOrd};
+use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Not, Rem, Sub};
 
 use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
 
 use constant::{AsConstant, Constant, ConstantFP, ConstantFPs, ConstantInt, ConstantInts, ConstantVector, InlineAsm};
+use function::FunctionType;
+use module::Module;
 use types::TypeRef;
 use utils::{AsLLVMBool, AsRaw};
-use module::Module;
-use function::FunctionType;
 
 pub trait ConstantExpr {
     fn neg(&self) -> Constant;
@@ -261,19 +261,13 @@ impl<T: AsConstant> ConstantExpr for T {
     }
 
     fn gep(&self, indices: &[Constant]) -> Constant {
-        let mut indices = indices
-            .iter()
-            .map(|c| c.as_raw())
-            .collect::<Vec<LLVMValueRef>>();
+        let mut indices = indices.iter().map(|c| c.as_raw()).collect::<Vec<LLVMValueRef>>();
 
         unsafe { LLVMConstGEP(self.as_raw(), indices.as_mut_ptr(), indices.len() as u32) }.into()
     }
 
     fn inbounds_gep(&self, indices: &[Constant]) -> Constant {
-        let mut indices = indices
-            .iter()
-            .map(|c| c.as_raw())
-            .collect::<Vec<LLVMValueRef>>();
+        let mut indices = indices.iter().map(|c| c.as_raw()).collect::<Vec<LLVMValueRef>>();
 
         unsafe { LLVMConstInBoundsGEP(self.as_raw(), indices.as_mut_ptr(), indices.len() as u32) }.into()
     }
@@ -439,7 +433,7 @@ impl BitXor for ConstantInt {
 }
 
 macro_rules! impl_const_int_operators {
-    ($type:ty, $signed:expr) => {
+    ($type: ty, $signed: expr) => {
         impl Add<$type> for ConstantInt {
             type Output = Self;
 
@@ -517,7 +511,7 @@ macro_rules! impl_const_int_operators {
         }
 
         impl PartialEq<$type> for ConstantInt {
-            fn eq(&self, other: & $type) -> bool {
+            fn eq(&self, other: &$type) -> bool {
                 let rhs = self.type_of().int_value(*other as u64, $signed).into();
 
                 ConstantExpr::icmp(self, LLVMIntPredicate::LLVMIntEQ, rhs)
@@ -525,7 +519,7 @@ macro_rules! impl_const_int_operators {
         }
 
         impl PartialOrd<$type> for ConstantInt {
-            fn partial_cmp(&self, other: & $type) -> Option<Ordering> {
+            fn partial_cmp(&self, other: &$type) -> Option<Ordering> {
                 let rhs = self.type_of().int_value(*other as u64, $signed).into();
                 let lt = if $signed {
                     LLVMIntPredicate::LLVMIntSLT
@@ -605,7 +599,7 @@ impl Rem for ConstantFP {
 }
 
 macro_rules! impl_const_floating_point_operators {
-    ($type:ty) => {
+    ($type: ty) => {
         impl Add<$type> for ConstantFP {
             type Output = Self;
 
@@ -647,7 +641,7 @@ macro_rules! impl_const_floating_point_operators {
         }
 
         impl PartialEq<$type> for ConstantFP {
-            fn eq(&self, other: & $type) -> bool {
+            fn eq(&self, other: &$type) -> bool {
                 let rhs = self.type_of().real(*other as f64).into();
 
                 ConstantExpr::fcmp(self, LLVMRealPredicate::LLVMRealOEQ, rhs)
@@ -655,7 +649,7 @@ macro_rules! impl_const_floating_point_operators {
         }
 
         impl PartialOrd<$type> for ConstantFP {
-            fn partial_cmp(&self, other: & $type) -> Option<Ordering> {
+            fn partial_cmp(&self, other: &$type) -> Option<Ordering> {
                 let rhs = self.type_of().real(*other as f64).into();
 
                 Some(if ConstantExpr::fcmp(self, LLVMRealPredicate::LLVMRealOLT, rhs) {
@@ -730,24 +724,15 @@ mod tests {
         let i = i64_t.int(123);
         let f = f64_t.real(123.0);
 
-        let bv = bool_t.vector_t(4).vector_of(values![
-            bool_t.int(1),
-            bool_t.int(0),
-            bool_t.int(1),
-            bool_t.int(0),
-        ]);
-        let iv = i64_t.vector_t(4).vector_of(values![
-            i64_t.int(1),
-            i64_t.int(2),
-            i64_t.int(3),
-            i64_t.int(4),
-        ]);
-        let iv2 = i64_t.vector_t(4).vector_of(values![
-            i64_t.int(6),
-            i64_t.int(7),
-            i64_t.int(8),
-            i64_t.int(9),
-        ]);
+        let bv = bool_t
+            .vector_t(4)
+            .vector_of(values![bool_t.int(1), bool_t.int(0), bool_t.int(1), bool_t.int(0),]);
+        let iv = i64_t
+            .vector_t(4)
+            .vector_of(values![i64_t.int(1), i64_t.int(2), i64_t.int(3), i64_t.int(4),]);
+        let iv2 = i64_t
+            .vector_t(4)
+            .vector_of(values![i64_t.int(6), i64_t.int(7), i64_t.int(8), i64_t.int(9),]);
         let fv = f64_t.vector_t(4).vector_of(values![
             f64_t.real(1.0),
             f64_t.real(2.0),
@@ -757,10 +742,7 @@ mod tests {
 
         // neg
         assert_eq!(-i, i64_t.int(-123));
-        assert_eq!(
-            iv.neg().to_string(),
-            "<4 x i64> <i64 -1, i64 -2, i64 -3, i64 -4>"
-        );
+        assert_eq!(iv.neg().to_string(), "<4 x i64> <i64 -1, i64 -2, i64 -3, i64 -4>");
 
         // fneg
         assert_eq!(-f, f64_t.real(-123.0));
@@ -771,17 +753,11 @@ mod tests {
 
         // not
         assert_eq!(!b, bool_t.int(0));
-        assert_eq!(
-            bv.not().to_string(),
-            "<4 x i1> <i1 false, i1 true, i1 false, i1 true>"
-        );
+        assert_eq!(bv.not().to_string(), "<4 x i1> <i1 false, i1 true, i1 false, i1 true>");
 
         // add
         assert_eq!(i + 456, i64_t.int(123 + 456));
-        assert_eq!(
-            iv.add(iv.into()).to_string(),
-            "<4 x i64> <i64 2, i64 4, i64 6, i64 8>"
-        );
+        assert_eq!(iv.add(iv.into()).to_string(), "<4 x i64> <i64 2, i64 4, i64 6, i64 8>");
 
         // sub
         assert_eq!(i - 456, i64_t.int(123 - 456));
@@ -789,18 +765,12 @@ mod tests {
 
         // mul
         assert_eq!(i * 2, i64_t.int(123 * 2));
-        assert_eq!(
-            iv.mul(iv.into()).to_string(),
-            "<4 x i64> <i64 1, i64 4, i64 9, i64 16>"
-        );
+        assert_eq!(iv.mul(iv.into()).to_string(), "<4 x i64> <i64 1, i64 4, i64 9, i64 16>");
 
         // div
         assert_eq!(i / 2, i64_t.int(123 / 2));
         assert_eq!(i / -2, i64_t.int(123 / -2));
-        assert_eq!(
-            iv.udiv(iv.into()).to_string(),
-            "<4 x i64> <i64 1, i64 1, i64 1, i64 1>"
-        );
+        assert_eq!(iv.udiv(iv.into()).to_string(), "<4 x i64> <i64 1, i64 1, i64 1, i64 1>");
         assert_eq!(
             iv.sdiv(iv.neg().into()).to_string(),
             "<4 x i64> <i64 -1, i64 -1, i64 -1, i64 -1>"
@@ -810,17 +780,11 @@ mod tests {
         assert_eq!(i % 2, i64_t.int(1));
         assert_eq!(i % -2, i64_t.int(1));
         assert_eq!(iv.urem(iv.into()).to_string(), "<4 x i64> zeroinitializer");
-        assert_eq!(
-            iv.srem(iv.neg().into()).to_string(),
-            "<4 x i64> zeroinitializer"
-        );
+        assert_eq!(iv.srem(iv.neg().into()).to_string(), "<4 x i64> zeroinitializer");
 
         // and
         assert_eq!(i & 456, i64_t.int(123 & 456));
-        assert_eq!(
-            iv.and(iv2.into()).to_string(),
-            "<4 x i64> <i64 0, i64 2, i64 0, i64 0>"
-        );
+        assert_eq!(iv.and(iv2.into()).to_string(), "<4 x i64> <i64 0, i64 2, i64 0, i64 0>");
 
         // or
         assert_eq!(i | 456, i64_t.int(123 | 456));
@@ -845,10 +809,7 @@ mod tests {
 
         // fsub
         assert_eq!(f - 456.0, f64_t.real(123.0 - 456.0));
-        assert_eq!(
-            fv.fsub(fv.into()).to_string(),
-            "<4 x double> zeroinitializer"
-        );
+        assert_eq!(fv.fsub(fv.into()).to_string(), "<4 x double> zeroinitializer");
 
         // fmul
         assert_eq!(f * 2.0, f64_t.real(123.0 * 2.0));
@@ -866,10 +827,7 @@ mod tests {
 
         // frem
         assert_eq!(f % 2.0, f64_t.real(123.0 % 2.0));
-        assert_eq!(
-            fv.frem(fv.into()).to_string(),
-            "<4 x double> zeroinitializer"
-        );
+        assert_eq!(fv.frem(fv.into()).to_string(), "<4 x double> zeroinitializer");
 
         // eq
         assert_eq!(i, 123);

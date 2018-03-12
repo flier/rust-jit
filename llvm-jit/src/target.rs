@@ -382,7 +382,7 @@ impl Module {
 }
 
 macro_rules! define_target {
-    ($name:ident, $init:path) => {
+    ($name: ident, $init: path) => {
         pub struct $name;
 
         impl $name {
@@ -391,7 +391,7 @@ macro_rules! define_target {
             }
         }
     };
-    ($name:ident, $init:path, $err:expr) => {
+    ($name: ident, $init: path, $err: expr) => {
         pub struct $name;
 
         impl $name {

@@ -1,9 +1,9 @@
 use llvm::LLVMTypeKind;
 
-use types::{ArrayType, PointerType, SequentialType, StructType, TypeRef, VectorType};
 use function::FunctionType;
 use intrinsics::IntrinsicId;
 use intrinsics::gen::INTRINSIC_NAMES;
+use types::{ArrayType, PointerType, SequentialType, StructType, TypeRef, VectorType};
 
 impl IntrinsicId {
     /// Return the LLVM name for an intrinsic, such as "llvm.ppc.altivec.lvx".
@@ -54,11 +54,7 @@ impl TypeRef {
             LLVMTypeKind::LLVMPointerTypeKind => {
                 let ty = PointerType::from(*self);
 
-                format!(
-                    "p{}{}",
-                    ty.address_space(),
-                    ty.element_type().mangled_name()
-                )
+                format!("p{}{}", ty.address_space(), ty.element_type().mangled_name())
             }
             LLVMTypeKind::LLVMArrayTypeKind => {
                 let ty = ArrayType::from(*self);
@@ -80,8 +76,7 @@ impl TypeRef {
                 } else {
                     s.push_str("sl");
 
-                    ty.elements()
-                        .for_each(|element| s.push_str(&element.mangled_name()))
+                    ty.elements().for_each(|element| s.push_str(&element.mangled_name()))
                 };
 
                 // Ensure nested structs are distinguishable.
@@ -111,10 +106,10 @@ impl TypeRef {
 
 #[cfg(test)]
 mod tests {
-    use types::*;
     use context::Context;
     use function::FunctionType;
     use intrinsics::IntrinsicId;
+    use types::*;
 
     #[test]
     fn mangled_type() {

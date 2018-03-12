@@ -173,39 +173,39 @@ impl ICmpInst {
 /// - sle: interprets the operands as signed values and yields true if `lhs` is less than or equal to `rhs`.
 #[macro_export]
 macro_rules! icmp {
-    (EQ $lhs:expr, $rhs:expr ; $name:expr) => (
+    (EQ $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::ICmp::new($crate::llvm::LLVMIntPredicate::LLVMIntEQ, $lhs, $rhs, $name)
-    );
-    (NE $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (NE $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::ICmp::new($crate::llvm::LLVMIntPredicate::LLVMIntNE, $lhs, $rhs, $name)
-    );
-    (UGT $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (UGT $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::ICmp::new($crate::llvm::LLVMIntPredicate::LLVMIntUGT, $lhs, $rhs, $name)
-    );
-    (UGE $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (UGE $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::ICmp::new($crate::llvm::LLVMIntPredicate::LLVMIntUGE, $lhs, $rhs, $name)
-    );
-    (ULT $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (ULT $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::ICmp::new($crate::llvm::LLVMIntPredicate::LLVMIntULT, $lhs, $rhs, $name)
-    );
-    (ULE $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (ULE $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::ICmp::new($crate::llvm::LLVMIntPredicate::LLVMIntULE, $lhs, $rhs, $name)
-    );
-    (SGT $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (SGT $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::ICmp::new($crate::llvm::LLVMIntPredicate::LLVMIntSGT, $lhs, $rhs, $name)
-    );
-    (SGE $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (SGE $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::ICmp::new($crate::llvm::LLVMIntPredicate::LLVMIntSGE, $lhs, $rhs, $name)
-    );
-    (SLT $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (SLT $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::ICmp::new($crate::llvm::LLVMIntPredicate::LLVMIntSLT, $lhs, $rhs, $name)
-    );
-    (SLE $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (SLE $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::ICmp::new($crate::llvm::LLVMIntPredicate::LLVMIntSLE, $lhs, $rhs, $name)
-    );
-    ($op:ident $lhs:expr, $rhs:expr) => {
+    };
+    ($op: ident $lhs: expr, $rhs: expr) => {
         icmp!($op $lhs, $rhs; stringify!($op).to_lowercase())
-    }
+    };
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -289,57 +289,67 @@ impl FCmpInst {
 ///  - true: always yields true, regardless of operands.
 #[macro_export]
 macro_rules! fcmp {
-    (false $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealPredicateFalse, $lhs, $rhs, $name)
-    );
-    (OEQ $lhs:expr, $rhs:expr ; $name:expr) => (
+    (false $lhs: expr, $rhs: expr; $name: expr) => {
+        $crate::insts::FCmp::new(
+            $crate::llvm::LLVMRealPredicate::LLVMRealPredicateFalse,
+            $lhs,
+            $rhs,
+            $name,
+        )
+    };
+    (OEQ $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealOEQ, $lhs, $rhs, $name)
-    );
-    (OGT $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (OGT $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealOGT, $lhs, $rhs, $name)
-    );
-    (OGE $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (OGE $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealOGE, $lhs, $rhs, $name)
-    );
-    (OLT $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (OLT $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealOLT, $lhs, $rhs, $name)
-    );
-    (OLE $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (OLE $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealOLE, $lhs, $rhs, $name)
-    );
-    (ONE $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (ONE $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealONE, $lhs, $rhs, $name)
-    );
-    (ORD $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (ORD $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealORD, $lhs, $rhs, $name)
-    );
-    (UNO $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (UNO $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealUNO, $lhs, $rhs, $name)
-    );
-    (UEQ $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (UEQ $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealUEQ, $lhs, $rhs, $name)
-    );
-    (UGT $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (UGT $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealUGT, $lhs, $rhs, $name)
-    );
-    (UGE $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (UGE $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealUGE, $lhs, $rhs, $name)
-    );
-    (ULT $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (ULT $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealULT, $lhs, $rhs, $name)
-    );
-    (ULE $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (ULE $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealULE, $lhs, $rhs, $name)
-    );
-    (UNE $lhs:expr, $rhs:expr ; $name:expr) => (
+    };
+    (UNE $lhs: expr, $rhs: expr; $name: expr) => {
         $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealUNE, $lhs, $rhs, $name)
-    );
-    (true $lhs:expr, $rhs:expr ; $name:expr) => (
-        $crate::insts::FCmp::new($crate::llvm::LLVMRealPredicate::LLVMRealPredicateTrue, $lhs, $rhs, $name)
-    );
-    ($op:ident $lhs:expr, $rhs:expr) => {
+    };
+    (true $lhs: expr, $rhs: expr; $name: expr) => {
+        $crate::insts::FCmp::new(
+            $crate::llvm::LLVMRealPredicate::LLVMRealPredicateTrue,
+            $lhs,
+            $rhs,
+            $name,
+        )
+    };
+    ($op: ident $lhs: expr, $rhs: expr) => {
         fcmp!($op $lhs, $rhs; stringify!($op).to_lowercase())
-    }
+    };
 }
 
 #[cfg(test)]
@@ -348,27 +358,27 @@ mod tests {
     use prelude::*;
 
     macro_rules! test_icmp {
-        ($builder:expr, $pred:ident ( $lhs:expr, $rhs:expr)) => ({
+        ($builder: expr, $pred: ident($lhs: expr, $rhs: expr)) => {{
             assert_eq!(
                 icmp!($pred $lhs, $rhs; format!("icmp_{}", stringify!($pred).to_lowercase()))
-                    .emit_to(& $builder)
+                    .emit_to(&$builder)
                     .to_string()
                     .trim(),
                 format!("%icmp_{0} = icmp {0} i64 %0, %1", stringify!($pred).to_lowercase())
             )
-        })
+        }};
     }
 
     macro_rules! test_fcmp {
-        ($builder:expr, $pred:ident ( $lhs:expr, $rhs:expr)) => ({
+        ($builder: expr, $pred: ident($lhs: expr, $rhs: expr)) => {{
             assert_eq!(
                 fcmp!($pred $lhs, $rhs; format!("fcmp_{}", stringify!($pred).to_lowercase()))
-                    .emit_to(& $builder)
+                    .emit_to(&$builder)
                     .to_string()
                     .trim(),
                 format!("%fcmp_{0} = fcmp {0} double %0, %1", stringify!($pred).to_lowercase())
             )
-        })
+        }};
     }
 
     #[test]

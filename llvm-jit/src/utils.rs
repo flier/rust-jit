@@ -170,15 +170,17 @@ pub fn unchecked_cstring<S: AsRef<str>>(s: S) -> CString {
 }
 
 macro_rules! cstr {
-    ($s:expr) => (
+    ($s: expr) => {
         $crate::utils::unchecked_cstring($s).as_bytes_with_nul().as_ptr() as *const i8
-    )
+    };
 }
 
 macro_rules! cpath {
-    ($s:expr) => (
-        $crate::utils::unchecked_cstring($s.to_string_lossy().as_ref()).as_bytes_with_nul().as_ptr() as *const i8
-    )
+    ($s: expr) => {
+        $crate::utils::unchecked_cstring($s.to_string_lossy().as_ref())
+            .as_bytes_with_nul()
+            .as_ptr() as *const i8
+    };
 }
 
 pub fn from_unchecked_cstr<'a>(p: *const u8, len: usize) -> Cow<'a, str> {
@@ -240,7 +242,7 @@ impl DisposableMessage for *mut libc::c_char {
 }
 
 macro_rules! inherit_from {
-    ($ty:ident, $raw:ty) => {
+    ($ty: ident, $raw: ty) => {
         impl ::std::ops::Deref for $ty {
             type Target = $raw;
 
@@ -270,7 +272,7 @@ macro_rules! inherit_from {
         }
     };
 
-    ($ty:ident, $parent:ty, $ancestor:ty, $raw:ty) => {
+    ($ty: ident, $parent: ty, $ancestor: ty, $raw: ty) => {
         impl ::std::ops::Deref for $ty {
             type Target = $ancestor;
 
@@ -331,7 +333,7 @@ macro_rules! inherit_from {
         }
     };
 
-    ($ty:ident, $parent:ty, $raw:ty) => {
+    ($ty: ident, $parent: ty, $raw: ty) => {
         impl ::std::ops::Deref for $ty {
             type Target = $parent;
 
@@ -378,11 +380,11 @@ macro_rules! inherit_from {
                 $ty(v.into())
             }
         }
-    }
+    };
 }
 
 macro_rules! impl_iter {
-    ($name:ident, $first:path [ $list:ty ], $next:path [ $item:ty ], $type:ident) => {
+    ($name: ident, $first: path[$list: ty], $next: path[$item: ty], $type: ident) => {
         pub struct $name {
             list: Option<$list>,
             item: Option<$item>,
@@ -425,12 +427,7 @@ macro_rules! impl_iter {
             }
         }
     };
-    (
-        $name:ident,
-        $first:path | $last:path [ $list:ty ],
-        $next:path | $previous:path [ $item:ty ],
-        $type:ident
-    ) => {
+    ($name: ident, $first: path | $last: path[$list: ty], $next: path | $previous: path[$item: ty], $type: ident) => {
         pub struct $name {
             list: Option<$list>,
             next: Option<$item>,

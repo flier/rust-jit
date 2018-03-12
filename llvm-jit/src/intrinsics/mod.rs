@@ -10,9 +10,9 @@ use llvm::core::LLVMGetIntrinsicID;
 
 use boolinator::Boolinator;
 
-use types::TypeRef;
 use function::Function;
 use module::Module;
+use types::TypeRef;
 use utils::AsRaw;
 
 impl From<u32> for IntrinsicId {

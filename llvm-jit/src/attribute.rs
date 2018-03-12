@@ -315,26 +315,14 @@ impl Function {
 
 impl AttributeGroups for Function {
     fn add_attribute<A: Into<Attribute>>(&self, attr: A) {
-        unsafe {
-            LLVMAddAttributeAtIndex(
-                self.as_raw(),
-                LLVMAttributeFunctionIndex,
-                attr.into().as_raw(),
-            )
-        }
+        unsafe { LLVMAddAttributeAtIndex(self.as_raw(), LLVMAttributeFunctionIndex, attr.into().as_raw()) }
     }
 
     fn get_attributes(&self) -> Vec<Attribute> {
         let count = unsafe { LLVMGetAttributeCountAtIndex(self.as_raw(), LLVMAttributeFunctionIndex) };
         let mut attrs: Vec<LLVMAttributeRef> = vec![ptr::null_mut(); count as usize];
 
-        unsafe {
-            LLVMGetAttributesAtIndex(
-                self.as_raw(),
-                LLVMAttributeFunctionIndex,
-                attrs.as_mut_ptr(),
-            )
-        };
+        unsafe { LLVMGetAttributesAtIndex(self.as_raw(), LLVMAttributeFunctionIndex, attrs.as_mut_ptr()) };
 
         attrs.into_iter().map(|attr| attr.into()).collect()
     }
@@ -372,13 +360,7 @@ impl AttributeGroups for Function {
 
 impl<T: CallSite> AttributeGroups for T {
     fn add_attribute<A: Into<Attribute>>(&self, attr: A) {
-        unsafe {
-            LLVMAddCallSiteAttribute(
-                self.as_raw(),
-                LLVMAttributeReturnIndex,
-                attr.into().as_raw(),
-            )
-        }
+        unsafe { LLVMAddCallSiteAttribute(self.as_raw(), LLVMAttributeReturnIndex, attr.into().as_raw()) }
     }
 
     fn get_attributes(&self) -> Vec<Attribute> {

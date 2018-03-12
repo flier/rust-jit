@@ -58,14 +58,7 @@ impl<'a> InstructionBuilder for Phi<'a> {
             },
         );
 
-        unsafe {
-            LLVMAddIncoming(
-                phi.as_raw(),
-                values.as_mut_ptr(),
-                blocks.as_mut_ptr(),
-                count as u32,
-            )
-        }
+        unsafe { LLVMAddIncoming(phi.as_raw(), values.as_mut_ptr(), blocks.as_mut_ptr(), count as u32) }
 
         phi
     }
@@ -194,10 +187,7 @@ mod tests {
 
         assert_eq!(
             indvar.incomings(),
-            vec![
-                (i64_t.int(0).into(), bb_loop_header),
-                (nextindvar.into(), bb_loop),
-            ]
+            vec![(i64_t.int(0).into(), bb_loop_header), (nextindvar.into(), bb_loop)]
         );
     }
 }

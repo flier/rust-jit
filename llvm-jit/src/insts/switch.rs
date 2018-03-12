@@ -60,13 +60,7 @@ impl<'a> InstructionBuilder for Switch<'a> {
         }.into();
 
         for (cond, dest) in self.cases {
-            unsafe {
-                LLVMAddCase(
-                    switch.as_raw(),
-                    cond.emit_to(builder).into_raw(),
-                    dest.as_raw(),
-                )
-            }
+            unsafe { LLVMAddCase(switch.as_raw(), cond.emit_to(builder).into_raw(), dest.as_raw()) }
         }
 
         switch

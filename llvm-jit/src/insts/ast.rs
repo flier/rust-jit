@@ -1,8 +1,8 @@
-use value::{BlockAddress, Instruction};
 use constant::*;
-use value::*;
-use insts::*;
 use global::GlobalVar;
+use insts::*;
+use value::*;
+use value::{BlockAddress, Instruction};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AstNode<'a> {
@@ -194,21 +194,21 @@ impl<'a> InstructionBuilder for AstNode<'a> {
 }
 
 macro_rules! impl_ast_node {
-    ($name:ident) => {
+    ($name: ident) => {
         impl<'a> From<$name> for AstNode<'a> {
             fn from(node: $name) -> Self {
                 AstNode::$name(node)
             }
         }
     };
-    ($name:ident <'a>) => {
+    ($name: ident < 'a >) => {
         impl<'a> From<$name<'a>> for AstNode<'a> {
             fn from(node: $name<'a>) -> Self {
                 AstNode::$name(node)
             }
         }
     };
-    ($from:ident => $name:ident) => {
+    ($from: ident => $name: ident) => {
         impl<'a> From<$from> for AstNode<'a> {
             fn from(node: $from) -> Self {
                 AstNode::$name(node.into())

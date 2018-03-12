@@ -28,14 +28,7 @@ impl InstructionBuilder for Fence {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        unsafe {
-            LLVMBuildFence(
-                builder.as_raw(),
-                self.ordering,
-                self.single_thread.as_bool(),
-                cstr!(""),
-            )
-        }.into()
+        unsafe { LLVMBuildFence(builder.as_raw(), self.ordering, self.single_thread.as_bool(), cstr!("")) }.into()
     }
 }
 
@@ -148,28 +141,32 @@ impl<'a> InstructionBuilder for AtomicCmpXchg<'a> {
 /// They can only be given `acquire`, `release`, `acq_rel`, and `seq_cst` orderings.
 #[macro_export]
 macro_rules! fence_ordering {
-    (acquire) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquire);
-    (release) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingRelease);
-    (acq_rel) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquireRelease);
-    (seq_cst) => ($crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingSequentiallyConsistent);
-    ($ordering:ident) => ("`fence` instruction can only be given acquire, release, acq_rel, and seq_cst orderings.");
+    (acquire) => {
+        $crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquire
+    };
+    (release) => {
+        $crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingRelease
+    };
+    (acq_rel) => {
+        $crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingAcquireRelease
+    };
+    (seq_cst) => {
+        $crate::llvm::LLVMAtomicOrdering::LLVMAtomicOrderingSequentiallyConsistent
+    };
+    ($ordering: ident) => {
+        "`fence` instruction can only be given acquire, release, acq_rel, and seq_cst orderings."
+    };
 }
 
 /// The `fence` instruction is used to introduce happens-before edges between operations.
 #[macro_export]
 macro_rules! fence {
-    (singlethread $ordering:ident) => (
-        $crate::insts::Fence::new(
-            fence_ordering!($ordering),
-            true,
-        )
-    );
-    ($ordering:ident) => (
-        $crate::insts::Fence::new(
-            fence_ordering!($ordering),
-            false,
-        )
-    );
+    (singlethread $ordering: ident) => {
+        $crate::insts::Fence::new(fence_ordering!($ordering), true)
+    };
+    ($ordering: ident) => {
+        $crate::insts::Fence::new(fence_ordering!($ordering), false)
+    };
 }
 
 #[macro_export]
@@ -202,35 +199,35 @@ macro_rules! atomic_operation {
 
 #[macro_export]
 macro_rules! atomic {
-    ($operation:ident $ptr:expr, $value:expr; $ordering:ident) => (
+    ($operation: ident $ptr: expr, $value: expr; $ordering: ident) => {
         $crate::insts::AtomicRMW::new(
             atomic_operation!($operation),
             $ptr,
             $value,
             atomic_ordering!($ordering),
-            false
+            false,
         )
-    );
-    (cmpxchg $ptr:expr, $cmp:expr, $new:expr; $ordering:ident) => (
+    };
+    (cmpxchg $ptr: expr, $cmp: expr, $new: expr; $ordering: ident) => {
         $crate::insts::AtomicCmpXchg::new(
             $ptr,
             $cmp,
             $new,
             atomic_ordering!($ordering),
             atomic_ordering!($ordering),
-            false
+            false,
         )
-    );
-    (cmpxchg $ptr:expr, $cmp:expr, $new:expr; $success_ordering:ident $failure_ordering:ident) => (
+    };
+    (cmpxchg $ptr: expr, $cmp: expr, $new: expr; $success_ordering: ident $failure_ordering: ident) => {
         $crate::insts::AtomicCmpXchg::new(
             $ptr,
             $cmp,
             $new,
             atomic_ordering!($success_ordering),
             atomic_ordering!($failure_ordering),
-            false
+            false,
         )
-    );
+    };
 }
 
 impl IRBuilder {
@@ -411,14 +408,7 @@ impl IRBuilder {
         C: Into<AstNode<'a>>,
         N: Into<AstNode<'a>>,
     {
-        AtomicCmpXchg::new(
-            ptr,
-            cmp,
-            new,
-            success_ordering,
-            failure_ordering,
-            single_thread,
-        ).emit_to(self)
+        AtomicCmpXchg::new(ptr, cmp, new, success_ordering, failure_ordering, single_thread).emit_to(self)
     }
 }
 
@@ -428,15 +418,15 @@ mod tests {
     use prelude::*;
 
     macro_rules! test_atomic {
-        ($builder:expr, atomic !( $op:ident $ptr:expr, $value:expr ; $ordering:ident ), $display:expr) => (
+        ($builder: expr,atomic !($op: ident $ptr: expr, $value: expr; $ordering: ident), $display: expr) => {
             assert_eq!(
                 atomic!($op $ptr, $value ; $ordering)
-                    .emit_to(& $builder)
+                    .emit_to(&$builder)
                     .to_string()
                     .trim(),
                 $display
             )
-        )
+        };
     }
 
     #[test]
@@ -507,16 +497,10 @@ mod tests {
             "%10 = atomicrmw umin i64* %0, i64 123 unordered"
         );
 
-        assert_eq!(
-            fence!(acquire).emit_to(&builder).to_string().trim(),
-            "fence acquire"
-        );
+        assert_eq!(fence!(acquire).emit_to(&builder).to_string().trim(), "fence acquire");
 
         assert_eq!(
-            fence!(singlethread acq_rel)
-                .emit_to(&builder)
-                .to_string()
-                .trim(),
+            fence!(singlethread acq_rel).emit_to(&builder).to_string().trim(),
             "fence syncscope(\"singlethread\") acq_rel"
         );
 

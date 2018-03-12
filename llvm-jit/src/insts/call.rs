@@ -184,10 +184,7 @@ mod tests {
 
         let call = call!(fn_hello, i64_t.uint(123), i64_t.int(456); "call").emit_to(&builder);
 
-        assert_eq!(
-            call.to_string().trim(),
-            "%call = call i64 @hello(i64 123, i64 456)"
-        );
+        assert_eq!(call.to_string().trim(), "%call = call i64 @hello(i64 123, i64 456)");
         assert_eq!(call.argn(), 2);
         assert!(matches!(call.call_conv(), LLVMCallConv::LLVMCCallConv));
         assert_eq!(call.called(), fn_hello);

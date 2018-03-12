@@ -3,11 +3,11 @@ use std::borrow::Cow;
 use llvm::core::*;
 
 use insts::{AstNode, InstructionBuilder};
-use utils::{AsRaw, IntoRaw};
 use types::TypeRef;
+use utils::{AsRaw, IntoRaw};
 
 macro_rules! define_cast_instruction {
-    ($operator:ident, $func:path, $alias:ident, $comment:expr) => (
+    ($operator: ident, $func: path, $alias: ident, $comment: expr) => {
         #[doc=$comment]
         #[derive(Clone, Debug, PartialEq)]
         pub struct $operator<'a> {
@@ -31,11 +31,10 @@ macro_rules! define_cast_instruction {
             }
         }
 
-        impl<'a> $crate::insts::InstructionBuilder for $operator<'a>
-        {
+        impl<'a> $crate::insts::InstructionBuilder for $operator<'a> {
             type Target = $crate::Instruction;
 
-            fn emit_to(self, builder: & $crate::insts::IRBuilder) -> Self::Target {
+            fn emit_to(self, builder: &$crate::insts::IRBuilder) -> Self::Target {
                 trace!("{:?} emit instruction: {:?}", builder, self);
 
                 unsafe {
@@ -54,7 +53,7 @@ macro_rules! define_cast_instruction {
         where
             V: Into<AstNode<'a>>,
             T: Into<TypeRef>,
-            N: Into<Cow<'a, str>>
+            N: Into<Cow<'a, str>>,
         {
             $crate::insts::$operator::new(value, ty, name)
         }
@@ -62,12 +61,12 @@ macro_rules! define_cast_instruction {
         #[doc=$comment]
         #[macro_export]
         macro_rules! $alias {
-            ($value:expr, $ty:expr; $name:expr) => (
+            ($value: expr,$ty: expr; $name: expr) => {
                 $crate::insts::$alias($value, $ty, $name)
-            );
-            ($value:expr, $ty:expr) => (
+            };
+            ($value: expr,$ty: expr) => {
                 $crate::insts::$alias($value, $ty, stringify!($alias))
-            );
+            };
         }
 
         impl $crate::insts::IRBuilder {
@@ -76,12 +75,12 @@ macro_rules! define_cast_instruction {
             where
                 V: Into<AstNode<'a>>,
                 T: Into<TypeRef>,
-                N: Into<Cow<'a, str>>
+                N: Into<Cow<'a, str>>,
             {
                 $crate::insts::$alias(value, ty, name).emit_to(self)
             }
         }
-    )
+    };
 }
 
 define_cast_instruction!(
@@ -205,12 +204,15 @@ mod tests {
     use prelude::*;
 
     macro_rules! test_instruction {
-        ($builder:ident, $name:ident !( $arg0_i64:ident, $arg1_i64:ident ), $display:expr) => (
+        ($builder: ident, $name: ident !($arg0_i64: ident, $arg1_i64: ident), $display: expr) => {
             assert_eq!(
-                $name ( $arg0_i64, $arg1_i64, stringify!($name) ).emit_to(& $builder).to_string().trim(),
+                $name($arg0_i64, $arg1_i64, stringify!($name))
+                    .emit_to(&$builder)
+                    .to_string()
+                    .trim(),
                 $display
             )
-        );
+        };
     }
 
     #[test]
@@ -251,37 +253,13 @@ mod tests {
         test_instruction!(b, zext!(arg4_i32, i64_t), "%zext = zext i32 %4 to i64");
         test_instruction!(b, sext!(arg4_i32, i64_t), "%sext = sext i32 %4 to i64");
 
-        test_instruction!(
-            b,
-            fptrunc!(arg2_f64, f32_t),
-            "%fptrunc = fptrunc double %2 to float"
-        );
-        test_instruction!(
-            b,
-            fpext!(arg5_f32, f64_t),
-            "%fpext = fpext float %5 to double"
-        );
+        test_instruction!(b, fptrunc!(arg2_f64, f32_t), "%fptrunc = fptrunc double %2 to float");
+        test_instruction!(b, fpext!(arg5_f32, f64_t), "%fpext = fpext float %5 to double");
 
-        test_instruction!(
-            b,
-            fptoui!(arg2_f64, i64_t),
-            "%fptoui = fptoui double %2 to i64"
-        );
-        test_instruction!(
-            b,
-            fptosi!(arg2_f64, i64_t),
-            "%fptosi = fptosi double %2 to i64"
-        );
-        test_instruction!(
-            b,
-            uitofp!(arg0_i64, f64_t),
-            "%uitofp = uitofp i64 %0 to double"
-        );
-        test_instruction!(
-            b,
-            sitofp!(arg0_i64, f64_t),
-            "%sitofp = sitofp i64 %0 to double"
-        );
+        test_instruction!(b, fptoui!(arg2_f64, i64_t), "%fptoui = fptoui double %2 to i64");
+        test_instruction!(b, fptosi!(arg2_f64, i64_t), "%fptosi = fptosi double %2 to i64");
+        test_instruction!(b, uitofp!(arg0_i64, f64_t), "%uitofp = uitofp i64 %0 to double");
+        test_instruction!(b, sitofp!(arg0_i64, f64_t), "%sitofp = sitofp i64 %0 to double");
 
         test_instruction!(
             b,
@@ -341,25 +319,9 @@ mod tests {
             ptr_cast!(arg6_p_i64, p_f64_t),
             "%ptr_cast = bitcast i64* %6 to double*"
         );
-        test_instruction!(
-            b,
-            int_cast!(arg0_i64, i32_t),
-            "%int_cast = trunc i64 %0 to i32"
-        );
-        test_instruction!(
-            b,
-            int_cast!(arg4_i32, i64_t),
-            "%int_cast4 = sext i32 %4 to i64"
-        );
-        test_instruction!(
-            b,
-            fp_cast!(arg2_f64, f32_t),
-            "%fp_cast = fptrunc double %2 to float"
-        );
-        test_instruction!(
-            b,
-            fp_cast!(arg5_f32, f64_t),
-            "%fp_cast5 = fpext float %5 to double"
-        );
+        test_instruction!(b, int_cast!(arg0_i64, i32_t), "%int_cast = trunc i64 %0 to i32");
+        test_instruction!(b, int_cast!(arg4_i32, i64_t), "%int_cast4 = sext i32 %4 to i64");
+        test_instruction!(b, fp_cast!(arg2_f64, f32_t), "%fp_cast = fptrunc double %2 to float");
+        test_instruction!(b, fp_cast!(arg5_f32, f64_t), "%fp_cast5 = fpext float %5 to double");
     }
 }

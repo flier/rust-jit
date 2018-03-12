@@ -89,12 +89,12 @@ where
 /// then an entire vector is selected.
 #[macro_export]
 macro_rules! select {
-    ($cond:expr => $then:expr, _ => $or_else:expr; $name:expr) => (
+    ($cond: expr => $then: expr, _ => $or_else: expr; $name: expr) => {
         $crate::insts::select($cond, $then, $or_else, $name)
-    );
-    ($cond:expr => $then:expr, _ => $or_else:expr) => (
+    };
+    ($cond: expr => $then: expr, _ => $or_else: expr) => {
         select!($cond, $then, $or_else; "select")
-    );
+    };
 }
 
 impl IRBuilder {

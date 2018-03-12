@@ -29,12 +29,12 @@ unsafe impl Sync for ValueRef {}
 inherit_from!(ValueRef, LLVMValueRef);
 
 macro_rules! inherit_value_ref {
-    ($ty:ident) => {
+    ($ty: ident) => {
         inherit_from!($ty, ValueRef, LLVMValueRef);
     };
-    ($ty:ident, $parent:ty) => (
+    ($ty: ident, $parent: ty) => {
         inherit_from!($ty, $parent, ValueRef, LLVMValueRef);
-    );
+    };
 }
 
 pub trait AsValueRef: AsRaw<RawType = LLVMValueRef> {}
@@ -117,11 +117,7 @@ impl ValueRef {
 
 impl fmt::Display for ValueRef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            unsafe { LLVMPrintValueToString(self.0) }.into_string()
-        )
+        write!(f, "{}", unsafe { LLVMPrintValueToString(self.0) }.into_string())
     }
 }
 
@@ -210,9 +206,9 @@ impl Instruction {
 
 #[cfg(test)]
 mod tests {
+    use constant::{ConstantInts, ToConstantStruct};
     use context::Context;
     use types::IntegerTypes;
-    use constant::{ConstantInts, ToConstantStruct};
 
     #[test]
     fn uses() {

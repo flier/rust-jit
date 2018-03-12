@@ -120,12 +120,8 @@ impl Module {
         return_type: T,
         params_type: &[TypeRef],
     ) -> Function {
-        self.get_function(name.as_ref()).unwrap_or_else(|| {
-            self.add_function(
-                name,
-                FunctionType::new(return_type.into(), params_type, false),
-            )
-        })
+        self.get_function(name.as_ref())
+            .unwrap_or_else(|| self.add_function(name, FunctionType::new(return_type.into(), params_type, false)))
     }
 
     /// Add a function to a module under a specified name.
@@ -167,13 +163,7 @@ impl Module {
 
         let var = unsafe { LLVMAddGlobal(self.as_raw(), ty.as_raw(), cstr!(name)) };
 
-        trace!(
-            "add global var `{}`: {:?} to {:?}: ValueRef({:?})",
-            name,
-            ty,
-            self,
-            var,
-        );
+        trace!("add global var `{}`: {:?} to {:?}: ValueRef({:?})", name, ty, self, var,);
 
         var.into()
     }
@@ -188,13 +178,7 @@ impl Module {
         let name = name.as_ref();
         let var = unsafe { LLVMAddGlobalInAddressSpace(self.as_raw(), ty.as_raw(), cstr!(name), address_space) };
 
-        trace!(
-            "add global var `{}`: {:?} to {:?}: ValueRef({:?})",
-            name,
-            ty,
-            self,
-            var,
-        );
+        trace!("add global var `{}`: {:?} to {:?}: ValueRef({:?})", name, ty, self, var,);
 
         var.into()
     }
@@ -262,11 +246,7 @@ impl PartialEq<Module> for Module {
 
 impl fmt::Display for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            unsafe { LLVMPrintModuleToString(self.as_raw()) }.into_string()
-        )
+        write!(f, "{}", unsafe { LLVMPrintModuleToString(self.as_raw()) }.into_string())
     }
 }
 
@@ -276,12 +256,7 @@ impl Context {
         let name = name.as_ref();
         let module = unsafe { LLVMModuleCreateWithNameInContext(cstr!(name), self.as_raw()) };
 
-        trace!(
-            "create `{}` module in {:?}: Module({:?})",
-            name,
-            self,
-            module,
-        );
+        trace!("create `{}` module in {:?}: Module({:?})", name, self, module,);
 
         Module(State::Owned(module))
     }
@@ -293,11 +268,7 @@ impl GlobalContext {
         let name = name.as_ref();
         let module = unsafe { LLVMModuleCreateWithName(cstr!(name)) };
 
-        trace!(
-            "create `{}` module in global context: Module({:?})",
-            name,
-            module
-        );
+        trace!("create `{}` module in global context: Module({:?})", name, module);
 
         Module(State::Owned(module))
     }

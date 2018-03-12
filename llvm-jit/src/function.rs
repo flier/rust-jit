@@ -35,10 +35,7 @@ inherit_from!(FunctionType, TypeRef, LLVMTypeRef);
 impl FunctionType {
     /// Obtain a function type consisting of a specified signature.
     pub fn new(return_type: TypeRef, params_type: &[TypeRef], var_arg: bool) -> Self {
-        let mut params = params_type
-            .iter()
-            .map(|t| t.as_raw())
-            .collect::<Vec<LLVMTypeRef>>();
+        let mut params = params_type.iter().map(|t| t.as_raw()).collect::<Vec<LLVMTypeRef>>();
 
         let function = unsafe {
             LLVMFunctionType(
@@ -52,13 +49,11 @@ impl FunctionType {
         trace!(
             "create Function({:?}): ({}) -> {}",
             function,
-            params_type
-                .iter()
-                .fold("".to_owned(), |s, t| if s.is_empty() {
-                    t.to_string()
-                } else {
-                    format!("{}, {}", s, t)
-                },),
+            params_type.iter().fold("".to_owned(), |s, t| if s.is_empty() {
+                t.to_string()
+            } else {
+                format!("{}, {}", s, t)
+            },),
             return_type,
         );
 
@@ -127,12 +122,7 @@ impl Function {
         let name = name.as_ref();
         let block = unsafe { LLVMAppendBasicBlock(self.as_raw(), cstr!(name)) }.into();
 
-        trace!(
-            "{:?} create `{}` block in the global context: {:?}",
-            self,
-            name,
-            block
-        );
+        trace!("{:?} create `{}` block in the global context: {:?}", self, name, block);
 
         block
     }
@@ -142,13 +132,7 @@ impl Function {
         let name = name.as_ref();
         let block = unsafe { LLVMAppendBasicBlockInContext(context.as_raw(), self.as_raw(), cstr!(name)) }.into();
 
-        trace!(
-            "{:?} create `{}` block in {:?}: {:?}",
-            self,
-            name,
-            context,
-            block,
-        );
+        trace!("{:?} create `{}` block in {:?}: {:?}", self, name, context, block,);
 
         block
     }
