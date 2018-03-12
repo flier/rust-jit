@@ -1,0 +1,13 @@
+[package]
+name = "llvm-wasm"
+version = "0.1.0"
+authors = ["Flier Lu <flier.lu@gmail.com>"]
+
+[dependencies]
+log = "0.4"
+error-chain = "0.11"
+parity-wasm = "0.27"
+
+[dev-dependencies]
+pretty_env_logger = "0.2"
+getopts = "0.2"
