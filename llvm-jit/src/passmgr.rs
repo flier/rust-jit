@@ -152,9 +152,6 @@ pub enum Pass {
     /// Merge basic blocks, eliminate unreachable blocks, simplify terminator instructions, etc...
     CFGSimplification,
 
-    /// Like CFGSimplification, but may also convert switches to lookup tables.
-    LateCFGSimplification,
-
     /// Dead Store Elimination
     ///
     /// A trivial dead store elimination that only considers basic-block local redundant stores.
@@ -379,7 +376,6 @@ impl PassManager {
             Pass::BitTrackingDCE => unsafe { LLVMAddBitTrackingDCEPass(self.as_raw()) },
             Pass::AlignmentFromAssumptions => unsafe { LLVMAddAlignmentFromAssumptionsPass(self.as_raw()) },
             Pass::CFGSimplification => unsafe { LLVMAddCFGSimplificationPass(self.as_raw()) },
-            Pass::LateCFGSimplification => unsafe { LLVMAddLateCFGSimplificationPass(self.as_raw()) },
             Pass::DeadStoreElimination => unsafe { LLVMAddDeadStoreEliminationPass(self.as_raw()) },
             Pass::Scalarizer => unsafe { LLVMAddScalarizerPass(self.as_raw()) },
             Pass::MergedLoadStoreMotion => unsafe { LLVMAddMergedLoadStoreMotionPass(self.as_raw()) },

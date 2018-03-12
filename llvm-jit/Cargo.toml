@@ -15,7 +15,7 @@ boolinator = "2.4"
 hexplay = "0.2"
 libc = "0.2"
 nom = "3.2"
-llvm-sys = "50"
+llvm-sys = "60"
 
 clippy = {version = "*", optional = true}
 
