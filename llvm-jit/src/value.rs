@@ -11,7 +11,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use constant::Constant;
 use types::TypeRef;
-use utils::{AsBool, AsRaw, DisposableMessage, FromRaw, UncheckedCStr};
+use utils::{AsBool, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
 
 #[macro_export]
 macro_rules! values {
@@ -106,7 +106,7 @@ impl ValueRef {
 
     /// Convert a `ValueRef` to an `BasicBlock` instance.
     pub fn as_basic_block(&self) -> Option<BasicBlock> {
-        unsafe { LLVMValueAsBasicBlock(self.0) }.wrap()
+        unsafe { LLVMValueAsBasicBlock(self.0) }.ok()
     }
 
     /// Returns an iterator over the use of a value.
@@ -195,12 +195,12 @@ impl Instruction {
 
     /// Obtain the instruction that occurs after the one specified.
     pub fn next(&self) -> Option<Instruction> {
-        unsafe { LLVMGetNextInstruction(self.as_raw()) }.wrap()
+        unsafe { LLVMGetNextInstruction(self.as_raw()) }.ok()
     }
 
     /// Obtain the instruction that occurred before this one.
     pub fn previous(&self) -> Option<Instruction> {
-        unsafe { LLVMGetPreviousInstruction(self.as_raw()) }.wrap()
+        unsafe { LLVMGetPreviousInstruction(self.as_raw()) }.ok()
     }
 }
 

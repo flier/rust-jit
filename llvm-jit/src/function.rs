@@ -7,7 +7,7 @@ use llvm::prelude::*;
 use block::BasicBlock;
 use context::Context;
 use types::TypeRef;
-use utils::{AsBool, AsRaw, FromRaw};
+use utils::{AsBool, AsRaw, AsResult};
 use value::ValueRef;
 
 #[macro_export]
@@ -114,7 +114,7 @@ impl Function {
 
     /// Obtain the basic block that corresponds to the entry point of a function.
     pub fn entry(&self) -> Option<BasicBlock> {
-        unsafe { LLVMGetEntryBasicBlock(self.as_raw()) }.wrap()
+        unsafe { LLVMGetEntryBasicBlock(self.as_raw()) }.ok()
     }
 
     /// Append a basic block to the end of a function using the global context.
@@ -161,7 +161,7 @@ impl Function {
     pub fn get_param(&self, index: u32) -> Option<ValueRef> {
         let count = unsafe { LLVMCountParams(self.as_raw()) };
 
-        (index < count).and_option_from(|| unsafe { LLVMGetParam(self.as_raw(), index) }.wrap())
+        (index < count).and_option_from(|| unsafe { LLVMGetParam(self.as_raw(), index) }.ok())
     }
 
     /// Remove a function from its containing module and deletes it.

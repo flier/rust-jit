@@ -14,7 +14,7 @@ use global::GlobalValue;
 use module::Module;
 use target::{TargetData, TargetMachine};
 use types::TypeRef;
-use utils::{unchecked_cstring, AsMutPtr, AsRaw, AsResult, DisposableMessage, FromRaw, IntoRaw, FALSE, TRUE};
+use utils::{unchecked_cstring, AsMutPtr, AsRaw, AsResult, DisposableMessage, IntoRaw, FALSE, TRUE};
 
 /// Deallocate and destroy all `ManagedStatic` variables.
 pub fn shutdown() {
@@ -185,7 +185,7 @@ impl MCJITMemoryManager {
         free: LLVMMemoryManagerFinalizeMemoryCallback,
         destroy: LLVMMemoryManagerDestroyCallback,
     ) -> Option<Self> {
-        unsafe { LLVMCreateSimpleMCJITMemoryManager(data.as_mut_ptr(), alloc_code, alloc_data, free, destroy) }.wrap()
+        unsafe { LLVMCreateSimpleMCJITMemoryManager(data.as_mut_ptr(), alloc_code, alloc_data, free, destroy) }.ok()
     }
 
     /// Consumes the wrapper, returning the wrapped raw pointer.

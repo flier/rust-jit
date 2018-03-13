@@ -12,7 +12,7 @@ use constant::ConstantInt;
 use context::{Context, GlobalContext};
 use function::FunctionType;
 use module::AddressSpace;
-use utils::{AsBool, AsLLVMBool, AsRaw, DisposableMessage, FromRaw, UncheckedCStr};
+use utils::{AsBool, AsLLVMBool, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
 use value::ValueRef;
 
 #[macro_export]
@@ -530,7 +530,7 @@ impl StructType {
     /// Get the type of the element at a given index in the structure.
     pub fn element_type(self, index: usize) -> Option<TypeRef> {
         (index < self.element_count())
-            .and_option_from(|| unsafe { LLVMStructGetTypeAtIndex(self.as_raw(), index as u32) }.wrap())
+            .and_option_from(|| unsafe { LLVMStructGetTypeAtIndex(self.as_raw(), index as u32) }.ok())
     }
 
     /// Get the elements within a structure.

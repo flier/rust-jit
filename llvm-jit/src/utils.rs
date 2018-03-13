@@ -34,23 +34,6 @@ impl<T: AsRaw> IntoRaw for T {
     }
 }
 
-pub trait FromRaw<T>
-where
-    T: From<Self>,
-    Self: Sized,
-{
-    fn wrap(self) -> Option<T>;
-}
-
-impl<P, T> FromRaw<T> for *mut P
-where
-    T: From<*mut P>,
-{
-    fn wrap(self) -> Option<T> {
-        unsafe { self.as_mut().map(|p| (p as *mut P).into()) }
-    }
-}
-
 pub const TRUE: LLVMBool = 1;
 pub const FALSE: LLVMBool = 0;
 

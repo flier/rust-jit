@@ -6,7 +6,7 @@ use llvm::prelude::*;
 use context::Context;
 use function::Function;
 use insts::ReturnInst;
-use utils::{AsRaw, FromRaw, UncheckedCStr};
+use utils::{AsRaw, AsResult, UncheckedCStr};
 use value::{BlockAddress, Instruction, ValueRef};
 
 /// Basic Block
@@ -38,7 +38,7 @@ impl BasicBlock {
 
     /// Obtain the terminator instruction for a basic block.
     pub fn terminator(&self) -> Option<ReturnInst> {
-        unsafe { LLVMGetBasicBlockTerminator(self.0) }.wrap()
+        unsafe { LLVMGetBasicBlockTerminator(self.0) }.ok()
     }
 
     /// Convert a basic block instance to a value type.

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::mem;
 use std::ptr;
-use std::result::{Result as StdResult};
+use std::result::Result as StdResult;
 
 use boolinator::Boolinator;
 use failure::Error;
@@ -9,8 +9,8 @@ use llvm::orc::*;
 use llvm::prelude::*;
 
 use errors::Result;
-use module::Module;
 use membuf::MemoryBuffer;
+use module::Module;
 use target::TargetMachine;
 use utils::{AsMutPtr, AsRaw, AsResult, IntoRaw, UncheckedCStr};
 
@@ -206,7 +206,8 @@ impl JITStack {
                 mem::transmute(resolver),
                 ctx.as_mut_ptr(),
             )
-        }.ok_or_else(|| self.err()).map(|_| handle)
+        }.ok_or_else(|| self.err())
+            .map(|_| handle)
     }
 
     /// Remove a module set from the JIT.

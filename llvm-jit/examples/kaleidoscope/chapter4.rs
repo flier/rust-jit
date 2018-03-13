@@ -305,15 +305,15 @@ mod parser {
     macro_rules! eat_token {
         ($self_: ident, $token: pat => $code: block, $msg: expr) => {
             match_token!($self_, $token => {
-                                                        $self_.next_token();
+                                                                $self_.next_token();
 
-                                                        $code
-                                                    }, $msg)
+                                                                $code
+                                                            }, $msg)
         };
         ($self_: ident, $token: pat, $msg: expr) => {
             match_token!($self_, $token => {
-                                                        $self_.next_token();
-                                                    }, $msg)
+                                                                $self_.next_token();
+                                                            }, $msg)
         };
     }
 

@@ -11,7 +11,7 @@ use function::Function;
 use function::FunctionType;
 use global::GlobalVar;
 use types::TypeRef;
-use utils::{from_unchecked_cstr, AsRaw, AsResult, DisposableMessage, FromRaw, UncheckedCStr};
+use utils::{from_unchecked_cstr, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
 
 pub type AddressSpace = u32;
 
@@ -106,7 +106,7 @@ impl Module {
     pub fn get_type<S: AsRef<str>>(&self, name: S) -> Option<TypeRef> {
         let name = name.as_ref();
 
-        unsafe { LLVMGetTypeByName(self.as_raw(), cstr!(name)) }.wrap()
+        unsafe { LLVMGetTypeByName(self.as_raw(), cstr!(name)) }.ok()
     }
 
     /// Look up the specified function in the module symbol table.
@@ -144,7 +144,7 @@ impl Module {
     pub fn get_function<S: AsRef<str>>(&self, name: S) -> Option<Function> {
         let name = name.as_ref();
 
-        unsafe { LLVMGetNamedFunction(self.as_raw(), cstr!(name)) }.wrap()
+        unsafe { LLVMGetNamedFunction(self.as_raw(), cstr!(name)) }.ok()
     }
 
     /// Obtain an iterator to the Function in a module.
@@ -185,7 +185,7 @@ impl Module {
 
     /// Obtain a global variable value from a Module by its name.
     pub fn get_global_var<S: AsRef<str>>(&self, name: S) -> Option<GlobalVar> {
-        unsafe { LLVMGetNamedGlobal(self.as_raw(), cstr!(name.as_ref())) }.wrap()
+        unsafe { LLVMGetNamedGlobal(self.as_raw(), cstr!(name.as_ref())) }.ok()
     }
 
     /// Obtain an iterator to the global variables in a module.

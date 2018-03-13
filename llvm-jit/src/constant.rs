@@ -7,7 +7,7 @@ use llvm::prelude::*;
 
 use context::Context;
 use types::{FloatingPointType, IntegerType, StructType, TypeRef};
-use utils::{from_unchecked_cstr, AsBool, AsLLVMBool, AsRaw, FromRaw};
+use utils::{from_unchecked_cstr, AsBool, AsLLVMBool, AsRaw, AsResult};
 use value::{AsValueRef, ValueRef};
 
 pub trait AsConstant: AsValueRef {
@@ -37,23 +37,23 @@ macro_rules! impl_constant {
 
 impl ValueRef {
     pub fn as_constant_fp(&self) -> Option<ConstantFP> {
-        unsafe { LLVMIsAConstantFP(self.as_raw()) }.wrap()
+        unsafe { LLVMIsAConstantFP(self.as_raw()) }.ok()
     }
 
     pub fn as_constant_int(&self) -> Option<ConstantInt> {
-        unsafe { LLVMIsAConstantInt(self.as_raw()) }.wrap()
+        unsafe { LLVMIsAConstantInt(self.as_raw()) }.ok()
     }
 
     pub fn as_constant_array(&self) -> Option<ConstantArray> {
-        unsafe { LLVMIsAConstantArray(self.as_raw()) }.wrap()
+        unsafe { LLVMIsAConstantArray(self.as_raw()) }.ok()
     }
 
     pub fn as_constant_vector(&self) -> Option<ConstantVector> {
-        unsafe { LLVMIsAConstantVector(self.as_raw()) }.wrap()
+        unsafe { LLVMIsAConstantVector(self.as_raw()) }.ok()
     }
 
     pub fn as_constant_struct(&self) -> Option<ConstantStruct> {
-        unsafe { LLVMIsAConstantStruct(self.as_raw()) }.wrap()
+        unsafe { LLVMIsAConstantStruct(self.as_raw()) }.ok()
     }
 }
 
@@ -298,7 +298,7 @@ impl ToConstantStruct for Context {
 pub trait ConstantDataSequential: AsValueRef {
     /// Get an element at specified index as a constant.
     fn element(&self, index: usize) -> Option<Constant> {
-        unsafe { LLVMGetElementAsConstant(self.as_raw(), index as u32) }.wrap()
+        unsafe { LLVMGetElementAsConstant(self.as_raw(), index as u32) }.ok()
     }
 }
 
