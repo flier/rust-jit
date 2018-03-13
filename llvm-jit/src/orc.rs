@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::mem;
 use std::ptr;
+use std::result::{Result as StdResult};
 
 use boolinator::Boolinator;
 use failure::Error;
@@ -18,9 +19,20 @@ pub type LazyCompileCallback = LLVMOrcLazyCompileCallbackFn;
 pub type SymbolResolver = LLVMOrcSymbolResolverFn;
 pub type ModuleHandle = LLVMOrcModuleHandle;
 
-impl AsResult for LLVMOrcErrorCode {
+impl AsResult<()> for LLVMOrcErrorCode {
     fn is_ok(self) -> bool {
         self == LLVMOrcErrorCode::LLVMOrcErrSuccess
+    }
+
+    fn ok_or_else<F, E>(self, err: F) -> StdResult<(), E>
+    where
+        F: FnOnce() -> E,
+    {
+        if self.is_ok() {
+            Ok(())
+        } else {
+            Err(err())
+        }
     }
 }
 

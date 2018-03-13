@@ -64,26 +64,28 @@ impl AsBool for LLVMBool {
     }
 }
 
-pub trait AsResult: Sized {
+pub trait AsResult<T>: Sized {
     fn is_ok(self) -> bool;
 
-    fn ok(self) -> Option<()> {
-        if self.is_ok() {
-            Some(())
-        } else {
-            None
-        }
+    fn ok(self) -> Option<T> {
+        self.ok_or(()).ok()
     }
 
-    fn ok_or<E>(self, err: E) -> Result<(), E> {
-        if self.is_ok() {
-            Ok(())
-        } else {
-            Err(err)
-        }
+    fn ok_or<E>(self, err: E) -> Result<T, E> {
+        self.ok_or_else(|| err)
     }
 
-    fn ok_or_else<E, F>(self, err: F) -> Result<(), E>
+    fn ok_or_else<F, E>(self, err: F) -> Result<T, E>
+    where
+        F: FnOnce() -> E;
+}
+
+impl AsResult<()> for LLVMBool {
+    fn is_ok(self) -> bool {
+        self == FALSE
+    }
+
+    fn ok_or_else<F, E>(self, err: F) -> Result<(), E>
     where
         F: FnOnce() -> E,
     {
@@ -95,9 +97,23 @@ pub trait AsResult: Sized {
     }
 }
 
-impl AsResult for LLVMBool {
+impl<P, T> AsResult<T> for *mut P
+where
+    T: From<*mut P>,
+{
     fn is_ok(self) -> bool {
-        self == FALSE
+        !self.is_null()
+    }
+
+    fn ok_or_else<F, E>(self, err: F) -> Result<T, E>
+    where
+        F: FnOnce() -> E,
+    {
+        if !self.is_null() {
+            Ok(self.into())
+        } else {
+            Err(err())
+        }
     }
 }
 

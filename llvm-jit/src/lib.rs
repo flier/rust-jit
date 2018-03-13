@@ -69,6 +69,7 @@ mod membuf;
 mod metadata;
 mod object;
 mod bitcode;
+mod debuginfo;
 
 pub use attribute::{attrs, Attribute, AttributeIndex, EnumAttribute, StringAttribute};
 pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString, ConstantStruct, ConstantVector,
@@ -90,6 +91,7 @@ pub use symbols::Symbols;
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType, TypeKind, TypeRef,
                 VectorType};
 pub use value::{BlockAddress, Instruction, Opcode, ValueKind, ValueRef};
+pub use debuginfo::{DIBuilder, debug_metadata_version};
 
 pub mod prelude {
     //! A prelude for writing LLVM JIT code.
