@@ -9,7 +9,7 @@ use llvm::prelude::*;
 
 use errors::Result;
 use module::Module;
-use object::ObjectFile;
+use membuf::MemoryBuffer;
 use target::TargetMachine;
 use utils::{AsMutPtr, AsRaw, AsResult, IntoRaw, UncheckedCStr};
 
@@ -38,23 +38,6 @@ impl<T: IntoRaw<RawType = LLVMModuleRef>> From<T> for SharedModule {
 impl Drop for SharedModule {
     fn drop(&mut self) {
         unsafe { LLVMOrcDisposeSharedModuleRef(self.0) }
-    }
-}
-
-#[derive(Debug)]
-pub struct SharedObjectBuffer(LLVMSharedObjectBufferRef);
-
-inherit_from!(SharedObjectBuffer, LLVMSharedObjectBufferRef);
-
-impl<T: AsRaw<RawType = LLVMMemoryBufferRef>> From<T> for SharedObjectBuffer {
-    fn from(buf: T) -> Self {
-        SharedObjectBuffer(unsafe { LLVMOrcMakeSharedObjectBuffer(buf.as_raw()) })
-    }
-}
-
-impl Drop for SharedObjectBuffer {
-    fn drop(&mut self) {
-        unsafe { LLVMOrcDisposeSharedObjectBufferRef(self.0) }
     }
 }
 
@@ -197,23 +180,21 @@ impl JITStack {
     /// Add an object file.
     pub fn add_object_file<T>(
         &self,
-        obj: ObjectFile,
+        obj: MemoryBuffer,
         resolver: Option<SymbolResolver>,
         ctx: Option<&mut T>,
     ) -> Result<ModuleHandle> {
         let mut handle = ModuleHandle::default();
-        let obj = obj.into_raw();
 
         unsafe {
             LLVMOrcAddObjectFile(
                 self.as_raw(),
                 &mut handle,
-                obj,
+                obj.into_raw(),
                 mem::transmute(resolver),
                 ctx.as_mut_ptr(),
             )
-        }.ok_or_else(|| self.err())
-            .map(|_| handle)
+        }.ok_or_else(|| self.err()).map(|_| handle)
     }
 
     /// Remove a module set from the JIT.

@@ -84,8 +84,7 @@ pub use membuf::MemoryBuffer;
 pub use metadata::{MDKindId, MDNode, MDString, Metadata};
 pub use module::{AddressSpace, Module};
 pub use object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
-pub use orc::{JITStack, LazyCompileCallback, ModuleHandle, SharedModule, SharedObjectBuffer, SymbolResolver,
-              TargetAddress};
+pub use orc::{JITStack, LazyCompileCallback, ModuleHandle, SharedModule, SymbolResolver, TargetAddress};
 pub use passmgr::{FunctionPassManager, Pass, PassManager, PassManagerBuilder, PassRegistry};
 pub use symbols::Symbols;
 pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType, TypeKind, TypeRef,

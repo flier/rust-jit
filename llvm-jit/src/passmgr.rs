@@ -32,6 +32,9 @@ pub enum Pass {
     /// regardless of whether or not an existing string is available.
     ConstantMerge,
 
+    /// Attach metadata to indirct call sites indicating the set of functions they may target at run-time.
+    CalledValuePropagation,
+
     /// Dead Argument Elimination
     ///
     /// This pass deletes dead arguments from internal functions.
@@ -352,6 +355,7 @@ impl PassManager {
             // Interprocedural transformations
             Pass::ArgumentPromotion => unsafe { LLVMAddArgumentPromotionPass(self.as_raw()) },
             Pass::ConstantMerge => unsafe { LLVMAddConstantMergePass(self.as_raw()) },
+            Pass::CalledValuePropagation => unsafe { LLVMAddCalledValuePropagationPass(self.as_raw()) },
             Pass::DeadArgElimination => unsafe { LLVMAddDeadArgEliminationPass(self.as_raw()) },
             Pass::FunctionAttrs => unsafe { LLVMAddFunctionAttrsPass(self.as_raw()) },
             Pass::FunctionInlining => unsafe { LLVMAddFunctionInliningPass(self.as_raw()) },
