@@ -37,6 +37,7 @@ env:
 install:
   - |
     if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+      apt-get update && apt-get install llvm-6.0-dev
       export LLVM_SYS_60_PREFIX=/usr/lib/llvm-6.0
     else
       brew install llvm
