@@ -19,30 +19,30 @@ matrix:
     - addons:
         apt:
           packages:
-            - clang-5.0
+            - clang-6.0
             - g++-5
-            - llvm-5.0-dev
+            - llvm-6.0-dev
           sources:
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-5.0
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main'
+            - llvm-toolchain-trusty-6.0
+            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main'
               key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
 
 env:
   global:
     - RUST_LOG=llvm
     - RUST_BACKTRACE=full
-    - LLVM_SYS_50_FFI_WORKAROUND=1
+    - LLVM_SYS_60_FFI_WORKAROUND=1
 
 install:
   - |
     if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      export LLVM_SYS_50_PREFIX=/usr/local
+      export LLVM_SYS_60_PREFIX=/usr/lib/llvm-6.0
     else
       brew install llvm
-      export LLVM_SYS_50_PREFIX=`brew --prefix llvm`
+      export LLVM_SYS_60_PREFIX=`brew --prefix llvm`
     fi
-  - export PATH=$LLVM_SYS_50_PREFIX/bin:$PATH
+  - export PATH=$LLVM_SYS_60_PREFIX/bin:$PATH
   - llvm-config --version
 
 cache: cargo
