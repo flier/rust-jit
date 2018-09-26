@@ -432,7 +432,8 @@ mod parser {
                 ast::BinOp::Add => Some(20),
                 ast::BinOp::Sub => Some(20),
                 ast::BinOp::Mul => Some(40),
-                ast::BinOp::UserDefined(op) => self.binop_precedences
+                ast::BinOp::UserDefined(op) => self
+                    .binop_precedences
                     .borrow()
                     .get(format!("binary{}", op).as_str())
                     .map(|&v| v as i32),
@@ -1082,7 +1083,8 @@ mod codegen {
             gen.builder.position_at_end(bb);
 
             // Record the function arguments in the NamedValues map.
-            gen.named_values = func.params()
+            gen.named_values = func
+                .params()
                 .map(|arg| (String::from(arg.name().unwrap()), arg))
                 .collect::<HashMap<String, ValueRef>>();
 
@@ -1250,7 +1252,8 @@ impl KaleidoscopeJIT {
 
     pub fn find_symbol<S: AsRef<str>>(&self, symbol: S) -> Result<Option<jit::TargetAddress>> {
         let symbol = symbol.as_ref();
-        let addr = self.engine
+        let addr = self
+            .engine
             .get_symbol_address(symbol)?
             .map(|addr| addr)
             .or_else(|| jit::Symbols::search_for_address(symbol).map(|p: *const c_void| unsafe { mem::transmute(p) }))
@@ -1288,7 +1291,7 @@ enum Parsed {
 /// putchard - putchar that takes a double and returns 0.
 #[no_mangle]
 pub extern "C" fn putchard(x: f64) -> f64 {
-    print!("{}", char::from_u32(x as u32).unwrap_or_default());
+    print!("{}", char::from_u32(u32::from(x)).unwrap_or_default());
     0.0
 }
 

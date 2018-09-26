@@ -1,6 +1,6 @@
+mod desc;
 mod gen;
 mod name;
-mod desc;
 
 pub use self::gen::IntrinsicId;
 

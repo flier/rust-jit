@@ -182,7 +182,7 @@ enum IITDescriptor {
 }
 
 impl IITDescriptor {
-    pub fn parse<'a>(input: &'a [u8]) -> Result<(IITDescriptor, Vec<IITDescriptor>)> {
+    pub fn parse(input: &[u8]) -> Result<(IITDescriptor, Vec<IITDescriptor>)> {
         parse_descripters(input)
             .map(|(_, desc)| desc)
             .map_err(|err| format_err!("fail to parse IIT descriptor, {}", err))
@@ -286,7 +286,7 @@ named!(
         result_type: call!(parse_descripter) >>
         arg_types: map!(many_till!(parse_descripter, done), |(res, _)| res) >>
         (
-            (result_type, arg_types)
+            result_type, arg_types
         )
     )
 );
@@ -296,7 +296,7 @@ fn done(i: &[u8]) -> nom::IResult<&[u8], ()> {
         Some(0) | None => Ok((i, ())),
         Some(n) => Err(nom::Err::Error(nom::Context::Code(
             i,
-            nom::ErrorKind::Custom(*n as u32),
+            nom::ErrorKind::Custom(u32::from(*n)),
         ))),
     }
 }

@@ -4,9 +4,9 @@ use std::ptr;
 
 use boolinator::Boolinator;
 
-use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
+use llvm::*;
 
 use constant::ConstantInt;
 use context::{Context, GlobalContext};
@@ -40,11 +40,7 @@ pub type TypeKind = LLVMTypeKind;
 
 pub trait AsTypeRef: AsRaw<RawType = LLVMTypeRef> {}
 
-impl<T> AsTypeRef for T
-where
-    T: AsRaw<RawType = LLVMTypeRef>,
-{
-}
+impl<T> AsTypeRef for T where T: AsRaw<RawType = LLVMTypeRef> {}
 
 impl TypeRef {
     /// Dump a representation of a type to stderr.

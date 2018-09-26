@@ -905,7 +905,7 @@ enum Parsed {
 
 /// putchard - putchar that takes a double and returns 0.
 extern "C" fn putchard(x: f64) -> f64 {
-    print!("{}", char::from_u32(x as u32).unwrap_or_default());
+    print!("{}", char::from_u32(u32::from(x)).unwrap_or_default());
     0.0
 }
 

@@ -1,9 +1,13 @@
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::cast_lossless))]
+
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Not, Rem, Sub};
 
-use llvm::*;
+use libc::c_char;
+
 use llvm::core::*;
 use llvm::prelude::*;
+use llvm::*;
 
 use constant::{AsConstant, Constant, ConstantFP, ConstantFPs, ConstantInt, ConstantInts, ConstantVector, InlineAsm};
 use function::FunctionType;
@@ -604,7 +608,7 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn add(self, rhs: $type) -> Self::Output {
-                ConstantExpr::fadd(&self, self.type_of().real(rhs as f64).into()).into()
+                ConstantExpr::fadd(&self, self.type_of().real(f64::from(rhs)).into()).into()
             }
         }
 
@@ -612,7 +616,7 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn sub(self, rhs: $type) -> Self::Output {
-                ConstantExpr::fsub(&self, self.type_of().real(rhs as f64).into()).into()
+                ConstantExpr::fsub(&self, self.type_of().real(f64::from(rhs)).into()).into()
             }
         }
 
@@ -620,7 +624,7 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn mul(self, rhs: $type) -> Self::Output {
-                ConstantExpr::fmul(&self, self.type_of().real(rhs as f64).into()).into()
+                ConstantExpr::fmul(&self, self.type_of().real(f64::from(rhs)).into()).into()
             }
         }
 
@@ -628,7 +632,7 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn div(self, rhs: $type) -> Self::Output {
-                ConstantExpr::fdiv(&self, self.type_of().real(rhs as f64).into()).into()
+                ConstantExpr::fdiv(&self, self.type_of().real(f64::from(rhs)).into()).into()
             }
         }
 
@@ -636,13 +640,13 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn rem(self, rhs: $type) -> Self::Output {
-                ConstantExpr::frem(&self, self.type_of().real(rhs as f64).into()).into()
+                ConstantExpr::frem(&self, self.type_of().real(f64::from(rhs)).into()).into()
             }
         }
 
         impl PartialEq<$type> for ConstantFP {
             fn eq(&self, other: &$type) -> bool {
-                let rhs = self.type_of().real(*other as f64).into();
+                let rhs = self.type_of().real(f64::from(*other)).into();
 
                 ConstantExpr::fcmp(self, LLVMRealPredicate::LLVMRealOEQ, rhs)
             }
@@ -650,7 +654,7 @@ macro_rules! impl_const_floating_point_operators {
 
         impl PartialOrd<$type> for ConstantFP {
             fn partial_cmp(&self, other: &$type) -> Option<Ordering> {
-                let rhs = self.type_of().real(*other as f64).into();
+                let rhs = self.type_of().real(f64::from(*other)).into();
 
                 Some(if ConstantExpr::fcmp(self, LLVMRealPredicate::LLVMRealOLT, rhs) {
                     Ordering::Less
@@ -683,7 +687,9 @@ impl ConstantVector {
 
 impl Module {
     pub fn inline_asm<S: AsRef<str>>(&self, code: S) {
-        unsafe { LLVMSetModuleInlineAsm(self.as_raw(), cstr!(code)) }
+        let s = code.as_ref();
+
+        unsafe { LLVMSetModuleInlineAsm2(self.as_raw(), s.as_ptr() as *const c_char, s.len()) }
     }
 }
 
@@ -694,14 +700,21 @@ impl FunctionType {
         constraints: S,
         side_effects: bool,
         align_stack: bool,
+        dialect: LLVMInlineAsmDialect,
     ) -> InlineAsm {
+        let code = code.as_ref();
+        let constraints = constraints.as_ref();
+
         unsafe {
-            LLVMConstInlineAsm(
+            LLVMGetInlineAsm(
                 self.as_raw(),
-                cstr!(code),
-                cstr!(constraints),
+                code.as_ptr() as *mut c_char,
+                code.len(),
+                constraints.as_ptr() as *mut c_char,
+                constraints.len(),
                 side_effects.as_bool(),
                 align_stack.as_bool(),
+                dialect,
             )
         }.into()
     }

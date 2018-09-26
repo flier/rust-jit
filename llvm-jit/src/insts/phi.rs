@@ -49,14 +49,14 @@ impl<'a> InstructionBuilder for Phi<'a> {
         let phi: PhiNode = unsafe { LLVMBuildPhi(builder.as_raw(), self.ty.into_raw(), cstr!(self.name)) }.into();
         let count = self.incomings.len();
 
-        let (mut values, mut blocks) = self.incomings.into_iter().fold(
-            (Vec::new(), Vec::new()),
-            |(mut values, mut blocks), (value, block)| {
-                values.push(value.emit_to(builder).into_raw());
-                blocks.push(block.into_raw());
-                (values, blocks)
-            },
-        );
+        let (mut values, mut blocks) =
+            self.incomings
+                .into_iter()
+                .fold((Vec::new(), Vec::new()), |(mut values, mut blocks), (value, block)| {
+                    values.push(value.emit_to(builder).into_raw());
+                    blocks.push(block.into_raw());
+                    (values, blocks)
+                });
 
         unsafe { LLVMAddIncoming(phi.as_raw(), values.as_mut_ptr(), blocks.as_mut_ptr(), count as u32) }
 
@@ -76,14 +76,14 @@ impl PhiNode {
 
     /// Add an incoming values to the end of a PHI list.
     pub fn add_incomings(&self, incomings: &[(ValueRef, BasicBlock)]) -> &Self {
-        let (mut values, mut blocks) = incomings.iter().fold(
-            (Vec::new(), Vec::new()),
-            |(mut values, mut blocks), &(value, block)| {
-                values.push(value.as_raw());
-                blocks.push(block.as_raw());
-                (values, blocks)
-            },
-        );
+        let (mut values, mut blocks) =
+            incomings
+                .iter()
+                .fold((Vec::new(), Vec::new()), |(mut values, mut blocks), &(value, block)| {
+                    values.push(value.as_raw());
+                    blocks.push(block.as_raw());
+                    (values, blocks)
+                });
 
         unsafe {
             LLVMAddIncoming(
@@ -106,8 +106,7 @@ impl PhiNode {
                     LLVMGetIncomingValue(self.as_raw(), idx).into(),
                     LLVMGetIncomingBlock(self.as_raw(), idx).into(),
                 )
-            })
-            .collect()
+            }).collect()
     }
 }
 

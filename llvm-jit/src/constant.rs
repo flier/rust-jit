@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 use std::mem;
 
-use llvm::LLVMOpcode;
 use llvm::core::*;
 use llvm::prelude::*;
+use llvm::LLVMOpcode;
 
 use context::Context;
 use types::{FloatingPointType, IntegerType, StructType, TypeRef};

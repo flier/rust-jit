@@ -1,4 +1,6 @@
 #![recursion_limit = "128"]
+#![cfg_attr(feature = "cargo-clippy", feature(tool_lints))]
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::trivially_copy_pass_by_ref))]
 
 #[macro_use]
 extern crate bitflags;
@@ -13,12 +15,8 @@ extern crate llvm_sys;
 #[macro_use]
 extern crate log;
 #[macro_use(
-    alt,
-    alt_complete,
     call,
-    complete,
     do_parse,
-    eof,
     error_position,
     error_node_position,
     named,
@@ -27,7 +25,6 @@ extern crate log;
     many_till,
     map,
     switch,
-    tag,
     value
 )]
 extern crate nom;
@@ -136,4 +133,32 @@ pub mod prelude {
     };
     pub use utils::{AsRaw, IntoRaw};
     pub use value::{AsValueRef, Instruction};
+}
+
+use std::sync::{Once, ONCE_INIT};
+
+static INIT: Once = ONCE_INIT;
+
+pub fn init() {
+    use llvm::initialization::*;
+
+    use utils::AsRaw;
+
+    INIT.call_once(|| {
+        let _ = Context::global();
+
+        PassRegistry::global().with(|p| unsafe {
+            LLVMInitializeCore(p);
+            LLVMInitializeTransformUtils(p);
+            LLVMInitializeScalarOpts(p);
+            LLVMInitializeObjCARCOpts(p);
+            LLVMInitializeVectorization(p);
+            LLVMInitializeInstCombine(p);;
+            LLVMInitializeIPO(p);
+            LLVMInitializeInstrumentation(p);
+            LLVMInitializeAnalysis(p);
+            LLVMInitializeCodeGen(p);
+            LLVMInitializeTarget(p);
+        })
+    })
 }

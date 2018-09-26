@@ -460,6 +460,7 @@ mod tests {
     use mmap;
 
     use super::*;
+    use init;
     use insts::*;
     use prelude::*;
     use target::{NativeAsmPrinter, NativeTarget};
@@ -606,6 +607,8 @@ mod tests {
 
     #[test]
     fn global_vars() {
+        init();
+
         let c = Context::new();
         let m = c.create_module("global_vars");
 

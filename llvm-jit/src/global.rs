@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
-use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
+use llvm::*;
 
 use constant::Constant;
 use function::Function;
@@ -13,6 +13,7 @@ use value::{AsValueRef, ValueRef};
 pub type Linkage = LLVMLinkage;
 pub type Visibility = LLVMVisibility;
 pub type DLLStorageClass = LLVMDLLStorageClass;
+pub type UnnamedAddr = LLVMUnnamedAddr;
 
 impl GlobalValue for GlobalVar {}
 impl GlobalValue for Function {}
@@ -62,12 +63,12 @@ pub trait GlobalValue: AsValueRef {
         self
     }
 
-    fn has_unnamed_addr(&self) -> bool {
-        unsafe { LLVMHasUnnamedAddr(self.as_raw()) }.as_bool()
+    fn unnamed_addr(&self) -> UnnamedAddr {
+        unsafe { LLVMGetUnnamedAddress(self.as_raw()) }
     }
 
-    fn set_unnamed_addr(&self, has_unnamed_addr: bool) -> &Self {
-        unsafe { LLVMSetUnnamedAddr(self.as_raw(), has_unnamed_addr.as_bool()) };
+    fn set_unnamed_addr(&self, unnamed_addr: UnnamedAddr) -> &Self {
+        unsafe { LLVMSetUnnamedAddress(self.as_raw(), unnamed_addr) };
         self
     }
 }
@@ -172,7 +173,7 @@ mod tests {
             x.dll_storage_class(),
             LLVMDLLStorageClass::LLVMDefaultStorageClass
         ));
-        assert!(!x.has_unnamed_addr());
+        assert_eq!(x.unnamed_addr(), LLVMUnnamedAddr::LLVMNoUnnamedAddr);
 
         // initializer
         assert_eq!(x.initializer(), None);
@@ -219,5 +220,10 @@ mod tests {
             x.thread_local_mode(),
             llvm::LLVMThreadLocalMode::LLVMNotThreadLocal
         ));
+
+        x.set_unnamed_addr(LLVMUnnamedAddr::LLVMGlobalUnnamedAddr);
+        assert_eq!(x.unnamed_addr(), LLVMUnnamedAddr::LLVMGlobalUnnamedAddr);
+
+        assert_eq!(x.to_string(), "@x = unnamed_addr global i64 123");
     }
 }

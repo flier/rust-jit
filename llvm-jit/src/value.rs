@@ -1,17 +1,19 @@
-use std::borrow::Cow;
 use std::fmt;
 use std::mem;
+use std::slice;
+use std::str;
 
 use boolinator::Boolinator;
+use libc::c_char;
 
-use llvm::*;
 use llvm::core::*;
 use llvm::prelude::*;
+use llvm::*;
 
 use block::BasicBlock;
 use constant::Constant;
 use types::TypeRef;
-use utils::{AsBool, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
+use utils::{AsBool, AsRaw, AsResult, DisposableMessage};
 
 #[macro_export]
 macro_rules! values {
@@ -39,11 +41,7 @@ macro_rules! inherit_value_ref {
 
 pub trait AsValueRef: AsRaw<RawType = LLVMValueRef> {}
 
-impl<T> AsValueRef for T
-where
-    T: AsRaw<RawType = LLVMValueRef>,
-{
-}
+impl<T> AsValueRef for T where T: AsRaw<RawType = LLVMValueRef> {}
 
 pub type ValueKind = LLVMValueKind;
 pub type Opcode = LLVMOpcode;
@@ -69,13 +67,22 @@ impl ValueRef {
     }
 
     /// Obtain the string name of a value.
-    pub fn name(&self) -> Option<Cow<str>> {
-        unsafe { LLVMGetValueName(self.0).as_ref() }.map(|name| name.as_str())
+    pub fn name(&self) -> Option<&str> {
+        let mut len = 0;
+        let ptr = unsafe { LLVMGetValueName2(self.0, &mut len) };
+
+        if ptr.is_null() {
+            None
+        } else {
+            Some(unsafe { str::from_utf8_unchecked(slice::from_raw_parts(ptr as *const u8, len)) })
+        }
     }
 
     /// Set the string name of a value.
     pub fn set_name<S: AsRef<str>>(&self, name: S) -> &Self {
-        unsafe { LLVMSetValueName(self.0, cstr!(name.as_ref())) };
+        let s = name.as_ref();
+
+        unsafe { LLVMSetValueName2(self.0, s.as_ptr() as *const c_char, s.len()) };
 
         self
     }

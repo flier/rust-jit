@@ -68,6 +68,7 @@ impl DIBuilder {
         unsafe { LLVMDIBuilderFinalize(self.as_raw()) }
     }
 
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::too_many_arguments))]
     pub fn create_compile_unit(
         &self,
         lang: DWARFSourceLanguage,
@@ -106,10 +107,12 @@ impl DIBuilder {
     /// Create a file descriptor to hold debugging information for a file.
     pub fn create_file<P: AsRef<Path>>(&self, path: P) -> Result<Metadata> {
         let path = path.as_ref();
-        let filename = path.file_name()
+        let filename = path
+            .file_name()
             .and_then(|filename| filename.to_str())
             .ok_or_else(|| err_msg("missed filename"))?;
-        let dir = path.parent()
+        let dir = path
+            .parent()
             .and_then(|dir| dir.to_str())
             .ok_or_else(|| err_msg("missed directory"))?;
 

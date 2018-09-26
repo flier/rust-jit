@@ -1,5 +1,8 @@
 #![allow(non_camel_case_types)]
-#![cfg_attr(feature = "clippy", allow(unreadable_literal, identity_op))]
+#![cfg_attr(
+    feature = "cargo-clippy",
+    allow(clippy::unreadable_literal, clippy::identity_op)
+)]
 
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, PartialEq)]

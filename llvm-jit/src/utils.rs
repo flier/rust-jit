@@ -15,6 +15,13 @@ pub trait AsRaw {
 
     /// Extracts the wrapped raw reference.
     fn as_raw(&self) -> Self::RawType;
+
+    fn with<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(Self::RawType) -> R,
+    {
+        f(self.as_raw())
+    }
 }
 
 pub trait IntoRaw {

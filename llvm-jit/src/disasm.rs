@@ -1,5 +1,4 @@
 use std::io::{Cursor, Seek, SeekFrom};
-use std::mem;
 
 use llvm::disassembler::*;
 

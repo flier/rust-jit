@@ -454,7 +454,8 @@ mod parser {
                 ast::BinOp::Add => Some(20),
                 ast::BinOp::Sub => Some(20),
                 ast::BinOp::Mul => Some(40),
-                ast::BinOp::UserDefined(op) => self.binop_precedences
+                ast::BinOp::UserDefined(op) => self
+                    .binop_precedences
                     .borrow()
                     .get(format!("binary{}", op).as_str())
                     .map(|&v| v as i32),
@@ -1303,7 +1304,8 @@ mod codegen {
             gen.builder.position_at_end(bb);
 
             // Record the function arguments in the NamedValues map.
-            gen.named_values = func.params()
+            gen.named_values = func
+                .params()
                 .map(|arg| {
                     let arg_name = String::from(arg.name().unwrap());
 
@@ -1315,8 +1317,7 @@ mod codegen {
 
                     // Add arguments to variable symbol table.
                     (arg_name, alloca)
-                })
-                .collect::<HashMap<String, AllocaInst>>();
+                }).collect::<HashMap<String, AllocaInst>>();
 
             trace!("{} params: {:?}", gen.named_values.len(), gen.named_values);
 
@@ -1489,7 +1490,8 @@ impl KaleidoscopeJIT {
 
     pub fn find_symbol<S: AsRef<str>>(&self, symbol: S) -> Result<Option<jit::TargetAddress>> {
         let symbol = symbol.as_ref();
-        let addr = self.engine
+        let addr = self
+            .engine
             .get_symbol_address(symbol)?
             .or_else(|| jit::Symbols::search_for_address(symbol).map(|p: *const c_void| unsafe { mem::transmute(p) }))
             .or_else(|| {
@@ -1526,7 +1528,7 @@ enum Parsed {
 /// putchard - putchar that takes a double and returns 0.
 #[no_mangle]
 pub extern "C" fn putchard(x: f64) -> f64 {
-    print!("{}", char::from_u32(x as u32).unwrap_or_default());
+    print!("{}", char::from_u32(u32::from(x)).unwrap_or_default());
     0.0
 }
 
@@ -1582,7 +1584,8 @@ fn main() {
         engine.add_symbol("printd", Some(printd));
 
         let mut parser = parser::new(lines::Lines::new());
-        let optimize = opts.opt_str("o")
+        let optimize = opts
+            .opt_str("o")
             .map(|s| s.parse().expect("parse `optimize` option"))
             .unwrap_or(true);
         let binop_precedences = parser.binop_precedences.clone();
