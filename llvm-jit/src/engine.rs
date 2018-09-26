@@ -12,7 +12,7 @@ use errors::Result;
 use function::Function;
 use global::GlobalValue;
 use module::Module;
-use target::{TargetData, TargetMachine};
+use target::{self, TargetData, TargetMachine};
 use types::TypeRef;
 use utils::{unchecked_cstring, AsMutPtr, AsRaw, AsResult, DisposableMessage, IntoRaw, FALSE, TRUE};
 
@@ -268,6 +268,8 @@ impl Drop for ExecutionEngine {
 
 impl ExecutionEngine {
     pub fn for_module(module: Module) -> Result<Self> {
+        target::init();
+
         let module = module.into_raw();
         let mut engine = ptr::null_mut();
         let mut err = DisposableMessage::new();
@@ -460,7 +462,6 @@ mod tests {
     use mmap;
 
     use super::*;
-    use init;
     use insts::*;
     use prelude::*;
     use target::{NativeAsmPrinter, NativeTarget};
@@ -607,8 +608,6 @@ mod tests {
 
     #[test]
     fn global_vars() {
-        init();
-
         let c = Context::new();
         let m = c.create_module("global_vars");
 

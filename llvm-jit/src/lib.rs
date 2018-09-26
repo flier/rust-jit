@@ -134,31 +134,3 @@ pub mod prelude {
     pub use utils::{AsRaw, IntoRaw};
     pub use value::{AsValueRef, Instruction};
 }
-
-use std::sync::{Once, ONCE_INIT};
-
-static INIT: Once = ONCE_INIT;
-
-pub fn init() {
-    use llvm::initialization::*;
-
-    use utils::AsRaw;
-
-    INIT.call_once(|| {
-        let _ = Context::global();
-
-        PassRegistry::global().with(|p| unsafe {
-            LLVMInitializeCore(p);
-            LLVMInitializeTransformUtils(p);
-            LLVMInitializeScalarOpts(p);
-            LLVMInitializeObjCARCOpts(p);
-            LLVMInitializeVectorization(p);
-            LLVMInitializeInstCombine(p);;
-            LLVMInitializeIPO(p);
-            LLVMInitializeInstrumentation(p);
-            LLVMInitializeAnalysis(p);
-            LLVMInitializeCodeGen(p);
-            LLVMInitializeTarget(p);
-        })
-    })
-}

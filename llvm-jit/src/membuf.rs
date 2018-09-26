@@ -6,7 +6,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use errors::Result;
-use utils::{AsRaw, AsResult, DisposableMessage, TRUE};
+use utils::{AsRaw, AsResult, DisposableMessage, FALSE};
 
 #[derive(Debug)]
 pub struct MemoryBuffer<'a>(LLVMMemoryBufferRef, Option<&'a [u8]>);
@@ -53,8 +53,7 @@ impl<'a> MemoryBuffer<'a> {
                     path,
                     msg.into_string(),
                 )
-            })
-            .map(|_| buf.into())
+            }).map(|_| buf.into())
     }
 
     /// Read all of stdin into a MemoryBuffer, and return it.
@@ -90,7 +89,9 @@ impl<'a> MemoryBuffer<'a> {
         );
 
         MemoryBuffer(
-            unsafe { LLVMCreateMemoryBufferWithMemoryRange(data.as_ptr() as *const i8, data.len(), cstr!(name), TRUE) },
+            unsafe {
+                LLVMCreateMemoryBufferWithMemoryRange(data.as_ptr() as *const i8, data.len(), cstr!(name), FALSE)
+            },
             Some(data),
         )
     }

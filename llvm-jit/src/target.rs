@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::path::Path;
 use std::ptr;
+use std::sync::{Once, ONCE_INIT};
 
 use boolinator::Boolinator;
 use failure::err_msg;
@@ -159,6 +160,8 @@ impl TargetMachine {
         reloc_mode: RelocMode,
         code_model: CodeModel,
     ) -> Self {
+        init();
+
         let tm = TargetMachine(unsafe {
             LLVMCreateTargetMachine(
                 target.0,
@@ -429,3 +432,15 @@ define_target!(
     LLVM_InitializeNativeDisassembler,
     "fail to initialize native disassemblerer"
 );
+
+static INIT: Once = ONCE_INIT;
+
+pub fn init() {
+    INIT.call_once(|| {
+        AllTargets::init();
+        AllTargetInfos::init();
+        AllTargetMCs::init();
+        AllAsmPrinters::init();
+        AllAsmParsers::init();
+    })
+}

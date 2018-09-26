@@ -1,6 +1,8 @@
 use std::ops::Deref;
+use std::sync::{Once, ONCE_INIT};
 
 use llvm::core::*;
+use llvm::initialization::*;
 use llvm::prelude::*;
 use llvm::transforms::ipo::*;
 use llvm::transforms::pass_manager_builder::*;
@@ -8,6 +10,7 @@ use llvm::transforms::scalar::*;
 use llvm::transforms::util::*;
 use llvm::transforms::vectorize::*;
 
+use context::Context;
 use function::Function;
 use module::Module;
 use utils::{AsBool, AsLLVMBool, AsRaw};
@@ -340,6 +343,8 @@ impl PassManager {
     ///
     /// This type of pipeline is suitable for link-time optimization and whole-module transformations.
     pub fn new() -> Self {
+        init();
+
         unsafe { LLVMCreatePassManager() }.into()
     }
 
@@ -551,4 +556,26 @@ impl PassManagerBuilder {
             )
         }
     }
+}
+
+static INIT: Once = ONCE_INIT;
+
+fn init() {
+    INIT.call_once(|| {
+        let _ = Context::global();
+
+        PassRegistry::global().with(|p| unsafe {
+            LLVMInitializeCore(p);
+            LLVMInitializeTransformUtils(p);
+            LLVMInitializeScalarOpts(p);
+            LLVMInitializeObjCARCOpts(p);
+            LLVMInitializeVectorization(p);
+            LLVMInitializeInstCombine(p);;
+            LLVMInitializeIPO(p);
+            LLVMInitializeInstrumentation(p);
+            LLVMInitializeAnalysis(p);
+            LLVMInitializeCodeGen(p);
+            LLVMInitializeTarget(p);
+        })
+    })
 }
