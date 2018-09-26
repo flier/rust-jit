@@ -134,7 +134,8 @@ fn main() {
         let add1_thread = scope.spawn(|| {
             barrier.clone().wait();
 
-            let v = ee.run_function(&add1_f, vec![GenericValue::from_int(i32_t, 1000)])
+            let v = ee
+                .run_function(&add1_f, vec![GenericValue::from_int(i32_t, 1000)])
                 .to_int();
 
             v
@@ -142,7 +143,8 @@ fn main() {
         let fib_thread1 = scope.spawn(|| {
             barrier.clone().wait();
 
-            let v = ee.run_function(&fib_f, vec![GenericValue::from_int(i32_t, 39)])
+            let v = ee
+                .run_function(&fib_f, vec![GenericValue::from_int(i32_t, 39)])
                 .to_int();
 
             v
@@ -150,14 +152,15 @@ fn main() {
         let fib_thread2 = scope.spawn(|| {
             barrier.clone().wait();
 
-            let v = ee.run_function(&fib_f, vec![GenericValue::from_int(i32_t, 42)])
+            let v = ee
+                .run_function(&fib_f, vec![GenericValue::from_int(i32_t, 42)])
                 .to_int();
 
             v
         });
 
-        println!("Add1(1000) returned {}", add1_thread.join());
-        println!("Fib1(39) returned {}", fib_thread1.join());
-        println!("Fib2(42) returned {}", fib_thread2.join());
+        println!("Add1(1000) returned {}", add1_thread.join().unwrap());
+        println!("Fib1(39) returned {}", fib_thread1.join().unwrap());
+        println!("Fib2(42) returned {}", fib_thread2.join().unwrap());
     });
 }

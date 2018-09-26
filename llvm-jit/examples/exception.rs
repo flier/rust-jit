@@ -56,9 +56,9 @@ use std::ffi::CStr;
 use std::mem;
 use std::panic;
 
-use jit::{ConstantInt, FunctionPassManager, StructType};
 use jit::insts::*;
 use jit::prelude::*;
+use jit::{ConstantInt, FunctionPassManager, StructType};
 
 const USE_GLOBAL_STR_CONSTS: bool = true;
 const OUR_BASE_EXCEPTION_CLASS: u64 = 0;
@@ -92,8 +92,7 @@ impl OurBaseException_t {
         let dummy_exception: OurBaseException_t = unsafe { mem::zeroed() };
 
         unsafe {
-            mem::transmute::<_, isize>(&dummy_exception.unwind_exception)
-                - mem::transmute::<_, isize>(&dummy_exception)
+            mem::transmute::<_, isize>(&dummy_exception.unwind_exception) - mem::transmute::<_, isize>(&dummy_exception)
         }
     }
 }
@@ -117,8 +116,7 @@ pub enum UnwindReasonCode {
 pub type UnwindExceptionClass = u64;
 pub type UnwindWord = libc::uintptr_t;
 pub type UnwindPtr = libc::uintptr_t;
-pub type UnwindTraceFn =
-    extern "C" fn(ctx: *mut UnwindContext, arg: *mut libc::c_void) -> UnwindReasonCode;
+pub type UnwindTraceFn = extern "C" fn(ctx: *mut UnwindContext, arg: *mut libc::c_void) -> UnwindReasonCode;
 #[cfg(target_arch = "x86")]
 pub const UNWINDER_PRIVATE_DATA_SIZE: usize = 5;
 
@@ -145,8 +143,7 @@ pub struct _Unwind_Exception {
 
 pub enum UnwindContext {}
 
-pub type UnwindExceptionCleanupFn =
-    extern "C" fn(unwind_code: UnwindReasonCode, exception: *mut _Unwind_Exception);
+pub type UnwindExceptionCleanupFn = extern "C" fn(unwind_code: UnwindReasonCode, exception: *mut _Unwind_Exception);
 extern "C" {
     pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
     pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
@@ -207,9 +204,9 @@ extern "C" fn delete_our_exception(exc: *mut OurUnwindException) {
 
     unsafe {
         if !exc.is_null() && (*exc).exception_class == OUR_BASE_EXCEPTION_CLASS {
-            libc::free((exc as *mut libc::c_char)
-                .offset(OurBaseException_t::base_from_unwind_offset())
-                as *mut libc::c_void)
+            libc::free(
+                (exc as *mut libc::c_char).offset(OurBaseException_t::base_from_unwind_offset()) as *mut libc::c_void,
+            )
         }
     }
 }
@@ -220,10 +217,7 @@ extern "C" fn delete_our_exception(exc: *mut OurUnwindException) {
 /// @param reason See @link http://mentorembedded.github.com/cxx-abi/abi-eh.html
 /// @unlink
 /// @param expToDelete exception instance to delete
-extern "C" fn delete_from_unwind_our_exception(
-    reason: UnwindReasonCode,
-    exc: *mut OurUnwindException,
-) {
+extern "C" fn delete_from_unwind_our_exception(reason: UnwindReasonCode, exc: *mut OurUnwindException) {
     trace!("deleteFromUnwindOurException({:?})", exc);
 
     delete_our_exception(exc)
@@ -421,8 +415,7 @@ impl Example {
         let native_throw_func_t = self.module.get_function(native_throw_funct_name).unwrap();
 
         // Create exception throw function using the value ~0 to cause foreign exceptions to be thrown.
-        let throw_func_t =
-            self.create_throw_exception_function(&builder, "throw_func_t", !0, native_throw_func_t);
+        let throw_func_t = self.create_throw_exception_function(&builder, "throw_func_t", !0, native_throw_func_t);
 
         // Inner function will catch even type infos
         let inner_exception_types_to_catch = &[6, 2, 4];
@@ -486,12 +479,10 @@ impl Example {
         let exception_block = func.append_basic_block_in_context("exception", &self.context);
 
         // Block which routes exception to correct catch handler block
-        let exception_route_block =
-            func.append_basic_block_in_context("exceptionRoute", &self.context);
+        let exception_route_block = func.append_basic_block_in_context("exceptionRoute", &self.context);
 
         // Foreign exception handler
-        let external_exception_block =
-            func.append_basic_block_in_context("externalException", &self.context);
+        let external_exception_block = func.append_basic_block_in_context("externalException", &self.context);
 
         // Block which calls _Unwind_Resume
         let unwind_resume_block = func.append_basic_block_in_context("unwindResume", &self.context);
@@ -502,14 +493,7 @@ impl Example {
         // Finally block which will branch to unwind_resume_block if
         // exception is not caught. Initializes/allocates stack locations.
         let (finally_block, exception_caught, exception_storage, caught_result_storage) =
-            self.create_finally_block(
-                &builder,
-                func,
-                "finally",
-                our_id,
-                end_block,
-                unwind_resume_block,
-            );
+            self.create_finally_block(&builder, func, "finally", our_id, end_block, unwind_resume_block);
 
         let catch_blocks: Vec<BasicBlock> = exception_types_to_catch
             .iter()
@@ -517,16 +501,8 @@ impl Example {
                 let next_name = &self.our_type_info_names[i as usize];
 
                 // One catch block per type info to be caught
-                self.create_catch_block(
-                    &builder,
-                    func,
-                    next_name,
-                    our_id,
-                    finally_block,
-                    exception_caught,
-                )
-            })
-            .collect();
+                self.create_catch_block(&builder, func, next_name, our_id, finally_block, exception_caught)
+            }).collect();
 
         // Entry Block
         builder.position_at_end(entry_block);
@@ -575,8 +551,7 @@ impl Example {
 
         func.set_personality_function(personality);
 
-        let caught_result =
-            landing_pad!(self.our_caught_result_type.unwrap(); "landingPad").emit_to(&builder);
+        let caught_result = landing_pad!(self.our_caught_result_type.unwrap(); "landingPad").emit_to(&builder);
         caught_result.set_cleanup(true);
 
         for i in exception_types_to_catch {
@@ -600,17 +575,13 @@ impl Example {
         // Retrieve exception_class member from thrown exception
         // (_Unwind_Exception instance). This member tells us whether or not
         // the exception is foreign.
-        let p = ptr_cast!(
-            unwind_exception,
-            self.our_unwind_exception_type.unwrap().ptr_t()
-        ).emit_to(&builder);
+        let p = ptr_cast!(unwind_exception, self.our_unwind_exception_type.unwrap().ptr_t()).emit_to(&builder);
         let p = struct_gep!(p, 0).emit_to(&builder);
         let unwind_exception_class = load!(p).emit_to(&builder);
 
         // Branch to the external_exception_block if the exception is foreign or
         // to a catch router if not. Either way the finally block will be run.
-        let eq = icmp!(EQ unwind_exception_class, i64_t.int(OUR_BASE_EXCEPTION_CLASS as i64))
-            .emit_to(&builder);
+        let eq = icmp!(EQ unwind_exception_class, i64_t.int(OUR_BASE_EXCEPTION_CLASS as i64)).emit_to(&builder);
         br!(
                 eq => exception_route_block,
                 _ => external_exception_block
@@ -619,11 +590,7 @@ impl Example {
         // External Exception Block
         builder.position_at_end(external_exception_block);
 
-        self.generate_string_print(
-            &builder,
-            "Gen: Foreign exception received.\n",
-            USE_GLOBAL_STR_CONSTS,
-        );
+        self.generate_string_print(&builder, "Gen: Foreign exception received.\n", USE_GLOBAL_STR_CONSTS);
 
         br!(finally_block).emit_to(&builder);
 
@@ -638,27 +605,22 @@ impl Example {
             unwind_exception,
             i64_t.int(OurBaseException_t::base_from_unwind_offset() as i64)
         ).emit_to(&builder);
-        let type_info_thrown = ptr_cast!(p, self.our_exception_type.unwrap().ptr_t(); "type_info_thrown")
-            .emit_to(&builder);
+        let type_info_thrown =
+            ptr_cast!(p, self.our_exception_type.unwrap().ptr_t(); "type_info_thrown").emit_to(&builder);
 
         // Retrieve thrown exception type info type
         //
         // Note: Index is not relative to pointer but instead to structure
         //       unlike a true getelementptr (GEP) instruction
-        let type_info_thrown =
-            struct_gep!(type_info_thrown, 0; "type_info_thrown").emit_to(&builder);
-        let type_info_thrown_type =
-            struct_gep!(type_info_thrown, 0; "type_info_thrown_type").emit_to(&builder);
+        let type_info_thrown = struct_gep!(type_info_thrown, 0; "type_info_thrown").emit_to(&builder);
+        let type_info_thrown_type = struct_gep!(type_info_thrown, 0; "type_info_thrown_type").emit_to(&builder);
         let load = load!(type_info_thrown_type).emit_to(&builder);
 
         self.generate_integer_print(
             &builder,
             to_print32_int,
             load,
-            format!(
-                "Gen: Exception type <%d> received (stack unwound) in {}.\n",
-                our_id
-            ),
+            format!("Gen: Exception type <%d> received (stack unwound) in {}.\n", our_id),
             USE_GLOBAL_STR_CONSTS,
         );
 
@@ -703,10 +665,7 @@ impl Example {
 
         self.generate_string_print(
             &builder,
-            format!(
-                "Gen: Executing catch block {} in {}",
-                block_name, function_id
-            ),
+            format!("Gen: Executing catch block {} in {}", block_name, function_id),
             USE_GLOBAL_STR_CONSTS,
         );
 
@@ -771,10 +730,7 @@ impl Example {
 
         self.generate_string_print(
             &builder,
-            format!(
-                "Gen: Executing finally block {} in {}",
-                block_name, function_id
-            ),
+            format!("Gen: Executing finally block {} in {}", block_name, function_id),
             USE_GLOBAL_STR_CONSTS,
         );
 
@@ -784,12 +740,7 @@ impl Example {
             self.our_exception_thrown_state.unwrap() => unwind_resume_block
         ).emit_to(&builder);
 
-        (
-            bb,
-            exception_caught,
-            exception_storage,
-            caught_result_storage,
-        )
+        (bb, exception_caught, exception_storage, caught_result_storage)
     }
 
     fn create_entry_block_alloca(
@@ -850,8 +801,7 @@ impl Example {
         let native_throw_block = func.append_basic_block_in_context("nativeThrow", &self.context);
 
         // Throws one of our Exceptions
-        let generated_throw_block =
-            func.append_basic_block_in_context("generatedThrow", &self.context);
+        let generated_throw_block = func.append_basic_block_in_context("generatedThrow", &self.context);
 
         // native_throw_block block
         builder.position_at_end(native_throw_block);
@@ -870,10 +820,7 @@ impl Example {
                 &builder,
                 to_print32_int,
                 exception_type,
-                format!(
-                    "\nGen: About to throw exception type <%d> in {} .\n",
-                    our_id
-                ),
+                format!("\nGen: About to throw exception type <%d> in {} .\n", our_id),
                 USE_GLOBAL_STR_CONSTS,
             );
 
@@ -936,7 +883,7 @@ impl Example {
 
         let cast = bit_cast!(string_var, i8_t.ptr_t()).emit_to(&builder);
 
-        call!(print_func_t, to_print, string_var).emit_to(&builder);
+        call!(print_func_t, to_print.into(), string_var).emit_to(&builder);
     }
 
     /// Generates code to print given constant string
@@ -948,12 +895,7 @@ impl Example {
     ///        generated, and is used to hold the constant string. A value of
     ///        false indicates that the constant string will be stored on the
     ///        stack.
-    fn generate_string_print<S: AsRef<str>>(
-        &self,
-        builder: &IRBuilder,
-        to_print: S,
-        use_global: bool,
-    ) {
+    fn generate_string_print<S: AsRef<str>>(&self, builder: &IRBuilder, to_print: S, use_global: bool) {
         let i8_t = self.context.int8_t();
         let print_func_t = self.module.get_function("print_str").unwrap();
 
@@ -1015,11 +957,7 @@ impl Example {
         //
         // Note: Declaring only a portion of the _Unwind_Exception struct.
         //       Does this cause problems?
-        self.our_unwind_exception_type = Some(self.context.named_struct_t(
-            "_Unwind_Exception",
-            &[i64_t],
-            false,
-        ));
+        self.our_unwind_exception_type = Some(self.context.named_struct_t("_Unwind_Exception", &[i64_t], false));
 
         // Generate each type info
         //
@@ -1030,15 +968,10 @@ impl Example {
 
                 self.module
                     .add_global_var(&type_info_name, self.our_type_info_type.unwrap())
-                    .set_initializer(
-                        self.our_type_info_type
-                            .unwrap()
-                            .struct_of(values![i32_t.int(i as i64)]),
-                    );
+                    .set_initializer(self.our_type_info_type.unwrap().struct_of(values![i32_t.int(i as i64)]));
 
                 type_info_name
-            })
-            .collect();
+            }).collect();
 
         // print32_int
         self.module
@@ -1095,13 +1028,13 @@ impl Example {
 
         let ee = ExecutionEngine::for_module(self.module).unwrap();
 
-        ee.add_global_mapping(print32_int_func, &mut print_int32);
-        ee.add_global_mapping(print64_int_func, &mut print_int64);
-        ee.add_global_mapping(print_str_func, &mut print_str);
-        ee.add_global_mapping(throw_cpp_exception_func, &mut panic_in_rust);
-        ee.add_global_mapping(delete_our_exception_func, &mut delete_our_exception);
-        ee.add_global_mapping(create_our_exception_func, &mut create_our_exception);
-        ee.add_global_mapping(our_personality_func, &mut our_personality);
+        ee.add_global_mapping(&print32_int_func, &mut print_int32);
+        ee.add_global_mapping(&print64_int_func, &mut print_int64);
+        ee.add_global_mapping(&print_str_func, &mut print_str);
+        ee.add_global_mapping(&throw_cpp_exception_func, &mut panic_in_rust);
+        ee.add_global_mapping(&delete_our_exception_func, &mut delete_our_exception);
+        ee.add_global_mapping(&create_our_exception_func, &mut create_our_exception);
+        ee.add_global_mapping(&our_personality_func, &mut our_personality);
 
         ee.run_static_destructors();
 
@@ -1124,7 +1057,7 @@ extern "C" fn panic_in_rust(_: i32) {
 ///        indicator to cause foreign exception to be thrown.
 fn run_exception_throw(ee: &ExecutionEngine, func: &Function, type_to_throw: i32) {
     // Find test's function pointer
-    let addr: *const u8 = ee.get_ptr_to_global(*func);
+    let addr: *const u8 = ee.get_ptr_to_global(func);
     let func: extern "C" fn(type_to_throw: i32) = unsafe { mem::transmute(addr) };
 
     let result = panic::catch_unwind(|| func(type_to_throw));

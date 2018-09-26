@@ -14,66 +14,15 @@ bitflags = "1.0"
 boolinator = "2.4"
 hexplay = "0.2"
 libc = "0.2"
-nom = "3.2"
-llvm-sys = "60"
-
-clippy = {version = "*", optional = true}
+nom = "4.0"
+llvm-sys = "70"
 
 [dev-dependencies]
 pretty_env_logger = "0.2"
 getopts = "0.2"
-tempfile = "2"
+tempfile = "3.0"
 mmap = "0.1"
 matches = "0.1"
 hamcrest = "*"
-crossbeam = "0.3"
-rustyline = "1.0"
-
-[[example]]
-name = "nop-function"
-
-[[example]]
-name = "jit-function"
-
-[[example]]
-name = "how-to-use-jit"
-
-[[example]]
-name = "fibonacci"
-
-[[example]]
-name = "parallel-jit"
-
-[[example]]
-name = "module-maker"
-
-[[example]]
-name = "brainf"
-
-[[example]]
-name = "kaleidoscope-chapter2"
-path = "examples/kaleidoscope/chapter2.rs"
-
-[[example]]
-name = "kaleidoscope-chapter3"
-path = "examples/kaleidoscope/chapter3.rs"
-
-[[example]]
-name = "kaleidoscope-chapter4"
-path = "examples/kaleidoscope/chapter4.rs"
-
-[[example]]
-name = "kaleidoscope-chapter5"
-path = "examples/kaleidoscope/chapter5.rs"
-
-[[example]]
-name = "kaleidoscope-chapter6"
-path = "examples/kaleidoscope/chapter6.rs"
-
-[[example]]
-name = "kaleidoscope-chapter7"
-path = "examples/kaleidoscope/chapter7.rs"
-
-[[example]]
-name = "kaleidoscope-chapter8"
-path = "examples/kaleidoscope/chapter8.rs"
+crossbeam = "0.4"
+rustyline = "2.1"

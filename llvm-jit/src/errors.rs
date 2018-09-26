@@ -11,9 +11,6 @@ pub enum JitError {
 
     #[fail(display = "unexpected type: '{}'", _0)]
     UnexpectedType(TypeRef),
-
-    #[fail(display = "fail to parse: '{}'", _0)]
-    Parse(::nom::ErrorKind),
 }
 
 pub type Result<T> = StdResult<T, Error>;

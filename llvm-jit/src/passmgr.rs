@@ -5,6 +5,7 @@ use llvm::prelude::*;
 use llvm::transforms::ipo::*;
 use llvm::transforms::pass_manager_builder::*;
 use llvm::transforms::scalar::*;
+use llvm::transforms::util::*;
 use llvm::transforms::vectorize::*;
 
 use function::Function;

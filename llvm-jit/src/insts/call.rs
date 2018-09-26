@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 use std::mem;
 
-use llvm::LLVMCallConv;
 use llvm::core::*;
 use llvm::prelude::*;
+use llvm::LLVMCallConv;
 
 use function::Function;
 use insts::{AstNode, IRBuilder, InstructionBuilder};
@@ -60,7 +60,8 @@ impl<'a> InstructionBuilder for Call<'a> {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        let mut args = self.args
+        let mut args = self
+            .args
             .into_iter()
             .map(|arg| arg.emit_to(builder).into_raw())
             .collect::<Vec<LLVMValueRef>>();

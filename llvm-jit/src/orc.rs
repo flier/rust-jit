@@ -6,7 +6,6 @@ use std::result::Result as StdResult;
 use boolinator::Boolinator;
 use failure::Error;
 use llvm::orc::*;
-use llvm::prelude::*;
 
 use errors::Result;
 use membuf::MemoryBuffer;
@@ -33,23 +32,6 @@ impl AsResult<()> for LLVMOrcErrorCode {
         } else {
             Err(err())
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct SharedModule(LLVMSharedModuleRef);
-
-inherit_from!(SharedModule, LLVMSharedModuleRef);
-
-impl<T: IntoRaw<RawType = LLVMModuleRef>> From<T> for SharedModule {
-    fn from(module: T) -> Self {
-        SharedModule(unsafe { LLVMOrcMakeSharedModule(module.into_raw()) })
-    }
-}
-
-impl Drop for SharedModule {
-    fn drop(&mut self) {
-        unsafe { LLVMOrcDisposeSharedModuleRef(self.0) }
     }
 }
 
@@ -124,7 +106,7 @@ impl JITStack {
                 ctx.as_mut_ptr(),
             )
         }.ok_or_else(|| self.err())
-            .map(|_| addr)
+        .map(|_| addr)
     }
 
     /// Create a named indirect call stub.
@@ -149,64 +131,55 @@ impl JITStack {
     pub fn add_eagerly_compiled_ir<T>(
         &self,
         module: Module,
-        resolver: Option<SymbolResolver>,
+        resolver: SymbolResolver,
         ctx: Option<&mut T>,
     ) -> Result<ModuleHandle> {
         let mut handle = ModuleHandle::default();
-        let shared_module: SharedModule = module.into();
 
         unsafe {
             LLVMOrcAddEagerlyCompiledIR(
                 self.as_raw(),
                 &mut handle,
-                shared_module.as_raw(),
-                mem::transmute(resolver),
+                module.into_raw(),
+                resolver,
                 ctx.as_mut_ptr(),
             )
         }.ok_or_else(|| self.err())
-            .map(|_| handle)
+        .map(|_| handle)
     }
 
     /// Add a module to be lazily compiled.
     pub fn add_lazily_compiled_ir<T>(
         &self,
         module: Module,
-        resolver: Option<SymbolResolver>,
+        resolver: SymbolResolver,
         ctx: Option<&mut T>,
     ) -> Result<ModuleHandle> {
         let mut handle = ModuleHandle::default();
-        let shared_module: SharedModule = module.into();
 
         unsafe {
             LLVMOrcAddLazilyCompiledIR(
                 self.as_raw(),
                 &mut handle,
-                shared_module.as_raw(),
-                mem::transmute(resolver),
+                module.into_raw(),
+                resolver,
                 ctx.as_mut_ptr(),
             )
         }.ok_or_else(|| self.err())
-            .map(|_| handle)
+        .map(|_| handle)
     }
 
     /// Add an object file.
     pub fn add_object_file<T>(
         &self,
         obj: MemoryBuffer,
-        resolver: Option<SymbolResolver>,
+        resolver: SymbolResolver,
         ctx: Option<&mut T>,
     ) -> Result<ModuleHandle> {
         let mut handle = ModuleHandle::default();
 
-        unsafe {
-            LLVMOrcAddObjectFile(
-                self.as_raw(),
-                &mut handle,
-                obj.into_raw(),
-                mem::transmute(resolver),
-                ctx.as_mut_ptr(),
-            )
-        }.ok_or_else(|| self.err())
+        unsafe { LLVMOrcAddObjectFile(self.as_raw(), &mut handle, obj.into_raw(), resolver, ctx.as_mut_ptr()) }
+            .ok_or_else(|| self.err())
             .map(|_| handle)
     }
 

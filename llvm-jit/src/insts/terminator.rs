@@ -20,15 +20,14 @@ pub struct LandingPad<'a> {
 }
 
 impl<'a> LandingPad<'a> {
-    pub fn new<T, F, N>(result_ty: T, personality_fn: Option<F>, name: N, cleanup: bool) -> Self
+    pub fn new<T, N>(result_ty: T, personality_fn: Option<Function>, name: N, cleanup: bool) -> Self
     where
         T: Into<TypeRef>,
-        F: Into<Function>,
         N: Into<Cow<'a, str>>,
     {
         LandingPad {
             result_ty: result_ty.into(),
-            personality_fn: personality_fn.map(|f| f.into()),
+            personality_fn,
             name: name.into(),
             clauses: vec![],
             cleanup,
@@ -53,7 +52,8 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        let clauses = self.clauses
+        let clauses = self
+            .clauses
             .iter()
             .map(|clause| clause.into_raw())
             .collect::<Vec<LLVMValueRef>>();
@@ -100,10 +100,9 @@ impl LandingPadInst {
 /// and corresponds to the code found in the catch portion of a try/catch sequence.
 /// It defines values supplied by the personality function upon re-entry to the function.
 /// The resultval has the type resultty.
-pub fn landing_pad<'a, T, F, N>(result_ty: T, personality_fn: Option<F>, name: N, cleanup: bool) -> LandingPad<'a>
+pub fn landing_pad<'a, T, N>(result_ty: T, personality_fn: Option<Function>, name: N, cleanup: bool) -> LandingPad<'a>
 where
     T: Into<TypeRef>,
-    F: Into<Function>,
     N: Into<Cow<'a, str>>,
 {
     LandingPad::new(result_ty, personality_fn, name, cleanup)
@@ -190,16 +189,15 @@ impl IRBuilder {
     /// and corresponds to the code found in the catch portion of a try/catch sequence.
     /// It defines values supplied by the personality function upon re-entry to the function.
     /// The resultval has the type resultty.
-    pub fn landing_pad<'a, T, F, N>(
+    pub fn landing_pad<'a, T, N>(
         &self,
         result_ty: T,
-        personality_fn: Option<F>,
+        personality_fn: Option<Function>,
         name: N,
         cleanup: bool,
     ) -> LandingPadInst
     where
         T: Into<TypeRef>,
-        F: Into<Function>,
         N: Into<Cow<'a, str>>,
     {
         landing_pad(result_ty, personality_fn, name, cleanup).emit_to(self)

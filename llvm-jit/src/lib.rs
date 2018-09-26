@@ -1,7 +1,4 @@
 #![recursion_limit = "128"]
-#![cfg_attr(feature = "clippy", feature(plugin))]
-#![cfg_attr(feature = "clippy", plugin(clippy(conf_file = "../../.clippy.toml")))]
-#![cfg_attr(feature = "clippy", allow(module_inception, block_in_if_condition_stmt))]
 
 #[macro_use]
 extern crate bitflags;
@@ -15,8 +12,24 @@ extern crate libc;
 extern crate llvm_sys;
 #[macro_use]
 extern crate log;
-#[macro_use(alt, alt_complete, call, complete, do_parse, eof, error_position, error_node_position, named, named_args,
-            many_m_n, many_till, map, switch, tag, value)]
+#[macro_use(
+    alt,
+    alt_complete,
+    call,
+    complete,
+    do_parse,
+    eof,
+    error_position,
+    error_node_position,
+    named,
+    named_args,
+    many_m_n,
+    many_till,
+    map,
+    switch,
+    tag,
+    value
+)]
 extern crate nom;
 
 #[doc(hidden)]
@@ -50,35 +63,38 @@ mod types;
 mod value;
 #[macro_use]
 mod constant;
-mod constexpr;
 mod attribute;
-mod global;
+mod constexpr;
 mod function;
+mod global;
 mod intrinsics;
 #[macro_use]
 pub mod insts;
-mod block;
-mod passmgr;
-mod engine;
-mod orc;
-mod symbols;
-pub mod target;
 mod analysis;
+mod bitcode;
+mod block;
+mod debuginfo;
 mod disasm;
+mod engine;
 mod membuf;
 mod metadata;
 mod object;
-mod bitcode;
-mod debuginfo;
+mod orc;
+mod passmgr;
+mod symbols;
+pub mod target;
 
 pub use attribute::{attrs, Attribute, AttributeIndex, EnumAttribute, StringAttribute};
-pub use constant::{Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString, ConstantStruct, ConstantVector,
-                   InlineAsm};
+pub use constant::{
+    Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString, ConstantStruct, ConstantVector, InlineAsm,
+};
 pub use context::{Context, GlobalContext};
 pub use debuginfo::{debug_metadata_version, DIBuilder};
 pub use disasm::Disasm;
-pub use engine::{shutdown, CodeGenOptLevel, ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJITCompiler,
-                 MCJITCompilerOptions, MCJITMemoryManager, MCJIT};
+pub use engine::{
+    shutdown, CodeGenOptLevel, ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJITCompiler,
+    MCJITCompilerOptions, MCJITMemoryManager, MCJIT,
+};
 pub use function::{Function, FunctionType};
 pub use global::{DLLStorageClass, GlobalValue, GlobalVar, Linkage, ThreadLocalMode, Visibility};
 pub use insts::{IRBuilder, Position};
@@ -86,11 +102,12 @@ pub use membuf::MemoryBuffer;
 pub use metadata::{MDKindId, MDNode, MDString, Metadata};
 pub use module::{AddressSpace, Module};
 pub use object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
-pub use orc::{JITStack, LazyCompileCallback, ModuleHandle, SharedModule, SymbolResolver, TargetAddress};
+pub use orc::{JITStack, LazyCompileCallback, ModuleHandle, SymbolResolver, TargetAddress};
 pub use passmgr::{FunctionPassManager, Pass, PassManager, PassManagerBuilder, PassRegistry};
 pub use symbols::Symbols;
-pub use types::{ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType, TypeKind, TypeRef,
-                VectorType};
+pub use types::{
+    ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType, TypeKind, TypeRef, VectorType,
+};
 pub use value::{BlockAddress, Instruction, Opcode, ValueKind, ValueRef};
 
 pub mod prelude {
@@ -106,14 +123,17 @@ pub mod prelude {
     pub use value::ValueRef;
 
     pub use attribute::AttributeGroups;
-    pub use constant::{ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray, ToConstantStruct,
-                       ToConstantVector, ToNamedConstantStruct};
+    pub use constant::{
+        ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray, ToConstantStruct, ToConstantVector,
+        ToNamedConstantStruct,
+    };
     pub use constexpr::ConstantExpr;
     pub use global::GlobalValue;
     pub use insts::InstructionBuilder;
     pub use intrinsics::IntrinsicId;
-    pub use types::{AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType, ToPointerType, ToStructType,
-                    ToVectorType};
+    pub use types::{
+        AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType, ToPointerType, ToStructType, ToVectorType,
+    };
     pub use utils::{AsRaw, IntoRaw};
     pub use value::{AsValueRef, Instruction};
 }

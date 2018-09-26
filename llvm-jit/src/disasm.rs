@@ -34,8 +34,8 @@ impl Disasm {
     pub fn new<T>(
         triple_name: &str,
         tag_type: i32,
-        get_op_info: Option<LLVMOpInfoCallback>,
-        symbol_lookup: Option<LLVMSymbolLookupCallback>,
+        get_op_info: LLVMOpInfoCallback,
+        symbol_lookup: LLVMSymbolLookupCallback,
         data: Option<&mut T>,
     ) -> Self {
         unsafe {
@@ -43,8 +43,8 @@ impl Disasm {
                 cstr!(triple_name),
                 data.as_mut_ptr(),
                 tag_type,
-                mem::transmute(get_op_info),
-                mem::transmute(symbol_lookup),
+                get_op_info,
+                symbol_lookup,
             )
         }.into()
     }
@@ -53,8 +53,8 @@ impl Disasm {
         triple_name: &str,
         cpu: &str,
         tag_type: i32,
-        get_op_info: Option<LLVMOpInfoCallback>,
-        symbol_lookup: Option<LLVMSymbolLookupCallback>,
+        get_op_info: LLVMOpInfoCallback,
+        symbol_lookup: LLVMSymbolLookupCallback,
         data: Option<&mut T>,
     ) -> Self {
         unsafe {
@@ -63,8 +63,8 @@ impl Disasm {
                 cstr!(cpu),
                 data.as_mut_ptr(),
                 tag_type,
-                mem::transmute(get_op_info),
-                mem::transmute(symbol_lookup),
+                get_op_info,
+                symbol_lookup,
             )
         }.into()
     }
@@ -74,8 +74,8 @@ impl Disasm {
         cpu: &str,
         features: &str,
         tag_type: i32,
-        get_op_info: Option<LLVMOpInfoCallback>,
-        symbol_lookup: Option<LLVMSymbolLookupCallback>,
+        get_op_info: LLVMOpInfoCallback,
+        symbol_lookup: LLVMSymbolLookupCallback,
         data: Option<&mut T>,
     ) -> Self {
         unsafe {
@@ -85,8 +85,8 @@ impl Disasm {
                 cstr!(features),
                 data.as_mut_ptr(),
                 tag_type,
-                mem::transmute(get_op_info),
-                mem::transmute(symbol_lookup),
+                get_op_info,
+                symbol_lookup,
             )
         }.into()
     }
@@ -180,7 +180,7 @@ mod tests {
         let disasm = Disasm::new::<()>(&triple, 0, None, None, None);
 
         let mut cur = Cursor::new(vec![
-            0x55, 0x48, 0x89, 0xe5, 0x48, 0x83, 0xec, 0x10, 0x48, 0x8d, 0x05, 0xd1, 0xff, 0xff, 0xff
+            0x55, 0x48, 0x89, 0xe5, 0x48, 0x83, 0xec, 0x10, 0x48, 0x8d, 0x05, 0xd1, 0xff, 0xff, 0xff,
         ]);
 
         assert_eq!(

@@ -114,8 +114,7 @@ impl Interpreter {
                     module,
                     err.into_string()
                 )
-            })
-            .map(|_| {
+            }).map(|_| {
                 trace!("create Interpreter({:?}) for Module({:?})", engine, module);
 
                 Interpreter(ExecutionEngine(engine))
@@ -157,8 +156,7 @@ impl JITCompiler {
                     module,
                     err.into_string()
                 )
-            })
-            .map(|_| {
+            }).map(|_| {
                 trace!("create JITCompiler({:?}) for Module({:?})", engine, module);
 
                 JITCompiler(ExecutionEngine(engine))
@@ -243,12 +241,11 @@ impl MCJITCompiler {
                 module,
                 err.into_string()
             )
-        })
-            .map(|_| {
-                trace!("create MCJITCompiler({:?}) for Module({:?})", engine, module);
+        }).map(|_| {
+            trace!("create MCJITCompiler({:?}) for Module({:?})", engine, module);
 
-                MCJITCompiler(ExecutionEngine(engine))
-            })
+            MCJITCompiler(ExecutionEngine(engine))
+        })
     }
 }
 
@@ -282,8 +279,7 @@ impl ExecutionEngine {
                     module,
                     err.into_string()
                 )
-            })
-            .map(|_| {
+            }).map(|_| {
                 trace!("create ExecutionEngine({:?}) for Module({:?})", engine, module);
 
                 engine.into()
@@ -316,7 +312,8 @@ impl ExecutionEngine {
 
         let args = args.iter().map(unchecked_cstring).collect::<Vec<CString>>();
 
-        let mut argv = args.iter()
+        let mut argv = args
+            .iter()
             .map(|arg| arg.as_ptr())
             .collect::<Vec<*const libc::c_char>>();
 
@@ -351,7 +348,8 @@ impl ExecutionEngine {
     pub fn run_function(&self, func: &Function, args: Vec<GenericValue>) -> GenericValue {
         trace!("run function {:?} with args {:?}", func, args);
 
-        let mut args = args.into_iter()
+        let mut args = args
+            .into_iter()
             .map(|arg| arg.into_raw())
             .collect::<Vec<LLVMGenericValueRef>>();
         let argc = args.len() as u32;
@@ -399,8 +397,7 @@ impl ExecutionEngine {
                 trace!("found `{}` function in {:?}: {:?}", name, self, f);
 
                 f
-            })
-            .or_else(|| {
+            }).or_else(|| {
                 trace!("not found `{}` function in {:?}", name, self);
 
                 None
@@ -737,8 +734,13 @@ mod tests {
 
         let mut opts = MCJITCompilerOptions::default();
         let mut ctxt = MemoryManager::default();
-        let mm =
-            MCJITMemoryManager::new(Some(&mut ctxt), mm_alloc_code, mm_alloc_data, mm_finalize, mm_destroy).unwrap();
+        let mm = MCJITMemoryManager::new(
+            Some(&mut ctxt),
+            mm_alloc_code,
+            mm_alloc_data,
+            mm_finalize,
+            Some(mm_destroy),
+        ).unwrap();
 
         opts.MCJMM = mm.into_raw();
 

@@ -184,8 +184,8 @@ enum IITDescriptor {
 impl IITDescriptor {
     pub fn parse<'a>(input: &'a [u8]) -> Result<(IITDescriptor, Vec<IITDescriptor>)> {
         parse_descripters(input)
-            .to_result()
-            .map_err(|err| JitError::Parse(err).into())
+            .map(|(_, desc)| desc)
+            .map_err(|err| format_err!("fail to parse IIT descriptor, {}", err))
     }
 
     pub fn decode_fixed_type(&self, ctxt: &Context, arg_types: &[TypeRef]) -> Result<TypeRef> {
@@ -242,7 +242,8 @@ impl IITDescriptor {
             IITDescriptor::HalfVecArgument(ref arg) => {
                 let ty = arg.checked_type(arg_types)?;
 
-                Ok(ty.as_vector_ty()
+                Ok(ty
+                    .as_vector_ty()
                     .ok_or_else(|| Error::from(JitError::UnexpectedType(ty)))?
                     .half_elements_vector_t()
                     .into())
@@ -250,7 +251,8 @@ impl IITDescriptor {
             IITDescriptor::SameVecWidthArgument(ref element, ref arg) => {
                 let ty = arg.checked_type(arg_types)?;
                 let element_ty = element.decode_fixed_type(ctxt, arg_types)?;
-                let count = ty.as_vector_ty()
+                let count = ty
+                    .as_vector_ty()
                     .ok_or_else(|| Error::from(JitError::UnexpectedType(ty)))?
                     .len();
 
@@ -263,7 +265,8 @@ impl IITDescriptor {
             }
             IITDescriptor::PtrToElement(ref arg) => {
                 let ty = arg.checked_type(arg_types)?;
-                let vt = ty.as_vector_ty()
+                let vt = ty
+                    .as_vector_ty()
                     .ok_or_else(|| Error::from(JitError::UnexpectedType(ty)))?;
 
                 Ok(vt.element_type().ptr_t().into())
@@ -281,14 +284,22 @@ named!(
     parse_descripters<(IITDescriptor, Vec<IITDescriptor>)>,
     do_parse!(
         result_type: call!(parse_descripter) >>
-        arg_types: alt_complete!(map!(many_till!(parse_descripter, done), |(res, _)| res) | value!(vec![])) >>
+        arg_types: map!(many_till!(parse_descripter, done), |(res, _)| res) >>
         (
             (result_type, arg_types)
         )
     )
 );
 
-named!(done, alt_complete!(tag!("\0") | eof!()));
+fn done(i: &[u8]) -> nom::IResult<&[u8], ()> {
+    match i.first() {
+        Some(0) | None => Ok((i, ())),
+        Some(n) => Err(nom::Err::Error(nom::Context::Code(
+            i,
+            nom::ErrorKind::Custom(*n as u32),
+        ))),
+    }
+}
 
 named!(
     parse_descripter<IITDescriptor>,
