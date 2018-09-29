@@ -3,15 +3,11 @@
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Not, Rem, Sub};
 
-use libc::c_char;
-
 use llvm::core::*;
 use llvm::prelude::*;
 use llvm::*;
 
-use constant::{AsConstant, Constant, ConstantFP, ConstantFPs, ConstantInt, ConstantInts, ConstantVector, InlineAsm};
-use function::FunctionType;
-use module::Module;
+use constant::{AsConstant, Constant, ConstantFP, ConstantFPs, ConstantInt, ConstantInts, ConstantVector};
 use types::TypeRef;
 use utils::{AsLLVMBool, AsRaw};
 
@@ -26,103 +22,103 @@ pub trait ConstantExpr {
 
     fn not(&self) -> Constant;
 
-    fn add(&self, other: Constant) -> Constant;
+    fn add<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn add_nsw(&self, other: Constant) -> Constant;
+    fn add_nsw<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn add_nuw(&self, other: Constant) -> Constant;
+    fn add_nuw<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn fadd(&self, other: Constant) -> Constant;
+    fn fadd<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn sub(&self, other: Constant) -> Constant;
+    fn sub<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn sub_nsw(&self, other: Constant) -> Constant;
+    fn sub_nsw<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn sub_nuw(&self, other: Constant) -> Constant;
+    fn sub_nuw<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn fsub(&self, other: Constant) -> Constant;
+    fn fsub<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn mul(&self, other: Constant) -> Constant;
+    fn mul<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn mul_nsw(&self, other: Constant) -> Constant;
+    fn mul_nsw<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn mul_nuw(&self, other: Constant) -> Constant;
+    fn mul_nuw<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn fmul(&self, other: Constant) -> Constant;
+    fn fmul<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn udiv(&self, other: Constant) -> Constant;
+    fn udiv<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn udiv_exact(&self, other: Constant) -> Constant;
+    fn udiv_exact<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn sdiv(&self, other: Constant) -> Constant;
+    fn sdiv<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn sdiv_exact(&self, other: Constant) -> Constant;
+    fn sdiv_exact<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn fdiv(&self, other: Constant) -> Constant;
+    fn fdiv<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn urem(&self, other: Constant) -> Constant;
+    fn urem<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn srem(&self, other: Constant) -> Constant;
+    fn srem<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn frem(&self, other: Constant) -> Constant;
+    fn frem<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn icmp(&self, predicate: LLVMIntPredicate, other: Constant) -> bool;
+    fn icmp<T: AsConstant>(&self, predicate: LLVMIntPredicate, other: T) -> bool;
 
-    fn fcmp(&self, predicate: LLVMRealPredicate, other: Constant) -> bool;
+    fn fcmp<T: AsConstant>(&self, predicate: LLVMRealPredicate, other: T) -> bool;
 
-    fn and(&self, other: Constant) -> Constant;
+    fn and<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn or(&self, other: Constant) -> Constant;
+    fn or<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn xor(&self, other: Constant) -> Constant;
+    fn xor<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn shl(&self, other: Constant) -> Constant;
+    fn shl<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn lshr(&self, other: Constant) -> Constant;
+    fn lshr<T: AsConstant>(&self, other: T) -> Constant;
 
-    fn ashr(&self, other: Constant) -> Constant;
+    fn ashr<T: AsConstant>(&self, other: T) -> Constant;
 
     fn gep(&self, indices: &[Constant]) -> Constant;
 
     fn inbounds_gep(&self, indices: &[Constant]) -> Constant;
 
-    fn trunc(&self, ty: TypeRef) -> Constant;
+    fn trunc<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn sext(&self, ty: TypeRef) -> Constant;
+    fn sext<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn zext(&self, ty: TypeRef) -> Constant;
+    fn zext<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn fptrunc(&self, ty: TypeRef) -> Constant;
+    fn fptrunc<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn fpext(&self, ty: TypeRef) -> Constant;
+    fn fpext<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn uitofp(&self, ty: TypeRef) -> Constant;
+    fn uitofp<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn sitofp(&self, ty: TypeRef) -> Constant;
+    fn sitofp<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn fptoui(&self, ty: TypeRef) -> Constant;
+    fn fptoui<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn fptosi(&self, ty: TypeRef) -> Constant;
+    fn fptosi<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn ptr_to_int(&self, ty: TypeRef) -> Constant;
+    fn ptr_to_int<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn int_to_ptr(&self, ty: TypeRef) -> Constant;
+    fn int_to_ptr<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn bit_cast(&self, ty: TypeRef) -> Constant;
+    fn bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn addrspace_cast(&self, ty: TypeRef) -> Constant;
+    fn addrspace_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn zext_or_bit_cast(&self, ty: TypeRef) -> Constant;
+    fn zext_or_bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn sext_or_bit_cast(&self, ty: TypeRef) -> Constant;
+    fn sext_or_bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn trunc_or_bit_cast(&self, ty: TypeRef) -> Constant;
+    fn trunc_or_bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
-    fn ptr_cast(&self, ty: TypeRef) -> Constant;
+    fn ptr_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
     fn int_cast(&self, ty: TypeRef, signed: bool) -> Constant;
 
-    fn fp_cast(&self, ty: TypeRef) -> Constant;
+    fn fp_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
 
     fn select(&self, then: Constant, or_else: Constant) -> Constant;
 
@@ -131,7 +127,7 @@ pub trait ConstantExpr {
     fn insert_value(&self, element: Constant, indices: &mut [u32]) -> Constant;
 }
 
-impl<T: AsConstant> ConstantExpr for T {
+impl<C: AsConstant> ConstantExpr for C {
     fn neg(&self) -> Constant {
         unsafe { LLVMConstNeg(self.as_raw()) }.into()
     }
@@ -152,115 +148,115 @@ impl<T: AsConstant> ConstantExpr for T {
         unsafe { LLVMConstNot(self.as_raw()) }.into()
     }
 
-    fn add(&self, other: Constant) -> Constant {
+    fn add<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstAdd(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn add_nsw(&self, other: Constant) -> Constant {
+    fn add_nsw<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstNSWAdd(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn add_nuw(&self, other: Constant) -> Constant {
+    fn add_nuw<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstNUWAdd(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn fadd(&self, other: Constant) -> Constant {
+    fn fadd<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstFAdd(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn sub(&self, other: Constant) -> Constant {
+    fn sub<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstSub(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn sub_nsw(&self, other: Constant) -> Constant {
+    fn sub_nsw<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstNSWSub(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn sub_nuw(&self, other: Constant) -> Constant {
+    fn sub_nuw<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstNUWSub(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn fsub(&self, other: Constant) -> Constant {
+    fn fsub<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstFSub(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn mul(&self, other: Constant) -> Constant {
+    fn mul<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstMul(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn mul_nsw(&self, other: Constant) -> Constant {
+    fn mul_nsw<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstNSWMul(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn mul_nuw(&self, other: Constant) -> Constant {
+    fn mul_nuw<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstNUWMul(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn fmul(&self, other: Constant) -> Constant {
+    fn fmul<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstFMul(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn udiv(&self, other: Constant) -> Constant {
+    fn udiv<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstUDiv(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn udiv_exact(&self, other: Constant) -> Constant {
+    fn udiv_exact<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstExactUDiv(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn sdiv(&self, other: Constant) -> Constant {
+    fn sdiv<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstSDiv(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn sdiv_exact(&self, other: Constant) -> Constant {
+    fn sdiv_exact<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstExactSDiv(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn fdiv(&self, other: Constant) -> Constant {
+    fn fdiv<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstFDiv(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn urem(&self, other: Constant) -> Constant {
+    fn urem<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstURem(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn srem(&self, other: Constant) -> Constant {
+    fn srem<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstSRem(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn frem(&self, other: Constant) -> Constant {
+    fn frem<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstFRem(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn icmp(&self, predicate: LLVMIntPredicate, other: Constant) -> bool {
+    fn icmp<T: AsConstant>(&self, predicate: LLVMIntPredicate, other: T) -> bool {
         ConstantInt::from(unsafe { LLVMConstICmp(predicate, self.as_raw(), other.as_raw()) }).bool()
     }
 
-    fn fcmp(&self, predicate: LLVMRealPredicate, other: Constant) -> bool {
+    fn fcmp<T: AsConstant>(&self, predicate: LLVMRealPredicate, other: T) -> bool {
         ConstantInt::from(unsafe { LLVMConstFCmp(predicate, self.as_raw(), other.as_raw()) }).bool()
     }
 
-    fn and(&self, other: Constant) -> Constant {
+    fn and<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstAnd(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn or(&self, other: Constant) -> Constant {
+    fn or<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstOr(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn xor(&self, other: Constant) -> Constant {
+    fn xor<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstXor(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn shl(&self, other: Constant) -> Constant {
+    fn shl<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstShl(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn ashr(&self, other: Constant) -> Constant {
+    fn ashr<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstAShr(self.as_raw(), other.as_raw()) }.into()
     }
 
-    fn lshr(&self, other: Constant) -> Constant {
+    fn lshr<T: AsConstant>(&self, other: T) -> Constant {
         unsafe { LLVMConstLShr(self.as_raw(), other.as_raw()) }.into()
     }
 
@@ -276,71 +272,71 @@ impl<T: AsConstant> ConstantExpr for T {
         unsafe { LLVMConstInBoundsGEP(self.as_raw(), indices.as_mut_ptr(), indices.len() as u32) }.into()
     }
 
-    fn trunc(&self, ty: TypeRef) -> Constant {
+    fn trunc<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstTrunc(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn sext(&self, ty: TypeRef) -> Constant {
+    fn sext<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstSExt(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn zext(&self, ty: TypeRef) -> Constant {
+    fn zext<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstZExt(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn fptrunc(&self, ty: TypeRef) -> Constant {
+    fn fptrunc<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstFPTrunc(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn fpext(&self, ty: TypeRef) -> Constant {
+    fn fpext<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstFPExt(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn uitofp(&self, ty: TypeRef) -> Constant {
+    fn uitofp<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstUIToFP(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn sitofp(&self, ty: TypeRef) -> Constant {
+    fn sitofp<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstSIToFP(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn fptoui(&self, ty: TypeRef) -> Constant {
+    fn fptoui<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstFPToUI(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn fptosi(&self, ty: TypeRef) -> Constant {
+    fn fptosi<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstFPToSI(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn ptr_to_int(&self, ty: TypeRef) -> Constant {
+    fn ptr_to_int<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstPtrToInt(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn int_to_ptr(&self, ty: TypeRef) -> Constant {
+    fn int_to_ptr<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstIntToPtr(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn bit_cast(&self, ty: TypeRef) -> Constant {
+    fn bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstBitCast(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn addrspace_cast(&self, ty: TypeRef) -> Constant {
+    fn addrspace_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstAddrSpaceCast(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn zext_or_bit_cast(&self, ty: TypeRef) -> Constant {
+    fn zext_or_bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstZExtOrBitCast(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn sext_or_bit_cast(&self, ty: TypeRef) -> Constant {
+    fn sext_or_bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstSExtOrBitCast(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn trunc_or_bit_cast(&self, ty: TypeRef) -> Constant {
+    fn trunc_or_bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstTruncOrBitCast(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn ptr_cast(&self, ty: TypeRef) -> Constant {
+    fn ptr_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstPointerCast(self.as_raw(), ty.as_raw()) }.into()
     }
 
@@ -348,7 +344,7 @@ impl<T: AsConstant> ConstantExpr for T {
         unsafe { LLVMConstIntCast(self.as_raw(), ty.as_raw(), signed.as_bool()) }.into()
     }
 
-    fn fp_cast(&self, ty: TypeRef) -> Constant {
+    fn fp_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
         unsafe { LLVMConstFPCast(self.as_raw(), ty.as_raw()) }.into()
     }
 
@@ -392,7 +388,7 @@ impl Add for ConstantInt {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        ConstantExpr::add(&self, rhs.into()).into()
+        ConstantExpr::add(&self, rhs).into()
     }
 }
 
@@ -400,7 +396,7 @@ impl Sub for ConstantInt {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        ConstantExpr::sub(&self, rhs.into()).into()
+        ConstantExpr::sub(&self, rhs).into()
     }
 }
 
@@ -408,7 +404,7 @@ impl Mul for ConstantInt {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        ConstantExpr::mul(&self, rhs.into()).into()
+        ConstantExpr::mul(&self, rhs).into()
     }
 }
 
@@ -416,7 +412,7 @@ impl BitAnd for ConstantInt {
     type Output = Self;
 
     fn bitand(self, rhs: Self) -> Self::Output {
-        ConstantExpr::and(&self, rhs.into()).into()
+        ConstantExpr::and(&self, rhs).into()
     }
 }
 
@@ -424,7 +420,7 @@ impl BitOr for ConstantInt {
     type Output = Self;
 
     fn bitor(self, rhs: Self) -> Self::Output {
-        ConstantExpr::or(&self, rhs.into()).into()
+        ConstantExpr::or(&self, rhs).into()
     }
 }
 
@@ -432,7 +428,7 @@ impl BitXor for ConstantInt {
     type Output = Self;
 
     fn bitxor(self, rhs: Self) -> Self::Output {
-        ConstantExpr::xor(&self, rhs.into()).into()
+        ConstantExpr::xor(&self, rhs).into()
     }
 }
 
@@ -442,7 +438,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn add(self, rhs: $type) -> Self::Output {
-                ConstantExpr::add(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
+                ConstantExpr::add(&self, self.type_of().int_value(rhs as u64, $signed)).into()
             }
         }
 
@@ -450,7 +446,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn sub(self, rhs: $type) -> Self::Output {
-                ConstantExpr::sub(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
+                ConstantExpr::sub(&self, self.type_of().int_value(rhs as u64, $signed)).into()
             }
         }
 
@@ -458,7 +454,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn mul(self, rhs: $type) -> Self::Output {
-                ConstantExpr::mul(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
+                ConstantExpr::mul(&self, self.type_of().int_value(rhs as u64, $signed)).into()
             }
         }
 
@@ -466,7 +462,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn div(self, rhs: $type) -> Self::Output {
-                let rhs = self.type_of().int_value(rhs as u64, $signed).into();
+                let rhs = self.type_of().int_value(rhs as u64, $signed);
 
                 if $signed {
                     ConstantExpr::sdiv(&self, rhs).into()
@@ -480,7 +476,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn rem(self, rhs: $type) -> Self::Output {
-                let rhs = self.type_of().int_value(rhs as u64, $signed).into();
+                let rhs = self.type_of().int_value(rhs as u64, $signed);
 
                 if $signed {
                     ConstantExpr::srem(&self, rhs).into()
@@ -494,7 +490,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn bitand(self, rhs: $type) -> Self::Output {
-                ConstantExpr::and(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
+                ConstantExpr::and(&self, self.type_of().int_value(rhs as u64, $signed)).into()
             }
         }
 
@@ -502,7 +498,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn bitor(self, rhs: $type) -> Self::Output {
-                ConstantExpr::or(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
+                ConstantExpr::or(&self, self.type_of().int_value(rhs as u64, $signed)).into()
             }
         }
 
@@ -510,13 +506,13 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn bitxor(self, rhs: $type) -> Self::Output {
-                ConstantExpr::xor(&self, self.type_of().int_value(rhs as u64, $signed).into()).into()
+                ConstantExpr::xor(&self, self.type_of().int_value(rhs as u64, $signed)).into()
             }
         }
 
         impl PartialEq<$type> for ConstantInt {
             fn eq(&self, other: &$type) -> bool {
-                let rhs = self.type_of().int_value(*other as u64, $signed).into();
+                let rhs = self.type_of().int_value(*other as u64, $signed);
 
                 ConstantExpr::icmp(self, LLVMIntPredicate::LLVMIntEQ, rhs)
             }
@@ -524,7 +520,7 @@ macro_rules! impl_const_int_operators {
 
         impl PartialOrd<$type> for ConstantInt {
             fn partial_cmp(&self, other: &$type) -> Option<Ordering> {
-                let rhs = self.type_of().int_value(*other as u64, $signed).into();
+                let rhs = self.type_of().int_value(*other as u64, $signed);
                 let lt = if $signed {
                     LLVMIntPredicate::LLVMIntSLT
                 } else {
@@ -566,7 +562,7 @@ impl Add for ConstantFP {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        ConstantExpr::fadd(&self, rhs.into()).into()
+        ConstantExpr::fadd(&self, rhs).into()
     }
 }
 
@@ -574,7 +570,7 @@ impl Sub for ConstantFP {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        ConstantExpr::fsub(&self, rhs.into()).into()
+        ConstantExpr::fsub(&self, rhs).into()
     }
 }
 
@@ -582,7 +578,7 @@ impl Mul for ConstantFP {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        ConstantExpr::fmul(&self, rhs.into()).into()
+        ConstantExpr::fmul(&self, rhs).into()
     }
 }
 
@@ -590,7 +586,7 @@ impl Div for ConstantFP {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
-        ConstantExpr::fdiv(&self, rhs.into()).into()
+        ConstantExpr::fdiv(&self, rhs).into()
     }
 }
 
@@ -598,7 +594,7 @@ impl Rem for ConstantFP {
     type Output = Self;
 
     fn rem(self, rhs: Self) -> Self::Output {
-        ConstantExpr::frem(&self, rhs.into()).into()
+        ConstantExpr::frem(&self, rhs).into()
     }
 }
 
@@ -608,7 +604,7 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn add(self, rhs: $type) -> Self::Output {
-                ConstantExpr::fadd(&self, self.type_of().real(f64::from(rhs)).into()).into()
+                ConstantExpr::fadd(&self, self.type_of().real(f64::from(rhs))).into()
             }
         }
 
@@ -616,7 +612,7 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn sub(self, rhs: $type) -> Self::Output {
-                ConstantExpr::fsub(&self, self.type_of().real(f64::from(rhs)).into()).into()
+                ConstantExpr::fsub(&self, self.type_of().real(f64::from(rhs))).into()
             }
         }
 
@@ -624,7 +620,7 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn mul(self, rhs: $type) -> Self::Output {
-                ConstantExpr::fmul(&self, self.type_of().real(f64::from(rhs)).into()).into()
+                ConstantExpr::fmul(&self, self.type_of().real(f64::from(rhs))).into()
             }
         }
 
@@ -632,7 +628,7 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn div(self, rhs: $type) -> Self::Output {
-                ConstantExpr::fdiv(&self, self.type_of().real(f64::from(rhs)).into()).into()
+                ConstantExpr::fdiv(&self, self.type_of().real(f64::from(rhs))).into()
             }
         }
 
@@ -640,13 +636,13 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn rem(self, rhs: $type) -> Self::Output {
-                ConstantExpr::frem(&self, self.type_of().real(f64::from(rhs)).into()).into()
+                ConstantExpr::frem(&self, self.type_of().real(f64::from(rhs))).into()
             }
         }
 
         impl PartialEq<$type> for ConstantFP {
             fn eq(&self, other: &$type) -> bool {
-                let rhs = self.type_of().real(f64::from(*other)).into();
+                let rhs = self.type_of().real(f64::from(*other));
 
                 ConstantExpr::fcmp(self, LLVMRealPredicate::LLVMRealOEQ, rhs)
             }
@@ -654,7 +650,7 @@ macro_rules! impl_const_floating_point_operators {
 
         impl PartialOrd<$type> for ConstantFP {
             fn partial_cmp(&self, other: &$type) -> Option<Ordering> {
-                let rhs = self.type_of().real(f64::from(*other)).into();
+                let rhs = self.type_of().real(f64::from(*other));
 
                 Some(if ConstantExpr::fcmp(self, LLVMRealPredicate::LLVMRealOLT, rhs) {
                     Ordering::Less
@@ -682,41 +678,6 @@ impl ConstantVector {
 
     pub fn shuffle_vector(&self, other: ConstantVector, mask: ConstantVector) -> ConstantVector {
         unsafe { LLVMConstInsertElement(self.as_raw(), other.as_raw(), mask.as_raw()) }.into()
-    }
-}
-
-impl Module {
-    pub fn inline_asm<S: AsRef<str>>(&self, code: S) {
-        let s = code.as_ref();
-
-        unsafe { LLVMSetModuleInlineAsm2(self.as_raw(), s.as_ptr() as *const c_char, s.len()) }
-    }
-}
-
-impl FunctionType {
-    pub fn inline_asm<S: AsRef<str>>(
-        &self,
-        code: S,
-        constraints: S,
-        side_effects: bool,
-        align_stack: bool,
-        dialect: LLVMInlineAsmDialect,
-    ) -> InlineAsm {
-        let code = code.as_ref();
-        let constraints = constraints.as_ref();
-
-        unsafe {
-            LLVMGetInlineAsm(
-                self.as_raw(),
-                code.as_ptr() as *mut c_char,
-                code.len(),
-                constraints.as_ptr() as *mut c_char,
-                constraints.len(),
-                side_effects.as_bool(),
-                align_stack.as_bool(),
-                dialect,
-            )
-        }.into()
     }
 }
 
@@ -770,84 +731,78 @@ mod tests {
 
         // add
         assert_eq!(i + 456, i64_t.int(123 + 456));
-        assert_eq!(iv.add(iv.into()).to_string(), "<4 x i64> <i64 2, i64 4, i64 6, i64 8>");
+        assert_eq!(iv.add(iv).to_string(), "<4 x i64> <i64 2, i64 4, i64 6, i64 8>");
 
         // sub
         assert_eq!(i - 456, i64_t.int(123 - 456));
-        assert_eq!(iv.sub(iv.into()).to_string(), "<4 x i64> zeroinitializer");
+        assert_eq!(iv.sub(iv).to_string(), "<4 x i64> zeroinitializer");
 
         // mul
         assert_eq!(i * 2, i64_t.int(123 * 2));
-        assert_eq!(iv.mul(iv.into()).to_string(), "<4 x i64> <i64 1, i64 4, i64 9, i64 16>");
+        assert_eq!(iv.mul(iv).to_string(), "<4 x i64> <i64 1, i64 4, i64 9, i64 16>");
 
         // div
         assert_eq!(i / 2, i64_t.int(123 / 2));
         assert_eq!(i / -2, i64_t.int(123 / -2));
-        assert_eq!(iv.udiv(iv.into()).to_string(), "<4 x i64> <i64 1, i64 1, i64 1, i64 1>");
+        assert_eq!(iv.udiv(iv).to_string(), "<4 x i64> <i64 1, i64 1, i64 1, i64 1>");
         assert_eq!(
-            iv.sdiv(iv.neg().into()).to_string(),
+            iv.sdiv(iv.neg()).to_string(),
             "<4 x i64> <i64 -1, i64 -1, i64 -1, i64 -1>"
         );
 
         // rem
         assert_eq!(i % 2, i64_t.int(1));
         assert_eq!(i % -2, i64_t.int(1));
-        assert_eq!(iv.urem(iv.into()).to_string(), "<4 x i64> zeroinitializer");
-        assert_eq!(iv.srem(iv.neg().into()).to_string(), "<4 x i64> zeroinitializer");
+        assert_eq!(iv.urem(iv).to_string(), "<4 x i64> zeroinitializer");
+        assert_eq!(iv.srem(iv.neg()).to_string(), "<4 x i64> zeroinitializer");
 
         // and
         assert_eq!(i & 456, i64_t.int(123 & 456));
-        assert_eq!(iv.and(iv2.into()).to_string(), "<4 x i64> <i64 0, i64 2, i64 0, i64 0>");
+        assert_eq!(iv.and(iv2).to_string(), "<4 x i64> <i64 0, i64 2, i64 0, i64 0>");
 
         // or
         assert_eq!(i | 456, i64_t.int(123 | 456));
-        assert_eq!(
-            iv.or(iv2.into()).to_string(),
-            "<4 x i64> <i64 7, i64 7, i64 11, i64 13>"
-        );
+        assert_eq!(iv.or(iv2).to_string(), "<4 x i64> <i64 7, i64 7, i64 11, i64 13>");
 
         // xor
         assert_eq!(i ^ 456, i64_t.int(123 ^ 456));
-        assert_eq!(
-            iv.xor(iv2.into()).to_string(),
-            "<4 x i64> <i64 7, i64 5, i64 11, i64 13>"
-        );
+        assert_eq!(iv.xor(iv2).to_string(), "<4 x i64> <i64 7, i64 5, i64 11, i64 13>");
 
         // fadd
         assert_eq!(f + 456.0, f64_t.real(123.0 + 456.0));
         assert_eq!(
-            fv.fadd(fv.into()).to_string(),
+            fv.fadd(fv).to_string(),
             "<4 x double> <double 2.000000e+00, double 4.000000e+00, double 6.000000e+00, double 8.000000e+00>"
         );
 
         // fsub
         assert_eq!(f - 456.0, f64_t.real(123.0 - 456.0));
-        assert_eq!(fv.fsub(fv.into()).to_string(), "<4 x double> zeroinitializer");
+        assert_eq!(fv.fsub(fv).to_string(), "<4 x double> zeroinitializer");
 
         // fmul
         assert_eq!(f * 2.0, f64_t.real(123.0 * 2.0));
         assert_eq!(
-            fv.fmul(fv.into()).to_string(),
+            fv.fmul(fv).to_string(),
             "<4 x double> <double 1.000000e+00, double 4.000000e+00, double 9.000000e+00, double 1.600000e+01>"
         );
 
         // fdiv
         assert_eq!(f / 2.0, f64_t.real(123.0 / 2.0));
         assert_eq!(
-            fv.fdiv(fv.into()).to_string(),
+            fv.fdiv(fv).to_string(),
             "<4 x double> <double 1.000000e+00, double 1.000000e+00, double 1.000000e+00, double 1.000000e+00>"
         );
 
         // frem
         assert_eq!(f % 2.0, f64_t.real(123.0 % 2.0));
-        assert_eq!(fv.frem(fv.into()).to_string(), "<4 x double> zeroinitializer");
+        assert_eq!(fv.frem(fv).to_string(), "<4 x double> zeroinitializer");
 
         // eq
         assert_eq!(i, 123);
-        assert!(iv.eq(&iv.into()));
+        assert!(iv.eq(&iv));
 
         assert_eq!(f, 123.0);
-        assert!(fv.eq(&fv.into()));
+        assert!(fv.eq(&fv));
 
         // ord
         assert!(i < 456);

@@ -1,19 +1,43 @@
+use std::borrow::Cow;
 use std::fmt;
+use std::marker::PhantomData;
 use std::ptr;
 use std::slice;
 use std::str;
 
 use boolinator::Boolinator;
 use libc;
+use llvm::LLVMModuleFlagBehavior;
 use llvm_sys::core::*;
 use llvm_sys::prelude::*;
 
 use context::{Context, GlobalContext};
 use module::Module;
-use utils::{AsBool, AsRaw};
+use utils::{from_unchecked_cstr, AsBool, AsRaw};
 use value::{Instruction, ValueRef};
 
 pub type MDKindId = libc::c_uint;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MDString(ValueRef);
+
+inherit_from!(MDString, ValueRef, LLVMValueRef);
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MDNode(ValueRef);
+
+inherit_from!(MDNode, ValueRef, LLVMValueRef);
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Metadata(LLVMMetadataRef);
+
+inherit_from!(Metadata, LLVMMetadataRef);
+
+impl<T: AsRaw<RawType = LLVMValueRef>> From<T> for Metadata {
+    fn from(value: T) -> Self {
+        Metadata(unsafe { LLVMValueAsMetadata(value.as_raw()) })
+    }
+}
 
 impl Module {
     /// Obtain the named metadata operands for a module.
@@ -32,28 +56,96 @@ impl Module {
     pub fn add_named_operand<S: AsRef<str>, V: AsRef<ValueRef>>(&self, name: S, v: V) {
         unsafe { LLVMAddNamedMetadataOperand(self.as_raw(), cstr!(name.as_ref()), v.as_ref().as_raw()) }
     }
-}
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Metadata(LLVMMetadataRef);
+    /// Returns the module flags.
+    pub fn flags<'a>(&'a self) -> ModuleFlagsMetadata<'a> {
+        ModuleFlagsMetadata::new(self)
+    }
 
-inherit_from!(Metadata, LLVMMetadataRef);
+    /// Get a module-level flag to the module-level flags metadata.
+    pub fn get_flag<S: AsRef<str>>(&self, key: S) -> Metadata {
+        let key = key.as_ref();
 
-impl<T: AsRaw<RawType = LLVMValueRef>> From<T> for Metadata {
-    fn from(value: T) -> Self {
-        Metadata(unsafe { LLVMValueAsMetadata(value.as_raw()) })
+        unsafe { LLVMGetModuleFlag(self.as_raw(), key.as_ptr() as *const libc::c_char, key.len()) }.into()
+    }
+
+    /// Add a module-level flag to the module-level flags metadata if it doesn't already exist.
+    pub fn add_flag<S: AsRef<str>>(&self, behavior: LLVMModuleFlagBehavior, key: S, metadata: Metadata) {
+        let key = key.as_ref();
+
+        unsafe {
+            LLVMAddModuleFlag(
+                self.as_raw(),
+                behavior,
+                key.as_ptr() as *const libc::c_char,
+                key.len(),
+                metadata.as_raw(),
+            )
+        }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MDString(ValueRef);
+#[derive(Clone, Debug, PartialEq)]
+pub struct ModuleFlagEntry<'a> {
+    pub behavior: LLVMModuleFlagBehavior,
+    pub key: Cow<'a, str>,
+    pub metadata: Metadata,
+}
 
-inherit_from!(MDString, ValueRef, LLVMValueRef);
+#[derive(Debug)]
+pub struct ModuleFlagsMetadata<'a> {
+    entry: *mut LLVMModuleFlagEntry,
+    len: usize,
+    index: usize,
+    phantom: PhantomData<&'a u8>,
+}
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MDNode(ValueRef);
+impl<'a> Drop for ModuleFlagsMetadata<'a> {
+    fn drop(&mut self) {
+        unsafe { LLVMDisposeModuleFlagsMetadata(self.entry) }
+    }
+}
 
-inherit_from!(MDNode, ValueRef, LLVMValueRef);
+impl<'a> ModuleFlagsMetadata<'a> {
+    fn new<M: AsRaw<RawType = LLVMModuleRef>>(m: &M) -> Self {
+        let mut len = 0;
+        let entry = unsafe { LLVMCopyModuleFlagsMetadata(m.as_raw(), &mut len) };
+
+        ModuleFlagsMetadata {
+            entry,
+            len,
+            index: 0,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a> Iterator for ModuleFlagsMetadata<'a> {
+    type Item = ModuleFlagEntry<'a>;
+
+    fn next(&mut self) -> Option<ModuleFlagEntry<'a>> {
+        if self.index < self.len {
+            let behavior = unsafe { LLVMModuleFlagEntriesGetFlagBehavior(self.entry, self.index as libc::c_uint) };
+            let key = unsafe {
+                let mut len = 0;
+                let p = LLVMModuleFlagEntriesGetKey(self.entry, self.index as libc::c_uint, &mut len);
+
+                from_unchecked_cstr(p as *const u8, len as usize + 1)
+            };
+            let metadata = unsafe { LLVMModuleFlagEntriesGetMetadata(self.entry, self.index as libc::c_uint) }.into();
+
+            self.index += 1;
+
+            Some(ModuleFlagEntry {
+                behavior,
+                key,
+                metadata,
+            })
+        } else {
+            None
+        }
+    }
+}
 
 impl Context {
     /// Obtain Metadata as a Value.

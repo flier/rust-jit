@@ -4,9 +4,9 @@ use llvm::core::*;
 use llvm::prelude::*;
 use llvm::*;
 
-use constant::Constant;
-use function::Function;
-use module::Module;
+use constant::{AsConstant, Constant};
+use module::{AddressSpace, Module};
+use types::TypeRef;
 use utils::{AsBool, AsLLVMBool, AsRaw, AsResult, UncheckedCStr};
 use value::{AsValueRef, ValueRef};
 
@@ -14,9 +14,6 @@ pub type Linkage = LLVMLinkage;
 pub type Visibility = LLVMVisibility;
 pub type DLLStorageClass = LLVMDLLStorageClass;
 pub type UnnamedAddr = LLVMUnnamedAddr;
-
-impl GlobalValue for GlobalVar {}
-impl GlobalValue for Function {}
 
 pub trait GlobalValue: AsValueRef {
     fn parent(&self) -> Module {
@@ -81,6 +78,13 @@ pub struct GlobalVar(Constant);
 
 inherit_from!(GlobalVar, Constant, ValueRef, LLVMValueRef);
 
+impl AsConstant for GlobalVar {
+    fn as_const(&self) -> &Constant {
+        &self.0
+    }
+}
+impl GlobalValue for GlobalVar {}
+
 impl GlobalVar {
     pub fn delete(&self) {
         unsafe { LLVMDeleteGlobal(self.as_raw()) }
@@ -131,6 +135,112 @@ impl GlobalVar {
         self
     }
 }
+
+/// Global Alias
+///
+/// a single function or variable alias in the IR.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GlobalAlias(Constant);
+
+inherit_from!(GlobalAlias, Constant, ValueRef, LLVMValueRef);
+
+impl AsConstant for GlobalAlias {
+    fn as_const(&self) -> &Constant {
+        &self.0
+    }
+}
+impl GlobalValue for GlobalAlias {}
+
+impl GlobalAlias {
+    /// Retrieve the target value of an alias.
+    pub fn aliasee(&self) -> ValueRef {
+        unsafe { LLVMAliasGetAliasee(self.as_raw()) }.into()
+    }
+
+    /// Set the target value of an alias.
+    pub fn set_aliasee<V: AsRaw<RawType = LLVMValueRef>>(&self, aliasee: V) {
+        unsafe { LLVMAliasSetAliasee(self.as_raw(), aliasee.as_raw()) }
+    }
+}
+
+impl Module {
+    /// Add a global variable to a module under a specified name.
+    pub fn add_global_var<S, T>(&self, name: S, ty: T) -> GlobalVar
+    where
+        S: AsRef<str>,
+        T: Into<TypeRef>,
+    {
+        let name = name.as_ref();
+        let ty = ty.into();
+
+        let var = unsafe { LLVMAddGlobal(self.as_raw(), ty.as_raw(), cstr!(name)) };
+
+        trace!("add global var `{}`: {:?} to {:?}: ValueRef({:?})", name, ty, self, var,);
+
+        var.into()
+    }
+
+    /// Add a global variable to a module under a specified name.
+    pub fn add_global_var_in_address_space<S: AsRef<str>>(
+        &self,
+        name: S,
+        ty: TypeRef,
+        address_space: AddressSpace,
+    ) -> GlobalVar {
+        let name = name.as_ref();
+        let var = unsafe { LLVMAddGlobalInAddressSpace(self.as_raw(), ty.as_raw(), cstr!(name), address_space) };
+
+        trace!("add global var `{}`: {:?} to {:?}: ValueRef({:?})", name, ty, self, var,);
+
+        var.into()
+    }
+
+    /// Obtain a global variable value from a Module by its name.
+    pub fn get_global_var<S: AsRef<str>>(&self, name: S) -> Option<GlobalVar> {
+        unsafe { LLVMGetNamedGlobal(self.as_raw(), cstr!(name)) }.ok()
+    }
+
+    /// Obtain an iterator to the global variables in a module.
+    pub fn global_vars(&self) -> GlobalVarIter {
+        GlobalVarIter::new(self.as_raw())
+    }
+
+    /// Obtain a `GlobalAlias` value from a Module by its name.
+    pub fn get_global_alias<S: AsRef<str>>(&self, name: S) -> Option<GlobalAlias> {
+        let name = name.as_ref();
+
+        unsafe { LLVMGetNamedGlobalAlias(self.as_raw(), cstr!(name), name.len()) }.ok()
+    }
+
+    /// Add a `GlobalAlias` value to a Module by its name.
+    pub fn add_global_alias<T: AsRaw<RawType = LLVMTypeRef>, V: AsRaw<RawType = LLVMValueRef>, S: AsRef<str>>(
+        &self,
+        ty: T,
+        aliasee: V,
+        name: S,
+    ) -> GlobalAlias {
+        unsafe { LLVMAddAlias(self.as_raw(), ty.as_raw(), aliasee.as_raw(), cstr!(name)) }.into()
+    }
+
+    /// Obtain an iterator to the global aliases in a module.
+    pub fn global_aliases(&self) -> GlobalAliasIter {
+        GlobalAliasIter::new(self.as_raw())
+    }
+}
+
+impl_iter!(
+    GlobalVarIter,
+    LLVMGetFirstGlobal | LLVMGetLastGlobal[LLVMModuleRef],
+    LLVMGetNextGlobal | LLVMGetPreviousGlobal[LLVMValueRef],
+    GlobalVar
+);
+
+impl_iter!(
+    GlobalAliasIter,
+    LLVMGetFirstGlobalAlias | LLVMGetLastGlobalAlias[LLVMModuleRef],
+    LLVMGetNextGlobalAlias | LLVMGetPreviousGlobalAlias[LLVMValueRef],
+    GlobalAlias
+);
 
 #[cfg(test)]
 mod tests {
@@ -225,5 +335,41 @@ mod tests {
         assert_eq!(x.unnamed_addr(), LLVMUnnamedAddr::LLVMGlobalUnnamedAddr);
 
         assert_eq!(x.to_string(), "@x = unnamed_addr global i64 123");
+    }
+
+    #[test]
+    fn global_alias() {
+        let c = Context::new();
+
+        let m = c.create_module("test");
+        assert!(!m.as_raw().is_null());
+
+        let i8_t = c.int8_t();
+        let i8_ptr_t = i8_t.ptr_t();
+
+        let foo = m.add_global_var("foo", i8_t);
+        assert_eq!(m.get_global_var("foo"), Some(foo));
+        foo.set_initializer(i8_t.uint(42));
+
+        let aliasee = foo.bit_cast(i8_ptr_t);
+
+        let bar = m.add_global_alias(i8_ptr_t, aliasee, "bar");
+        assert_eq!(m.get_global_alias("bar"), Some(bar));
+        assert_eq!(bar.aliasee(), foo.into());
+
+        assert_eq!(m.global_aliases().collect::<Vec<_>>(), vec![bar]);
+
+        m.verify().unwrap();
+
+        assert_eq!(
+            m.to_string(),
+            r#"; ModuleID = 'test'
+source_filename = "test"
+
+@foo = global i8 42
+
+@bar = alias i8, i8* @foo
+"#
+        );
     }
 }

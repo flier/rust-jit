@@ -6,6 +6,8 @@ use llvm::prelude::*;
 
 use block::BasicBlock;
 use context::Context;
+use global::GlobalValue;
+use module::Module;
 use types::TypeRef;
 use utils::{AsBool, AsRaw, AsResult};
 use value::ValueRef;
@@ -86,6 +88,8 @@ impl FunctionType {
 pub struct Function(ValueRef);
 
 inherit_from!(Function, ValueRef, LLVMValueRef);
+
+impl GlobalValue for Function {}
 
 impl Function {
     pub fn is_empty(&self) -> bool {
@@ -199,6 +203,58 @@ impl_iter!(
     ValueRef
 );
 
+impl Module {
+    /// Look up the specified function in the module symbol table.
+    ///
+    /// If it does not exist, add a prototype for the function and return it.
+    /// This is nice because it allows most passes to get away with not handling
+    /// the symbol table directly for this common task.
+    pub fn get_or_insert_function<S: AsRef<str>, T: Into<TypeRef>>(
+        &self,
+        name: S,
+        return_type: T,
+        params_type: &[TypeRef],
+    ) -> Function {
+        self.get_function(name.as_ref())
+            .unwrap_or_else(|| self.add_function(name, FunctionType::new(return_type.into(), params_type, false)))
+    }
+
+    /// Add a function to a module under a specified name.
+    pub fn add_function<S: AsRef<str>>(&self, name: S, func_type: FunctionType) -> Function {
+        let name = name.as_ref();
+        let func = unsafe { LLVMAddFunction(self.as_raw(), cstr!(name), func_type.as_raw()) };
+
+        trace!(
+            "add function `{}`: {:?} to {:?}: Function({:?})",
+            name,
+            func_type,
+            self,
+            func,
+        );
+
+        func.into()
+    }
+
+    /// Obtain a Function value from a Module by its name.
+    pub fn get_function<S: AsRef<str>>(&self, name: S) -> Option<Function> {
+        let name = name.as_ref();
+
+        unsafe { LLVMGetNamedFunction(self.as_raw(), cstr!(name)) }.ok()
+    }
+
+    /// Obtain an iterator to the Function in a module.
+    pub fn functions(&self) -> FuncIter {
+        FuncIter::new(self.as_raw())
+    }
+}
+
+impl_iter!(
+    FuncIter,
+    LLVMGetFirstFunction | LLVMGetLastFunction[LLVMModuleRef],
+    LLVMGetNextFunction | LLVMGetPreviousFunction[LLVMValueRef],
+    Function
+);
+
 #[cfg(test)]
 mod tests {
     use llvm;
@@ -219,5 +275,38 @@ mod tests {
         assert!(!t.is_var_arg());
         assert_eq!(t.return_type(), i64_t);
         assert_eq!(t.param_types(), argts);
+    }
+
+    #[test]
+    fn module() {
+        let context = Context::new();
+
+        let m = context.create_module("test");
+        assert!(!m.as_raw().is_null());
+
+        let foo = m.add_function("foo", FunctionType::new(context.void_t(), &[], false));
+        assert!(!foo.as_raw().is_null());
+        assert_eq!(m.get_function("foo"), Some(foo));
+        assert!(foo.verify().is_ok());
+
+        let bar = m.get_or_insert_function("bar", context.int8_t(), &[context.int16_t()]);
+        assert!(!bar.as_raw().is_null());
+        assert_eq!(m.get_function("bar"), Some(bar));
+        assert!(bar.verify().is_ok());
+
+        assert_eq!(m.functions().collect::<Vec<_>>(), vec![foo, bar]);
+
+        assert_eq!(
+            m.to_string(),
+            r#"; ModuleID = 'test'
+source_filename = "test"
+
+declare void @foo()
+
+declare i8 @bar(i16)
+"#
+        );
+
+        m.verify().unwrap();
     }
 }

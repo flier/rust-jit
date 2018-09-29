@@ -1,5 +1,6 @@
 #![allow(deprecated)]
 
+use std::os::unix::io::AsRawFd;
 use std::path::Path;
 use std::ptr;
 
@@ -13,7 +14,7 @@ use context::{Context, GlobalContext};
 use errors::Result;
 use membuf::MemoryBuffer;
 use module::Module;
-use utils::{AsRaw, AsResult, DisposableMessage};
+use utils::{AsRaw, AsResult, DisposableMessage, FALSE};
 
 impl GlobalContext {
     /// Parse the specified bitcode file, returning the module.
@@ -77,7 +78,15 @@ impl Module {
         let path = path.as_ref();
 
         (unsafe { LLVMWriteBitcodeToFile(self.as_raw(), cpath!(path)) } == 0)
-            .ok_or_else(|| format_err!("fail to write bitcode to file {:?}", path))
+            .ok_or_else(|| format_err!("fail to write bitcode to file @ {:?}", path))
+    }
+
+    ///  Write a module to the file.
+    pub fn write_bitcode_to_fd<F: AsRawFd>(&self, file: F) -> Result<()> {
+        let fd = file.as_raw_fd();
+
+        (unsafe { LLVMWriteBitcodeToFD(self.as_raw(), fd, FALSE, FALSE) } == 0)
+            .ok_or_else(|| format_err!("fail to write bitcode to file descriptor {}", fd))
     }
 
     /// Writes a module to a new memory buffer.

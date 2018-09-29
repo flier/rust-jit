@@ -7,9 +7,6 @@ use llvm::prelude::*;
 
 use context::{Context, GlobalContext};
 use errors::Result;
-use function::Function;
-use function::FunctionType;
-use global::GlobalVar;
 use types::TypeRef;
 use utils::{from_unchecked_cstr, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
 
@@ -62,6 +59,23 @@ impl Module {
         unsafe { LLVMSetModuleIdentifier(self.as_raw(), cstr!(name), name.len()) }
     }
 
+    /// Obtain the module's original source file name.
+    pub fn source_filename(&self) -> Cow<str> {
+        unsafe {
+            let mut len = 0;
+            let p = LLVMGetSourceFileName(self.as_raw(), &mut len);
+
+            from_unchecked_cstr(p as *const u8, len as usize + 1)
+        }
+    }
+
+    /// Set the original source file name of a module to a string Name with length Len.
+    pub fn set_source_filename<S: AsRef<str>>(&self, filename: S) {
+        let filename = filename.as_ref();
+
+        unsafe { LLVMSetSourceFileName(self.as_raw(), cstr!(filename), filename.len()) }
+    }
+
     /// Obtain the data layout for a module.
     pub fn data_layout_str(&self) -> Cow<str> {
         unsafe { LLVMGetDataLayoutStr(self.as_raw()) }.as_str()
@@ -108,105 +122,7 @@ impl Module {
 
         unsafe { LLVMGetTypeByName(self.as_raw(), cstr!(name)) }.ok()
     }
-
-    /// Look up the specified function in the module symbol table.
-    ///
-    /// If it does not exist, add a prototype for the function and return it.
-    /// This is nice because it allows most passes to get away with not handling
-    /// the symbol table directly for this common task.
-    pub fn get_or_insert_function<S: AsRef<str>, T: Into<TypeRef>>(
-        &self,
-        name: S,
-        return_type: T,
-        params_type: &[TypeRef],
-    ) -> Function {
-        self.get_function(name.as_ref())
-            .unwrap_or_else(|| self.add_function(name, FunctionType::new(return_type.into(), params_type, false)))
-    }
-
-    /// Add a function to a module under a specified name.
-    pub fn add_function<S: AsRef<str>>(&self, name: S, func_type: FunctionType) -> Function {
-        let name = name.as_ref();
-        let func = unsafe { LLVMAddFunction(self.as_raw(), cstr!(name), func_type.as_raw()) };
-
-        trace!(
-            "add function `{}`: {:?} to {:?}: Function({:?})",
-            name,
-            func_type,
-            self,
-            func,
-        );
-
-        func.into()
-    }
-
-    /// Obtain a Function value from a Module by its name.
-    pub fn get_function<S: AsRef<str>>(&self, name: S) -> Option<Function> {
-        let name = name.as_ref();
-
-        unsafe { LLVMGetNamedFunction(self.as_raw(), cstr!(name)) }.ok()
-    }
-
-    /// Obtain an iterator to the Function in a module.
-    pub fn functions(&self) -> FuncIter {
-        FuncIter::new(self.as_raw())
-    }
-
-    /// Add a global variable to a module under a specified name.
-    pub fn add_global_var<S, T>(&self, name: S, ty: T) -> GlobalVar
-    where
-        S: AsRef<str>,
-        T: Into<TypeRef>,
-    {
-        let name = name.as_ref();
-        let ty = ty.into();
-
-        let var = unsafe { LLVMAddGlobal(self.as_raw(), ty.as_raw(), cstr!(name)) };
-
-        trace!("add global var `{}`: {:?} to {:?}: ValueRef({:?})", name, ty, self, var,);
-
-        var.into()
-    }
-
-    /// Add a global variable to a module under a specified name.
-    pub fn add_global_var_in_address_space<S: AsRef<str>>(
-        &self,
-        name: S,
-        ty: TypeRef,
-        address_space: AddressSpace,
-    ) -> GlobalVar {
-        let name = name.as_ref();
-        let var = unsafe { LLVMAddGlobalInAddressSpace(self.as_raw(), ty.as_raw(), cstr!(name), address_space) };
-
-        trace!("add global var `{}`: {:?} to {:?}: ValueRef({:?})", name, ty, self, var,);
-
-        var.into()
-    }
-
-    /// Obtain a global variable value from a Module by its name.
-    pub fn get_global_var<S: AsRef<str>>(&self, name: S) -> Option<GlobalVar> {
-        unsafe { LLVMGetNamedGlobal(self.as_raw(), cstr!(name.as_ref())) }.ok()
-    }
-
-    /// Obtain an iterator to the global variables in a module.
-    pub fn global_vars(&self) -> GlobalVarIter {
-        GlobalVarIter::new(self.as_raw())
-    }
 }
-
-impl_iter!(
-    FuncIter,
-    LLVMGetFirstFunction | LLVMGetLastFunction[LLVMModuleRef],
-    LLVMGetNextFunction | LLVMGetPreviousFunction[LLVMValueRef],
-    Function
-);
-
-impl_iter!(
-    GlobalVarIter,
-    LLVMGetFirstGlobal | LLVMGetLastGlobal[LLVMModuleRef],
-    LLVMGetNextGlobal | LLVMGetPreviousGlobal[LLVMValueRef],
-    GlobalVar
-);
 
 impl Drop for Module {
     fn drop(&mut self) {
@@ -278,21 +194,26 @@ impl GlobalContext {
 mod tests {
     use std::io::prelude::*;
 
+    use llvm::*;
     use tempfile::NamedTempFile;
 
     use super::*;
-    use types::*;
+    use metadata::ModuleFlagEntry;
 
     #[test]
     fn create() {
         let context = Context::new();
+
         let m = context.create_module("test");
-
         assert!(!m.as_raw().is_null());
-        assert_eq!(m.name(), "test");
 
+        assert_eq!(m.name(), "test");
         m.set_name("hello");
         assert_eq!(m.name(), "hello");
+
+        assert_eq!(m.source_filename(), "test");
+        m.set_source_filename("file");
+        assert_eq!(m.source_filename(), "file");
 
         assert_eq!(m.data_layout_str(), "");
         m.set_data_layout_str("e");
@@ -301,6 +222,26 @@ mod tests {
         assert_eq!(m.target_triple(), "");
         m.set_target_triple("x86_64-apple-darwin");
         assert_eq!(m.target_triple(), "x86_64-apple-darwin");
+
+        assert_eq!(m.flags().collect::<Vec<_>>(), vec![]);
+
+        let md = GlobalContext::md_string("value").into();
+        m.add_flag(LLVMModuleFlagBehavior::LLVMModuleFlagBehaviorError, "key", md);
+
+        assert_eq!(m.get_flag("key"), md);
+        assert_eq!(
+            m.flags().collect::<Vec<_>>(),
+            vec![ModuleFlagEntry {
+                behavior: LLVMModuleFlagBehavior::LLVMModuleFlagBehaviorError,
+                key: "key".into(),
+                metadata: md
+            }]
+        );
+
+        m.set_inline_asm("pushq   %rbp");
+        m.append_inline_asm("movq    %rsp, %rbp");
+
+        assert_eq!(m.inline_asm(), "pushq   %rbp\nmovq    %rsp, %rbp\n");
 
         let mut f = NamedTempFile::new().unwrap();
 
@@ -313,40 +254,19 @@ mod tests {
         assert_eq!(
             buf,
             r#"; ModuleID = 'hello'
-source_filename = "test"
+source_filename = "file"
 target datalayout = "e"
 target triple = "x86_64-apple-darwin"
+
+module asm "pushq   %rbp"
+module asm "movq    %rsp, %rbp"
+
+!llvm.module.flags = !{!0}
+
+!0 = !{i32 1, !"key", !"value"}
 "#
         );
 
         assert_eq!(m.to_string(), buf);
-    }
-
-    #[test]
-    fn function() {
-        let context = Context::new();
-        let m = context.create_module("function");
-
-        assert_eq!(m.get_function("nop"), None);
-
-        let f = m.add_function("nop", FunctionType::new(context.void_t(), &[], false));
-
-        assert!(!f.as_raw().is_null());
-        assert_eq!(f.to_string(), "\ndeclare void @nop()\n");
-
-        assert_eq!(m.get_function("nop"), Some(f));
-        assert_eq!(m.get_function("sum"), None);
-
-        let i64_t = context.int64_t();
-        let argts = [i64_t, i64_t, i64_t];
-        let sum = m.add_function("sum", FunctionType::new(i64_t, &argts, false));
-
-        assert_eq!(sum.name(), Some("sum".into()));
-        assert_eq!(m.get_function("sum"), Some(sum));
-
-        assert_eq!(m.functions().collect::<Vec<Function>>(), vec![f, sum]);
-
-        assert!(m.verify().is_ok());
-        assert!(sum.verify().is_ok());
     }
 }
