@@ -507,7 +507,7 @@ impl Example {
         // Entry Block
         builder.position_at_end(entry_block);
 
-        invoke!(to_invoke, except_type; to normal_block; unwind exception_block).emit_to(&builder);
+        invoke!(to_invoke(except_type) to label normal_block unwind label exception_block).emit_to(&builder);
 
         // End Block
         builder.position_at_end(end_block);

@@ -2,7 +2,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use block::BasicBlock;
-use insts::{AstNode, IRBuilder, InstructionBuilder};
+use insts::{AstNode, IRBuilder, InstructionBuilder, TerminatorInst};
 use utils::{AsRaw, IntoRaw};
 use value::{Instruction, ValueRef};
 
@@ -68,6 +68,8 @@ impl<'a> InstructionBuilder for Ret<'a> {
 pub struct ReturnInst(Instruction);
 
 inherit_from!(ReturnInst, Instruction, ValueRef, LLVMValueRef);
+
+impl TerminatorInst for ReturnInst {}
 
 impl ReturnInst {
     /// Return the successors that this terminator has.

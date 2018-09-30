@@ -1,5 +1,8 @@
+use std::fmt;
 use std::ops;
 use std::ptr;
+
+use arrayvec::ArrayVec;
 
 use llvm::core::*;
 use llvm::prelude::*;
@@ -10,7 +13,7 @@ use utils::{AsRaw, AsResult};
 use value::{Instruction, ValueRef};
 
 pub trait InstructionBuilder {
-    type Target: Into<ValueRef>;
+    type Target;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target;
 }
@@ -21,6 +24,73 @@ impl<T: Into<ValueRef>> InstructionBuilder for T {
     fn emit_to(self, _builder: &IRBuilder) -> Self::Target {
         self.into()
     }
+}
+
+macro_rules! array_impls {
+    ($($len:tt)+) => {
+        $(
+            impl<T> InstructionBuilder for [T; $len]
+            where
+                T: Clone + InstructionBuilder,
+                T::Target: fmt::Debug
+            {
+                type Target = [T::Target; $len];
+
+                #[inline]
+                fn emit_to(self, builder: &IRBuilder) -> Self::Target
+                {
+                    self.into_iter()
+                        .map(|v| v.clone().emit_to(builder))
+                        .collect::<ArrayVec<Self::Target>>()
+                        .into_inner()
+                        .unwrap()
+                }
+            }
+        )+
+    }
+}
+
+array_impls!(01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16
+             17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32);
+
+macro_rules! tuple_impls {
+    ($($len:expr => ($($n:tt $name:ident)+))+) => {
+        $(
+            impl<$($name),+> InstructionBuilder for ($($name,)+)
+            where
+                $($name: InstructionBuilder,)+
+            {
+                type Target = ($($name::Target ,)+);
+
+                #[inline]
+                fn emit_to(self, builder: &IRBuilder) -> Self::Target
+                {
+                    (
+                        $( self.$n.emit_to(builder) ,)+
+                    )
+                }
+            }
+        )+
+    }
+}
+
+tuple_impls! {
+    1 => (0 T0)
+    2 => (0 T0 1 T1)
+    3 => (0 T0 1 T1 2 T2)
+    4 => (0 T0 1 T1 2 T2 3 T3)
+    5 => (0 T0 1 T1 2 T2 3 T3 4 T4)
+    6 => (0 T0 1 T1 2 T2 3 T3 4 T4 5 T5)
+    7 => (0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6)
+    8 => (0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7)
+    9 => (0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8)
+    10 => (0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9)
+    11 => (0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10)
+    12 => (0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11)
+    13 => (0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12)
+    14 => (0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13)
+    15 => (0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14)
+    16 => (0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -86,6 +156,16 @@ impl IRBuilder {
     /// This specifies that created instructions should be appended to the end of the specified block.
     pub fn position_at_end(&self, block: BasicBlock) {
         unsafe { LLVMPositionBuilderAtEnd(self.0, block.as_raw()) }
+    }
+
+    pub fn within<F, I>(&self, block: BasicBlock, callback: F) -> I::Target
+    where
+        F: Fn() -> I,
+        I: InstructionBuilder,
+    {
+        self.position_at_end(block);
+
+        callback().emit_to(self)
     }
 
     pub fn emit<I: InstructionBuilder>(&self, inst: I) -> I::Target {

@@ -10,8 +10,6 @@ mod br;
 #[macro_use]
 mod switch;
 #[macro_use]
-mod invoke;
-#[macro_use]
 mod terminator;
 #[macro_use]
 mod memory;
@@ -44,6 +42,10 @@ mod atomic;
 mod ast;
 #[macro_use]
 mod ir;
+#[macro_use]
+mod catch;
+#[macro_use]
+mod invoke;
 
 pub use self::aggregate::{extract_value, insert_value, ExtractValue, InsertValue};
 pub use self::ast::AstNode;
@@ -53,17 +55,25 @@ pub use self::br::{Br, BranchInst, CondBr, IndirectBr};
 pub use self::builder::{IRBuilder, InstructionBuilder, Position};
 pub use self::call::{call, Call, CallConv, CallInst, CallSite};
 pub use self::cast::*;
+pub use self::catch::{
+    catchpad, catchret, catchswitch, cleanuppad, cleanupret, CatchPad, CatchPadInst, CatchRet, CatchRetInst,
+    CatchSwitch, CatchSwitchInst, CleanupPad, CleanupRet, CleanupRetInst,
+};
 pub use self::cmp::{FCmp, FCmpInst, ICmp, ICmpInst};
 pub use self::gep::{GetElementPtr, GetElementPtrInst};
 pub use self::globalstr::{global_str, global_str_ptr, GlobalString, GlobalStringPtr};
 pub use self::invoke::{invoke, Invoke, InvokeInst};
-pub use self::memory::{free, load, store, Alloca, AllocaInst, Free, Load, LoadInst, Malloc, MemAccessInst, Store,
-                       StoreInst};
+pub use self::memory::{
+    free, load, store, Alloca, AllocaInst, Free, Load, LoadInst, Malloc, MemAccessInst, Store, StoreInst,
+};
 pub use self::phi::{phi, Phi, PhiNode};
 pub use self::ret::{Ret, ReturnInst};
 pub use self::select::{select, Select};
 pub use self::switch::{switch, Switch, SwitchInst};
-pub use self::terminator::{landing_pad, resume, unreachable, LandingPad, LandingPadInst, Resume, Unreachable};
+pub use self::terminator::{
+    landing_pad, resume, unreachable, LandingPad, LandingPadInst, Resume, ResumeInst, TerminatorInst, Unreachable,
+    UnreachableInst,
+};
 pub use self::unary::*;
 pub use self::vaarg::{va_arg, VaArg};
 pub use self::vector::{extract_element, insert_element, shuffle_vector, ExtractElement, InsertElement, ShuffleVector};

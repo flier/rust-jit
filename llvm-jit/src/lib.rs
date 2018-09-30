@@ -7,6 +7,7 @@ extern crate bitflags;
 extern crate boolinator;
 #[macro_use]
 extern crate failure;
+extern crate arrayvec;
 extern crate hexplay;
 #[macro_use]
 extern crate lazy_static;

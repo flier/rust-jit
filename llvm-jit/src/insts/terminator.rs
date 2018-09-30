@@ -10,6 +10,10 @@ use types::TypeRef;
 use utils::{AsLLVMBool, AsRaw, IntoRaw};
 use value::{Instruction, ValueRef};
 
+/// Subclasses of this class are all able to terminate a basic
+/// block. Thus, these are all the flow control type of operations.
+pub trait TerminatorInst {}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct LandingPad<'a> {
     result_ty: TypeRef,
@@ -52,27 +56,21 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        let clauses = self
-            .clauses
-            .iter()
-            .map(|clause| clause.into_raw())
-            .collect::<Vec<LLVMValueRef>>();
-
         let landingpad: LandingPadInst = unsafe {
             LLVMBuildLandingPad(
                 builder.as_raw(),
                 self.result_ty.into_raw(),
                 self.personality_fn.map_or(ptr::null_mut(), |f| f.into_raw()),
-                clauses.len() as u32,
+                self.clauses.len() as u32,
                 cstr!(self.name),
             )
         }.into();
 
         for clause in &self.clauses {
-            unsafe { LLVMAddClause(landingpad.into_raw(), clause.into_raw()) }
+            unsafe { LLVMAddClause(landingpad.as_raw(), clause.as_raw()) }
         }
 
-        unsafe { LLVMSetCleanup(landingpad.into_raw(), self.cleanup.as_bool()) }
+        unsafe { LLVMSetCleanup(landingpad.as_raw(), self.cleanup.as_bool()) }
 
         landingpad
     }
@@ -82,6 +80,8 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
 pub struct LandingPadInst(Instruction);
 
 inherit_from!(LandingPadInst, Instruction, ValueRef, LLVMValueRef);
+
+impl TerminatorInst for LandingPadInst {}
 
 impl LandingPadInst {
     pub fn add_clause<V: Into<ValueRef>>(&self, clause: V) -> &Self {
@@ -138,7 +138,7 @@ impl<'a> Resume<'a> {
 }
 
 impl<'a> InstructionBuilder for Resume<'a> {
-    type Target = Instruction;
+    type Target = ResumeInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
@@ -146,6 +146,13 @@ impl<'a> InstructionBuilder for Resume<'a> {
         unsafe { LLVMBuildResume(builder.as_raw(), self.0.emit_to(builder).into_raw()) }.into()
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ResumeInst(Instruction);
+
+inherit_from!(ResumeInst, Instruction, ValueRef, LLVMValueRef);
+
+impl TerminatorInst for ResumeInst {}
 
 /// The `resume` instruction is a terminator instruction that has no successors.
 pub fn resume<'a, V>(result: V) -> Resume<'a>
@@ -169,7 +176,7 @@ macro_rules! resume {
 pub struct Unreachable;
 
 impl InstructionBuilder for Unreachable {
-    type Target = Instruction;
+    type Target = UnreachableInst;
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
@@ -177,6 +184,13 @@ impl InstructionBuilder for Unreachable {
         unsafe { LLVMBuildUnreachable(builder.as_raw()) }.into()
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct UnreachableInst(Instruction);
+
+inherit_from!(UnreachableInst, Instruction, ValueRef, LLVMValueRef);
+
+impl TerminatorInst for UnreachableInst {}
 
 /// The `unreachable` instruction is used to inform the optimizer that a particular portion of the code is not reachable.
 pub fn unreachable() -> Unreachable {
@@ -204,7 +218,7 @@ impl IRBuilder {
     }
 
     /// The `resume` instruction is a terminator instruction that has no successors.
-    pub fn resume<'a, V>(&self, result: V) -> Instruction
+    pub fn resume<'a, V>(&self, result: V) -> ResumeInst
     where
         V: Into<AstNode<'a>>,
     {
@@ -212,7 +226,7 @@ impl IRBuilder {
     }
 
     /// The `unreachable` instruction is used to inform the optimizer that a particular portion of the code is not reachable.
-    pub fn unreachable(&self) -> Instruction {
+    pub fn unreachable(&self) -> UnreachableInst {
         unreachable().emit_to(self)
     }
 }

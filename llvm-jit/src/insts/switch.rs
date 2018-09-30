@@ -4,7 +4,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use block::BasicBlock;
-use insts::{AstNode, IRBuilder, InstructionBuilder};
+use insts::{AstNode, IRBuilder, InstructionBuilder, TerminatorInst};
 use utils::{AsRaw, IntoRaw};
 use value::{Instruction, ValueRef};
 
@@ -76,6 +76,8 @@ impl<'a> InstructionBuilder for Switch<'a> {
 pub struct SwitchInst(Instruction);
 
 inherit_from!(SwitchInst, Instruction, ValueRef, LLVMValueRef);
+
+impl TerminatorInst for SwitchInst {}
 
 impl SwitchInst {
     /// Obtain the default destination basic block of a switch instruction.

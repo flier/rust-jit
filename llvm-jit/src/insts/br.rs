@@ -4,7 +4,7 @@ use llvm::core::*;
 use llvm::prelude::*;
 
 use block::BasicBlock;
-use insts::{AstNode, IRBuilder, InstructionBuilder};
+use insts::{AstNode, IRBuilder, InstructionBuilder, TerminatorInst};
 use utils::{AsBool, AsRaw, AsResult, IntoRaw};
 use value::{AsValueRef, Instruction, ValueRef};
 
@@ -152,6 +152,8 @@ impl<'a> InstructionBuilder for IndirectBr<'a> {
 pub struct BranchInst(Instruction);
 
 inherit_from!(BranchInst, Instruction, ValueRef, LLVMValueRef);
+
+impl TerminatorInst for BranchInst {}
 
 impl BranchInst {
     /// Return if a branch is conditional.

@@ -3,6 +3,7 @@ use std::ptr;
 
 use llvm::core::*;
 use llvm::prelude::*;
+use llvm::LLVMCallConv;
 
 use block::BasicBlock;
 use function::Function;
@@ -25,25 +26,28 @@ pub struct Invoke<'a> {
     then: Option<BasicBlock>,
     unwind: Option<BasicBlock>,
     name: Cow<'a, str>,
+    call_conv: Option<LLVMCallConv>,
+}
+
+/// The ‘invoke‘ instruction causes control to transfer to a specified function,
+/// with the possibility of control flow transfer to either the ‘normal‘ label or the ‘exception‘ label.
+pub fn invoke<'a, F, I, N>(func: F, args: I, name: N) -> Invoke<'a>
+where
+    F: Into<Function>,
+    I: IntoIterator<Item = AstNode<'a>>,
+    N: Into<Cow<'a, str>>,
+{
+    Invoke {
+        func: func.into(),
+        args: args.into_iter().collect(),
+        then: None,
+        unwind: None,
+        name: name.into(),
+        call_conv: None,
+    }
 }
 
 impl<'a> Invoke<'a> {
-    /// The ‘invoke‘ instruction causes control to transfer to a specified function,
-    /// with the possibility of control flow transfer to either the ‘normal‘ label or the ‘exception‘ label.
-    pub fn new<F, N>(func: F, args: Vec<AstNode<'a>>, name: N) -> Self
-    where
-        F: Into<Function>,
-        N: Into<Cow<'a, str>>,
-    {
-        Invoke {
-            func: func.into(),
-            args,
-            then: None,
-            unwind: None,
-            name: name.into(),
-        }
-    }
-
     pub fn then(mut self, dest: BasicBlock) -> Self {
         self.then = Some(dest);
         self
@@ -61,12 +65,13 @@ impl<'a> InstructionBuilder for Invoke<'a> {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        let mut args = self.args
+        let mut args = self
+            .args
             .into_iter()
             .map(|arg| arg.emit_to(builder).into_raw())
             .collect::<Vec<LLVMValueRef>>();
 
-        unsafe {
+        let invoke: Self::Target = unsafe {
             LLVMBuildInvoke(
                 builder.as_raw(),
                 self.func.as_raw(),
@@ -76,7 +81,13 @@ impl<'a> InstructionBuilder for Invoke<'a> {
                 self.unwind.map_or(ptr::null_mut(), |bb| bb.as_raw()),
                 cstr!(self.name),
             )
-        }.into()
+        }.into();
+
+        if let Some(call_conv) = self.call_conv {
+            invoke.set_call_conv(call_conv);
+        }
+
+        invoke
     }
 }
 
@@ -109,59 +120,92 @@ impl InvokeInst {
     }
 }
 
-/// The ‘invoke‘ instruction causes control to transfer to a specified function,
-/// with the possibility of control flow transfer to either the ‘normal‘ label or the ‘exception‘ label.
-pub fn invoke<'a, F, I, N>(func: F, args: I, name: N) -> Invoke<'a>
-where
-    F: Into<Function>,
-    I: IntoIterator<Item = AstNode<'a>>,
-    N: Into<Cow<'a, str>>,
-{
-    Invoke::new(func, args.into_iter().collect(), name)
-}
-
 /// The `invoke` instruction causes control to transfer to a specified function,
 /// with the possibility of control flow transfer to either the `normal` label or the `exception` label.
 #[macro_export]
 macro_rules! invoke {
-    ($func:expr, $( $arg:expr ),* ; to $then:expr ; unwind $unwind:expr ; $name:expr) => ({
-        $crate::insts::invoke($func, vec![ $( $arg.into() ),* ], $name).then($then).unwind($unwind)
-    });
-    ($func:expr, $( $arg:expr ),* ; to $then:expr ; $name:expr) => ({
-        $crate::insts::invoke($func, vec![ $( $arg.into() ),* ], $name).then($then)
-    });
-    ($func:expr, $( $arg:expr ),* ; unwind $unwind:expr ; $name:expr) => ({
-        $crate::insts::invoke($func, vec![ $( $arg.into() ),* ], $name).unwind($unwind)
-    });
-    ($func:expr, $( $arg:expr ),* ; $name:expr) => ({
-        $crate::insts::invoke($func, vec![ $( $arg.into() ),* ], $name)
-    });
+    (__impl $invoke:ident to label $then:ident $($rest:tt)* ) => {{
+        #[allow(unused_mut)]
+        let mut invoke = $invoke.then($then);
 
-    ($func:expr, $( $arg:expr ),* ; to $then:expr ; unwind $unwind:expr) => ({
-        invoke!($func, $( $arg ),* ; to $then ; unwind $unwind ; "invoke")
-    });
-    ($func:expr, $( $arg:expr ),* ; to $then:expr) => ({
-        invoke!($func, $( $arg ),* ; to $then ; "invoke")
-    });
-    ($func:expr, $( $arg:expr ),* ; unwind $unwind:expr) => ({
-        invoke!($func, $( $arg ),* ; unwind $unwind ; "invoke")
-    });
-    ($func:expr, $( $arg:expr ),*) => ({
-        invoke!($func, $( $arg ),* ; "invoke")
-    });
-}
+        invoke!(__impl invoke $($rest)*)
+    }};
+    (__impl $invoke:ident unwind label $unwind:ident $($rest:tt)* ) => {{
+        #[allow(unused_mut)]
+        let mut invoke = $invoke.unwind($unwind);
 
-impl IRBuilder {
-    /// The ‘invoke‘ instruction causes control to transfer to a specified function,
-    /// with the possibility of control flow transfer to either the ‘normal‘ label or the ‘exception‘ label.
-    pub fn invoke<'a, F, I, N>(&self, func: F, args: I, name: N) -> InvokeInst
-    where
-        F: Into<Function>,
-        I: IntoIterator<Item = AstNode<'a>>,
-        N: Into<Cow<'a, str>>,
-    {
-        Invoke::new(func.into(), args.into_iter().collect(), name.into()).emit_to(self)
-    }
+        invoke!(__impl invoke $($rest)*)
+    }};
+    (__impl $invoke:expr ; $name:expr) => {{
+        $invoke.name = $name.into();
+        $invoke
+    }};
+    (__impl $invoke:expr) => {{
+        $invoke
+    }};
+    (__call $func:ident ( $( $arg:expr ),* ) $($rest:tt)*) => ({
+        #[allow(unused_mut)]
+        let mut invoke = $crate::insts::invoke($func, vec![ $( $arg.into() ),* ], "invoke");
+
+        invoke!(__impl invoke $($rest)*)
+    });
+    (__call_conv $call_conv:expr, $($rest:tt)*) => {{
+        let mut invoke = invoke!( $($rest)* );
+        invoke.call_conv = Some($call_conv);
+        invoke
+    }};
+
+    // The C calling convention
+    (ccc $($rest:tt)*) => {
+        invoke!(__call_conv ::llvm::LLVMCallConv::LLVMCCallConv, $($rest)*)
+    };
+    // The fast calling convention
+    (fastcc $($rest:tt)*) => {
+        invoke!(__call_conv ::llvm::LLVMCallConv::LLVMFastCallConv, $($rest)*)
+    };
+    // The cold calling convention
+    (coldcc $($rest:tt)*) => {
+        invoke!(__call_conv ::llvm::LLVMCallConv::LLVMColdCallConv, $($rest)*)
+    };
+    // GHC convention
+    (cc10 $($rest:tt)*) => {
+        invoke!(__call_conv ::llvm::LLVMCallConv::LLVMGHCCallConv, $($rest)*)
+    };
+    // The HiPE calling convention
+    (cc11 $($rest:tt)*) => {
+        invoke!(__call_conv ::llvm::LLVMCallConv::LLVMHiPECallConv, $($rest)*)
+    };
+    // WebKit’s JavaScript calling convention
+    (webkit_jscc $($rest:tt)*) => {
+        invoke!(__call_conv ::llvm::LLVMCallConv::LLVMWebKitJSCallConv, $($rest)*)
+    };
+    // Dynamic calling convention for code patching
+    (anyregcc $($rest:tt)*) => {
+        invoke!(__call_conv ::llvm::LLVMCallConv::LLVMAnyRegCallConv, $($rest)*)
+    };
+    // The PreserveMost calling convention
+    (preserve_mostcc $($rest:tt)*) => {
+        invoke!(__call_conv ::llvm::LLVMCallConv::LLVMPreserveMostCallConv, $($rest)*)
+    };
+    // The PreserveAll calling convention
+    (preserve_allcc $($rest:tt)*) => {
+        invoke!(__call_conv ::llvm::LLVMCallConv::LLVMPreserveAllCallConv, $($rest)*)
+    };
+    // This calling convention is used for Swift language.
+    (swiftcc $($rest:tt)*) => {
+        invoke!(__call_conv ::llvm::LLVMCallConv::LLVMSwiftCallConv, $($rest)*)
+    };
+    // The CXX_FAST_TLS calling convention for access functions
+    (cxx_fast_tlscc $($rest:tt)*) => {
+        invoke!(__call_conv ::llvm::LLVMCallConv::LLVMCXXFASTTLSCallConv, $($rest)*)
+    };
+
+    ($func:ident ( $( $arg:expr ),* ) $($rest:tt)*) => ({
+        #[allow(unused_mut)]
+        let mut invoke = $crate::insts::invoke($func, vec![ $( $arg.into() ),* ], "invoke");
+
+        invoke!(__impl invoke $($rest)*)
+    });
 }
 
 #[cfg(test)]
@@ -178,28 +222,50 @@ mod tests {
         let builder = context.create_builder();
 
         let i64_t = context.int64_t();
-        let fn_test = module.add_function("test", FunctionType::new(context.void_t(), &[], false));
+
         let fn_hello = module.add_function("hello", FunctionType::new(i64_t, &[i64_t, i64_t], false));
 
-        let bb = fn_test.append_basic_block_in_context("entry", &context);
-        builder.position_at_end(bb);
+        context
+            .create_builder()
+            .within(fn_hello.append_basic_block_in_context("entry", &context), || {
+                ret!(add!(fn_hello.get_param(0).unwrap(), fn_hello.get_param(1).unwrap()))
+            });
 
-        let bb_normal = fn_test.append_basic_block_in_context("normal", &context);
-        let bb_unwind = fn_test.append_basic_block_in_context("catch", &context);
+        fn_hello.verify().unwrap();
 
-        let invoke =
-            invoke!(fn_hello, i64_t.uint(123), i64_t.int(456); to bb_normal; unwind bb_unwind).emit_to(&builder);
+        let fn_test = module.add_function("test", FunctionType::new(context.void_t(), &[], false));
+
+        let entry_bb = fn_test.append_basic_block_in_context("entry", &context);
+        let normal_bb = fn_test.append_basic_block_in_context("normal", &context);
+        let unwind_bb = fn_test.append_basic_block_in_context("unwind", &context);
+        let catch_bb = fn_test.append_basic_block_in_context("catch", &context);
+
+        let invoke = builder.within(entry_bb, || {
+            invoke!(cc11 fn_hello(i64_t.uint(123), i64_t.int(456)) to label normal_bb unwind label unwind_bb ; "hello")
+        });
 
         assert_eq!(
             invoke.to_string().trim(),
-            r#"%invoke = invoke i64 @hello(i64 123, i64 456)
-          to label %normal unwind label %catch"#
+            r#"%hello = invoke cc11 i64 @hello(i64 123, i64 456)
+          to label %normal unwind label %unwind"#
         );
 
         assert_eq!(invoke.argn(), 2);
-        assert!(matches!(invoke.call_conv(), LLVMCallConv::LLVMCCallConv));
+        assert_eq!(invoke.call_conv(), LLVMCallConv::LLVMHiPECallConv);
         assert_eq!(invoke.called(), fn_hello);
-        assert_eq!(invoke.normal_dest(), bb_normal);
-        assert_eq!(invoke.unwind_dest(), bb_unwind);
+        assert_eq!(invoke.normal_dest(), normal_bb);
+        assert_eq!(invoke.unwind_dest(), unwind_bb);
+
+        builder.within(normal_bb, || ret!());
+        let catchswitch_inst = builder.within(
+            unwind_bb,
+            || catchswitch!(within none [label catch_bb] unwind to caller),
+        );
+        let catchpad_inst = builder.within(catch_bb, || catchpad!(within catchswitch_inst []));
+        builder.within(catch_bb, || catchret!(from catchpad_inst to label normal_bb));
+
+        fn_test.verify().unwrap();
+
+        module.verify().unwrap();
     }
 }
