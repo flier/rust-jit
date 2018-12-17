@@ -1,7 +1,9 @@
 use std::borrow::Borrow;
 use std::ffi::{CStr, CString};
 use std::fmt;
+use std::iter::FromIterator;
 use std::mem;
+use std::ops::Deref;
 use std::result::Result as StdResult;
 use std::slice;
 
@@ -12,22 +14,107 @@ pub type Result<T> = StdResult<T, failure::Error>;
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Program(Vec<Inst>);
 
-impl From<&bpf_program> for Result<Program> {
-    fn from(program: &bpf_program) -> Self {
-        let program = program.borrow();
+impl Deref for Program {
+    type Target = [Inst];
 
-        unsafe { slice::from_raw_parts(program.bf_insns, program.bf_len as usize) }
-            .iter()
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a> FromIterator<&'a bpf_insn> for Result<Program> {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = &'a bpf_insn>,
+    {
+        iter.into_iter()
             .map(|inst| inst.into())
             .collect::<Result<Vec<_>>>()
             .map(Program)
     }
 }
 
+impl From<&bpf_program> for Result<Program> {
+    fn from(program: &bpf_program) -> Self {
+        let program = program.borrow();
+
+        unsafe { slice::from_raw_parts(program.bf_insns, program.bf_len as usize) }
+            .iter()
+            .collect()
+    }
+}
+
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (idx, inst) in self.0.iter().enumerate() {
-            writeln!(f, "({:03} {})", idx, inst)?;
+            write!(f, "({:03}) ", idx)?;
+
+            match inst {
+                Inst::Load(Mode::Abs(off, size)) => write!(f, "ld{}\t[{}]", size.suffix(), off),
+                Inst::Load(Mode::Ind(off, size)) => write!(f, "ld{}\t[x + {}]", size.suffix(), off),
+                Inst::Load(Mode::Len) => write!(f, "ld\t#pktlen"),
+                Inst::Load(Mode::Imm(off)) => write!(f, "ld\t#0x{:x}", off),
+                Inst::Load(Mode::Mem(off)) => write!(f, "ld\tM[{}]", off),
+                Inst::Load(_) => unreachable!(),
+
+                Inst::LoadX(Mode::Imm(off)) => write!(f, "ldx\t#0x{:x}", off),
+                Inst::LoadX(Mode::Mem(off)) => write!(f, "ldx\tM[{}]", off),
+                Inst::LoadX(Mode::Msh(off)) => write!(f, "ldxb\t4*([{}]&0xf)", off),
+                Inst::LoadX(_) => unreachable!(),
+
+                Inst::Store(off) => write!(f, "st\tM[{}]", off),
+                Inst::StoreX(off) => write!(f, "stx\tM[{}]", off),
+
+                Inst::Jmp(Cond::Abs(off)) => write!(f, "ja\t{}", off),
+                Inst::Jmp(Cond::Gt(src, jt, jf)) => write!(
+                    f,
+                    "jgt\t{:x}\tjt {}\tjf {}",
+                    src,
+                    idx + 1 + *jt as usize,
+                    idx + 1 + *jf as usize
+                ),
+                Inst::Jmp(Cond::Ge(src, jt, jf)) => write!(
+                    f,
+                    "jge\t{:x}\tjt {}\tjf {}",
+                    src,
+                    idx + 1 + *jt as usize,
+                    idx + 1 + *jf as usize
+                ),
+                Inst::Jmp(Cond::Eq(src, jt, jf)) => write!(
+                    f,
+                    "jeq\t{:x}\tjt {}\tjf {}",
+                    src,
+                    idx + 1 + *jt as usize,
+                    idx + 1 + *jf as usize
+                ),
+                Inst::Jmp(Cond::Set(src, jt, jf)) => write!(
+                    f,
+                    "jset\t{:x}\tjt {}\tjf {}",
+                    src,
+                    idx + 1 + *jt as usize,
+                    idx + 1 + *jf as usize
+                ),
+
+                Inst::Alu(Op::Add(src)) => write!(f, "add\t{}", src),
+                Inst::Alu(Op::Sub(src)) => write!(f, "sub\t{}", src),
+                Inst::Alu(Op::Mul(src)) => write!(f, "mul\t{}", src),
+                Inst::Alu(Op::Div(src)) => write!(f, "div\t{}", src),
+                Inst::Alu(Op::Mod(src)) => write!(f, "mod\t{}", src),
+                Inst::Alu(Op::And(src)) => write!(f, "and\t{:x}", src),
+                Inst::Alu(Op::Or(src)) => write!(f, "or\t{:x}", src),
+                Inst::Alu(Op::Xor(src)) => write!(f, "xor\t{:x}", src),
+                Inst::Alu(Op::LShift(src)) => write!(f, "lsh\t{}", src),
+                Inst::Alu(Op::RShift(src)) => write!(f, "rsh\t{}", src),
+                Inst::Alu(Op::Neg) => write!(f, "neg"),
+
+                Inst::Ret(Some(RVal::K(k))) => write!(f, "ret\t#{}", k),
+                Inst::Ret(_) => write!(f, "ret"),
+
+                Inst::Misc(MiscOp::Tax) => write!(f, "tax"),
+                Inst::Misc(MiscOp::Txa) => write!(f, "txa"),
+            }?;
+
+            writeln!(f, "")?;
         }
 
         Ok(())
@@ -35,12 +122,12 @@ impl fmt::Display for Program {
 }
 
 impl Program {
-    pub fn compile<S: AsRef<str>>(&self, code: S) -> Result<Self> {
+    pub fn compile<S: AsRef<str>>(link_type: u32, code: S) -> Result<Self> {
         let mut program: bpf_program = unsafe { mem::zeroed() };
         let code = CString::new(code.as_ref())?;
 
         unsafe {
-            let p = pcap_open_dead(0, 0);
+            let p = pcap_open_dead(link_type as i32, u16::max_value() as i32);
             let ret = if pcap_compile(p, &mut program, code.as_ptr(), 1, PCAP_NETMASK_UNKNOWN) == 0 {
                 (&program).into()
             } else {
@@ -188,6 +275,13 @@ impl RVal {
             RVal::K(_) => BPF_K,
         }
     }
+
+    pub fn value(self) -> u32 {
+        match self {
+            RVal::K(v) => v,
+            RVal::A => 0,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -218,51 +312,6 @@ pub enum Inst {
     /// that does not fit into the	above classes,
     /// and for any new instructions that might need to be added.
     Misc(MiscOp),
-}
-
-impl fmt::Display for Inst {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Inst::Load(Mode::Abs(off, size)) => write!(f, "ld{}\t[{}]", size.suffix(), off),
-            Inst::Load(Mode::Ind(off, size)) => write!(f, "ld{}\t[x + {}]", size.suffix(), off),
-            Inst::Load(Mode::Len) => write!(f, "ld\t#pktlen"),
-            Inst::Load(Mode::Imm(off)) => write!(f, "ld\t#0x{:x}", off),
-            Inst::Load(Mode::Mem(off)) => write!(f, "ld\tM[{}]", off),
-            Inst::Load(_) => unreachable!(),
-
-            Inst::LoadX(Mode::Imm(off)) => write!(f, "ldx\t#0x{:x}", off),
-            Inst::LoadX(Mode::Mem(off)) => write!(f, "ldx\tM[{}]", off),
-            Inst::LoadX(Mode::Msh(off)) => write!(f, "ldxb\t4*([{}]&0xf)", off),
-            Inst::LoadX(_) => unreachable!(),
-
-            Inst::Store(off) => write!(f, "st\tM[{}]", off),
-            Inst::StoreX(off) => write!(f, "stx\tM[{}]", off),
-
-            Inst::Jmp(Cond::Abs(off)) => write!(f, "ja\t{}", off),
-            Inst::Jmp(Cond::Gt(src, jt, jf)) => write!(f, "jgt\t{}\tjt {}\tjf {}", src, jt, jf),
-            Inst::Jmp(Cond::Ge(src, jt, jf)) => write!(f, "jge\t{}\tjt {}\tjf {}", src, jt, jf),
-            Inst::Jmp(Cond::Eq(src, jt, jf)) => write!(f, "jeq\t{}\tjt {}\tjf {}", src, jt, jf),
-            Inst::Jmp(Cond::Set(src, jt, jf)) => write!(f, "jset\t{}\tjt {}\tjf {}", src, jt, jf),
-
-            Inst::Alu(Op::Add(src)) => write!(f, "add\t{}", src),
-            Inst::Alu(Op::Sub(src)) => write!(f, "sub\t{}", src),
-            Inst::Alu(Op::Mul(src)) => write!(f, "mul\t{}", src),
-            Inst::Alu(Op::Div(src)) => write!(f, "div\t{}", src),
-            Inst::Alu(Op::Mod(src)) => write!(f, "mod\t{}", src),
-            Inst::Alu(Op::And(src)) => write!(f, "and\t{:x}", src),
-            Inst::Alu(Op::Or(src)) => write!(f, "or\t{:x}", src),
-            Inst::Alu(Op::Xor(src)) => write!(f, "xor\t{:x}", src),
-            Inst::Alu(Op::LShift(src)) => write!(f, "lsh\t{}", src),
-            Inst::Alu(Op::RShift(src)) => write!(f, "rsh\t{}", src),
-            Inst::Alu(Op::Neg) => write!(f, "neg"),
-
-            Inst::Ret(Some(RVal::K(k))) => write!(f, "ret\t#0x{:x}", k),
-            Inst::Ret(_) => write!(f, "ret"),
-
-            Inst::Misc(MiscOp::Tax) => write!(f, "tax"),
-            Inst::Misc(MiscOp::Txa) => write!(f, "txa"),
-        }
-    }
 }
 
 #[repr(transparent)]
@@ -441,7 +490,7 @@ impl From<Inst> for bpf_insn {
             Inst::Alu(Op::RShift(src)) => BPF_STMT!(BPF_ALU | BPF_RSH | src.code(), src.value()),
             Inst::Alu(Op::Neg) => BPF_STMT!(BPF_ALU | BPF_NEG),
 
-            Inst::Ret(Some(rval)) => BPF_STMT!(BPF_RET | rval.code()),
+            Inst::Ret(Some(rval)) => BPF_STMT!(BPF_RET | rval.code(), rval.value()),
             Inst::Ret(None) => BPF_STMT!(BPF_RET),
 
             Inst::Misc(MiscOp::Tax) => BPF_STMT!(BPF_MISC | BPF_TAX),
@@ -452,6 +501,61 @@ impl From<Inst> for bpf_insn {
 
 #[cfg(test)]
 mod tests {
+    use super::{Inst::*, Mode::*, Size::*, *};
+
     #[test]
-    fn inst() {}
+    fn program() {
+        let p = Program::compile(DLT_EN10MB, "ip and udp").unwrap();
+        assert!(p.validate());
+
+        let insts = vec![
+            Load(Abs(12, Half)),
+            Jmp(Cond::Eq(Src::K(0x800), 0, 3)),
+            Load(Abs(23, Byte)),
+            Jmp(Cond::Eq(Src::K(0x11), 0, 1)),
+            Ret(Some(RVal::K(65535))),
+            Ret(Some(RVal::K(0))),
+        ];
+
+        assert_eq!(&*p, insts.as_slice());
+        assert_eq!(
+            p.to_string(),
+            r#"(000) ldh	[12]
+(001) jeq	#0x800	jt 2	jf 5
+(002) ldb	[23]
+(003) jeq	#0x11	jt 4	jf 5
+(004) ret	#65535
+(005) ret	#0
+"#
+        );
+
+        let bf_insns: Vec<bpf_insn> = insts.into_iter().map(|inst| inst.into()).collect();
+        assert_eq!(unsafe { bpf_validate(bf_insns.as_ptr(), bf_insns.len() as i32) }, 1);
+        assert_eq!(
+            bf_insns
+                .iter()
+                .enumerate()
+                .map(|(idx, inst)| unsafe {
+                    CStr::from_ptr(bpf_image(inst, idx as i32))
+                        .to_str()
+                        .map(|s| s.to_owned())
+                        .unwrap()
+                })
+                .collect::<Vec<_>>(),
+            vec![
+                "(000) ldh      [12]",
+                "(001) jeq      #0x800           jt 2\tjf 5",
+                "(002) ldb      [23]",
+                "(003) jeq      #0x11            jt 4\tjf 5",
+                "(004) ret      #65535",
+                "(005) ret      #0"
+            ]
+        );
+
+        let bf_prog = bpf_program {
+            bf_len: bf_insns.len() as u32,
+            bf_insns: bf_insns.as_ptr() as *mut _,
+        };
+        assert_eq!(Result::<Program>::from(&bf_prog).unwrap(), p);
+    }
 }

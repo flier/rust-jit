@@ -16,7 +16,7 @@ fn gen_binding(out_file: &Path) {
         .header(pcap_header.to_str().unwrap())
         .whitelist_type("(pcap|bpf)_.*")
         .whitelist_function("(pcap|bpf)_.*")
-        .whitelist_var("(PCAP|BPF)_.*")
+        .whitelist_var("(DLT|PCAP|BPF)_.*")
         .blacklist_function("_.*")
         .derive_debug(true)
         .derive_default(true)
@@ -47,6 +47,15 @@ fn gen_binding(out_file: &Path) {
     info!("copy pre-generated binding file to {:?}", out_file);
 
     ::std::fs::copy("src/raw.rs", out_file).expect("pre-generated binding file");
+
+    let libpcap = pkg_config::probe_library("libpcap").expect("libpcap installed");
+
+    for libname in libpcap.libs {
+        println!("rustc-link-lib={}", libname);
+    }
+    for libpath in libpcap.link_paths {
+        println!("rustc-link-search={}", libpath.to_str().unwrap());
+    }
 }
 
 fn main() {

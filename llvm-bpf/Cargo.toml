@@ -5,7 +5,7 @@ authors = ["Flier Lu <flier.lu@gmail.com>"]
 
 [features]
 default = []
-gen = ["bindgen", "pkg-config"]
+gen = ["bindgen"]
 
 [dependencies]
 log = "0.4"
@@ -16,6 +16,6 @@ llvm-jit = { path = "../llvm-jit" }
 [build-dependencies]
 log = "0.4"
 pretty_env_logger = "0.3"
+pkg-config = "0.3"
 
 bindgen = { version = "0.45", optional = true }
-pkg-config = { version = "0.3", optional = true }
