@@ -1,10 +1,7 @@
 #[macro_use]
 extern crate log;
-extern crate pretty_env_logger;
 #[macro_use]
 extern crate failure;
-extern crate getopts;
-extern crate parity_wasm;
 
 use std::env;
 use std::process;
@@ -54,7 +51,7 @@ fn main() {
         }
     };
 
-    let (program, args) = match matches.free.as_slice().split_first() {
+    let (program, _args) = match matches.free.as_slice().split_first() {
         Some((program, args)) => {
             info!("loading module from {}", program);
 
@@ -66,7 +63,7 @@ fn main() {
         }
     };
 
-    let module = match parity_wasm::deserialize_file(program) {
+    let _module = match parity_wasm::deserialize_file(program) {
         Ok(module) => {
             debug!("loaded module: {:?}", module);
 
