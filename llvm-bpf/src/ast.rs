@@ -1,5 +1,7 @@
 use std::borrow::Borrow;
+use std::ffi::{CStr, CString};
 use std::fmt;
+use std::mem;
 use std::result::Result as StdResult;
 use std::slice;
 
@@ -22,8 +24,43 @@ impl From<&bpf_program> for Result<Program> {
     }
 }
 
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (idx, inst) in self.0.iter().enumerate() {
+            writeln!(f, "({:03} {})", idx, inst)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Program {
+    pub fn compile<S: AsRef<str>>(&self, code: S) -> Result<Self> {
+        let mut program: bpf_program = unsafe { mem::zeroed() };
+        let code = CString::new(code.as_ref())?;
+
+        unsafe {
+            let p = pcap_open_dead(0, 0);
+            let ret = if pcap_compile(p, &mut program, code.as_ptr(), 1, PCAP_NETMASK_UNKNOWN) == 0 {
+                (&program).into()
+            } else {
+                Err(failure::err_msg(CStr::from_ptr(pcap_geterr(p)).to_str()?))
+            };
+            pcap_close(p);
+            pcap_freecode(&mut program);
+
+            ret
+        }
+    }
+
+    pub fn validate(&self) -> bool {
+        let insts: Vec<bpf_insn> = self.0.iter().cloned().map(|inst| inst.into()).collect();
+
+        unsafe { bpf_validate(insts.as_ptr(), insts.len() as i32) != 0 }
+    }
+}
+
 pub type Off = u32;
-pub type A = u32;
 pub type K = u32;
 
 #[repr(u8)]
@@ -52,6 +89,15 @@ impl Size {
             Size::Word => 4,
         }
     }
+
+    pub fn code(self) -> u32 {
+        match self {
+            Size::Reserved => 0,
+            Size::Byte => BPF_B,
+            Size::Half => BPF_H,
+            Size::Word => BPF_W,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -64,10 +110,26 @@ pub enum Mode {
     Msh(Off),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Src {
     K(u32),
     X,
+}
+
+impl Src {
+    pub fn code(self) -> u32 {
+        match self {
+            Src::K(_) => BPF_K,
+            Src::X => BPF_X,
+        }
+    }
+
+    pub fn value(self) -> u32 {
+        match self {
+            Src::K(v) => v,
+            Src::X => 0,
+        }
+    }
 }
 
 impl fmt::Display for Src {
@@ -117,6 +179,15 @@ pub enum Cond {
 pub enum RVal {
     K(K),
     A,
+}
+
+impl RVal {
+    pub fn code(&self) -> u32 {
+        match self {
+            RVal::A => BPF_A,
+            RVal::K(_) => BPF_K,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -251,30 +322,30 @@ impl From<&bpf_insn> for Result<Inst> {
                 BPF_IMM => Mode::Imm(inst.k),
                 BPF_ABS => Mode::Abs(inst.k, code.size()),
                 BPF_IND => Mode::Ind(inst.k, code.size()),
-                BPF_MEM => Mode::Mem(inst.k),
+                BPF_MEM if inst.k < BPF_MEMWORDS => Mode::Mem(inst.k),
                 BPF_LEN => Mode::Len,
-                _ => bail!("invalid BPF_LD mode: 0x{:x}", code.mode()),
+                _ => bail!("invalid BPF_LD mode: 0x{:x}, k = {}", code.mode(), inst.k),
             }),
             BPF_LDX => Inst::LoadX(match code.mode() as u32 {
                 BPF_IMM => Mode::Imm(inst.k),
-                BPF_MEM => Mode::Mem(inst.k),
+                BPF_MEM if inst.k < BPF_MEMWORDS => Mode::Mem(inst.k),
                 BPF_LEN => Mode::Len,
                 BPF_MSH => Mode::Msh(inst.k),
-                _ => bail!("invalid BPF_LDX mode: 0x{:x}", code.mode()),
+                _ => bail!("invalid BPF_LDX mode: 0x{:x}, k = {}", code.mode(), inst.k),
             }),
-            BPF_ST => Inst::Store(inst.k),
-            BPF_STX => Inst::StoreX(inst.k),
+            BPF_ST if inst.k < BPF_MEMWORDS => Inst::Store(inst.k),
+            BPF_STX if inst.k < BPF_MEMWORDS => Inst::StoreX(inst.k),
             BPF_ALU => Inst::Alu(match code.op() as u32 {
                 BPF_ADD => Op::Add(code.src(inst.k)),
                 BPF_SUB => Op::Sub(code.src(inst.k)),
                 BPF_MUL => Op::Mul(code.src(inst.k)),
-                BPF_DIV => Op::Div(code.src(inst.k)),
+                BPF_DIV if inst.k != 0 => Op::Div(code.src(inst.k)),
                 BPF_OR => Op::Or(code.src(inst.k)),
                 BPF_AND => Op::And(code.src(inst.k)),
                 BPF_LSH => Op::LShift(code.src(inst.k)),
                 BPF_RSH => Op::RShift(code.src(inst.k)),
                 BPF_NEG => Op::Neg,
-                BPF_MOD => Op::Mod(code.src(inst.k)),
+                BPF_MOD if inst.k != 0 => Op::Mod(code.src(inst.k)),
                 BPF_XOR => Op::Xor(code.src(inst.k)),
                 _ => bail!("invalid BPF_ALU op: 0x{:x}", code.op()),
             }),
@@ -292,4 +363,95 @@ impl From<&bpf_insn> for Result<Inst> {
             _ => bail!("invalid BPF inst: {:#?}", inst),
         })
     }
+}
+
+#[macro_export]
+macro_rules! BPF_STMT {
+    ($code:expr) => {
+        bpf_insn {
+            code: $code as u16,
+            jt: 0,
+            jf: 0,
+            k: 0,
+        }
+    };
+    ($code:expr, $k:expr) => {
+        bpf_insn {
+            code: $code as u16,
+            jt: 0,
+            jf: 0,
+            k: $k,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! BPF_JUMP {
+    ($code:expr, $k:expr) => {
+        bpf_insn {
+            code: $code as u16,
+            jt: 0,
+            jf: 0,
+            k: $k,
+        }
+    };
+    ($code:expr, $k:expr, $jt:expr, $jf:expr) => {
+        bpf_insn {
+            code: $code as u16,
+            jt: $jt,
+            jf: $jf,
+            k: $k,
+        }
+    };
+}
+
+impl From<Inst> for bpf_insn {
+    fn from(inst: Inst) -> Self {
+        match inst {
+            Inst::Load(Mode::Abs(off, size)) => BPF_STMT!(BPF_LD | BPF_ABS | size.code(), off),
+            Inst::Load(Mode::Ind(off, size)) => BPF_STMT!(BPF_LD | BPF_IND | size.code(), off),
+            Inst::Load(Mode::Len) => BPF_STMT!(BPF_LD | BPF_LEN | BPF_W),
+            Inst::Load(Mode::Imm(off)) => BPF_STMT!(BPF_LD | BPF_IMM, off),
+            Inst::Load(Mode::Mem(off)) => BPF_STMT!(BPF_LD | BPF_MEM, off),
+            Inst::Load(_) => unreachable!(),
+
+            Inst::LoadX(Mode::Imm(off)) => BPF_STMT!(BPF_LD | BPF_IMM | BPF_W, off),
+            Inst::LoadX(Mode::Mem(off)) => BPF_STMT!(BPF_LD | BPF_MEM | BPF_W, off),
+            Inst::LoadX(Mode::Msh(off)) => BPF_STMT!(BPF_LD | BPF_MSH | BPF_B, off),
+            Inst::LoadX(_) => unreachable!(),
+
+            Inst::Store(off) => BPF_STMT!(BPF_ST, off),
+            Inst::StoreX(off) => BPF_STMT!(BPF_STX, off),
+
+            Inst::Jmp(Cond::Abs(off)) => BPF_JUMP!(BPF_JMP | BPF_JA, off),
+            Inst::Jmp(Cond::Gt(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JGT | src.code(), src.value(), jt, jf),
+            Inst::Jmp(Cond::Ge(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JGE | src.code(), src.value(), jt, jf),
+            Inst::Jmp(Cond::Eq(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JEQ | src.code(), src.value(), jt, jf),
+            Inst::Jmp(Cond::Set(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JSET | src.code(), src.value(), jt, jf),
+
+            Inst::Alu(Op::Add(src)) => BPF_STMT!(BPF_ALU | BPF_ADD | src.code(), src.value()),
+            Inst::Alu(Op::Sub(src)) => BPF_STMT!(BPF_ALU | BPF_SUB | src.code(), src.value()),
+            Inst::Alu(Op::Mul(src)) => BPF_STMT!(BPF_ALU | BPF_MUL | src.code(), src.value()),
+            Inst::Alu(Op::Div(src)) => BPF_STMT!(BPF_ALU | BPF_DIV | src.code(), src.value()),
+            Inst::Alu(Op::Mod(src)) => BPF_STMT!(BPF_ALU | BPF_MOD | src.code(), src.value()),
+            Inst::Alu(Op::And(src)) => BPF_STMT!(BPF_ALU | BPF_AND | src.code(), src.value()),
+            Inst::Alu(Op::Or(src)) => BPF_STMT!(BPF_ALU | BPF_OR | src.code(), src.value()),
+            Inst::Alu(Op::Xor(src)) => BPF_STMT!(BPF_ALU | BPF_XOR | src.code(), src.value()),
+            Inst::Alu(Op::LShift(src)) => BPF_STMT!(BPF_ALU | BPF_LSH | src.code(), src.value()),
+            Inst::Alu(Op::RShift(src)) => BPF_STMT!(BPF_ALU | BPF_RSH | src.code(), src.value()),
+            Inst::Alu(Op::Neg) => BPF_STMT!(BPF_ALU | BPF_NEG),
+
+            Inst::Ret(Some(rval)) => BPF_STMT!(BPF_RET | rval.code()),
+            Inst::Ret(None) => BPF_STMT!(BPF_RET),
+
+            Inst::Misc(MiscOp::Tax) => BPF_STMT!(BPF_MISC | BPF_TAX),
+            Inst::Misc(MiscOp::Txa) => BPF_STMT!(BPF_MISC | BPF_TXA),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn inst() {}
 }

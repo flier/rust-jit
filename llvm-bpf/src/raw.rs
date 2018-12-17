@@ -40,13 +40,97 @@ pub const BPF_A: u32 = 16;
 pub const BPF_TAX: u32 = 0;
 pub const BPF_TXA: u32 = 128;
 pub const BPF_MEMWORDS: u32 = 16;
+pub const PCAP_VERSION_MAJOR: u32 = 2;
+pub const PCAP_VERSION_MINOR: u32 = 4;
+pub const PCAP_ERRBUF_SIZE: u32 = 256;
+pub const PCAP_IF_LOOPBACK: u32 = 1;
+pub const PCAP_IF_UP: u32 = 2;
+pub const PCAP_IF_RUNNING: u32 = 4;
+pub const PCAP_IF_WIRELESS: u32 = 8;
+pub const PCAP_IF_CONNECTION_STATUS: u32 = 48;
+pub const PCAP_IF_CONNECTION_STATUS_UNKNOWN: u32 = 0;
+pub const PCAP_IF_CONNECTION_STATUS_CONNECTED: u32 = 16;
+pub const PCAP_IF_CONNECTION_STATUS_DISCONNECTED: u32 = 32;
+pub const PCAP_IF_CONNECTION_STATUS_NOT_APPLICABLE: u32 = 48;
+pub const PCAP_ERROR: i32 = -1;
+pub const PCAP_ERROR_BREAK: i32 = -2;
+pub const PCAP_ERROR_NOT_ACTIVATED: i32 = -3;
+pub const PCAP_ERROR_ACTIVATED: i32 = -4;
+pub const PCAP_ERROR_NO_SUCH_DEVICE: i32 = -5;
+pub const PCAP_ERROR_RFMON_NOTSUP: i32 = -6;
+pub const PCAP_ERROR_NOT_RFMON: i32 = -7;
+pub const PCAP_ERROR_PERM_DENIED: i32 = -8;
+pub const PCAP_ERROR_IFACE_NOT_UP: i32 = -9;
+pub const PCAP_ERROR_CANTSET_TSTAMP_TYPE: i32 = -10;
+pub const PCAP_ERROR_PROMISC_PERM_DENIED: i32 = -11;
+pub const PCAP_ERROR_TSTAMP_PRECISION_NOTSUP: i32 = -12;
+pub const PCAP_WARNING: u32 = 1;
+pub const PCAP_WARNING_PROMISC_NOTSUP: u32 = 2;
+pub const PCAP_WARNING_TSTAMP_TYPE_NOTSUP: u32 = 3;
+pub const PCAP_NETMASK_UNKNOWN: u32 = 4294967295;
+pub const PCAP_TSTAMP_HOST: u32 = 0;
+pub const PCAP_TSTAMP_HOST_LOWPREC: u32 = 1;
+pub const PCAP_TSTAMP_HOST_HIPREC: u32 = 2;
+pub const PCAP_TSTAMP_ADAPTER: u32 = 3;
+pub const PCAP_TSTAMP_ADAPTER_UNSYNCED: u32 = 4;
+pub const PCAP_TSTAMP_PRECISION_MICRO: u32 = 0;
+pub const PCAP_TSTAMP_PRECISION_NANO: u32 = 1;
+pub const PCAP_BUF_SIZE: u32 = 1024;
+pub const PCAP_SRC_FILE: u32 = 2;
+pub const PCAP_SRC_IFLOCAL: u32 = 3;
+pub const PCAP_SRC_IFREMOTE: u32 = 4;
+pub const PCAP_SRC_FILE_STRING: &'static [u8; 8usize] = b"file://\0";
+pub const PCAP_SRC_IF_STRING: &'static [u8; 9usize] = b"rpcap://\0";
+pub const PCAP_OPENFLAG_PROMISCUOUS: u32 = 1;
+pub const PCAP_OPENFLAG_DATATX_UDP: u32 = 2;
+pub const PCAP_OPENFLAG_NOCAPTURE_RPCAP: u32 = 4;
+pub const PCAP_OPENFLAG_NOCAPTURE_LOCAL: u32 = 8;
+pub const PCAP_OPENFLAG_MAX_RESPONSIVENESS: u32 = 16;
+pub const PCAP_SAMP_NOSAMP: u32 = 0;
+pub const PCAP_SAMP_1_EVERY_N: u32 = 1;
+pub const PCAP_SAMP_FIRST_AFTER_N_MS: u32 = 2;
+pub type __int32_t = ::std::os::raw::c_int;
+pub type __int64_t = ::std::os::raw::c_longlong;
+pub type __darwin_size_t = ::std::os::raw::c_ulong;
+pub type __darwin_time_t = ::std::os::raw::c_long;
+pub type __darwin_off_t = __int64_t;
+pub type __darwin_suseconds_t = __int32_t;
 pub type u_char = ::std::os::raw::c_uchar;
 pub type u_short = ::std::os::raw::c_ushort;
 pub type u_int = ::std::os::raw::c_uint;
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
+pub struct timeval {
+    pub tv_sec: __darwin_time_t,
+    pub tv_usec: __darwin_suseconds_t,
+}
+#[test]
+fn bindgen_test_layout_timeval() {
+    assert_eq!(
+        ::std::mem::size_of::<timeval>(),
+        16usize,
+        concat!("Size of: ", stringify!(timeval))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<timeval>(),
+        8usize,
+        concat!("Alignment of ", stringify!(timeval))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<timeval>())).tv_sec as *const _ as usize },
+        0usize,
+        concat!("Offset of field: ", stringify!(timeval), "::", stringify!(tv_sec))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<timeval>())).tv_usec as *const _ as usize },
+        8usize,
+        concat!("Offset of field: ", stringify!(timeval), "::", stringify!(tv_usec))
+    );
+}
 pub type bpf_int32 = ::std::os::raw::c_int;
 pub type bpf_u_int32 = u_int;
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct bpf_program {
     pub bf_len: u_int,
     pub bf_insns: *mut bpf_insn,
@@ -74,8 +158,13 @@ fn bindgen_test_layout_bpf_program() {
         concat!("Offset of field: ", stringify!(bpf_program), "::", stringify!(bf_insns))
     );
 }
+impl Default for bpf_program {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct bpf_insn {
     pub code: u_short,
     pub jt: u_char,
@@ -116,7 +205,7 @@ fn bindgen_test_layout_bpf_insn() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct bpf_aux_data {
     pub vlan_tag_present: u_short,
     pub vlan_tag: u_short,
@@ -172,12 +261,710 @@ extern "C" {
         arg5: *const bpf_aux_data,
     ) -> u_int;
 }
+pub type fpos_t = __darwin_off_t;
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct __sbuf {
+    pub _base: *mut ::std::os::raw::c_uchar,
+    pub _size: ::std::os::raw::c_int,
+}
+#[test]
+fn bindgen_test_layout___sbuf() {
+    assert_eq!(
+        ::std::mem::size_of::<__sbuf>(),
+        16usize,
+        concat!("Size of: ", stringify!(__sbuf))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<__sbuf>(),
+        8usize,
+        concat!("Alignment of ", stringify!(__sbuf))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sbuf>()))._base as *const _ as usize },
+        0usize,
+        concat!("Offset of field: ", stringify!(__sbuf), "::", stringify!(_base))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sbuf>()))._size as *const _ as usize },
+        8usize,
+        concat!("Offset of field: ", stringify!(__sbuf), "::", stringify!(_size))
+    );
+}
+impl Default for __sbuf {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __sFILEX {
+    _unused: [u8; 0],
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct __sFILE {
+    pub _p: *mut ::std::os::raw::c_uchar,
+    pub _r: ::std::os::raw::c_int,
+    pub _w: ::std::os::raw::c_int,
+    pub _flags: ::std::os::raw::c_short,
+    pub _file: ::std::os::raw::c_short,
+    pub _bf: __sbuf,
+    pub _lbfsize: ::std::os::raw::c_int,
+    pub _cookie: *mut ::std::os::raw::c_void,
+    pub _close: ::std::option::Option<unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_void) -> ::std::os::raw::c_int>,
+    pub _read: ::std::option::Option<
+        unsafe extern "C" fn(
+            arg1: *mut ::std::os::raw::c_void,
+            arg2: *mut ::std::os::raw::c_char,
+            arg3: ::std::os::raw::c_int,
+        ) -> ::std::os::raw::c_int,
+    >,
+    pub _seek: ::std::option::Option<
+        unsafe extern "C" fn(arg1: *mut ::std::os::raw::c_void, arg2: fpos_t, arg3: ::std::os::raw::c_int) -> fpos_t,
+    >,
+    pub _write: ::std::option::Option<
+        unsafe extern "C" fn(
+            arg1: *mut ::std::os::raw::c_void,
+            arg2: *const ::std::os::raw::c_char,
+            arg3: ::std::os::raw::c_int,
+        ) -> ::std::os::raw::c_int,
+    >,
+    pub _ub: __sbuf,
+    pub _extra: *mut __sFILEX,
+    pub _ur: ::std::os::raw::c_int,
+    pub _ubuf: [::std::os::raw::c_uchar; 3usize],
+    pub _nbuf: [::std::os::raw::c_uchar; 1usize],
+    pub _lb: __sbuf,
+    pub _blksize: ::std::os::raw::c_int,
+    pub _offset: fpos_t,
+}
+#[test]
+fn bindgen_test_layout___sFILE() {
+    assert_eq!(
+        ::std::mem::size_of::<__sFILE>(),
+        152usize,
+        concat!("Size of: ", stringify!(__sFILE))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<__sFILE>(),
+        8usize,
+        concat!("Alignment of ", stringify!(__sFILE))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._p as *const _ as usize },
+        0usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_p))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._r as *const _ as usize },
+        8usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_r))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._w as *const _ as usize },
+        12usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_w))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._flags as *const _ as usize },
+        16usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_flags))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._file as *const _ as usize },
+        18usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_file))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._bf as *const _ as usize },
+        24usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_bf))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._lbfsize as *const _ as usize },
+        40usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_lbfsize))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._cookie as *const _ as usize },
+        48usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_cookie))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._close as *const _ as usize },
+        56usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_close))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._read as *const _ as usize },
+        64usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_read))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._seek as *const _ as usize },
+        72usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_seek))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._write as *const _ as usize },
+        80usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_write))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._ub as *const _ as usize },
+        88usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_ub))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._extra as *const _ as usize },
+        104usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_extra))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._ur as *const _ as usize },
+        112usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_ur))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._ubuf as *const _ as usize },
+        116usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_ubuf))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._nbuf as *const _ as usize },
+        119usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_nbuf))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._lb as *const _ as usize },
+        120usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_lb))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._blksize as *const _ as usize },
+        136usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_blksize))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<__sFILE>()))._offset as *const _ as usize },
+        144usize,
+        concat!("Offset of field: ", stringify!(__sFILE), "::", stringify!(_offset))
+    );
+}
+impl Default for __sFILE {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
+pub type FILE = __sFILE;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct pcap {
     _unused: [u8; 0],
 }
 pub type pcap_t = pcap;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct pcap_dumper {
+    _unused: [u8; 0],
+}
+pub type pcap_dumper_t = pcap_dumper;
+pub type pcap_if_t = pcap_if;
+pub type pcap_addr_t = pcap_addr;
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
+pub struct pcap_file_header {
+    pub magic: bpf_u_int32,
+    pub version_major: u_short,
+    pub version_minor: u_short,
+    pub thiszone: bpf_int32,
+    pub sigfigs: bpf_u_int32,
+    pub snaplen: bpf_u_int32,
+    pub linktype: bpf_u_int32,
+}
+#[test]
+fn bindgen_test_layout_pcap_file_header() {
+    assert_eq!(
+        ::std::mem::size_of::<pcap_file_header>(),
+        24usize,
+        concat!("Size of: ", stringify!(pcap_file_header))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<pcap_file_header>(),
+        4usize,
+        concat!("Alignment of ", stringify!(pcap_file_header))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_file_header>())).magic as *const _ as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(pcap_file_header),
+            "::",
+            stringify!(magic)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_file_header>())).version_major as *const _ as usize },
+        4usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(pcap_file_header),
+            "::",
+            stringify!(version_major)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_file_header>())).version_minor as *const _ as usize },
+        6usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(pcap_file_header),
+            "::",
+            stringify!(version_minor)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_file_header>())).thiszone as *const _ as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(pcap_file_header),
+            "::",
+            stringify!(thiszone)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_file_header>())).sigfigs as *const _ as usize },
+        12usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(pcap_file_header),
+            "::",
+            stringify!(sigfigs)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_file_header>())).snaplen as *const _ as usize },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(pcap_file_header),
+            "::",
+            stringify!(snaplen)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_file_header>())).linktype as *const _ as usize },
+        20usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(pcap_file_header),
+            "::",
+            stringify!(linktype)
+        )
+    );
+}
+pub mod pcap_direction_t {
+    pub type Type = u32;
+    pub const PCAP_D_INOUT: Type = 0;
+    pub const PCAP_D_IN: Type = 1;
+    pub const PCAP_D_OUT: Type = 2;
+}
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
+pub struct pcap_pkthdr {
+    pub ts: timeval,
+    pub caplen: bpf_u_int32,
+    pub len: bpf_u_int32,
+}
+#[test]
+fn bindgen_test_layout_pcap_pkthdr() {
+    assert_eq!(
+        ::std::mem::size_of::<pcap_pkthdr>(),
+        24usize,
+        concat!("Size of: ", stringify!(pcap_pkthdr))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<pcap_pkthdr>(),
+        8usize,
+        concat!("Alignment of ", stringify!(pcap_pkthdr))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_pkthdr>())).ts as *const _ as usize },
+        0usize,
+        concat!("Offset of field: ", stringify!(pcap_pkthdr), "::", stringify!(ts))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_pkthdr>())).caplen as *const _ as usize },
+        16usize,
+        concat!("Offset of field: ", stringify!(pcap_pkthdr), "::", stringify!(caplen))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_pkthdr>())).len as *const _ as usize },
+        20usize,
+        concat!("Offset of field: ", stringify!(pcap_pkthdr), "::", stringify!(len))
+    );
+}
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
+pub struct pcap_stat {
+    pub ps_recv: u_int,
+    pub ps_drop: u_int,
+    pub ps_ifdrop: u_int,
+}
+#[test]
+fn bindgen_test_layout_pcap_stat() {
+    assert_eq!(
+        ::std::mem::size_of::<pcap_stat>(),
+        12usize,
+        concat!("Size of: ", stringify!(pcap_stat))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<pcap_stat>(),
+        4usize,
+        concat!("Alignment of ", stringify!(pcap_stat))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_stat>())).ps_recv as *const _ as usize },
+        0usize,
+        concat!("Offset of field: ", stringify!(pcap_stat), "::", stringify!(ps_recv))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_stat>())).ps_drop as *const _ as usize },
+        4usize,
+        concat!("Offset of field: ", stringify!(pcap_stat), "::", stringify!(ps_drop))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_stat>())).ps_ifdrop as *const _ as usize },
+        8usize,
+        concat!("Offset of field: ", stringify!(pcap_stat), "::", stringify!(ps_ifdrop))
+    );
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct pcap_if {
+    pub next: *mut pcap_if,
+    pub name: *mut ::std::os::raw::c_char,
+    pub description: *mut ::std::os::raw::c_char,
+    pub addresses: *mut pcap_addr,
+    pub flags: bpf_u_int32,
+}
+#[test]
+fn bindgen_test_layout_pcap_if() {
+    assert_eq!(
+        ::std::mem::size_of::<pcap_if>(),
+        40usize,
+        concat!("Size of: ", stringify!(pcap_if))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<pcap_if>(),
+        8usize,
+        concat!("Alignment of ", stringify!(pcap_if))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_if>())).next as *const _ as usize },
+        0usize,
+        concat!("Offset of field: ", stringify!(pcap_if), "::", stringify!(next))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_if>())).name as *const _ as usize },
+        8usize,
+        concat!("Offset of field: ", stringify!(pcap_if), "::", stringify!(name))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_if>())).description as *const _ as usize },
+        16usize,
+        concat!("Offset of field: ", stringify!(pcap_if), "::", stringify!(description))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_if>())).addresses as *const _ as usize },
+        24usize,
+        concat!("Offset of field: ", stringify!(pcap_if), "::", stringify!(addresses))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_if>())).flags as *const _ as usize },
+        32usize,
+        concat!("Offset of field: ", stringify!(pcap_if), "::", stringify!(flags))
+    );
+}
+impl Default for pcap_if {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct pcap_addr {
+    pub next: *mut pcap_addr,
+    pub addr: *mut sockaddr,
+    pub netmask: *mut sockaddr,
+    pub broadaddr: *mut sockaddr,
+    pub dstaddr: *mut sockaddr,
+}
+#[test]
+fn bindgen_test_layout_pcap_addr() {
+    assert_eq!(
+        ::std::mem::size_of::<pcap_addr>(),
+        40usize,
+        concat!("Size of: ", stringify!(pcap_addr))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<pcap_addr>(),
+        8usize,
+        concat!("Alignment of ", stringify!(pcap_addr))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_addr>())).next as *const _ as usize },
+        0usize,
+        concat!("Offset of field: ", stringify!(pcap_addr), "::", stringify!(next))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_addr>())).addr as *const _ as usize },
+        8usize,
+        concat!("Offset of field: ", stringify!(pcap_addr), "::", stringify!(addr))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_addr>())).netmask as *const _ as usize },
+        16usize,
+        concat!("Offset of field: ", stringify!(pcap_addr), "::", stringify!(netmask))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_addr>())).broadaddr as *const _ as usize },
+        24usize,
+        concat!("Offset of field: ", stringify!(pcap_addr), "::", stringify!(broadaddr))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_addr>())).dstaddr as *const _ as usize },
+        32usize,
+        concat!("Offset of field: ", stringify!(pcap_addr), "::", stringify!(dstaddr))
+    );
+}
+impl Default for pcap_addr {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
+pub type pcap_handler =
+    ::std::option::Option<unsafe extern "C" fn(arg1: *mut u_char, arg2: *const pcap_pkthdr, arg3: *const u_char)>;
+extern "C" {
+    #[link_name = "\u{1}_pcap_lookupdev"]
+    pub fn pcap_lookupdev(arg1: *mut ::std::os::raw::c_char) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_lookupnet"]
+    pub fn pcap_lookupnet(
+        arg1: *const ::std::os::raw::c_char,
+        arg2: *mut bpf_u_int32,
+        arg3: *mut bpf_u_int32,
+        arg4: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_create"]
+    pub fn pcap_create(arg1: *const ::std::os::raw::c_char, arg2: *mut ::std::os::raw::c_char) -> *mut pcap_t;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_set_snaplen"]
+    pub fn pcap_set_snaplen(arg1: *mut pcap_t, arg2: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_set_promisc"]
+    pub fn pcap_set_promisc(arg1: *mut pcap_t, arg2: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_can_set_rfmon"]
+    pub fn pcap_can_set_rfmon(arg1: *mut pcap_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_set_rfmon"]
+    pub fn pcap_set_rfmon(arg1: *mut pcap_t, arg2: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_set_timeout"]
+    pub fn pcap_set_timeout(arg1: *mut pcap_t, arg2: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_set_tstamp_type"]
+    pub fn pcap_set_tstamp_type(arg1: *mut pcap_t, arg2: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_set_immediate_mode"]
+    pub fn pcap_set_immediate_mode(arg1: *mut pcap_t, arg2: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_set_buffer_size"]
+    pub fn pcap_set_buffer_size(arg1: *mut pcap_t, arg2: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_set_tstamp_precision"]
+    pub fn pcap_set_tstamp_precision(arg1: *mut pcap_t, arg2: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_get_tstamp_precision"]
+    pub fn pcap_get_tstamp_precision(arg1: *mut pcap_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_activate"]
+    pub fn pcap_activate(arg1: *mut pcap_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_list_tstamp_types"]
+    pub fn pcap_list_tstamp_types(arg1: *mut pcap_t, arg2: *mut *mut ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_free_tstamp_types"]
+    pub fn pcap_free_tstamp_types(arg1: *mut ::std::os::raw::c_int);
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_tstamp_type_name_to_val"]
+    pub fn pcap_tstamp_type_name_to_val(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_tstamp_type_val_to_name"]
+    pub fn pcap_tstamp_type_val_to_name(arg1: ::std::os::raw::c_int) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_tstamp_type_val_to_description"]
+    pub fn pcap_tstamp_type_val_to_description(arg1: ::std::os::raw::c_int) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_open_live"]
+    pub fn pcap_open_live(
+        arg1: *const ::std::os::raw::c_char,
+        arg2: ::std::os::raw::c_int,
+        arg3: ::std::os::raw::c_int,
+        arg4: ::std::os::raw::c_int,
+        arg5: *mut ::std::os::raw::c_char,
+    ) -> *mut pcap_t;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_open_dead"]
+    pub fn pcap_open_dead(arg1: ::std::os::raw::c_int, arg2: ::std::os::raw::c_int) -> *mut pcap_t;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_open_dead_with_tstamp_precision"]
+    pub fn pcap_open_dead_with_tstamp_precision(
+        arg1: ::std::os::raw::c_int,
+        arg2: ::std::os::raw::c_int,
+        arg3: u_int,
+    ) -> *mut pcap_t;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_open_offline_with_tstamp_precision"]
+    pub fn pcap_open_offline_with_tstamp_precision(
+        arg1: *const ::std::os::raw::c_char,
+        arg2: u_int,
+        arg3: *mut ::std::os::raw::c_char,
+    ) -> *mut pcap_t;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_open_offline"]
+    pub fn pcap_open_offline(arg1: *const ::std::os::raw::c_char, arg2: *mut ::std::os::raw::c_char) -> *mut pcap_t;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_fopen_offline_with_tstamp_precision"]
+    pub fn pcap_fopen_offline_with_tstamp_precision(
+        arg1: *mut FILE,
+        arg2: u_int,
+        arg3: *mut ::std::os::raw::c_char,
+    ) -> *mut pcap_t;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_fopen_offline"]
+    pub fn pcap_fopen_offline(arg1: *mut FILE, arg2: *mut ::std::os::raw::c_char) -> *mut pcap_t;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_close"]
+    pub fn pcap_close(arg1: *mut pcap_t);
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_loop"]
+    pub fn pcap_loop(
+        arg1: *mut pcap_t,
+        arg2: ::std::os::raw::c_int,
+        arg3: pcap_handler,
+        arg4: *mut u_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_dispatch"]
+    pub fn pcap_dispatch(
+        arg1: *mut pcap_t,
+        arg2: ::std::os::raw::c_int,
+        arg3: pcap_handler,
+        arg4: *mut u_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_next"]
+    pub fn pcap_next(arg1: *mut pcap_t, arg2: *mut pcap_pkthdr) -> *const u_char;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_next_ex"]
+    pub fn pcap_next_ex(
+        arg1: *mut pcap_t,
+        arg2: *mut *mut pcap_pkthdr,
+        arg3: *mut *const u_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_breakloop"]
+    pub fn pcap_breakloop(arg1: *mut pcap_t);
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_stats"]
+    pub fn pcap_stats(arg1: *mut pcap_t, arg2: *mut pcap_stat) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_setfilter"]
+    pub fn pcap_setfilter(arg1: *mut pcap_t, arg2: *mut bpf_program) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_setdirection"]
+    pub fn pcap_setdirection(arg1: *mut pcap_t, arg2: pcap_direction_t::Type) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_getnonblock"]
+    pub fn pcap_getnonblock(arg1: *mut pcap_t, arg2: *mut ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_setnonblock"]
+    pub fn pcap_setnonblock(
+        arg1: *mut pcap_t,
+        arg2: ::std::os::raw::c_int,
+        arg3: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_inject"]
+    pub fn pcap_inject(arg1: *mut pcap_t, arg2: *const ::std::os::raw::c_void, arg3: usize) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_sendpacket"]
+    pub fn pcap_sendpacket(
+        arg1: *mut pcap_t,
+        arg2: *const u_char,
+        arg3: ::std::os::raw::c_int,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_statustostr"]
+    pub fn pcap_statustostr(arg1: ::std::os::raw::c_int) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_strerror"]
+    pub fn pcap_strerror(arg1: ::std::os::raw::c_int) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_geterr"]
+    pub fn pcap_geterr(arg1: *mut pcap_t) -> *mut ::std::os::raw::c_char;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_perror"]
+    pub fn pcap_perror(arg1: *mut pcap_t, arg2: *const ::std::os::raw::c_char);
+}
 extern "C" {
     #[link_name = "\u{1}_pcap_compile"]
     pub fn pcap_compile(
@@ -189,10 +976,310 @@ extern "C" {
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
+    #[link_name = "\u{1}_pcap_compile_nopcap"]
+    pub fn pcap_compile_nopcap(
+        arg1: ::std::os::raw::c_int,
+        arg2: ::std::os::raw::c_int,
+        arg3: *mut bpf_program,
+        arg4: *const ::std::os::raw::c_char,
+        arg5: ::std::os::raw::c_int,
+        arg6: bpf_u_int32,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_freecode"]
+    pub fn pcap_freecode(arg1: *mut bpf_program);
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_offline_filter"]
+    pub fn pcap_offline_filter(
+        arg1: *const bpf_program,
+        arg2: *const pcap_pkthdr,
+        arg3: *const u_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_datalink"]
+    pub fn pcap_datalink(arg1: *mut pcap_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_datalink_ext"]
+    pub fn pcap_datalink_ext(arg1: *mut pcap_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_list_datalinks"]
+    pub fn pcap_list_datalinks(arg1: *mut pcap_t, arg2: *mut *mut ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_set_datalink"]
+    pub fn pcap_set_datalink(arg1: *mut pcap_t, arg2: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_free_datalinks"]
+    pub fn pcap_free_datalinks(arg1: *mut ::std::os::raw::c_int);
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_datalink_name_to_val"]
+    pub fn pcap_datalink_name_to_val(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_datalink_val_to_name"]
+    pub fn pcap_datalink_val_to_name(arg1: ::std::os::raw::c_int) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_datalink_val_to_description"]
+    pub fn pcap_datalink_val_to_description(arg1: ::std::os::raw::c_int) -> *const ::std::os::raw::c_char;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_snapshot"]
+    pub fn pcap_snapshot(arg1: *mut pcap_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_is_swapped"]
+    pub fn pcap_is_swapped(arg1: *mut pcap_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_major_version"]
+    pub fn pcap_major_version(arg1: *mut pcap_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_minor_version"]
+    pub fn pcap_minor_version(arg1: *mut pcap_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_bufsize"]
+    pub fn pcap_bufsize(arg1: *mut pcap_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_file"]
+    pub fn pcap_file(arg1: *mut pcap_t) -> *mut FILE;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_fileno"]
+    pub fn pcap_fileno(arg1: *mut pcap_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_dump_open"]
+    pub fn pcap_dump_open(arg1: *mut pcap_t, arg2: *const ::std::os::raw::c_char) -> *mut pcap_dumper_t;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_dump_fopen"]
+    pub fn pcap_dump_fopen(arg1: *mut pcap_t, fp: *mut FILE) -> *mut pcap_dumper_t;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_dump_open_append"]
+    pub fn pcap_dump_open_append(arg1: *mut pcap_t, arg2: *const ::std::os::raw::c_char) -> *mut pcap_dumper_t;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_dump_file"]
+    pub fn pcap_dump_file(arg1: *mut pcap_dumper_t) -> *mut FILE;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_dump_ftell"]
+    pub fn pcap_dump_ftell(arg1: *mut pcap_dumper_t) -> ::std::os::raw::c_long;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_dump_ftell64"]
+    pub fn pcap_dump_ftell64(arg1: *mut pcap_dumper_t) -> i64;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_dump_flush"]
+    pub fn pcap_dump_flush(arg1: *mut pcap_dumper_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_dump_close"]
+    pub fn pcap_dump_close(arg1: *mut pcap_dumper_t);
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_dump"]
+    pub fn pcap_dump(arg1: *mut u_char, arg2: *const pcap_pkthdr, arg3: *const u_char);
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_findalldevs"]
+    pub fn pcap_findalldevs(arg1: *mut *mut pcap_if_t, arg2: *mut ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_freealldevs"]
+    pub fn pcap_freealldevs(arg1: *mut pcap_if_t);
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_lib_version"]
+    pub fn pcap_lib_version() -> *const ::std::os::raw::c_char;
+}
+extern "C" {
     #[link_name = "\u{1}_bpf_image"]
     pub fn bpf_image(arg1: *const bpf_insn, arg2: ::std::os::raw::c_int) -> *mut ::std::os::raw::c_char;
 }
 extern "C" {
     #[link_name = "\u{1}_bpf_dump"]
     pub fn bpf_dump(arg1: *const bpf_program, arg2: ::std::os::raw::c_int);
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_get_selectable_fd"]
+    pub fn pcap_get_selectable_fd(arg1: *mut pcap_t) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_get_required_select_timeout"]
+    pub fn pcap_get_required_select_timeout(arg1: *mut pcap_t) -> *mut timeval;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct pcap_rmtauth {
+    pub type_: ::std::os::raw::c_int,
+    pub username: *mut ::std::os::raw::c_char,
+    pub password: *mut ::std::os::raw::c_char,
+}
+#[test]
+fn bindgen_test_layout_pcap_rmtauth() {
+    assert_eq!(
+        ::std::mem::size_of::<pcap_rmtauth>(),
+        24usize,
+        concat!("Size of: ", stringify!(pcap_rmtauth))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<pcap_rmtauth>(),
+        8usize,
+        concat!("Alignment of ", stringify!(pcap_rmtauth))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_rmtauth>())).type_ as *const _ as usize },
+        0usize,
+        concat!("Offset of field: ", stringify!(pcap_rmtauth), "::", stringify!(type_))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_rmtauth>())).username as *const _ as usize },
+        8usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(pcap_rmtauth),
+            "::",
+            stringify!(username)
+        )
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_rmtauth>())).password as *const _ as usize },
+        16usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(pcap_rmtauth),
+            "::",
+            stringify!(password)
+        )
+    );
+}
+impl Default for pcap_rmtauth {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_open"]
+    pub fn pcap_open(
+        source: *const ::std::os::raw::c_char,
+        snaplen: ::std::os::raw::c_int,
+        flags: ::std::os::raw::c_int,
+        read_timeout: ::std::os::raw::c_int,
+        auth: *mut pcap_rmtauth,
+        errbuf: *mut ::std::os::raw::c_char,
+    ) -> *mut pcap_t;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_createsrcstr"]
+    pub fn pcap_createsrcstr(
+        source: *mut ::std::os::raw::c_char,
+        type_: ::std::os::raw::c_int,
+        host: *const ::std::os::raw::c_char,
+        port: *const ::std::os::raw::c_char,
+        name: *const ::std::os::raw::c_char,
+        errbuf: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_parsesrcstr"]
+    pub fn pcap_parsesrcstr(
+        source: *const ::std::os::raw::c_char,
+        type_: *mut ::std::os::raw::c_int,
+        host: *mut ::std::os::raw::c_char,
+        port: *mut ::std::os::raw::c_char,
+        name: *mut ::std::os::raw::c_char,
+        errbuf: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_findalldevs_ex"]
+    pub fn pcap_findalldevs_ex(
+        source: *mut ::std::os::raw::c_char,
+        auth: *mut pcap_rmtauth,
+        alldevs: *mut *mut pcap_if_t,
+        errbuf: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
+pub struct pcap_samp {
+    pub method: ::std::os::raw::c_int,
+    pub value: ::std::os::raw::c_int,
+}
+#[test]
+fn bindgen_test_layout_pcap_samp() {
+    assert_eq!(
+        ::std::mem::size_of::<pcap_samp>(),
+        8usize,
+        concat!("Size of: ", stringify!(pcap_samp))
+    );
+    assert_eq!(
+        ::std::mem::align_of::<pcap_samp>(),
+        4usize,
+        concat!("Alignment of ", stringify!(pcap_samp))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_samp>())).method as *const _ as usize },
+        0usize,
+        concat!("Offset of field: ", stringify!(pcap_samp), "::", stringify!(method))
+    );
+    assert_eq!(
+        unsafe { &(*(::std::ptr::null::<pcap_samp>())).value as *const _ as usize },
+        4usize,
+        concat!("Offset of field: ", stringify!(pcap_samp), "::", stringify!(value))
+    );
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_setsampling"]
+    pub fn pcap_setsampling(p: *mut pcap_t) -> *mut pcap_samp;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_remoteact_accept"]
+    pub fn pcap_remoteact_accept(
+        address: *const ::std::os::raw::c_char,
+        port: *const ::std::os::raw::c_char,
+        hostlist: *const ::std::os::raw::c_char,
+        connectinghost: *mut ::std::os::raw::c_char,
+        auth: *mut pcap_rmtauth,
+        errbuf: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_remoteact_list"]
+    pub fn pcap_remoteact_list(
+        hostlist: *mut ::std::os::raw::c_char,
+        sep: ::std::os::raw::c_char,
+        size: ::std::os::raw::c_int,
+        errbuf: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_remoteact_close"]
+    pub fn pcap_remoteact_close(
+        host: *const ::std::os::raw::c_char,
+        errbuf: *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    #[link_name = "\u{1}_pcap_remoteact_cleanup"]
+    pub fn pcap_remoteact_cleanup();
+}
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
+pub struct sockaddr {
+    pub _address: u8,
 }

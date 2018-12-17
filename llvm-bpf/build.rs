@@ -14,9 +14,14 @@ fn gen_binding(out_file: &Path) {
 
     bindgen::Builder::default()
         .header(pcap_header.to_str().unwrap())
-        .whitelist_type("bpf_.*")
-        .whitelist_function("pcap_compile|bpf_.*")
-        .whitelist_var("BPF_.*")
+        .whitelist_type("(pcap|bpf)_.*")
+        .whitelist_function("(pcap|bpf)_.*")
+        .whitelist_var("(PCAP|BPF)_.*")
+        .blacklist_function("_.*")
+        .derive_debug(true)
+        .derive_default(true)
+        .derive_partialeq(true)
+        .default_enum_style(bindgen::EnumVariation::ModuleConsts)
         .clang_args(
             libpcap
                 .include_paths
