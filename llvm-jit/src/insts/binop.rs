@@ -43,7 +43,8 @@ macro_rules! define_binary_operator {
                         self.rhs.emit_to(builder).into_raw(),
                         cstr!(self.name),
                     )
-                }.into()
+                }
+                .into()
             }
         }
 

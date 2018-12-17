@@ -43,7 +43,8 @@ impl<'a> InstructionBuilder for VaArg<'a> {
                 self.ty.into_raw(),
                 cstr!(self.name),
             )
-        }.into()
+        }
+        .into()
     }
 }
 

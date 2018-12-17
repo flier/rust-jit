@@ -1,8 +1,8 @@
 use std::ptr;
 
-use boolinator::Boolinator;
 use crate::llvm::core::*;
 use crate::llvm::prelude::*;
+use boolinator::Boolinator;
 
 use crate::block::BasicBlock;
 use crate::context::Context;

@@ -75,11 +75,12 @@ mod tests {
         let i123 = i8_t.int(123);
 
         assert_eq!(
-            ir!{
+            ir! {
                 ret void
                 ret #i123
                 ret #{ i8_t.int(123) }
-            }.as_slice(),
+            }
+            .as_slice(),
             &[
                 AstNode::Ret(Ret::void()),
                 AstNode::Ret(Ret::new(i123)),

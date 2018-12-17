@@ -52,7 +52,8 @@ impl<'a> InstructionBuilder for Select<'a> {
                 self.or_else.emit_to(builder).into_raw(),
                 cstr!(self.name),
             )
-        }.into()
+        }
+        .into()
     }
 }
 

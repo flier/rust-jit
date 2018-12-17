@@ -57,7 +57,8 @@ impl<'a> InstructionBuilder for Switch<'a> {
                 self.dest.map_or(ptr::null_mut(), |bb| bb.as_raw()),
                 self.cases.len() as u32,
             )
-        }.into();
+        }
+        .into();
 
         for (cond, dest) in self.cases {
             unsafe { LLVMAddCase(switch.as_raw(), cond.emit_to(builder).into_raw(), dest.as_raw()) }
@@ -145,11 +146,12 @@ mod tests {
         let bb_default = function.append_basic_block_in_context("default", &context);
 
         let switch = switch!(i64_t.uint(3);
-                _ => bb_default,
-                i64_t.uint(1) => function.append_basic_block_in_context("one", &context),
-                i64_t.uint(2) => function.append_basic_block_in_context("two", &context),
-                i64_t.uint(3) => function.append_basic_block_in_context("three", &context)
-            ).emit_to(&builder);
+            _ => bb_default,
+            i64_t.uint(1) => function.append_basic_block_in_context("one", &context),
+            i64_t.uint(2) => function.append_basic_block_in_context("two", &context),
+            i64_t.uint(3) => function.append_basic_block_in_context("three", &context)
+        )
+        .emit_to(&builder);
 
         assert_eq!(
             switch.to_string().trim(),

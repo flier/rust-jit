@@ -2,8 +2,8 @@ use std::env;
 use std::path::Path;
 use std::ptr;
 
-use libc::c_void;
 use crate::llvm::support::*;
+use libc::c_void;
 
 use crate::errors::Result;
 use crate::utils::{AsPtr, AsResult};

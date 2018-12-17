@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
-use libc::c_char;
 use crate::llvm::core::*;
 use crate::llvm::*;
+use libc::c_char;
 
 use crate::constant::InlineAsm;
 use crate::function::FunctionType;
@@ -55,7 +55,8 @@ impl FunctionType {
                 align_stack.as_bool(),
                 dialect,
             )
-        }.into()
+        }
+        .into()
     }
 }
 

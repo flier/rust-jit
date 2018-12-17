@@ -81,7 +81,8 @@ impl<'a> InstructionBuilder for Invoke<'a> {
                 self.unwind.map_or(ptr::null_mut(), |bb| bb.as_raw()),
                 cstr!(self.name),
             )
-        }.into();
+        }
+        .into();
 
         if let Some(call_conv) = self.call_conv {
             invoke.set_call_conv(call_conv);

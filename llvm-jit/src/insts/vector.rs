@@ -42,7 +42,8 @@ impl<'a> InstructionBuilder for ExtractElement<'a> {
                 self.index.emit_to(builder).into_raw(),
                 cstr!(self.name),
             )
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -107,7 +108,8 @@ impl<'a> InstructionBuilder for InsertElement<'a> {
                 self.index.emit_to(builder).into_raw(),
                 cstr!(self.name),
             )
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -173,7 +175,8 @@ impl<'a> InstructionBuilder for ShuffleVector<'a> {
                 self.mask.emit_to(builder).into_raw(),
                 cstr!(self.name),
             )
-        }.into()
+        }
+        .into()
     }
 }
 

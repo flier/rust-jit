@@ -364,7 +364,8 @@ impl<C: AsConstant> ConstantExpr for C {
                 indices.as_mut_ptr(),
                 indices.len() as u32,
             )
-        }.into()
+        }
+        .into()
     }
 }
 

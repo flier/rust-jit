@@ -1,8 +1,8 @@
 use crate::llvm::LLVMTypeKind;
 
 use crate::function::FunctionType;
-use crate::intrinsics::IntrinsicId;
 use crate::intrinsics::gen::INTRINSIC_NAMES;
+use crate::intrinsics::IntrinsicId;
 use crate::types::{ArrayType, PointerType, SequentialType, StructType, TypeRef, VectorType};
 
 impl IntrinsicId {

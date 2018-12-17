@@ -43,7 +43,7 @@ macro_rules! impl_iter {
         first => $first:path,
         next => $next:path,
         is_end => $is_end:path,
-    }) => (
+    }) => {
         pub struct $name<'a>(IterState<'a, $container, $raw>);
 
         impl<'a> $name<'a> {
@@ -79,7 +79,8 @@ macro_rules! impl_iter {
                             Some((container, iter))
                         }
                         IterState::End => None,
-                    }.and_then(|(container, iter)| {
+                    }
+                    .and_then(|(container, iter)| {
                         let finished = $is_end(container.as_raw(), iter).as_bool();
 
                         if finished {
@@ -97,7 +98,7 @@ macro_rules! impl_iter {
                 }
             }
         }
-    )
+    };
 }
 
 impl_iter!(SectionIter<ObjectFile, LLVMSectionIteratorRef> -> Section {
@@ -243,7 +244,8 @@ mod tests {
         let buf = MemoryBuffer::from_file(env::args().next().unwrap()).unwrap();
         let obj = ObjectFile::new(buf);
 
-        let mut sections = obj.sections()
+        let mut sections = obj
+            .sections()
             .map(|section| {
                 assert_that!(section.size(), is(greater_than(0)));
                 assert_that!(section.contents().is_empty(), is(equal_to(false)));
@@ -260,7 +262,8 @@ mod tests {
             contains(vec!["__bss", "__common", "__const", "__data", "__text"])
         );
 
-        let mut symbols = obj.symbols()
+        let mut symbols = obj
+            .symbols()
             .map(|symbol| symbol.name().into())
             .collect::<Vec<String>>();
 

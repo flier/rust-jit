@@ -4,11 +4,11 @@ use std::path::Path;
 use std::ptr;
 use std::sync::{Once, ONCE_INIT};
 
-use boolinator::Boolinator;
-use failure::err_msg;
 use crate::llvm::prelude::*;
 use crate::llvm::target::*;
 use crate::llvm::target_machine::*;
+use boolinator::Boolinator;
+use failure::err_msg;
 
 use crate::context::Context;
 use crate::errors::Result;
@@ -116,7 +116,8 @@ impl Iterator for TargetIter {
             self.0
                 .map_or_else(|| LLVMGetFirstTarget(), |next| LLVMGetNextTarget(next))
                 .as_mut()
-        }.map(|target| target as *mut LLVMTarget);
+        }
+        .map(|target| target as *mut LLVMTarget);
 
         self.0.map(Target)
     }
@@ -230,7 +231,8 @@ impl TargetMachine {
                 codegen,
                 &mut err,
             )
-        }.ok_or_else(|| format_err!("fail to emit to file, {}", err.into_string()))
+        }
+        .ok_or_else(|| format_err!("fail to emit to file, {}", err.into_string()))
     }
 
     /// Emits an asm or object file for the given module to the filename.

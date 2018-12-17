@@ -105,7 +105,8 @@ impl<'a> InstructionBuilder for GetElementPtr<'a> {
                     cstr!(self.name),
                 ),
             }
-        }.into()
+        }
+        .into()
     }
 }
 

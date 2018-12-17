@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
-use crate::llvm::LLVMAtomicOrdering;
 use crate::llvm::core::*;
 use crate::llvm::prelude::*;
+use crate::llvm::LLVMAtomicOrdering;
 
 use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
 use crate::types::TypeRef;
@@ -59,7 +59,8 @@ impl<'a> InstructionBuilder for Malloc<'a> {
             } else {
                 LLVMBuildMalloc(builder.as_raw(), self.ty.as_raw(), cstr!(self.name))
             }
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -131,7 +132,8 @@ impl<'a> InstructionBuilder for Alloca<'a> {
             } else {
                 LLVMBuildAlloca(builder.as_raw(), self.ty.as_raw(), cstr!(self.name))
             }
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -328,7 +330,8 @@ impl<'a> InstructionBuilder for Store<'a> {
                 self.value.emit_to(builder).into_raw(),
                 self.ptr.emit_to(builder).into_raw(),
             )
-        }.into();
+        }
+        .into();
 
         if self.volatile {
             inst.set_volatile(self.volatile)
@@ -375,7 +378,8 @@ impl IRBuilder {
             Malloc::array(ty, size, name)
         } else {
             Malloc::new(ty, name)
-        }.emit_to(self)
+        }
+        .emit_to(self)
     }
 
     /// Deallocates the memory allocation pointed to by ptr.
@@ -398,7 +402,8 @@ impl IRBuilder {
             Alloca::array(ty, size, name)
         } else {
             Alloca::new(ty, name)
-        }.emit_to(self)
+        }
+        .emit_to(self)
     }
 
     /// The `load` instruction is used to read from memory.

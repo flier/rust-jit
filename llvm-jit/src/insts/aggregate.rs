@@ -41,7 +41,8 @@ impl<'a> InstructionBuilder for ExtractValue<'a> {
                 self.index,
                 cstr!(self.name),
             )
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -103,7 +104,8 @@ impl<'a> InstructionBuilder for InsertValue<'a> {
                 self.index,
                 cstr!(self.name),
             )
-        }.into()
+        }
+        .into()
     }
 }
 

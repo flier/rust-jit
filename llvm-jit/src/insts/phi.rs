@@ -106,7 +106,8 @@ impl PhiNode {
                     LLVMGetIncomingValue(self.as_raw(), idx).into(),
                     LLVMGetIncomingBlock(self.as_raw(), idx).into(),
                 )
-            }).collect()
+            })
+            .collect()
     }
 }
 

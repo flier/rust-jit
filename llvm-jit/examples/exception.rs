@@ -500,7 +500,8 @@ impl Example {
 
                 // One catch block per type info to be caught
                 self.create_catch_block(&builder, func, next_name, our_id, finally_block, exception_caught)
-            }).collect();
+            })
+            .collect();
 
         // Entry Block
         builder.position_at_end(entry_block);
@@ -581,9 +582,10 @@ impl Example {
         // to a catch router if not. Either way the finally block will be run.
         let eq = icmp!(EQ unwind_exception_class, i64_t.int(OUR_BASE_EXCEPTION_CLASS as i64)).emit_to(&builder);
         br!(
-                eq => exception_route_block,
-                _ => external_exception_block
-            ).emit_to(&builder);
+            eq => exception_route_block,
+            _ => external_exception_block
+        )
+        .emit_to(&builder);
 
         // External Exception Block
         builder.position_at_end(external_exception_block);
@@ -602,7 +604,8 @@ impl Example {
         let p = gep!(
             unwind_exception,
             i64_t.int(OurBaseException_t::base_from_unwind_offset() as i64)
-        ).emit_to(&builder);
+        )
+        .emit_to(&builder);
         let type_info_thrown =
             ptr_cast!(p, self.our_exception_type.unwrap().ptr_t(); "type_info_thrown").emit_to(&builder);
 
@@ -625,7 +628,8 @@ impl Example {
         // Route to matched type info catch block or run cleanup finally block
         let switch = switch!(ret_type_info_index;
             _ => finally_block
-        ).emit_to(&builder);
+        )
+        .emit_to(&builder);
 
         for i in 0..exception_types_to_catch.len() {
             switch.add_case(i32_t.int(i as i64 + 1), catch_blocks[i]);
@@ -736,7 +740,8 @@ impl Example {
             _ => terminator_block,
             self.our_exception_caught_state.unwrap() => terminator_block,
             self.our_exception_thrown_state.unwrap() => unwind_resume_block
-        ).emit_to(&builder);
+        )
+        .emit_to(&builder);
 
         (bb, exception_caught, exception_storage, caught_result_storage)
     }
@@ -825,9 +830,10 @@ impl Example {
             // Switches on runtime type info type value to determine whether or not
             // a foreign exception is thrown. Defaults to throwing one of our generated exceptions.
             let switch = switch!(exception_type;
-            _ => generated_throw_block,
-            i32_t.int(native_throw_type as i64) => native_throw_block
-        ).emit_to(&builder);
+                _ => generated_throw_block,
+                i32_t.int(native_throw_type as i64) => native_throw_block
+            )
+            .emit_to(&builder);
         }
 
         // generatedThrow block
@@ -969,7 +975,8 @@ impl Example {
                     .set_initializer(self.our_type_info_type.unwrap().struct_of(values![i32_t.int(i as i64)]));
 
                 type_info_name
-            }).collect();
+            })
+            .collect();
 
         // print32_int
         self.module

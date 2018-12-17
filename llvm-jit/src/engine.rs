@@ -3,10 +3,10 @@ use std::fmt;
 use std::mem;
 use std::ptr;
 
-use boolinator::Boolinator;
-use libc;
 use crate::llvm::core::LLVMShutdown;
 use crate::llvm::execution_engine::*;
+use boolinator::Boolinator;
+use libc;
 
 use crate::errors::Result;
 use crate::function::Function;
@@ -114,7 +114,8 @@ impl Interpreter {
                     module,
                     err.into_string()
                 )
-            }).map(|_| {
+            })
+            .map(|_| {
                 trace!("create Interpreter({:?}) for Module({:?})", engine, module);
 
                 Interpreter(ExecutionEngine(engine))
@@ -156,7 +157,8 @@ impl JITCompiler {
                     module,
                     err.into_string()
                 )
-            }).map(|_| {
+            })
+            .map(|_| {
                 trace!("create JITCompiler({:?}) for Module({:?})", engine, module);
 
                 JITCompiler(ExecutionEngine(engine))
@@ -235,13 +237,15 @@ impl MCJITCompiler {
                 mem::size_of::<LLVMMCJITCompilerOptions>(),
                 &mut err,
             )
-        }.ok_or_else(|| {
+        }
+        .ok_or_else(|| {
             format_err!(
                 "fail to create MCJITCompiler for Module({:?}), {}",
                 module,
                 err.into_string()
             )
-        }).map(|_| {
+        })
+        .map(|_| {
             trace!("create MCJITCompiler({:?}) for Module({:?})", engine, module);
 
             MCJITCompiler(ExecutionEngine(engine))
@@ -281,7 +285,8 @@ impl ExecutionEngine {
                     module,
                     err.into_string()
                 )
-            }).map(|_| {
+            })
+            .map(|_| {
                 trace!("create ExecutionEngine({:?}) for Module({:?})", engine, module);
 
                 engine.into()
@@ -399,7 +404,8 @@ impl ExecutionEngine {
                 trace!("found `{}` function in {:?}: {:?}", name, self, f);
 
                 f
-            }).or_else(|| {
+            })
+            .or_else(|| {
                 trace!("not found `{}` function in {:?}", name, self);
 
                 None
@@ -457,8 +463,8 @@ impl ExecutionEngine {
 mod tests {
     use std::f64;
 
-    use hamcrest::prelude::*;
     use crate::llvm::prelude::*;
+    use hamcrest::prelude::*;
     use mmap;
 
     use super::*;
@@ -742,7 +748,8 @@ mod tests {
             mm_alloc_data,
             mm_finalize,
             Some(mm_destroy),
-        ).unwrap();
+        )
+        .unwrap();
 
         opts.MCJMM = mm.into_raw();
 

@@ -77,9 +77,9 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
 
     // Create the "if (arg < 2) goto exitbb"
     builder <<= br!(
-            icmp!(SLE argx, two; "cond") => ret_bb,
-            _ => recurse_bb
-        );
+        icmp!(SLE argx, two; "cond") => ret_bb,
+        _ => recurse_bb
+    );
 
     // Create: ret int 1
     builder.position_at_end(ret_bb);

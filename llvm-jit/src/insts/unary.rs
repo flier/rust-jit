@@ -39,7 +39,8 @@ macro_rules! define_unary_instruction {
                         self.value.emit_to(builder).into_raw(),
                         cstr!(self.name),
                     )
-                }.into()
+                }
+                .into()
             }
         }
 

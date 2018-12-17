@@ -287,7 +287,8 @@ impl ToConstantStruct for Context {
                 values.len() as u32,
                 packed.as_bool(),
             )
-        }.into();
+        }
+        .into();
 
         trace!("create constant struct: {:?}", ty);
 
@@ -375,8 +376,8 @@ impl_constant!(InlineAsm, Constant);
 mod tests {
     use std::f64;
 
-    use hamcrest::prelude::*;
     use crate::llvm;
+    use hamcrest::prelude::*;
 
     use super::*;
     use crate::context::Context;

@@ -49,9 +49,9 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
 
     // Create the "if (arg < 2) goto exitbb"
     builder <<= br!(
-            icmp!(SLE argx, two; "cond") => ret_bb,
-            _ => recurse_bb
-        );
+        icmp!(SLE argx, two; "cond") => ret_bb,
+        _ => recurse_bb
+    );
 
     // Create: ret int 1
     builder.position_at_end(ret_bb);
@@ -98,7 +98,8 @@ fn main() {
     // Now we create the JIT.
     let ee = ExecutionEngine::for_module(module).unwrap();
 
-    let v = ee.run_function(&fib_f, vec![GenericValue::from_int(context.int32_t(), 32)])
+    let v = ee
+        .run_function(&fib_f, vec![GenericValue::from_int(context.int32_t(), 32)])
         .to_int();
 
     // import result of execution

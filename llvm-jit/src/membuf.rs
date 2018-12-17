@@ -53,7 +53,8 @@ impl<'a> MemoryBuffer<'a> {
                     path,
                     msg.into_string(),
                 )
-            }).map(|_| buf.into())
+            })
+            .map(|_| buf.into())
     }
 
     /// Read all of stdin into a MemoryBuffer, and return it.

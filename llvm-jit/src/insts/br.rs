@@ -83,7 +83,8 @@ impl<'a> InstructionBuilder for CondBr<'a> {
                 self.then.map_or(ptr::null_mut(), |bb| bb.into_raw()),
                 self.or_else.map_or(ptr::null_mut(), |bb| bb.into_raw()),
             )
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -138,7 +139,8 @@ impl<'a> InstructionBuilder for IndirectBr<'a> {
                 self.addr.emit_to(builder).into_raw(),
                 self.dests.len() as u32,
             )
-        }.into();
+        }
+        .into();
 
         for dest in &self.dests {
             unsafe { LLVMAddDestination(br.into_raw(), dest.into_raw()) }

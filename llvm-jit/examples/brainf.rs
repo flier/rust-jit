@@ -205,7 +205,8 @@ impl<'a> BrainF<'a> {
             i32_t.int(mem_total as i64),
             i32_t.int(1),
             bool_t.int(0)
-        ).set_tail_call(false);
+        )
+        .set_tail_call(false);
 
         //%arrmax = getelementptr i8 *%arr, i32 %d
         let ptr_arrmax = compile_flags
@@ -452,7 +453,8 @@ impl<'a> BrainF<'a> {
         let i8_t = self.context.int8_t();
 
         //br label %main.%d
-        let test_bb = self.brainf_func
+        let test_bb = self
+            .brainf_func
             .append_basic_block_in_context(format!("{}.loop.test", LABEL), &self.context);
 
         br!(test_bb).emit_to(&self.builder);
@@ -460,7 +462,8 @@ impl<'a> BrainF<'a> {
         //main.%d:
         let old_bb = self.builder.insert_block().unwrap();
 
-        let loop_bb = self.brainf_func
+        let loop_bb = self
+            .brainf_func
             .append_basic_block_in_context(format!("{}.loop.entry", LABEL), &self.context);
         self.builder.position_at_end(loop_bb);
 
@@ -493,7 +496,8 @@ impl<'a> BrainF<'a> {
         let test_0 = icmp!(EQ tape_0, i8_t.int(0); TEST_REG);
 
         //br i1 %test.%d, label %main.%d, label %main.%d
-        let loop_end_bb = self.brainf_func
+        let loop_end_bb = self
+            .brainf_func
             .append_basic_block_in_context(format!("{}.loop.end", LABEL), &self.context);
 
         br!(test_0 => loop_end_bb, _ => old_bb).emit_to(&self.builder);
@@ -567,7 +571,8 @@ fn main() {
                 Some((code, _)) => (code.to_owned(), Path::new("expr")),
             };
 
-            let tape_size = opts.opt_str("tape-size")
+            let tape_size = opts
+                .opt_str("tape-size")
                 .map_or(DEFAULT_TAPE_SIZE, |s| s.parse().unwrap());
 
             //Gather the compile flags

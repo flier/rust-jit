@@ -112,7 +112,8 @@ impl BasicBlock {
 
     #[cfg(test)]
     pub fn last_instructions(&self, n: usize) -> Vec<String> {
-        let mut insts = self.instructions()
+        let mut insts = self
+            .instructions()
             .rev()
             .take(n)
             .map(|i| i.to_string().trim().to_owned())

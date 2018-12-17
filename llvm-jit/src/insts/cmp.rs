@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
-use crate::llvm::{LLVMIntPredicate, LLVMRealPredicate};
 use crate::llvm::core::*;
 use crate::llvm::prelude::*;
+use crate::llvm::{LLVMIntPredicate, LLVMRealPredicate};
 
 use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
 use crate::utils::{AsRaw, IntoRaw};
@@ -136,7 +136,8 @@ impl<'a> InstructionBuilder for ICmp<'a> {
                 self.rhs.emit_to(builder).into_raw(),
                 cstr!(self.name),
             )
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -246,7 +247,8 @@ impl<'a> InstructionBuilder for FCmp<'a> {
                 self.rhs.emit_to(builder).into_raw(),
                 cstr!(self.name),
             )
-        }.into()
+        }
+        .into()
     }
 }
 

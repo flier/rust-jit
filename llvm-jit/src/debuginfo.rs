@@ -1,8 +1,8 @@
 use std::path::Path;
 
-use failure::err_msg;
 use crate::llvm::debuginfo::*;
 use crate::llvm::prelude::*;
+use failure::err_msg;
 
 use crate::context::Context;
 use crate::errors::Result;
@@ -23,7 +23,8 @@ impl Context {
     pub fn create_debug_location(&self, line: u32, column: u32, scope: Metadata, inlined_at: Metadata) -> Metadata {
         unsafe {
             LLVMDIBuilderCreateDebugLocation(self.as_raw(), line, column, scope.into_raw(), inlined_at.into_raw())
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -101,7 +102,8 @@ impl DIBuilder {
                 split_debug_inlining.as_bool(),
                 for_profiling.as_bool(),
             )
-        }.ok_or_else(|| err_msg("fail to create compile unit"))
+        }
+        .ok_or_else(|| err_msg("fail to create compile unit"))
     }
 
     /// Create a file descriptor to hold debugging information for a file.

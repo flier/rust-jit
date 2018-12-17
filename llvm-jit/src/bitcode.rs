@@ -146,35 +146,27 @@ mod tests {
         assert_eq!(f.read_to_end(&mut data).unwrap(), bitcode.len());
         assert_eq!(data, bitcode.as_bytes());
 
-        assert!(
-            Context::new()
-                .parse_bitcode(&bitcode)
-                .unwrap()
-                .get_function("nop")
-                .is_some()
-        );
+        assert!(Context::new()
+            .parse_bitcode(&bitcode)
+            .unwrap()
+            .get_function("nop")
+            .is_some());
 
-        assert!(
-            Context::new()
-                .get_bitcode_module(bitcode.clone())
-                .unwrap()
-                .get_function("nop")
-                .is_some()
-        );
+        assert!(Context::new()
+            .get_bitcode_module(bitcode.clone())
+            .unwrap()
+            .get_function("nop")
+            .is_some());
 
-        assert!(
-            GlobalContext::parse_bitcode(&bitcode)
-                .unwrap()
-                .get_function("nop")
-                .is_some()
-        );
+        assert!(GlobalContext::parse_bitcode(&bitcode)
+            .unwrap()
+            .get_function("nop")
+            .is_some());
 
-        assert!(
-            GlobalContext::get_bitcode_module(bitcode)
-                .unwrap()
-                .get_function("nop")
-                .is_some()
-        );
+        assert!(GlobalContext::get_bitcode_module(bitcode)
+            .unwrap()
+            .get_function("nop")
+            .is_some());
 
         assert!(GlobalContext::get_bitcode_module(MemoryBuffer::from_bytes(b"", "bitcode")).is_err());
     }

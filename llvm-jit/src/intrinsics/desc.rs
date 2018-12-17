@@ -306,68 +306,69 @@ named!(
     do_parse!(
         descriptor:
             switch!(map!(call!(nom::le_u8), IIT_Info::from),
-                IIT_Info::IIT_Done => value!(IITDescriptor::Void) |
-                IIT_Info::IIT_VARARG => value!(IITDescriptor::VarArg) |
-                IIT_Info::IIT_MMX => value!(IITDescriptor::MMX) |
-                IIT_Info::IIT_TOKEN => value!(IITDescriptor::Token) |
-                IIT_Info::IIT_METADATA => value!(IITDescriptor::Metadata) |
-                IIT_Info::IIT_F16 => value!(IITDescriptor::Half) |
-                IIT_Info::IIT_F32 => value!(IITDescriptor::Float) |
-                IIT_Info::IIT_F64 => value!(IITDescriptor::Double) |
-                IIT_Info::IIT_I1 => value!(IITDescriptor::Integer(1)) |
-                IIT_Info::IIT_I8 => value!(IITDescriptor::Integer(8)) |
-                IIT_Info::IIT_I16 => value!(IITDescriptor::Integer(16)) |
-                IIT_Info::IIT_I32 => value!(IITDescriptor::Integer(32)) |
-                IIT_Info::IIT_I64 => value!(IITDescriptor::Integer(64)) |
-                IIT_Info::IIT_I128 => value!(IITDescriptor::Integer(128)) |
-                IIT_Info::IIT_V1 => call!(parse_vector_descripter, 1) |
-                IIT_Info::IIT_V2 => call!(parse_vector_descripter, 2) |
-                IIT_Info::IIT_V4 => call!(parse_vector_descripter, 4) |
-                IIT_Info::IIT_V8 => call!(parse_vector_descripter, 8) |
-                IIT_Info::IIT_V16 => call!(parse_vector_descripter, 16) |
-                IIT_Info::IIT_V32 => call!(parse_vector_descripter, 32) |
-                IIT_Info::IIT_V64 => call!(parse_vector_descripter, 64) |
-                IIT_Info::IIT_V512 => call!(parse_vector_descripter, 512) |
-                IIT_Info::IIT_V1024 => call!(parse_vector_descripter, 1024) |
-                IIT_Info::IIT_PTR => do_parse!(
-                    element: call!(parse_descripter) >>
-                    (
-                        IITDescriptor::Pointer(Box::new(element), 0)
-                    )
-                ) |
-                IIT_Info::IIT_ANYPTR => do_parse!(
-                    addrspace: call!(nom::le_u8) >>
-                    element: call!(parse_descripter) >>
-                    (
-                        IITDescriptor::Pointer(Box::new(element), addrspace)
-                    )
-                ) |
-                IIT_Info::IIT_ARG => map!(call!(parse_argument_info), IITDescriptor::Argument) |
-                IIT_Info::IIT_EXTEND_ARG => map!(call!(parse_argument_info), IITDescriptor::ExtendArgument) |
-                IIT_Info::IIT_TRUNC_ARG => map!(call!(parse_argument_info), IITDescriptor::TruncArgument) |
-                IIT_Info::IIT_HALF_VEC_ARG => map!(call!(parse_argument_info), IITDescriptor::HalfVecArgument) |
-                IIT_Info::IIT_PTR_TO_ARG => map!(call!(parse_argument_info), IITDescriptor::PtrToArgument) |
-                IIT_Info::IIT_PTR_TO_ELT => map!(call!(parse_argument_info), IITDescriptor::PtrToElement) |
-                IIT_Info::IIT_SAME_VEC_WIDTH_ARG => do_parse!(
-                    arg: call!(parse_argument_info) >>
-                    element: call!(parse_descripter) >>
-                    (
-                        IITDescriptor::SameVecWidthArgument(Box::new(element), arg)
-                    )
-                ) |
-                IIT_Info::IIT_VEC_OF_ANYPTRS_TO_ELT => do_parse!(
-                    arg_num: call!(nom::le_u8) >>
-                    ref_num: call!(nom::le_u8) >>
-                    (
-                        IITDescriptor::VecOfAnyPtrsToElt(arg_num as usize, ref_num as usize)
-                    )
-                ) |
-                IIT_Info::IIT_EMPTYSTRUCT => call!(parse_struct_descripter, 0) |
-                IIT_Info::IIT_STRUCT5 => call!(parse_struct_descripter, 5) |
-                IIT_Info::IIT_STRUCT4 => call!(parse_struct_descripter, 4) |
-                IIT_Info::IIT_STRUCT3 => call!(parse_struct_descripter, 3) |
-                IIT_Info::IIT_STRUCT2 => call!(parse_struct_descripter, 2)
-        ) >> (descriptor)
+                    IIT_Info::IIT_Done => value!(IITDescriptor::Void) |
+                    IIT_Info::IIT_VARARG => value!(IITDescriptor::VarArg) |
+                    IIT_Info::IIT_MMX => value!(IITDescriptor::MMX) |
+                    IIT_Info::IIT_TOKEN => value!(IITDescriptor::Token) |
+                    IIT_Info::IIT_METADATA => value!(IITDescriptor::Metadata) |
+                    IIT_Info::IIT_F16 => value!(IITDescriptor::Half) |
+                    IIT_Info::IIT_F32 => value!(IITDescriptor::Float) |
+                    IIT_Info::IIT_F64 => value!(IITDescriptor::Double) |
+                    IIT_Info::IIT_I1 => value!(IITDescriptor::Integer(1)) |
+                    IIT_Info::IIT_I8 => value!(IITDescriptor::Integer(8)) |
+                    IIT_Info::IIT_I16 => value!(IITDescriptor::Integer(16)) |
+                    IIT_Info::IIT_I32 => value!(IITDescriptor::Integer(32)) |
+                    IIT_Info::IIT_I64 => value!(IITDescriptor::Integer(64)) |
+                    IIT_Info::IIT_I128 => value!(IITDescriptor::Integer(128)) |
+                    IIT_Info::IIT_V1 => call!(parse_vector_descripter, 1) |
+                    IIT_Info::IIT_V2 => call!(parse_vector_descripter, 2) |
+                    IIT_Info::IIT_V4 => call!(parse_vector_descripter, 4) |
+                    IIT_Info::IIT_V8 => call!(parse_vector_descripter, 8) |
+                    IIT_Info::IIT_V16 => call!(parse_vector_descripter, 16) |
+                    IIT_Info::IIT_V32 => call!(parse_vector_descripter, 32) |
+                    IIT_Info::IIT_V64 => call!(parse_vector_descripter, 64) |
+                    IIT_Info::IIT_V512 => call!(parse_vector_descripter, 512) |
+                    IIT_Info::IIT_V1024 => call!(parse_vector_descripter, 1024) |
+                    IIT_Info::IIT_PTR => do_parse!(
+                        element: call!(parse_descripter) >>
+                        (
+                            IITDescriptor::Pointer(Box::new(element), 0)
+                        )
+                    ) |
+                    IIT_Info::IIT_ANYPTR => do_parse!(
+                        addrspace: call!(nom::le_u8) >>
+                        element: call!(parse_descripter) >>
+                        (
+                            IITDescriptor::Pointer(Box::new(element), addrspace)
+                        )
+                    ) |
+                    IIT_Info::IIT_ARG => map!(call!(parse_argument_info), IITDescriptor::Argument) |
+                    IIT_Info::IIT_EXTEND_ARG => map!(call!(parse_argument_info), IITDescriptor::ExtendArgument) |
+                    IIT_Info::IIT_TRUNC_ARG => map!(call!(parse_argument_info), IITDescriptor::TruncArgument) |
+                    IIT_Info::IIT_HALF_VEC_ARG => map!(call!(parse_argument_info), IITDescriptor::HalfVecArgument) |
+                    IIT_Info::IIT_PTR_TO_ARG => map!(call!(parse_argument_info), IITDescriptor::PtrToArgument) |
+                    IIT_Info::IIT_PTR_TO_ELT => map!(call!(parse_argument_info), IITDescriptor::PtrToElement) |
+                    IIT_Info::IIT_SAME_VEC_WIDTH_ARG => do_parse!(
+                        arg: call!(parse_argument_info) >>
+                        element: call!(parse_descripter) >>
+                        (
+                            IITDescriptor::SameVecWidthArgument(Box::new(element), arg)
+                        )
+                    ) |
+                    IIT_Info::IIT_VEC_OF_ANYPTRS_TO_ELT => do_parse!(
+                        arg_num: call!(nom::le_u8) >>
+                        ref_num: call!(nom::le_u8) >>
+                        (
+                            IITDescriptor::VecOfAnyPtrsToElt(arg_num as usize, ref_num as usize)
+                        )
+                    ) |
+                    IIT_Info::IIT_EMPTYSTRUCT => call!(parse_struct_descripter, 0) |
+                    IIT_Info::IIT_STRUCT5 => call!(parse_struct_descripter, 5) |
+                    IIT_Info::IIT_STRUCT4 => call!(parse_struct_descripter, 4) |
+                    IIT_Info::IIT_STRUCT3 => call!(parse_struct_descripter, 3) |
+                    IIT_Info::IIT_STRUCT2 => call!(parse_struct_descripter, 2)
+            )
+            >> (descriptor)
     )
 );
 
@@ -638,11 +639,9 @@ mod tests {
             IntrinsicId::addressofreturnaddress.info_table_entries().as_ref(),
             IIT_ADDRESS_OF_RETURN_ADDRESS.as_slice()
         );
-        assert!(
-            IntrinsicId::annotation
-                .info_table_entries()
-                .starts_with(IIT_ANNOTATION.as_slice())
-        );
+        assert!(IntrinsicId::annotation
+            .info_table_entries()
+            .starts_with(IIT_ANNOTATION.as_slice()));
         assert_eq!(IntrinsicId::memset.info_table_entries().as_ref(), IIT_MEMSET.as_slice());
 
         for id in (0..IIT_TABLE.len()).map(|n| IntrinsicId::from(n as u32 + 1)) {

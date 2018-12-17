@@ -596,7 +596,8 @@ impl ToStructType for Context {
                 elements.len() as u32,
                 packed.as_bool(),
             )
-        }.into();
+        }
+        .into();
 
         trace!("created annonymous structure in {:?}: {:?}", self, ty);
 

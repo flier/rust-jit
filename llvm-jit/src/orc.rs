@@ -3,9 +3,9 @@ use std::mem;
 use std::ptr;
 use std::result::Result as StdResult;
 
+use crate::llvm::orc::*;
 use boolinator::Boolinator;
 use failure::Error;
-use crate::llvm::orc::*;
 
 use crate::errors::Result;
 use crate::membuf::MemoryBuffer;
@@ -105,7 +105,8 @@ impl JITStack {
                 callback.unwrap_or_else(|| mem::zeroed()),
                 ctx.as_mut_ptr(),
             )
-        }.ok_or_else(|| self.err())
+        }
+        .ok_or_else(|| self.err())
         .map(|_| addr)
     }
 
@@ -144,7 +145,8 @@ impl JITStack {
                 resolver,
                 ctx.as_mut_ptr(),
             )
-        }.ok_or_else(|| self.err())
+        }
+        .ok_or_else(|| self.err())
         .map(|_| handle)
     }
 
@@ -165,7 +167,8 @@ impl JITStack {
                 resolver,
                 ctx.as_mut_ptr(),
             )
-        }.ok_or_else(|| self.err())
+        }
+        .ok_or_else(|| self.err())
         .map(|_| handle)
     }
 

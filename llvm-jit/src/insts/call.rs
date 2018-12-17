@@ -74,7 +74,8 @@ impl<'a> InstructionBuilder for Call<'a> {
                 args.len() as u32,
                 cstr!(self.name),
             )
-        }.into();
+        }
+        .into();
 
         call.set_tail_call(self.tail_call);
 

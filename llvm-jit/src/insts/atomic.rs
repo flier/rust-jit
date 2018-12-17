@@ -1,5 +1,5 @@
-use crate::llvm::{LLVMAtomicOrdering, LLVMAtomicRMWBinOp};
 use crate::llvm::core::*;
+use crate::llvm::{LLVMAtomicOrdering, LLVMAtomicRMWBinOp};
 
 use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
 use crate::utils::{AsLLVMBool, AsRaw, IntoRaw};
@@ -78,7 +78,8 @@ impl<'a> InstructionBuilder for AtomicRMW<'a> {
                 self.ordering,
                 self.single_thread.as_bool(),
             )
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -133,7 +134,8 @@ impl<'a> InstructionBuilder for AtomicCmpXchg<'a> {
                 self.failure_ordering,
                 self.single_thread.as_bool(),
             )
-        }.into()
+        }
+        .into()
     }
 }
 

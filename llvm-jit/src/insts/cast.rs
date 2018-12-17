@@ -44,7 +44,8 @@ macro_rules! define_cast_instruction {
                         self.dest_ty.into_raw(),
                         cstr!(self.name),
                     )
-                }.into()
+                }
+                .into()
             }
         }
 

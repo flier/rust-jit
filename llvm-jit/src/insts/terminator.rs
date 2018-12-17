@@ -64,7 +64,8 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
                 self.clauses.len() as u32,
                 cstr!(self.name),
             )
-        }.into();
+        }
+        .into();
 
         for clause in &self.clauses {
             unsafe { LLVMAddClause(landingpad.as_raw(), clause.as_raw()) }

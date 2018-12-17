@@ -91,7 +91,8 @@ impl<'a> InstructionBuilder for CatchSwitch<'a> {
                 self.handlers.len() as u32,
                 cstr!(self.name),
             )
-        }.into();
+        }
+        .into();
 
         for handler in self.handlers {
             unsafe { LLVMAddHandler(catch_switch.as_raw(), handler.into_raw()) }
@@ -175,7 +176,8 @@ impl<'a> InstructionBuilder for CatchPad<'a> {
                 args.len() as u32,
                 cstr!(self.name),
             )
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -236,7 +238,8 @@ impl<'a> InstructionBuilder for CleanupPad<'a> {
                 args.len() as u32,
                 cstr!(self.name),
             )
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -321,7 +324,8 @@ impl InstructionBuilder for CleanupRet {
                 self.catchpad.into_raw(),
                 self.next.map_or(ptr::null_mut(), |bb| bb.as_raw()),
             )
-        }.into()
+        }
+        .into()
     }
 }
 

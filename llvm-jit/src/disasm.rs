@@ -47,7 +47,8 @@ impl Disasm {
                 get_op_info,
                 symbol_lookup,
             )
-        }.into()
+        }
+        .into()
     }
 
     pub fn for_cpu<T>(
@@ -67,7 +68,8 @@ impl Disasm {
                 get_op_info,
                 symbol_lookup,
             )
-        }.into()
+        }
+        .into()
     }
 
     pub fn for_cpu_features<T>(
@@ -89,7 +91,8 @@ impl Disasm {
                 get_op_info,
                 symbol_lookup,
             )
-        }.into()
+        }
+        .into()
     }
 
     pub fn set_options(&self, option: DisasmOptions) -> &Self {

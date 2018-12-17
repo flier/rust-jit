@@ -5,9 +5,9 @@ use std::ptr;
 use std::slice;
 use std::str;
 
+use crate::llvm::LLVMModuleFlagBehavior;
 use boolinator::Boolinator;
 use libc;
-use crate::llvm::LLVMModuleFlagBehavior;
 use llvm_sys::core::*;
 use llvm_sys::prelude::*;
 
