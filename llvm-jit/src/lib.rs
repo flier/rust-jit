@@ -1,18 +1,8 @@
 #![recursion_limit = "128"]
-#![cfg_attr(feature = "cargo-clippy", feature(tool_lints))]
-#![cfg_attr(feature = "cargo-clippy", allow(clippy::trivially_copy_pass_by_ref))]
+#![allow(clippy::zero_prefixed_literal, clippy::trivially_copy_pass_by_ref)]
 
 #[macro_use]
-extern crate bitflags;
-extern crate boolinator;
-#[macro_use]
 extern crate failure;
-extern crate arrayvec;
-extern crate hexplay;
-#[macro_use]
-extern crate lazy_static;
-extern crate libc;
-extern crate llvm_sys;
 #[macro_use]
 extern crate log;
 #[macro_use(
@@ -41,12 +31,6 @@ extern crate hamcrest;
 #[cfg(test)]
 #[macro_use]
 extern crate matches;
-#[cfg(test)]
-extern crate mmap;
-#[cfg(test)]
-extern crate pretty_env_logger;
-#[cfg(test)]
-extern crate tempfile;
 
 #[doc(hidden)]
 #[macro_use]
@@ -83,56 +67,56 @@ mod passmgr;
 mod symbols;
 pub mod target;
 
-pub use attribute::{attrs, Attribute, AttributeIndex, EnumAttribute, StringAttribute};
-pub use constant::{
+pub use crate::attribute::{attrs, Attribute, AttributeIndex, EnumAttribute, StringAttribute};
+pub use crate::constant::{
     Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString, ConstantStruct, ConstantVector, InlineAsm,
 };
-pub use context::{Context, GlobalContext};
-pub use debuginfo::{debug_metadata_version, DIBuilder};
-pub use disasm::Disasm;
-pub use engine::{
+pub use crate::context::{Context, GlobalContext};
+pub use crate::debuginfo::{debug_metadata_version, DIBuilder};
+pub use crate::disasm::Disasm;
+pub use crate::engine::{
     shutdown, CodeGenOptLevel, ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJITCompiler,
     MCJITCompilerOptions, MCJITMemoryManager, MCJIT,
 };
-pub use function::{Function, FunctionType};
-pub use global::{DLLStorageClass, GlobalValue, GlobalVar, Linkage, ThreadLocalMode, Visibility};
-pub use insts::{IRBuilder, Position};
-pub use membuf::MemoryBuffer;
-pub use metadata::{MDKindId, MDNode, MDString, Metadata, ModuleFlagEntry, ModuleFlagsMetadata};
-pub use module::{AddressSpace, Module};
-pub use object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
-pub use orc::{JITStack, LazyCompileCallback, ModuleHandle, SymbolResolver, TargetAddress};
-pub use passmgr::{FunctionPassManager, Pass, PassManager, PassManagerBuilder, PassRegistry};
-pub use symbols::Symbols;
-pub use types::{
+pub use crate::function::{Function, FunctionType};
+pub use crate::global::{DLLStorageClass, GlobalValue, GlobalVar, Linkage, ThreadLocalMode, Visibility};
+pub use crate::insts::{IRBuilder, Position};
+pub use crate::membuf::MemoryBuffer;
+pub use crate::metadata::{MDKindId, MDNode, MDString, Metadata, ModuleFlagEntry, ModuleFlagsMetadata};
+pub use crate::module::{AddressSpace, Module};
+pub use crate::object::{ObjectFile, Section, SectionIter, Symbol, SymbolIter};
+pub use crate::orc::{JITStack, LazyCompileCallback, ModuleHandle, SymbolResolver, TargetAddress};
+pub use crate::passmgr::{FunctionPassManager, Pass, PassManager, PassManagerBuilder, PassRegistry};
+pub use crate::symbols::Symbols;
+pub use crate::types::{
     ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType, TypeKind, TypeRef, VectorType,
 };
-pub use value::{BlockAddress, Instruction, Opcode, ValueKind, ValueRef};
+pub use crate::value::{BlockAddress, Instruction, Opcode, ValueKind, ValueRef};
 
 pub mod prelude {
     //! A prelude for writing LLVM JIT code.
 
-    pub use block::BasicBlock;
-    pub use context::Context;
-    pub use engine::{ExecutionEngine, GenericValue};
-    pub use function::{Function, FunctionType};
-    pub use insts::{IRBuilder, Position};
-    pub use module::Module;
-    pub use types::TypeRef;
-    pub use value::ValueRef;
+    pub use crate::block::BasicBlock;
+    pub use crate::context::Context;
+    pub use crate::engine::{ExecutionEngine, GenericValue};
+    pub use crate::function::{Function, FunctionType};
+    pub use crate::insts::{IRBuilder, Position};
+    pub use crate::module::Module;
+    pub use crate::types::TypeRef;
+    pub use crate::value::ValueRef;
 
-    pub use attribute::AttributeGroups;
-    pub use constant::{
+    pub use crate::attribute::AttributeGroups;
+    pub use crate::constant::{
         ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray, ToConstantStruct, ToConstantVector,
         ToNamedConstantStruct,
     };
-    pub use constexpr::ConstantExpr;
-    pub use global::GlobalValue;
-    pub use insts::InstructionBuilder;
-    pub use intrinsics::IntrinsicId;
-    pub use types::{
+    pub use crate::constexpr::ConstantExpr;
+    pub use crate::global::GlobalValue;
+    pub use crate::insts::InstructionBuilder;
+    pub use crate::intrinsics::IntrinsicId;
+    pub use crate::types::{
         AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType, ToPointerType, ToStructType, ToVectorType,
     };
-    pub use utils::{AsRaw, IntoRaw};
-    pub use value::{AsValueRef, Instruction};
+    pub use crate::utils::{AsRaw, IntoRaw};
+    pub use crate::value::{AsValueRef, Instruction};
 }

@@ -1,9 +1,9 @@
 use std::ops::Deref;
 
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use utils::AsRaw;
+use crate::utils::AsRaw;
 
 /// Contexts are execution states for the core LLVM IR system.
 #[derive(Debug)]

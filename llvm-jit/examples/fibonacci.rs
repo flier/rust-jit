@@ -18,9 +18,8 @@
 #[macro_use]
 extern crate llvm_jit as jit;
 extern crate llvm_sys as llvm;
-extern crate pretty_env_logger;
 
-use jit::prelude::*;
+use crate::jit::prelude::*;
 
 fn create_fib_function(context: &Context, module: &Module) -> Function {
     // Create the fib function and insert it into module M.  This function is said

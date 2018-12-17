@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 
-use llvm::core::*;
+use crate::llvm::core::*;
 
-use insts::{AstNode, IRBuilder, InstructionBuilder};
-use utils::{AsRaw, IntoRaw};
-use value::Instruction;
+use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
+use crate::utils::{AsRaw, IntoRaw};
+use crate::value::Instruction;
 
 /// This instruction extracts a single (scalar) element from a `VectorType` value
 #[derive(Clone, Debug, PartialEq)]
@@ -238,8 +238,8 @@ impl IRBuilder {
 
 #[cfg(test)]
 mod tests {
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     #[test]
     fn vector() {

@@ -1,11 +1,11 @@
 use std::borrow::Cow;
 
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use insts::{AstNode, IRBuilder, InstructionBuilder};
-use utils::{AsBool, AsLLVMBool, AsRaw, IntoRaw};
-use value::{Instruction, ValueRef};
+use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
+use crate::utils::{AsBool, AsLLVMBool, AsRaw, IntoRaw};
+use crate::value::{Instruction, ValueRef};
 
 /// an instruction for type-safe pointer arithmetic to access elements of arrays and structs
 #[derive(Clone, Debug, PartialEq)]
@@ -203,8 +203,8 @@ impl IRBuilder {
 
 #[cfg(test)]
 mod tests {
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     #[test]
     fn gep() {

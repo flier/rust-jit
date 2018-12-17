@@ -1,15 +1,15 @@
 use std::borrow::Cow;
 use std::ptr;
 
-use llvm::core::*;
-use llvm::prelude::*;
-use llvm::LLVMCallConv;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
+use crate::llvm::LLVMCallConv;
 
-use block::BasicBlock;
-use function::Function;
-use insts::{AstNode, CallSite, IRBuilder, InstructionBuilder};
-use utils::{AsRaw, IntoRaw};
-use value::{Instruction, ValueRef};
+use crate::block::BasicBlock;
+use crate::function::Function;
+use crate::insts::{AstNode, CallSite, IRBuilder, InstructionBuilder};
+use crate::utils::{AsRaw, IntoRaw};
+use crate::value::{Instruction, ValueRef};
 
 /// This instruction is designed to operate as a standard `call` instruction in most regards.
 ///
@@ -173,7 +173,7 @@ macro_rules! invoke {
     };
     // The HiPE calling convention
     (cc11 $($rest:tt)*) => {
-        invoke!(__call_conv ::llvm::LLVMCallConv::LLVMHiPECallConv, $($rest)*)
+        invoke!(__call_conv crate::llvm::LLVMCallConv::LLVMHiPECallConv, $($rest)*)
     };
     // WebKit’s JavaScript calling convention
     (webkit_jscc $($rest:tt)*) => {
@@ -210,10 +210,10 @@ macro_rules! invoke {
 
 #[cfg(test)]
 mod tests {
-    use llvm::LLVMCallConv;
+    use crate::llvm::LLVMCallConv;
 
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     #[test]
     fn invoke() {

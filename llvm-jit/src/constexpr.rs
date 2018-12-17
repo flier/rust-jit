@@ -3,13 +3,13 @@
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Not, Rem, Sub};
 
-use llvm::core::*;
-use llvm::prelude::*;
-use llvm::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
+use crate::llvm::*;
 
-use constant::{AsConstant, Constant, ConstantFP, ConstantFPs, ConstantInt, ConstantInts, ConstantVector};
-use types::TypeRef;
-use utils::{AsLLVMBool, AsRaw};
+use crate::constant::{AsConstant, Constant, ConstantFP, ConstantFPs, ConstantInt, ConstantInts, ConstantVector};
+use crate::types::TypeRef;
+use crate::utils::{AsLLVMBool, AsRaw};
 
 pub trait ConstantExpr {
     fn neg(&self) -> Constant;
@@ -684,7 +684,7 @@ impl ConstantVector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use prelude::*;
+    use crate::prelude::*;
 
     #[test]
     fn const_expr() {

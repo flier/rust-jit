@@ -1,12 +1,12 @@
 use std::ptr;
 
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use block::BasicBlock;
-use insts::{AstNode, IRBuilder, InstructionBuilder, TerminatorInst};
-use utils::{AsRaw, IntoRaw};
-use value::{Instruction, ValueRef};
+use crate::block::BasicBlock;
+use crate::insts::{AstNode, IRBuilder, InstructionBuilder, TerminatorInst};
+use crate::utils::{AsRaw, IntoRaw};
+use crate::value::{Instruction, ValueRef};
 
 /// Create a switch instruction with the specified value, default dest,
 /// and with a hint for the number of cases that will be added (for efficient allocation).
@@ -126,8 +126,8 @@ impl IRBuilder {
 
 #[cfg(test)]
 mod tests {
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     #[test]
     fn switch() {

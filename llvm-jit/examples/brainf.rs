@@ -31,16 +31,13 @@
 //===----------------------------------------------------------------------===//
 #[macro_use]
 extern crate bitflags;
-extern crate boolinator;
 #[macro_use]
 extern crate failure;
-extern crate getopts;
 #[macro_use]
 extern crate llvm_jit as jit;
 extern crate llvm_sys as llvm;
 #[macro_use]
 extern crate log;
-extern crate pretty_env_logger;
 
 use std::env;
 use std::fs::File;
@@ -52,9 +49,9 @@ use std::path::Path;
 use boolinator::Boolinator;
 use getopts::{Matches, Options};
 
-use jit::insts::*;
-use jit::prelude::*;
-use jit::target::*;
+use crate::jit::insts::*;
+use crate::jit::prelude::*;
+use crate::jit::target::*;
 
 pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
 

@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 
-use llvm::LLVMAtomicOrdering;
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::LLVMAtomicOrdering;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use insts::{AstNode, IRBuilder, InstructionBuilder};
-use types::TypeRef;
-use utils::{AsBool, AsLLVMBool, AsRaw, IntoRaw};
-use value::{Instruction, ValueRef};
+use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
+use crate::types::TypeRef;
+use crate::utils::{AsBool, AsLLVMBool, AsRaw, IntoRaw};
+use crate::value::{Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Malloc<'a> {
@@ -444,8 +444,8 @@ impl MemAccessInst for StoreInst {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     #[test]
     fn memory() {

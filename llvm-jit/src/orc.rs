@@ -5,13 +5,13 @@ use std::result::Result as StdResult;
 
 use boolinator::Boolinator;
 use failure::Error;
-use llvm::orc::*;
+use crate::llvm::orc::*;
 
-use errors::Result;
-use membuf::MemoryBuffer;
-use module::Module;
-use target::TargetMachine;
-use utils::{AsMutPtr, AsRaw, AsResult, IntoRaw, UncheckedCStr};
+use crate::errors::Result;
+use crate::membuf::MemoryBuffer;
+use crate::module::Module;
+use crate::target::TargetMachine;
+use crate::utils::{AsMutPtr, AsRaw, AsResult, IntoRaw, UncheckedCStr};
 
 pub type TargetAddress = LLVMOrcTargetAddress;
 pub type LazyCompileCallback = LLVMOrcLazyCompileCallbackFn;

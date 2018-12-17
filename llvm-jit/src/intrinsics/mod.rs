@@ -6,14 +6,14 @@ pub use self::gen::IntrinsicId;
 
 use std::mem;
 
-use llvm::core::LLVMGetIntrinsicID;
+use crate::llvm::core::LLVMGetIntrinsicID;
 
 use boolinator::Boolinator;
 
-use function::Function;
-use module::Module;
-use types::TypeRef;
-use utils::AsRaw;
+use crate::function::Function;
+use crate::module::Module;
+use crate::types::TypeRef;
+use crate::utils::AsRaw;
 
 impl From<u32> for IntrinsicId {
     fn from(v: u32) -> Self {

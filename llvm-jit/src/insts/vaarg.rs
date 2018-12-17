@@ -1,11 +1,11 @@
 use std::borrow::Cow;
 
-use llvm::core::*;
+use crate::llvm::core::*;
 
-use insts::{AstNode, IRBuilder, InstructionBuilder};
-use types::TypeRef;
-use utils::{AsRaw, IntoRaw};
-use value::Instruction;
+use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
+use crate::types::TypeRef;
+use crate::utils::{AsRaw, IntoRaw};
+use crate::value::Instruction;
 
 /// The `va_arg` instruction is used to access arguments passed through the “variable argument” area of a function call. It is used to implement the `va_arg` macro in C.
 #[derive(Clone, Debug, PartialEq)]
@@ -85,8 +85,8 @@ impl IRBuilder {
 
 #[cfg(test)]
 mod tests {
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     #[test]
     fn va_arg_inst() {

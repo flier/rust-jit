@@ -1,9 +1,9 @@
-use llvm::analysis::*;
+use crate::llvm::analysis::*;
 
-use errors::Result;
-use function::Function;
-use module::Module;
-use utils::{AsRaw, AsResult, DisposableMessage};
+use crate::errors::Result;
+use crate::function::Function;
+use crate::module::Module;
+use crate::utils::{AsRaw, AsResult, DisposableMessage};
 
 impl Module {
     /// Verify that a module is valid, taking the specified action if not.

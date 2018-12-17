@@ -1,14 +1,14 @@
 use std::borrow::Cow;
 use std::ptr;
 
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use function::Function;
-use insts::{AstNode, IRBuilder, InstructionBuilder};
-use types::TypeRef;
-use utils::{AsLLVMBool, AsRaw, IntoRaw};
-use value::{Instruction, ValueRef};
+use crate::function::Function;
+use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
+use crate::types::TypeRef;
+use crate::utils::{AsLLVMBool, AsRaw, IntoRaw};
+use crate::value::{Instruction, ValueRef};
 
 /// Subclasses of this class are all able to terminate a basic
 /// block. Thus, these are all the flow control type of operations.
@@ -233,8 +233,8 @@ impl IRBuilder {
 
 #[cfg(test)]
 mod tests {
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     #[test]
     fn terminator() {

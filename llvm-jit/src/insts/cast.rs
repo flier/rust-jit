@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 
-use llvm::core::*;
+use crate::llvm::core::*;
 
-use insts::{AstNode, InstructionBuilder};
-use types::TypeRef;
-use utils::{AsRaw, IntoRaw};
+use crate::insts::{AstNode, InstructionBuilder};
+use crate::types::TypeRef;
+use crate::utils::{AsRaw, IntoRaw};
 
 macro_rules! define_cast_instruction {
     ($operator: ident, $func: path, $alias: ident, $comment: expr) => {
@@ -200,8 +200,8 @@ define_cast_instruction!(
 
 #[cfg(test)]
 mod tests {
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     macro_rules! test_instruction {
         ($builder: ident, $name: ident !($arg0_i64: ident, $arg1_i64: ident), $display: expr) => {

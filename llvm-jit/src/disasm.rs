@@ -1,9 +1,11 @@
 use std::io::{Cursor, Seek, SeekFrom};
 
-use llvm::disassembler::*;
+use bitflags::bitflags;
 
-use errors::Result;
-use utils::{AsMutPtr, AsRaw, UncheckedCStr};
+use crate::llvm::disassembler::*;
+
+use crate::errors::Result;
+use crate::utils::{AsMutPtr, AsRaw, UncheckedCStr};
 
 bitflags! {
     pub struct DisasmOptions: u64 {
@@ -167,7 +169,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use target::*;
+    use crate::target::*;
 
     #[test]
     fn disasm_inst_iter() {

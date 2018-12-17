@@ -29,7 +29,7 @@
 #[macro_use]
 extern crate llvm_jit as jit;
 
-use jit::prelude::*;
+use self::jit::prelude::*;
 
 fn main() {
     jit::target::AllTargetMCs::init();

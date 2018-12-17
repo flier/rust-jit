@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use insts::AstNode;
+use crate::insts::AstNode;
 
 #[derive(Clone, Debug)]
 struct AstNodes<'a>(Vec<AstNode<'a>>);
@@ -62,10 +62,10 @@ macro_rules! ir_each_token {
 
 #[cfg(test)]
 mod tests {
-    use constant::ConstantInts;
-    use context::Context;
-    use insts::*;
-    use types::IntegerTypes;
+    use crate::constant::ConstantInts;
+    use crate::context::Context;
+    use crate::insts::*;
+    use crate::types::IntegerTypes;
 
     #[test]
     fn ir_code() {

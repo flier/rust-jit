@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use context::Context;
-use function::Function;
-use insts::ReturnInst;
-use utils::{AsRaw, AsResult, UncheckedCStr};
-use value::{BlockAddress, Instruction, ValueRef};
+use crate::context::Context;
+use crate::function::Function;
+use crate::insts::ReturnInst;
+use crate::utils::{AsRaw, AsResult, UncheckedCStr};
+use crate::value::{BlockAddress, Instruction, ValueRef};
 
 /// Basic Block
 ///
@@ -134,8 +134,8 @@ impl_iter!(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use insts::add;
-    use prelude::*;
+    use crate::insts::add;
+    use crate::prelude::*;
 
     #[test]
     fn basic_block() {

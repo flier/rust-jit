@@ -2,7 +2,7 @@ use std::result::Result as StdResult;
 
 use failure::Error;
 
-use types::TypeRef;
+use crate::types::TypeRef;
 
 #[derive(Debug, Fail)]
 pub enum JitError {

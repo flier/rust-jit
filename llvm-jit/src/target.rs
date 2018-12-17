@@ -6,17 +6,17 @@ use std::sync::{Once, ONCE_INIT};
 
 use boolinator::Boolinator;
 use failure::err_msg;
-use llvm::prelude::*;
-use llvm::target::*;
-use llvm::target_machine::*;
+use crate::llvm::prelude::*;
+use crate::llvm::target::*;
+use crate::llvm::target_machine::*;
 
-use context::Context;
-use errors::Result;
-use global::GlobalVar;
-use membuf::MemoryBuffer;
-use module::{AddressSpace, Module};
-use types::{AsTypeRef, StructType, TypeRef};
-use utils::{AsBool, AsLLVMBool, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
+use crate::context::Context;
+use crate::errors::Result;
+use crate::global::GlobalVar;
+use crate::membuf::MemoryBuffer;
+use crate::module::{AddressSpace, Module};
+use crate::types::{AsTypeRef, StructType, TypeRef};
+use crate::utils::{AsBool, AsLLVMBool, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
 
 pub type CodeGenOptLevel = LLVMCodeGenOptLevel;
 pub type RelocMode = LLVMRelocMode;

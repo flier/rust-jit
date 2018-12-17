@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 
 use libc::c_char;
-use llvm::core::*;
-use llvm::*;
+use crate::llvm::core::*;
+use crate::llvm::*;
 
-use constant::InlineAsm;
-use function::FunctionType;
-use module::Module;
-use utils::{from_unchecked_cstr, AsLLVMBool, AsRaw};
+use crate::constant::InlineAsm;
+use crate::function::FunctionType;
+use crate::module::Module;
+use crate::utils::{from_unchecked_cstr, AsLLVMBool, AsRaw};
 
 impl Module {
     pub fn inline_asm(&self) -> Cow<str> {
@@ -63,7 +63,7 @@ impl FunctionType {
 mod tests {
     use super::*;
 
-    use {FunctionType, GlobalContext};
+    use crate::{FunctionType, GlobalContext};
 
     #[test]
     fn inline_asm() {

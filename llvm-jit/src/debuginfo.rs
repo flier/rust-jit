@@ -1,14 +1,14 @@
 use std::path::Path;
 
 use failure::err_msg;
-use llvm::debuginfo::*;
-use llvm::prelude::*;
+use crate::llvm::debuginfo::*;
+use crate::llvm::prelude::*;
 
-use context::Context;
-use errors::Result;
-use metadata::Metadata;
-use module::Module;
-use utils::{AsBool, AsLLVMBool, AsRaw, AsResult, IntoRaw};
+use crate::context::Context;
+use crate::errors::Result;
+use crate::metadata::Metadata;
+use crate::module::Module;
+use crate::utils::{AsBool, AsLLVMBool, AsRaw, AsResult, IntoRaw};
 
 pub type DWARFSourceLanguage = LLVMDWARFSourceLanguage;
 pub type DWARFEmissionKind = LLVMDWARFEmissionKind;

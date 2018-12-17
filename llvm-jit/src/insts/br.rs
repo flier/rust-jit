@@ -1,12 +1,12 @@
 use std::ptr;
 
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use block::BasicBlock;
-use insts::{AstNode, IRBuilder, InstructionBuilder, TerminatorInst};
-use utils::{AsBool, AsRaw, AsResult, IntoRaw};
-use value::{AsValueRef, Instruction, ValueRef};
+use crate::block::BasicBlock;
+use crate::insts::{AstNode, IRBuilder, InstructionBuilder, TerminatorInst};
+use crate::utils::{AsBool, AsRaw, AsResult, IntoRaw};
+use crate::value::{AsValueRef, Instruction, ValueRef};
 
 /// Create an unconditional `br label X` instruction.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -217,9 +217,9 @@ impl IRBuilder {
 
 #[cfg(test)]
 mod tests {
-    use insts::*;
-    use prelude::*;
-    use types::*;
+    use crate::insts::*;
+    use crate::prelude::*;
+    use crate::types::*;
 
     #[test]
     fn br() {

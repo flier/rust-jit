@@ -2,13 +2,13 @@ use std::borrow::Cow;
 use std::fmt;
 use std::path::Path;
 
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use context::{Context, GlobalContext};
-use errors::Result;
-use types::TypeRef;
-use utils::{from_unchecked_cstr, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
+use crate::context::{Context, GlobalContext};
+use crate::errors::Result;
+use crate::types::TypeRef;
+use crate::utils::{from_unchecked_cstr, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
 
 pub type AddressSpace = u32;
 
@@ -194,11 +194,11 @@ impl GlobalContext {
 mod tests {
     use std::io::prelude::*;
 
-    use llvm::*;
+    use crate::llvm::*;
     use tempfile::NamedTempFile;
 
     use super::*;
-    use metadata::ModuleFlagEntry;
+    use crate::metadata::ModuleFlagEntry;
 
     #[test]
     fn create() {

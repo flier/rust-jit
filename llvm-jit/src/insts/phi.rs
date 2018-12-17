@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use block::BasicBlock;
-use insts::{AstNode, IRBuilder, InstructionBuilder};
-use types::TypeRef;
-use utils::{AsRaw, IntoRaw};
-use value::{Instruction, ValueRef};
+use crate::block::BasicBlock;
+use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
+use crate::types::TypeRef;
+use crate::utils::{AsRaw, IntoRaw};
+use crate::value::{Instruction, ValueRef};
 
 /// The `phi` instruction is used to implement the φ node in the SSA graph representing the function.
 #[derive(Clone, Debug, PartialEq)]
@@ -148,8 +148,8 @@ impl IRBuilder {
 
 #[cfg(test)]
 mod tests {
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     #[test]
     fn phi() {

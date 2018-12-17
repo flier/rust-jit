@@ -1,12 +1,12 @@
 use std::borrow::Cow;
 
-use llvm::{LLVMIntPredicate, LLVMRealPredicate};
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::{LLVMIntPredicate, LLVMRealPredicate};
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use insts::{AstNode, IRBuilder, InstructionBuilder};
-use utils::{AsRaw, IntoRaw};
-use value::{Instruction, ValueRef};
+use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
+use crate::utils::{AsRaw, IntoRaw};
+use crate::value::{Instruction, ValueRef};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ICmp<'a> {
@@ -354,8 +354,8 @@ macro_rules! fcmp {
 
 #[cfg(test)]
 mod tests {
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     macro_rules! test_icmp {
         ($builder: expr, $pred: ident($lhs: expr, $rhs: expr)) => {{

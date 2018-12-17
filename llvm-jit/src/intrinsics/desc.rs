@@ -6,11 +6,11 @@ use std::mem;
 use failure::Error;
 use nom;
 
-use context::Context;
-use errors::{JitError, Result};
-use function::FunctionType;
-use intrinsics::gen::{IntrinsicId, IIT_LONG_ENCODING_TABLE, IIT_TABLE};
-use types::*;
+use crate::context::Context;
+use crate::errors::{JitError, Result};
+use crate::function::FunctionType;
+use crate::intrinsics::gen::{IntrinsicId, IIT_LONG_ENCODING_TABLE, IIT_TABLE};
+use crate::types::*;
 
 impl IntrinsicId {
     pub fn function_type(&self, context: &Context, arg_types: &[TypeRef]) -> Result<FunctionType> {
@@ -457,6 +457,8 @@ impl From<u8> for IIT_Info {
 
 #[cfg(test)]
 mod tests {
+    use lazy_static::lazy_static;
+
     use super::*;
 
     lazy_static! {

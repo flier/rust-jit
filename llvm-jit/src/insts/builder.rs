@@ -4,13 +4,13 @@ use std::ptr;
 
 use arrayvec::ArrayVec;
 
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use block::BasicBlock;
-use context::{Context, GlobalContext};
-use utils::{AsRaw, AsResult};
-use value::{Instruction, ValueRef};
+use crate::block::BasicBlock;
+use crate::context::{Context, GlobalContext};
+use crate::utils::{AsRaw, AsResult};
+use crate::value::{Instruction, ValueRef};
 
 pub trait InstructionBuilder {
     type Target;

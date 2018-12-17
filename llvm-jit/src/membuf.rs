@@ -2,11 +2,11 @@ use std::path::Path;
 use std::ptr;
 use std::slice;
 
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use errors::Result;
-use utils::{AsRaw, AsResult, DisposableMessage, FALSE};
+use crate::errors::Result;
+use crate::utils::{AsRaw, AsResult, DisposableMessage, FALSE};
 
 #[derive(Debug)]
 pub struct MemoryBuffer<'a>(LLVMMemoryBufferRef, Option<&'a [u8]>);

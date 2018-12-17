@@ -1,9 +1,9 @@
-use llvm::{LLVMAtomicOrdering, LLVMAtomicRMWBinOp};
-use llvm::core::*;
+use crate::llvm::{LLVMAtomicOrdering, LLVMAtomicRMWBinOp};
+use crate::llvm::core::*;
 
-use insts::{AstNode, IRBuilder, InstructionBuilder};
-use utils::{AsLLVMBool, AsRaw, IntoRaw};
-use value::Instruction;
+use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
+use crate::utils::{AsLLVMBool, AsRaw, IntoRaw};
+use crate::value::Instruction;
 
 /// The `fence` instruction is used to introduce happens-before edges between operations.
 #[derive(Clone, Debug, PartialEq)]
@@ -414,8 +414,8 @@ impl IRBuilder {
 
 #[cfg(test)]
 mod tests {
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     macro_rules! test_atomic {
         ($builder: expr,atomic !($op: ident $ptr: expr, $value: expr; $ordering: ident), $display: expr) => {

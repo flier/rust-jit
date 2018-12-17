@@ -1,19 +1,19 @@
 use std::ops::Deref;
 use std::sync::{Once, ONCE_INIT};
 
-use llvm::core::*;
-use llvm::initialization::*;
-use llvm::prelude::*;
-use llvm::transforms::ipo::*;
-use llvm::transforms::pass_manager_builder::*;
-use llvm::transforms::scalar::*;
-use llvm::transforms::util::*;
-use llvm::transforms::vectorize::*;
+use crate::llvm::core::*;
+use crate::llvm::initialization::*;
+use crate::llvm::prelude::*;
+use crate::llvm::transforms::ipo::*;
+use crate::llvm::transforms::pass_manager_builder::*;
+use crate::llvm::transforms::scalar::*;
+use crate::llvm::transforms::util::*;
+use crate::llvm::transforms::vectorize::*;
 
-use context::Context;
-use function::Function;
-use module::Module;
-use utils::{AsBool, AsLLVMBool, AsRaw};
+use crate::context::Context;
+use crate::function::Function;
+use crate::module::Module;
+use crate::utils::{AsBool, AsLLVMBool, AsRaw};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Pass {

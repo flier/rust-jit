@@ -1,8 +1,8 @@
-use constant::*;
-use global::GlobalVar;
-use insts::*;
-use value::*;
-use value::{BlockAddress, Instruction};
+use crate::constant::*;
+use crate::global::GlobalVar;
+use crate::insts::*;
+use crate::value::*;
+use crate::value::{BlockAddress, Instruction};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AstNode<'a> {

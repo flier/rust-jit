@@ -6,14 +6,14 @@ use std::str;
 use boolinator::Boolinator;
 use libc::c_char;
 
-use llvm::core::*;
-use llvm::prelude::*;
-use llvm::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
+use crate::llvm::*;
 
-use block::BasicBlock;
-use constant::Constant;
-use types::TypeRef;
-use utils::{AsBool, AsRaw, AsResult, DisposableMessage};
+use crate::block::BasicBlock;
+use crate::constant::Constant;
+use crate::types::TypeRef;
+use crate::utils::{AsBool, AsRaw, AsResult, DisposableMessage};
 
 #[macro_export]
 macro_rules! values {
@@ -213,9 +213,9 @@ impl Instruction {
 
 #[cfg(test)]
 mod tests {
-    use constant::{ConstantInts, ToConstantStruct};
-    use context::Context;
-    use types::IntegerTypes;
+    use crate::constant::{ConstantInts, ToConstantStruct};
+    use crate::context::Context;
+    use crate::types::IntegerTypes;
 
     #[test]
     fn uses() {

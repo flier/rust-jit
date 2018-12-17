@@ -4,16 +4,16 @@ use std::ptr;
 
 use boolinator::Boolinator;
 
-use llvm::core::*;
-use llvm::prelude::*;
-use llvm::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
+use crate::llvm::*;
 
-use constant::ConstantInt;
-use context::{Context, GlobalContext};
-use function::FunctionType;
-use module::AddressSpace;
-use utils::{AsBool, AsLLVMBool, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
-use value::ValueRef;
+use crate::constant::ConstantInt;
+use crate::context::{Context, GlobalContext};
+use crate::function::FunctionType;
+use crate::module::AddressSpace;
+use crate::utils::{AsBool, AsLLVMBool, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
+use crate::value::ValueRef;
 
 #[macro_export]
 macro_rules! types {
@@ -774,10 +774,10 @@ impl ToVectorType for TypeRef {
 
 #[cfg(test)]
 mod tests {
-    use llvm;
+    use crate::llvm;
 
     use super::*;
-    use context::Context;
+    use crate::context::Context;
 
     #[test]
     fn typeref() {

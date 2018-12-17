@@ -1,10 +1,9 @@
 #[macro_use]
 extern crate llvm_jit as jit;
-extern crate pretty_env_logger;
 
 use std::mem;
 
-use jit::prelude::*;
+use self::jit::prelude::*;
 
 fn main() {
     pretty_env_logger::init();

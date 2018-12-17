@@ -1,14 +1,14 @@
 use std::borrow::Cow;
 use std::mem;
 
-use llvm::core::*;
-use llvm::prelude::*;
-use llvm::LLVMCallConv;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
+use crate::llvm::LLVMCallConv;
 
-use function::Function;
-use insts::{AstNode, IRBuilder, InstructionBuilder};
-use utils::{AsBool, AsLLVMBool, AsRaw, IntoRaw};
-use value::{AsValueRef, Instruction, ValueRef};
+use crate::function::Function;
+use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
+use crate::utils::{AsBool, AsLLVMBool, AsRaw, IntoRaw};
+use crate::value::{AsValueRef, Instruction, ValueRef};
 
 /// This instruction is designed to operate as a standard `call` instruction in most regards.
 ///
@@ -165,10 +165,10 @@ impl IRBuilder {
 
 #[cfg(test)]
 mod tests {
-    use llvm::LLVMCallConv;
+    use crate::llvm::LLVMCallConv;
 
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     #[test]
     fn invoke() {

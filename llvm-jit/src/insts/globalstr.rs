@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 
-use llvm::core::*;
+use crate::llvm::core::*;
 
-use insts::{IRBuilder, InstructionBuilder};
-use utils::AsRaw;
-use value::Instruction;
+use crate::insts::{IRBuilder, InstructionBuilder};
+use crate::utils::AsRaw;
+use crate::value::Instruction;
 
 /// Make a new global variable with an initializer that has array of i8 type
 /// filled in with the null terminated string value specified.
@@ -117,8 +117,8 @@ impl IRBuilder {
 
 #[cfg(test)]
 mod tests {
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     #[test]
     fn globalstr() {

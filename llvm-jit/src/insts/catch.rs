@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 use std::ptr;
 
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use block::BasicBlock;
-use insts::{IRBuilder, InstructionBuilder, TerminatorInst};
-use utils::{AsRaw, IntoRaw};
-use value::{Instruction, ValueRef};
+use crate::block::BasicBlock;
+use crate::insts::{IRBuilder, InstructionBuilder, TerminatorInst};
+use crate::utils::{AsRaw, IntoRaw};
+use crate::value::{Instruction, ValueRef};
 
 /// The `catchswitch` instruction is used by LLVM’s exception handling system to describe
 /// the set of possible catch handlers that may be executed by the EH personality routine.
@@ -156,7 +156,7 @@ where
 {
     CatchPad {
         parent: parent.into(),
-        args: args.into_iter().map(|v| v.into()).collect(),
+        args: args.into_iter().collect(),
         name: name.into(),
     }
 }

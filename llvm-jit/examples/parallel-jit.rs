@@ -11,14 +11,12 @@
 // same time). This test had assertion errors until I got the locking right.
 //
 //===----------------------------------------------------------------------===//
-extern crate crossbeam;
 #[macro_use]
 extern crate llvm_jit as jit;
-extern crate pretty_env_logger;
 
 use std::sync::{Arc, Barrier};
 
-use jit::prelude::*;
+use self::jit::prelude::*;
 
 fn create_add1(context: &Context, module: &Module) -> Function {
     // Create the add1 function entry and insert this entry into module M.  The

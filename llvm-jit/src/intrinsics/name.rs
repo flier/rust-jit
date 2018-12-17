@@ -1,9 +1,9 @@
-use llvm::LLVMTypeKind;
+use crate::llvm::LLVMTypeKind;
 
-use function::FunctionType;
-use intrinsics::IntrinsicId;
-use intrinsics::gen::INTRINSIC_NAMES;
-use types::{ArrayType, PointerType, SequentialType, StructType, TypeRef, VectorType};
+use crate::function::FunctionType;
+use crate::intrinsics::IntrinsicId;
+use crate::intrinsics::gen::INTRINSIC_NAMES;
+use crate::types::{ArrayType, PointerType, SequentialType, StructType, TypeRef, VectorType};
 
 impl IntrinsicId {
     /// Return the LLVM name for an intrinsic, such as "llvm.ppc.altivec.lvx".
@@ -106,10 +106,10 @@ impl TypeRef {
 
 #[cfg(test)]
 mod tests {
-    use context::Context;
-    use function::FunctionType;
-    use intrinsics::IntrinsicId;
-    use types::*;
+    use crate::context::Context;
+    use crate::function::FunctionType;
+    use crate::intrinsics::IntrinsicId;
+    use crate::types::*;
 
     #[test]
     fn mangled_type() {

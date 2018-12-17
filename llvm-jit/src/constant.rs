@@ -1,14 +1,14 @@
 use std::borrow::Cow;
 use std::mem;
 
-use llvm::core::*;
-use llvm::prelude::*;
-use llvm::LLVMOpcode;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
+use crate::llvm::LLVMOpcode;
 
-use context::Context;
-use types::{FloatingPointType, IntegerType, StructType, TypeRef};
-use utils::{from_unchecked_cstr, AsBool, AsLLVMBool, AsRaw, AsResult};
-use value::{AsValueRef, ValueRef};
+use crate::context::Context;
+use crate::types::{FloatingPointType, IntegerType, StructType, TypeRef};
+use crate::utils::{from_unchecked_cstr, AsBool, AsLLVMBool, AsRaw, AsResult};
+use crate::value::{AsValueRef, ValueRef};
 
 pub trait AsConstant: AsValueRef {
     fn as_const(&self) -> &Constant;
@@ -376,11 +376,11 @@ mod tests {
     use std::f64;
 
     use hamcrest::prelude::*;
-    use llvm;
+    use crate::llvm;
 
     use super::*;
-    use context::Context;
-    use types::*;
+    use crate::context::Context;
+    use crate::types::*;
 
     #[test]
     fn null() {

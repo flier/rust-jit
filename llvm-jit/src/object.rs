@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 use std::slice;
 
-use llvm::object::*;
+use crate::llvm::object::*;
 
-use membuf::MemoryBuffer;
-use utils::{AsBool, AsRaw, UncheckedCStr};
+use crate::membuf::MemoryBuffer;
+use crate::utils::{AsBool, AsRaw, UncheckedCStr};
 
 #[derive(Debug)]
 pub struct ObjectFile(LLVMObjectFileRef);
@@ -236,7 +236,7 @@ mod tests {
     use hamcrest::prelude::*;
 
     use super::*;
-    use membuf::MemoryBuffer;
+    use crate::membuf::MemoryBuffer;
 
     #[test]
     fn object_file() {

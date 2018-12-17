@@ -1,14 +1,14 @@
 use std::borrow::Cow;
 
-use llvm::core::*;
-use llvm::prelude::*;
-use llvm::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
+use crate::llvm::*;
 
-use constant::{AsConstant, Constant};
-use module::{AddressSpace, Module};
-use types::TypeRef;
-use utils::{AsBool, AsLLVMBool, AsRaw, AsResult, UncheckedCStr};
-use value::{AsValueRef, ValueRef};
+use crate::constant::{AsConstant, Constant};
+use crate::module::{AddressSpace, Module};
+use crate::types::TypeRef;
+use crate::utils::{AsBool, AsLLVMBool, AsRaw, AsResult, UncheckedCStr};
+use crate::value::{AsValueRef, ValueRef};
 
 pub type Linkage = LLVMLinkage;
 pub type Visibility = LLVMVisibility;
@@ -244,11 +244,11 @@ impl_iter!(
 
 #[cfg(test)]
 mod tests {
-    use llvm;
+    use crate::llvm;
 
     use super::*;
-    use prelude::*;
-    use types::*;
+    use crate::prelude::*;
+    use crate::types::*;
 
     #[test]
     fn global_var() {

@@ -1,10 +1,10 @@
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use block::BasicBlock;
-use insts::{AstNode, IRBuilder, InstructionBuilder, TerminatorInst};
-use utils::{AsRaw, IntoRaw};
-use value::{Instruction, ValueRef};
+use crate::block::BasicBlock;
+use crate::insts::{AstNode, IRBuilder, InstructionBuilder, TerminatorInst};
+use crate::utils::{AsRaw, IntoRaw};
+use crate::value::{Instruction, ValueRef};
 
 /// Create a 'ret' instruction.
 #[derive(Clone, Debug, PartialEq)]
@@ -130,9 +130,9 @@ impl IRBuilder {
 
 #[cfg(test)]
 mod tests {
-    use insts::*;
-    use prelude::*;
-    use types::*;
+    use crate::insts::*;
+    use crate::prelude::*;
+    use crate::types::*;
 
     #[test]
     fn ret_void() {

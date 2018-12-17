@@ -3,10 +3,10 @@ use std::path::Path;
 use std::ptr;
 
 use libc::c_void;
-use llvm::support::*;
+use crate::llvm::support::*;
 
-use errors::Result;
-use utils::{AsPtr, AsResult};
+use crate::errors::Result;
+use crate::utils::{AsPtr, AsResult};
 
 pub struct Symbols {}
 

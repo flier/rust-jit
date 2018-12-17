@@ -1,16 +1,16 @@
 use std::ptr;
 
 use boolinator::Boolinator;
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
 
-use block::BasicBlock;
-use context::Context;
-use global::GlobalValue;
-use module::Module;
-use types::TypeRef;
-use utils::{AsBool, AsRaw, AsResult};
-use value::ValueRef;
+use crate::block::BasicBlock;
+use crate::context::Context;
+use crate::global::GlobalValue;
+use crate::module::Module;
+use crate::types::TypeRef;
+use crate::utils::{AsBool, AsRaw, AsResult};
+use crate::value::ValueRef;
 
 #[macro_export]
 macro_rules! func {
@@ -257,11 +257,11 @@ impl_iter!(
 
 #[cfg(test)]
 mod tests {
-    use llvm;
+    use crate::llvm;
 
     use super::*;
-    use context::Context;
-    use prelude::*;
+    use crate::context::Context;
+    use crate::prelude::*;
 
     #[test]
     fn function() {

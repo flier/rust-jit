@@ -7,14 +7,14 @@ use std::str;
 
 use boolinator::Boolinator;
 use libc;
-use llvm::LLVMModuleFlagBehavior;
+use crate::llvm::LLVMModuleFlagBehavior;
 use llvm_sys::core::*;
 use llvm_sys::prelude::*;
 
-use context::{Context, GlobalContext};
-use module::Module;
-use utils::{from_unchecked_cstr, AsBool, AsRaw};
-use value::{Instruction, ValueRef};
+use crate::context::{Context, GlobalContext};
+use crate::module::Module;
+use crate::utils::{from_unchecked_cstr, AsBool, AsRaw};
+use crate::value::{Instruction, ValueRef};
 
 pub type MDKindId = libc::c_uint;
 

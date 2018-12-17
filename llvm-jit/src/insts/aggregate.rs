@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 
-use llvm::core::*;
+use crate::llvm::core::*;
 
-use insts::{AstNode, IRBuilder, InstructionBuilder};
-use utils::{AsRaw, IntoRaw};
-use value::Instruction;
+use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
+use crate::utils::{AsRaw, IntoRaw};
+use crate::value::Instruction;
 
 /// This instruction extracts a struct member or array element value from an aggregate value.
 #[derive(Clone, Debug, PartialEq)]
@@ -150,8 +150,8 @@ impl IRBuilder {
 
 #[cfg(test)]
 mod tests {
-    use insts::*;
-    use prelude::*;
+    use crate::insts::*;
+    use crate::prelude::*;
 
     #[test]
     fn aggregate() {

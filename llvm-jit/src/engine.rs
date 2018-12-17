@@ -5,16 +5,16 @@ use std::ptr;
 
 use boolinator::Boolinator;
 use libc;
-use llvm::core::LLVMShutdown;
-use llvm::execution_engine::*;
+use crate::llvm::core::LLVMShutdown;
+use crate::llvm::execution_engine::*;
 
-use errors::Result;
-use function::Function;
-use global::GlobalValue;
-use module::Module;
-use target::{self, TargetData, TargetMachine};
-use types::TypeRef;
-use utils::{unchecked_cstring, AsMutPtr, AsRaw, AsResult, DisposableMessage, IntoRaw, FALSE, TRUE};
+use crate::errors::Result;
+use crate::function::Function;
+use crate::global::GlobalValue;
+use crate::module::Module;
+use crate::target::{self, TargetData, TargetMachine};
+use crate::types::TypeRef;
+use crate::utils::{unchecked_cstring, AsMutPtr, AsRaw, AsResult, DisposableMessage, IntoRaw, FALSE, TRUE};
 
 /// Deallocate and destroy all `ManagedStatic` variables.
 pub fn shutdown() {
@@ -458,15 +458,15 @@ mod tests {
     use std::f64;
 
     use hamcrest::prelude::*;
-    use llvm::prelude::*;
+    use crate::llvm::prelude::*;
     use mmap;
 
     use super::*;
-    use insts::*;
-    use prelude::*;
-    use target::{NativeAsmPrinter, NativeTarget};
-    use types::*;
-    use utils::{AsBool, UncheckedCStr};
+    use crate::insts::*;
+    use crate::prelude::*;
+    use crate::target::{NativeAsmPrinter, NativeTarget};
+    use crate::types::*;
+    use crate::utils::{AsBool, UncheckedCStr};
 
     #[test]
     fn generic_value() {

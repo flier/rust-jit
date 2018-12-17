@@ -5,186 +5,188 @@ use std::ptr;
 
 use boolinator::Boolinator;
 
-use llvm::*;
-use llvm::core::*;
-use llvm::prelude::*;
+use crate::llvm::core::*;
+use crate::llvm::prelude::*;
+use crate::llvm::*;
 
-use context::Context;
-use function::Function;
-use insts::CallSite;
-use utils::{from_unchecked_cstr, AsBool, AsRaw};
+use crate::context::Context;
+use crate::function::Function;
+use crate::insts::CallSite;
+use crate::utils::{from_unchecked_cstr, AsBool, AsRaw};
 
 pub type AttributeIndex = LLVMAttributeIndex;
 
 pub mod attrs {
     //! The target-independent enum attributes.
 
+    use lazy_static::lazy_static;
+
     use super::AttributeKind;
 
     lazy_static! {
-    /// Alignment of parameter (5 bits) stored as log2 of alignment with +1 bias.
-    /// 0 means unaligned (different from align(1)).
-    pub static ref Alignment: AttributeKind = AttributeKind::get("align").unwrap();
+        /// Alignment of parameter (5 bits) stored as log2 of alignment with +1 bias.
+        /// 0 means unaligned (different from align(1)).
+        pub static ref Alignment: AttributeKind = AttributeKind::get("align").unwrap();
 
-    /// The result of the function is guaranteed to point to a number of bytes that
-    /// we can determine if we know the value of the function's arguments.
-    pub static ref AllocSize: AttributeKind = AttributeKind::get("allocsize").unwrap();
+        /// The result of the function is guaranteed to point to a number of bytes that
+        /// we can determine if we know the value of the function's arguments.
+        pub static ref AllocSize: AttributeKind = AttributeKind::get("allocsize").unwrap();
 
-    /// inline=always.
-    pub static ref AlwaysInline: AttributeKind = AttributeKind::get("alwaysinline").unwrap();
+        /// inline=always.
+        pub static ref AlwaysInline: AttributeKind = AttributeKind::get("alwaysinline").unwrap();
 
-    /// Function can access memory only using pointers based on its arguments.
-    pub static ref ArgMemOnly: AttributeKind = AttributeKind::get("argmemonly").unwrap();
+        /// Function can access memory only using pointers based on its arguments.
+        pub static ref ArgMemOnly: AttributeKind = AttributeKind::get("argmemonly").unwrap();
 
-    /// Callee is recognized as a builtin, despite nobuiltin attribute on its declaration.
-    pub static ref Builtin: AttributeKind = AttributeKind::get("builtin").unwrap();
+        /// Callee is recognized as a builtin, despite nobuiltin attribute on its declaration.
+        pub static ref Builtin: AttributeKind = AttributeKind::get("builtin").unwrap();
 
-    /// Pass structure by value.
-    pub static ref ByVal: AttributeKind = AttributeKind::get("byval").unwrap();
+        /// Pass structure by value.
+        pub static ref ByVal: AttributeKind = AttributeKind::get("byval").unwrap();
 
-    /// Marks function as being in a cold path.
-    pub static ref Cold: AttributeKind = AttributeKind::get("cold").unwrap();
+        /// Marks function as being in a cold path.
+        pub static ref Cold: AttributeKind = AttributeKind::get("cold").unwrap();
 
-    /// Can only be moved to control-equivalent blocks.
-    pub static ref Convergent: AttributeKind = AttributeKind::get("convergent").unwrap();
+        /// Can only be moved to control-equivalent blocks.
+        pub static ref Convergent: AttributeKind = AttributeKind::get("convergent").unwrap();
 
-    /// Pointer is known to be dereferenceable.
-    pub static ref Dereferenceable: AttributeKind = AttributeKind::get("dereferenceable").unwrap();
+        /// Pointer is known to be dereferenceable.
+        pub static ref Dereferenceable: AttributeKind = AttributeKind::get("dereferenceable").unwrap();
 
-    /// Pointer is either null or dereferenceable.
-    pub static ref DereferenceableOrNull: AttributeKind = AttributeKind::get("dereferenceable_or_null").unwrap();
+        /// Pointer is either null or dereferenceable.
+        pub static ref DereferenceableOrNull: AttributeKind = AttributeKind::get("dereferenceable_or_null").unwrap();
 
-    /// Function may only access memory that is inaccessible from IR.
-    pub static ref InaccessibleMemOnly: AttributeKind = AttributeKind::get("inaccessiblememonly").unwrap();
+        /// Function may only access memory that is inaccessible from IR.
+        pub static ref InaccessibleMemOnly: AttributeKind = AttributeKind::get("inaccessiblememonly").unwrap();
 
-    /// Function may only access memory that is either inaccessible from the IR,
-    /// or pointed to by its pointer arguments.
-    pub static ref InaccessibleMemOrArgMemOnly: AttributeKind = AttributeKind::get("inaccessiblemem_or_argmemonly").unwrap();
+        /// Function may only access memory that is either inaccessible from the IR,
+        /// or pointed to by its pointer arguments.
+        pub static ref InaccessibleMemOrArgMemOnly: AttributeKind = AttributeKind::get("inaccessiblemem_or_argmemonly").unwrap();
 
-    /// Pass structure in an alloca.
-    pub static ref InAlloca: AttributeKind = AttributeKind::get("inalloca").unwrap();
+        /// Pass structure in an alloca.
+        pub static ref InAlloca: AttributeKind = AttributeKind::get("inalloca").unwrap();
 
-    /// Source said inlining was desirable.
-    pub static ref InlineHint: AttributeKind = AttributeKind::get("inlinehint").unwrap();
+        /// Source said inlining was desirable.
+        pub static ref InlineHint: AttributeKind = AttributeKind::get("inlinehint").unwrap();
 
-    /// Force argument to be passed in register.
-    pub static ref InReg: AttributeKind = AttributeKind::get("inreg").unwrap();
+        /// Force argument to be passed in register.
+        pub static ref InReg: AttributeKind = AttributeKind::get("inreg").unwrap();
 
-    /// Build jump-instruction tables and replace refs.
-    pub static ref JumpTable: AttributeKind = AttributeKind::get("jumptable").unwrap();
+        /// Build jump-instruction tables and replace refs.
+        pub static ref JumpTable: AttributeKind = AttributeKind::get("jumptable").unwrap();
 
-    /// Function must be optimized for size first.
-    pub static ref MinSize: AttributeKind = AttributeKind::get("minsize").unwrap();
+        /// Function must be optimized for size first.
+        pub static ref MinSize: AttributeKind = AttributeKind::get("minsize").unwrap();
 
-    /// Naked function.
-    pub static ref Naked: AttributeKind = AttributeKind::get("naked").unwrap();
+        /// Naked function.
+        pub static ref Naked: AttributeKind = AttributeKind::get("naked").unwrap();
 
-    /// Nested function static chain.
-    pub static ref Nest: AttributeKind = AttributeKind::get("nest").unwrap();
+        /// Nested function static chain.
+        pub static ref Nest: AttributeKind = AttributeKind::get("nest").unwrap();
 
-    /// Considered to not alias after call.
-    pub static ref NoAlias: AttributeKind = AttributeKind::get("noalias").unwrap();
+        /// Considered to not alias after call.
+        pub static ref NoAlias: AttributeKind = AttributeKind::get("noalias").unwrap();
 
-    /// Callee isn't recognized as a builtin.
-    pub static ref NoBuiltin: AttributeKind = AttributeKind::get("nobuiltin").unwrap();
+        /// Callee isn't recognized as a builtin.
+        pub static ref NoBuiltin: AttributeKind = AttributeKind::get("nobuiltin").unwrap();
 
-    /// Function creates no aliases of pointer.
-    pub static ref NoCapture: AttributeKind = AttributeKind::get("nocapture").unwrap();
+        /// Function creates no aliases of pointer.
+        pub static ref NoCapture: AttributeKind = AttributeKind::get("nocapture").unwrap();
 
-    /// Call cannot be duplicated.
-    pub static ref NoDuplicate: AttributeKind = AttributeKind::get("noduplicate").unwrap();
+        /// Call cannot be duplicated.
+        pub static ref NoDuplicate: AttributeKind = AttributeKind::get("noduplicate").unwrap();
 
-    /// Disable implicit floating point insts.
-    pub static ref NoImplicitFloat: AttributeKind = AttributeKind::get("noimplicitfloat").unwrap();
+        /// Disable implicit floating point insts.
+        pub static ref NoImplicitFloat: AttributeKind = AttributeKind::get("noimplicitfloat").unwrap();
 
-    /// inline=never.
-    pub static ref NoInline: AttributeKind = AttributeKind::get("noinline").unwrap();
+        /// inline=never.
+        pub static ref NoInline: AttributeKind = AttributeKind::get("noinline").unwrap();
 
-    /// Function is called early and/or often, so lazy binding isn't worthwhile.
-    pub static ref NonLazyBind: AttributeKind = AttributeKind::get("nonlazybind").unwrap();
+        /// Function is called early and/or often, so lazy binding isn't worthwhile.
+        pub static ref NonLazyBind: AttributeKind = AttributeKind::get("nonlazybind").unwrap();
 
-    /// Pointer is known to be not null.
-    pub static ref NonNull: AttributeKind = AttributeKind::get("nonnull").unwrap();
+        /// Pointer is known to be not null.
+        pub static ref NonNull: AttributeKind = AttributeKind::get("nonnull").unwrap();
 
-    /// The function does not recurse.
-    pub static ref NoRecurse: AttributeKind = AttributeKind::get("norecurse").unwrap();
+        /// The function does not recurse.
+        pub static ref NoRecurse: AttributeKind = AttributeKind::get("norecurse").unwrap();
 
-    /// Disable redzone.
-    pub static ref NoRedZone: AttributeKind = AttributeKind::get("noredzone").unwrap();
+        /// Disable redzone.
+        pub static ref NoRedZone: AttributeKind = AttributeKind::get("noredzone").unwrap();
 
-    /// Mark the function as not returning.
-    pub static ref NoReturn: AttributeKind = AttributeKind::get("noreturn").unwrap();
+        /// Mark the function as not returning.
+        pub static ref NoReturn: AttributeKind = AttributeKind::get("noreturn").unwrap();
 
-    /// Function doesn't unwind stack.
-    pub static ref NoUnwind: AttributeKind = AttributeKind::get("nounwind").unwrap();
+        /// Function doesn't unwind stack.
+        pub static ref NoUnwind: AttributeKind = AttributeKind::get("nounwind").unwrap();
 
-    /// opt_size.
-    pub static ref OptimizeForSize: AttributeKind = AttributeKind::get("optsize").unwrap();
+        /// opt_size.
+        pub static ref OptimizeForSize: AttributeKind = AttributeKind::get("optsize").unwrap();
 
-    /// Function must not be optimized.
-    pub static ref OptimizeNone: AttributeKind = AttributeKind::get("optnone").unwrap();
+        /// Function must not be optimized.
+        pub static ref OptimizeNone: AttributeKind = AttributeKind::get("optnone").unwrap();
 
-    /// Function does not access memory.
-    pub static ref ReadNone: AttributeKind = AttributeKind::get("readnone").unwrap();
+        /// Function does not access memory.
+        pub static ref ReadNone: AttributeKind = AttributeKind::get("readnone").unwrap();
 
-    /// Function only reads from memory.
-    pub static ref ReadOnly: AttributeKind = AttributeKind::get("readonly").unwrap();
+        /// Function only reads from memory.
+        pub static ref ReadOnly: AttributeKind = AttributeKind::get("readonly").unwrap();
 
-    /// Return value is always equal to this argument.
-    pub static ref Returned: AttributeKind = AttributeKind::get("returned").unwrap();
+        /// Return value is always equal to this argument.
+        pub static ref Returned: AttributeKind = AttributeKind::get("returned").unwrap();
 
-    /// Function can return twice.
-    pub static ref ReturnsTwice: AttributeKind = AttributeKind::get("returns_twice").unwrap();
+        /// Function can return twice.
+        pub static ref ReturnsTwice: AttributeKind = AttributeKind::get("returns_twice").unwrap();
 
-    /// Safe Stack protection.
-    pub static ref SafeStack: AttributeKind = AttributeKind::get("safestack").unwrap();
+        /// Safe Stack protection.
+        pub static ref SafeStack: AttributeKind = AttributeKind::get("safestack").unwrap();
 
-    /// Sign extended before/after call.
-    pub static ref SExt: AttributeKind = AttributeKind::get("signext").unwrap();
+        /// Sign extended before/after call.
+        pub static ref SExt: AttributeKind = AttributeKind::get("signext").unwrap();
 
-    /// Alignment of stack for function (3 bits)  stored as log2 of alignment with
-    /// +1 bias 0 means unaligned (different from alignstack=(1)).
-    pub static ref StackAlignment: AttributeKind = AttributeKind::get("alignstack").unwrap();
+        /// Alignment of stack for function (3 bits)  stored as log2 of alignment with
+        /// +1 bias 0 means unaligned (different from alignstack=(1)).
+        pub static ref StackAlignment: AttributeKind = AttributeKind::get("alignstack").unwrap();
 
-    /// Function can be speculated.
-    pub static ref Speculatable: AttributeKind = AttributeKind::get("speculatable").unwrap();
+        /// Function can be speculated.
+        pub static ref Speculatable: AttributeKind = AttributeKind::get("speculatable").unwrap();
 
-    /// Stack protection.
-    pub static ref StackProtect: AttributeKind = AttributeKind::get("ssp").unwrap();
+        /// Stack protection.
+        pub static ref StackProtect: AttributeKind = AttributeKind::get("ssp").unwrap();
 
-    /// Stack protection required.
-    pub static ref StackProtectReq: AttributeKind = AttributeKind::get("sspreq").unwrap();
+        /// Stack protection required.
+        pub static ref StackProtectReq: AttributeKind = AttributeKind::get("sspreq").unwrap();
 
-    /// Strong Stack protection.
-    pub static ref StackProtectStrong: AttributeKind = AttributeKind::get("sspstrong").unwrap();
+        /// Strong Stack protection.
+        pub static ref StackProtectStrong: AttributeKind = AttributeKind::get("sspstrong").unwrap();
 
-    /// Hidden pointer to structure to return.
-    pub static ref StructRet: AttributeKind = AttributeKind::get("sret").unwrap();
+        /// Hidden pointer to structure to return.
+        pub static ref StructRet: AttributeKind = AttributeKind::get("sret").unwrap();
 
-    /// AddressSanitizer is on.
-    pub static ref SanitizeAddress: AttributeKind = AttributeKind::get("sanitize_address").unwrap();
+        /// AddressSanitizer is on.
+        pub static ref SanitizeAddress: AttributeKind = AttributeKind::get("sanitize_address").unwrap();
 
-    /// ThreadSanitizer is on.
-    pub static ref SanitizeThread: AttributeKind = AttributeKind::get("sanitize_thread").unwrap();
+        /// ThreadSanitizer is on.
+        pub static ref SanitizeThread: AttributeKind = AttributeKind::get("sanitize_thread").unwrap();
 
-    /// MemorySanitizer is on.
-    pub static ref SanitizeMemory: AttributeKind = AttributeKind::get("sanitize_memory").unwrap();
+        /// MemorySanitizer is on.
+        pub static ref SanitizeMemory: AttributeKind = AttributeKind::get("sanitize_memory").unwrap();
 
-    /// Argument is swift error.
-    pub static ref SwiftError: AttributeKind = AttributeKind::get("swifterror").unwrap();
+        /// Argument is swift error.
+        pub static ref SwiftError: AttributeKind = AttributeKind::get("swifterror").unwrap();
 
-    /// Argument is swift self/context.
-    pub static ref SwiftSelf: AttributeKind = AttributeKind::get("swiftself").unwrap();
+        /// Argument is swift self/context.
+        pub static ref SwiftSelf: AttributeKind = AttributeKind::get("swiftself").unwrap();
 
-    /// Function must be in a unwind table.
-    pub static ref UWTable: AttributeKind = AttributeKind::get("uwtable").unwrap();
+        /// Function must be in a unwind table.
+        pub static ref UWTable: AttributeKind = AttributeKind::get("uwtable").unwrap();
 
-    /// Function only writes to memory.
-    pub static ref WriteOnly: AttributeKind = AttributeKind::get("writeonly").unwrap();
+        /// Function only writes to memory.
+        pub static ref WriteOnly: AttributeKind = AttributeKind::get("writeonly").unwrap();
 
-    /// Zero extended before/after call.
-    pub static ref ZExt: AttributeKind = AttributeKind::get("zeroext").unwrap();
-        }
+        /// Zero extended before/after call.
+        pub static ref ZExt: AttributeKind = AttributeKind::get("zeroext").unwrap();
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -298,7 +300,8 @@ impl Context {
                 value.as_ptr() as *const i8,
                 value.len() as u32,
             )
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -339,7 +342,8 @@ impl AttributeGroups for Function {
                 kind.as_ptr() as *const i8,
                 kind.len() as u32,
             )
-        }.into()
+        }
+        .into()
     }
 
     fn remove_enum_attribute(&self, kind: AttributeKind) {
@@ -384,7 +388,8 @@ impl<T: CallSite> AttributeGroups for T {
                 kind.as_ptr() as *const i8,
                 kind.len() as u32,
             )
-        }.into()
+        }
+        .into()
     }
 
     fn remove_enum_attribute(&self, kind: AttributeKind) {

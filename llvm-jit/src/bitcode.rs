@@ -6,15 +6,15 @@ use std::ptr;
 
 use boolinator::Boolinator;
 
-use llvm::bit_reader::*;
-use llvm::bit_writer::*;
-use llvm::ir_reader::*;
+use crate::llvm::bit_reader::*;
+use crate::llvm::bit_writer::*;
+use crate::llvm::ir_reader::*;
 
-use context::{Context, GlobalContext};
-use errors::Result;
-use membuf::MemoryBuffer;
-use module::Module;
-use utils::{AsRaw, AsResult, DisposableMessage, FALSE};
+use crate::context::{Context, GlobalContext};
+use crate::errors::Result;
+use crate::membuf::MemoryBuffer;
+use crate::module::Module;
+use crate::utils::{AsRaw, AsResult, DisposableMessage, FALSE};
 
 impl GlobalContext {
     /// Parse the specified bitcode file, returning the module.
@@ -103,8 +103,8 @@ mod tests {
     use tempfile::NamedTempFile;
 
     use super::*;
-    use insts::Position;
-    use prelude::*;
+    use crate::insts::Position;
+    use crate::prelude::*;
 
     #[test]
     fn ir_code() {

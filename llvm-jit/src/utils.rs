@@ -7,8 +7,8 @@ use std::slice;
 
 use libc;
 
-use llvm::core::LLVMDisposeMessage;
-use llvm::prelude::*;
+use crate::llvm::core::LLVMDisposeMessage;
+use crate::llvm::prelude::*;
 
 pub trait AsRaw {
     type RawType;

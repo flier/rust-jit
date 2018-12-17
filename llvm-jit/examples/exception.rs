@@ -43,22 +43,20 @@
 //
 //===----------------------------------------------------------------------===//
 
-extern crate libc;
 #[macro_use]
 extern crate llvm_jit as jit;
 extern crate llvm_sys as llvm;
 #[macro_use]
 extern crate log;
-extern crate pretty_env_logger;
 
 use std::env;
 use std::ffi::CStr;
 use std::mem;
 use std::panic;
 
-use jit::insts::*;
-use jit::prelude::*;
-use jit::{ConstantInt, FunctionPassManager, StructType};
+use self::jit::insts::*;
+use self::jit::prelude::*;
+use self::jit::{ConstantInt, FunctionPassManager, StructType};
 
 const USE_GLOBAL_STR_CONSTS: bool = true;
 const OUR_BASE_EXCEPTION_CLASS: u64 = 0;
