@@ -18,13 +18,13 @@ macro_rules! func {
         $crate::FunctionType::new($ret, &[], false)
     };
     ( | $( $arg:ident ),* | -> $ret:ident ) => {
-        $crate::FunctionType::new($ret, &[$( $arg ),*], false)
+        $crate::FunctionType::new($ret.into(), &[$( $arg.into() ),*], false)
     };
     ( | ... | -> $ret:ident ) => {
-        $crate::FunctionType::new($ret, &[], true)
+        $crate::FunctionType::new($ret.into(), &[], true)
     };
     ( | $( $arg:ident ),* , ... | -> $ret:ident ) => {
-        $crate::FunctionType::new($ret, &[$( $arg ),*], true)
+        $crate::FunctionType::new($ret.into(), &[$( $arg.into() ),*], true)
     };
 }
 
@@ -39,27 +39,19 @@ impl FunctionType {
     pub fn new(return_type: TypeRef, params_type: &[TypeRef], var_arg: bool) -> Self {
         let mut params = params_type.iter().map(|t| t.as_raw()).collect::<Vec<LLVMTypeRef>>();
 
-        let function = unsafe {
+        let function: FunctionType = unsafe {
             LLVMFunctionType(
                 return_type.as_raw(),
                 params.as_mut_ptr(),
                 params.len() as u32,
                 var_arg as i32,
             )
-        };
+        }
+        .into();
 
-        trace!(
-            "create Function({:?}): ({}) -> {}",
-            function,
-            params_type.iter().fold("".to_owned(), |s, t| if s.is_empty() {
-                t.to_string()
-            } else {
-                format!("{}, {}", s, t)
-            },),
-            return_type,
-        );
+        info!("create {:?} with signature: {}", function, *function,);
 
-        function.into()
+        function
     }
 
     /// Returns whether a function type is variadic.

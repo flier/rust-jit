@@ -1,4 +1,6 @@
 #[macro_use]
+extern crate log;
+#[macro_use]
 extern crate failure;
 #[macro_use]
 extern crate llvm_jit as jit;
@@ -9,8 +11,10 @@ mod raw {
     include!(concat!(env!("OUT_DIR"), "/raw.rs"));
 }
 mod ast;
+mod codegen;
 mod compile;
 mod display;
+mod errors;
 
 pub use ast::{Cond, Inst, MiscOp, Mode, Op, Program, RVal, Size, Src};
 pub use compile::compile;

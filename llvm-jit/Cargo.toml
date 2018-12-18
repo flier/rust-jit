@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Flier Lu <flier.lu@gmail.com>"]
 edition = "2018"
 
+[features]
+default = []
+debug = []
+
 [lib]
 doctest = false
 

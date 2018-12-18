@@ -115,7 +115,8 @@ pub mod prelude {
     pub use crate::insts::InstructionBuilder;
     pub use crate::intrinsics::IntrinsicId;
     pub use crate::types::{
-        AsTypeRef, FloatingPointTypes, IntegerTypes, OtherTypes, ToArrayType, ToPointerType, ToStructType, ToVectorType,
+        ArrayType, AsTypeRef, FloatingPointTypes, IntegerType, IntegerTypes, OtherType, OtherTypes, PointerType,
+        StructType, ToArrayType, ToPointerType, ToStructType, ToVectorType, VectorType,
     };
     pub use crate::utils::{AsRaw, IntoRaw};
     pub use crate::value::{AsValueRef, Instruction};

@@ -2,12 +2,10 @@ use std::borrow::Borrow;
 use std::ffi::{CStr, CString};
 use std::iter::FromIterator;
 use std::mem;
-use std::result::Result as StdResult;
 use std::slice;
 
-pub type Result<T> = StdResult<T, failure::Error>;
-
 use crate::ast::{Cond, Inst, MiscOp, Mode, Off, Op, Program, RVal, Size, Src};
+use crate::errors::Result;
 use crate::raw::*;
 
 /// compile the BPF expression into a filter program.
@@ -291,7 +289,7 @@ mod tests {
 
     #[test]
     fn program() {
-        let p = Program::compile(DLT_EN10MB, "ip and udp").unwrap();
+        let p = compile(DLT_EN10MB, "ip and udp").unwrap();
         assert!(p.validate());
 
         let insts = vec![
