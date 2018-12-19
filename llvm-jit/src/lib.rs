@@ -57,7 +57,7 @@ mod bitcode;
 mod block;
 mod debuginfo;
 mod disasm;
-mod engine;
+pub mod engine;
 mod inlineasm;
 mod membuf;
 mod metadata;
@@ -114,6 +114,7 @@ pub mod prelude {
     pub use crate::global::GlobalValue;
     pub use crate::insts::InstructionBuilder;
     pub use crate::intrinsics::IntrinsicId;
+    pub use crate::target::{targets, Target, TargetMachine};
     pub use crate::types::{
         ArrayType, AsTypeRef, FloatingPointTypes, IntegerType, IntegerTypes, OtherType, OtherTypes, PointerType,
         StructType, ToArrayType, ToPointerType, ToStructType, ToVectorType, VectorType,

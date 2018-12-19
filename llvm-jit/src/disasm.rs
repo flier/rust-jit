@@ -32,6 +32,12 @@ pub struct Disasm(LLVMDisasmContextRef);
 
 inherit_from!(Disasm, LLVMDisasmContextRef);
 
+impl Drop for Disasm {
+    fn drop(&mut self) {
+        unsafe { LLVMDisasmDispose(self.0) }
+    }
+}
+
 impl Disasm {
     pub fn new<T>(
         triple_name: &str,
@@ -163,10 +169,12 @@ impl<'a, T> Iterator for DisasmInstIter<'a, T>
 where
     T: 'a + AsRef<[u8]>,
 {
-    type Item = String;
+    type Item = (u64, u64, String);
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.disasm.disasm_inst(self.cur, self.pc).ok()
+        let pos = self.cur.position();
+
+        self.disasm.disasm_inst(self.cur, self.pc).ok().map(|inst| (pos, self.cur.position() - pos, inst))
     }
 }
 
@@ -189,12 +197,12 @@ mod tests {
         ]);
 
         assert_eq!(
-            disasm.disasm_insts(&mut cur, 0).collect::<Vec<String>>(),
+            disasm.disasm_insts(&mut cur, 0).map(|(off, len, inst)| format!("[{}:{}]{}", off, off+len, inst)).collect::<Vec<String>>(),
             vec![
-                "\tpushq\t%rbp",
-                "\tmovq\t%rsp, %rbp",
-                "\tsubq\t$16, %rsp",
-                "\tleaq\t-47(%rip), %rax",
+                "[0:1]\tpushq\t%rbp",
+                "[1:4]\tmovq\t%rsp, %rbp",
+                "[4:8]\tsubq\t$16, %rsp",
+                "[8:15]\tleaq\t-47(%rip), %rax",
             ]
         );
     }

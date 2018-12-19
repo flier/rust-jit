@@ -188,15 +188,176 @@ impl MCJITMemoryManager {
         alloc_data: LLVMMemoryManagerAllocateDataSectionCallback,
         free: LLVMMemoryManagerFinalizeMemoryCallback,
         destroy: LLVMMemoryManagerDestroyCallback,
-    ) -> Option<Self> {
-        unsafe { LLVMCreateSimpleMCJITMemoryManager(data.as_mut_ptr(), alloc_code, alloc_data, free, destroy) }.ok()
+    ) -> Self {
+        MCJITMemoryManager(unsafe {
+            LLVMCreateSimpleMCJITMemoryManager(data.as_mut_ptr(), alloc_code, alloc_data, free, destroy)
+        })
     }
 
     /// Consumes the wrapper, returning the wrapped raw pointer.
     pub fn into_raw(self) -> LLVMMCJITMemoryManagerRef {
-        let raw = self.as_raw();
-        ::std::mem::forget(self);
+        let raw = self.0;
+        mem::forget(self);
         raw
+    }
+}
+
+pub mod mmap {
+    use std::alloc::Layout;
+    use std::ops::{Deref, DerefMut};
+    use std::ptr::{self, NonNull};
+    use std::slice;
+
+    use boolinator::Boolinator;
+    use llvm_sys::prelude::*;
+
+    use crate::engine::MCJITMemoryManager;
+    use crate::utils::{AsBool, UncheckedCStr, TRUE};
+
+    pub struct MemorySection(mmap::MemoryMap);
+
+    impl Deref for MemorySection {
+        type Target = [u8];
+
+        fn deref(&self) -> &Self::Target {
+            unsafe { slice::from_raw_parts(self.0.data(), self.0.len()) }
+        }
+    }
+
+    impl DerefMut for MemorySection {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            unsafe { slice::from_raw_parts_mut(self.0.data(), self.0.len()) }
+        }
+    }
+
+    impl MemorySection {
+        pub fn code(size: usize, alignment: usize) -> Self {
+            let layout = Layout::from_size_align(size, alignment).unwrap();
+            let options = &[mmap::MapOption::MapWritable, mmap::MapOption::MapExecutable];
+
+            MemorySection(mmap::MemoryMap::new(layout.size(), options).unwrap())
+        }
+
+        pub fn data(size: usize, alignment: usize, is_read_only: bool) -> Self {
+            let layout = Layout::from_size_align(size, alignment).unwrap();
+            let mut options = vec![mmap::MapOption::MapReadable];
+
+            if !is_read_only {
+                options.push(mmap::MapOption::MapWritable);
+            };
+
+            MemorySection(mmap::MemoryMap::new(layout.size(), &options).unwrap())
+        }
+
+        pub fn begin(&self) -> *const u8 {
+            self.0.data()
+        }
+
+        pub fn end(&self) -> *const u8 {
+            unsafe { self.0.data().add(self.0.len()) }
+        }
+
+        pub fn contains<T>(&self, p: *const T) -> bool {
+            let p = p as *const u8;
+
+            self.begin() <= p && p < self.end()
+        }
+    }
+
+    #[derive(Default)]
+    pub struct MemoryManager {
+        pub code_sections: Vec<(MemorySection, usize)>,
+        pub data_sections: Vec<(MemorySection, usize)>,
+    }
+
+    impl From<&mut MemoryManager> for MCJITMemoryManager {
+        fn from(mm: &mut MemoryManager) -> Self {
+            MCJITMemoryManager::new(Some(mm), mm_alloc_code, mm_alloc_data, mm_finalize, Some(mm_destroy))
+        }
+    }
+
+    extern "C" fn mm_alloc_code(
+        data: *mut ::libc::c_void,
+        size: ::libc::uintptr_t,
+        alignment: ::libc::c_uint,
+        section_id: ::libc::c_uint,
+        section_name: *const ::libc::c_char,
+    ) -> *mut u8 {
+        if let Some(mm) = NonNull::new(data) {
+            let mut section = MemorySection::code(size as usize, alignment as usize);
+            let p = section.as_mut_ptr();
+
+            trace!(
+                "allocate {} bytes (align to {}) code section `{}` #{} @ {:?}, mm @ {:?}",
+                size,
+                alignment,
+                section_name.as_str(),
+                section_id,
+                p,
+                data,
+            );
+
+            unsafe {
+                mm.cast::<MemoryManager>().as_mut().code_sections.push((section, size));
+            }
+
+            p
+        } else {
+            ptr::null_mut()
+        }
+    }
+    extern "C" fn mm_alloc_data(
+        data: *mut ::libc::c_void,
+        size: ::libc::uintptr_t,
+        alignment: ::libc::c_uint,
+        section_id: ::libc::c_uint,
+        section_name: *const ::libc::c_char,
+        is_read_only: LLVMBool,
+    ) -> *mut u8 {
+        if let Some(mm) = NonNull::new(data) {
+            let mut section = MemorySection::data(size as usize, alignment as usize, is_read_only.as_bool());
+            let p = section.as_mut_ptr();
+
+            trace!(
+                "allocated {} bytes (align to {}) {} data section `{}` #{} @ {:?}, mm @ {:?}",
+                size,
+                alignment,
+                is_read_only.as_bool().as_some("readonly").unwrap_or("writable"),
+                section_name.as_str(),
+                section_id,
+                p,
+                data,
+            );
+
+            unsafe {
+                mm.cast::<MemoryManager>().as_mut().data_sections.push((section, size));
+            }
+
+            p
+        } else {
+            ptr::null_mut()
+        }
+    }
+    extern "C" fn mm_finalize(data: *mut ::libc::c_void, err_msg: *mut *mut ::libc::c_char) -> LLVMBool {
+        trace!("finalize memory, mm @ {:?}", data);
+
+        unsafe {
+            *err_msg = ptr::null_mut();
+        }
+
+        TRUE
+    }
+    extern "C" fn mm_destroy(data: *mut ::libc::c_void) {
+        trace!("destroy memory, mm @ {:?}", data);
+
+        if let Some(mm) = NonNull::new(data) {
+            let mut mm = mm.cast::<MemoryManager>();
+
+            unsafe {
+                mm.as_mut().code_sections.clear();
+                mm.as_mut().data_sections.clear();
+            }
+        }
     }
 }
 
@@ -470,16 +631,13 @@ impl ExecutionEngine {
 mod tests {
     use std::f64;
 
-    use crate::llvm::prelude::*;
     use hamcrest::prelude::*;
-    use mmap;
 
     use super::*;
     use crate::insts::*;
     use crate::prelude::*;
     use crate::target::{NativeAsmPrinter, NativeTarget};
     use crate::types::*;
-    use crate::utils::{AsBool, UncheckedCStr};
 
     #[test]
     fn generic_value() {
@@ -639,105 +797,6 @@ mod tests {
         assert_eq!(ee.get_global_value_address("x").unwrap() as *const i64, &v);
     }
 
-    struct MemorySection(mmap::MemoryMap);
-
-    impl MemorySection {
-        pub fn code(size: usize, alignment: usize) -> Self {
-            let aligned = (size + alignment - 1) / alignment * alignment;
-
-            MemorySection(
-                mmap::MemoryMap::new(aligned, &[mmap::MapOption::MapWritable, mmap::MapOption::MapExecutable]).unwrap(),
-            )
-        }
-
-        pub fn data(size: usize, alignment: usize, is_read_only: bool) -> Self {
-            let mut options = vec![mmap::MapOption::MapReadable];
-
-            if !is_read_only {
-                options.push(mmap::MapOption::MapWritable);
-            };
-
-            let aligned = (size + alignment - 1) / alignment * alignment;
-
-            MemorySection(mmap::MemoryMap::new(aligned, &options).unwrap())
-        }
-
-        pub fn base(&self) -> *mut u8 {
-            self.0.data()
-        }
-    }
-
-    #[derive(Default)]
-    struct MemoryManager {
-        code_sections: Vec<MemorySection>,
-        data_sections: Vec<MemorySection>,
-    }
-
-    extern "C" fn mm_alloc_code(
-        data: *mut ::libc::c_void,
-        size: ::libc::uintptr_t,
-        alignment: ::libc::c_uint,
-        section_id: ::libc::c_uint,
-        section_name: *const ::libc::c_char,
-    ) -> *mut u8 {
-        let section = MemorySection::code(size as usize, alignment as usize);
-        let p = section.base();
-
-        trace!(
-            "allocate {} bytes (align to {}) code section `{}` #{} @ {:?}",
-            size,
-            alignment,
-            section_name.as_str(),
-            section_id,
-            p,
-        );
-
-        if let Some(mm) = unsafe { (data as *mut MemoryManager).as_mut() } {
-            mm.code_sections.push(section);
-        }
-
-        p
-    }
-    extern "C" fn mm_alloc_data(
-        data: *mut ::libc::c_void,
-        size: ::libc::uintptr_t,
-        alignment: ::libc::c_uint,
-        section_id: ::libc::c_uint,
-        section_name: *const ::libc::c_char,
-        is_read_only: LLVMBool,
-    ) -> *mut u8 {
-        let section = MemorySection::data(size as usize, alignment as usize, is_read_only.as_bool());
-        let p = section.base();
-
-        trace!(
-            "allocated {} bytes (align to {}) {} data section `{}` #{} @ {:?}",
-            size,
-            alignment,
-            is_read_only.as_bool().as_some("readonly").unwrap_or("writable"),
-            section_name.as_str(),
-            section_id,
-            p,
-        );
-
-        if let Some(mm) = unsafe { (data as *mut MemoryManager).as_mut() } {
-            mm.data_sections.push(section);
-        }
-
-        p
-    }
-    extern "C" fn mm_finalize(opaque: *mut ::libc::c_void, err_msg: *mut *mut ::libc::c_char) -> LLVMBool {
-        trace!("finalize memory @ {:?}", opaque);
-
-        unsafe {
-            *err_msg = ptr::null_mut();
-        }
-
-        TRUE
-    }
-    extern "C" fn mm_destroy(opaque: *mut ::libc::c_void) {
-        trace!("destroy memory @ {:?}", opaque);
-    }
-
     #[test]
     fn memory_manager() {
         MCJITCompiler::link_in();
@@ -746,19 +805,6 @@ mod tests {
 
         let c = Context::new();
         let m = c.create_module("memory_manager");
-
-        let mut opts = MCJITCompilerOptions::default();
-        let mut ctxt = MemoryManager::default();
-        let mm = MCJITMemoryManager::new(
-            Some(&mut ctxt),
-            mm_alloc_code,
-            mm_alloc_data,
-            mm_finalize,
-            Some(mm_destroy),
-        )
-        .unwrap();
-
-        opts.MCJMM = mm.into_raw();
 
         let i64_t = c.int64_t();
 
@@ -777,6 +823,9 @@ mod tests {
         free(p).emit_to(&builder);
         ret!(n).emit_to(&builder);
 
+        let mut opts = MCJITCompilerOptions::default();
+        let mut mm = mmap::MemoryManager::default();
+        opts.MCJMM = MCJITMemoryManager::from(&mut mm).into_raw();
         let ee = MCJITCompiler::for_module(m, opts).unwrap();
 
         let addr = ee.get_function_address("test").unwrap();

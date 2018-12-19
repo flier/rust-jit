@@ -537,15 +537,15 @@ impl PassManagerBuilder {
         self
     }
 
-    pub fn populate_function_pass_manager<M: AsRef<Deref<Target = PassManager>>>(&self, mgr: M) {
-        unsafe { LLVMPassManagerBuilderPopulateFunctionPassManager(self.as_raw(), mgr.as_ref().as_raw()) }
+    pub fn populate_function_pass_manager<M: Deref<Target = PassManager>>(&self, mgr: M) {
+        unsafe { LLVMPassManagerBuilderPopulateFunctionPassManager(self.as_raw(), mgr.as_raw()) }
     }
 
-    pub fn populate_module_pass_manager<M: AsRef<Deref<Target = PassManager>>>(&self, mgr: M) {
-        unsafe { LLVMPassManagerBuilderPopulateModulePassManager(self.as_raw(), mgr.as_ref().as_raw()) }
+    pub fn populate_module_pass_manager<M: Deref<Target = PassManager>>(&self, mgr: M) {
+        unsafe { LLVMPassManagerBuilderPopulateModulePassManager(self.as_raw(), mgr.as_raw()) }
     }
 
-    pub fn populate_lto_pass_manager<M: AsRef<Deref<Target = PassManager>>>(
+    pub fn populate_lto_pass_manager<M: Deref<Target = PassManager>>(
         &self,
         mgr: M,
         internalize: bool,
@@ -554,7 +554,7 @@ impl PassManagerBuilder {
         unsafe {
             LLVMPassManagerBuilderPopulateLTOPassManager(
                 self.as_raw(),
-                mgr.as_ref().as_raw(),
+                mgr.as_raw(),
                 internalize.as_bool(),
                 run_inliner.as_bool(),
             )

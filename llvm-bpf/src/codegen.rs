@@ -15,6 +15,8 @@ use crate::display::InstFmt;
 use crate::errors::Result;
 use crate::raw::BPF_MEMWORDS;
 
+pub type Filter = extern "C" fn(*const u8, u32) -> u32;
+
 impl Size {
     fn bytes(self) -> usize {
         match self {
@@ -233,6 +235,8 @@ impl Program {
 
 #[cfg(test)]
 mod tests {
+    use std::io::{Cursor};
+
     use crate::compile;
     use crate::raw::*;
 
@@ -242,7 +246,9 @@ mod tests {
     fn program() {
         let _ = pretty_env_logger::try_init();
 
-        jit::target::AllTargetMCs::init();
+        jit::target::NativeTarget::init().unwrap();
+        jit::target::NativeDisassembler::init().unwrap();
+        jit::target::NativeAsmPrinter::init().unwrap();
 
         let ctxt = Context::new();
         let m = ctxt.create_module("test");
@@ -265,10 +271,43 @@ mod tests {
         // (011) ret	#65535
         // (012) ret	#0
 
-        let f = p.gen(&m, "filter");
+        let fname = "filter";
+        let f = p.gen(&m, fname);
 
         debug!("generated module:\n{}", m);
 
         let f = f.unwrap();
+
+        debug!("generated filter: {:?}", f);
+
+        let passmgr = jit::PassManager::new();
+        jit::PassManagerBuilder::new().set_opt_level(3).populate_module_pass_manager(&passmgr);
+        passmgr.run(&m);
+
+        // build an execution engine
+        let mut opts = jit::engine::MCJITCompilerOptions::default();
+        let mut mm = jit::engine::mmap::MemoryManager::default();
+        opts.MCJMM = jit::engine::MCJITMemoryManager::from(&mut mm).into_raw();
+        let engine = jit::engine::MCJITCompiler::for_module(m, opts).unwrap();
+
+        let addr = engine.get_function_address(fname).unwrap() as *const u8;
+        let (section, size) = mm.code_sections.iter().find(|(section, _)| section.contains(addr)).unwrap();
+
+        let triple = Target::default_triple();
+        let disasm = jit::Disasm::new::<()>(&triple, 0, None, None, None);
+
+        let off = addr as usize - section.begin() as usize;
+        let code = &section[off..*size];
+        let mut cur = Cursor::new(code);
+        for (off, _len, inst) in disasm.disasm_insts(&mut cur, 0) {
+            debug!("0x{:04x} {}", off, inst);
+        }
+
+        let f: Filter = unsafe { mem::transmute(addr) };
+
+        let pkt = &[];
+        let res = f(pkt.as_ptr(), pkt.len() as u32);
+
+        assert_eq!(res, 65535);
     }
 }

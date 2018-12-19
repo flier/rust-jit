@@ -17,4 +17,5 @@ mod display;
 mod errors;
 
 pub use ast::{Cond, Inst, MiscOp, Mode, Op, Program, RVal, Size, Src};
+pub use codegen::Filter;
 pub use compile::compile;
