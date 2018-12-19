@@ -15,6 +15,7 @@ use crate::value::{BlockAddress, Instruction, ValueRef};
 /// Basic blocks contain a list of instructions which form the body of the block.
 ///
 /// Basic blocks belong to functions. They have the type of label.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BasicBlock(LLVMBasicBlockRef);
 

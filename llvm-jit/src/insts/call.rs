@@ -107,6 +107,7 @@ pub trait CallSite: AsValueRef {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CallInst(Instruction);
 
@@ -138,14 +139,14 @@ where
 
 #[macro_export]
 macro_rules! call {
-    ($func:expr, $( $arg:expr ),*; $name:expr) => ({
+    ($func:expr, $( $arg:expr ),* ; $name:expr) => ({
         $crate::insts::call($func, vec![ $( $crate::insts::AstNode::from($arg) ),* ], $name)
     });
     ($func:expr ; $name:expr) => ({
         $crate::insts::call($func, Vec::<$crate::insts::AstNode>::new(), $name)
     });
-    ($func:expr, $( $arg:expr ),*) => ({
-        call!($func, $( $arg ),*; "")
+    ($func:expr, $( $arg:expr ),* ) => ({
+        call!($func, $( $arg ),* ; "")
     });
     ($func:expr) => ({
         call!($func ; "")

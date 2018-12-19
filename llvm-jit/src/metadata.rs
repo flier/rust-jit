@@ -18,16 +18,19 @@ use crate::value::{Instruction, ValueRef};
 
 pub type MDKindId = libc::c_uint;
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MDString(ValueRef);
 
 inherit_from!(MDString, ValueRef, LLVMValueRef);
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MDNode(ValueRef);
 
 inherit_from!(MDNode, ValueRef, LLVMValueRef);
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Metadata(LLVMMetadataRef);
 
@@ -227,8 +230,8 @@ impl Instruction {
     }
 
     /// Set metadata associated with an instruction value.
-    pub fn set_metadata(&self, kind_id: MDKindId, node: ValueRef) -> &Self {
-        unsafe { LLVMSetMetadata(self.as_raw(), kind_id, node.as_raw()) };
+    pub fn set_metadata<T: Into<ValueRef>>(&self, kind_id: MDKindId, node: T) -> &Self {
+        unsafe { LLVMSetMetadata(self.as_raw(), kind_id, node.into().as_raw()) };
         self
     }
 }

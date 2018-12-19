@@ -110,6 +110,7 @@ impl<'a> InstructionBuilder for GetElementPtr<'a> {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GetElementPtrInst(Instruction);
 

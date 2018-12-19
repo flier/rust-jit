@@ -22,6 +22,7 @@ macro_rules! types {
 }
 
 /// Each value in the LLVM IR has a type, an `TypeRef`.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeRef(LLVMTypeRef);
 
@@ -473,6 +474,7 @@ impl OtherTypes for Context {
 }
 
 /// Structure to represent struct types.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StructType(TypeRef);
 
@@ -636,6 +638,7 @@ impl SequentialType for PointerType {}
 impl SequentialType for VectorType {}
 
 /// Structure to represent array types.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ArrayType(TypeRef);
 
@@ -666,6 +669,7 @@ impl ToArrayType for TypeRef {
 }
 
 /// Structure to represent pointers.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PointerType(TypeRef);
 
@@ -699,6 +703,7 @@ impl ToPointerType for TypeRef {
 }
 
 /// Structure to represent vector types.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct VectorType(TypeRef);
 

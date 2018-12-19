@@ -26,6 +26,7 @@ bitflags! {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct Disasm(LLVMDisasmContextRef);
 

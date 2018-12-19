@@ -22,6 +22,7 @@ pub fn shutdown() {
 }
 
 /// The `GenericValue` class is used to represent an LLVM value of arbitrary type.
+#[repr(transparent)]
 #[derive(Debug, PartialEq)]
 pub struct GenericValue(LLVMGenericValueRef);
 
@@ -92,6 +93,7 @@ impl GenericValue {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct Interpreter(ExecutionEngine);
 
@@ -139,6 +141,7 @@ impl Default for CodeGenOptLevel {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct JITCompiler(ExecutionEngine);
 
@@ -166,6 +169,7 @@ impl JITCompiler {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct MCJITMemoryManager(LLVMMCJITMemoryManagerRef);
 
@@ -196,6 +200,7 @@ impl MCJITMemoryManager {
     }
 }
 
+#[repr(transparent)]
 pub struct MCJITCompilerOptions(LLVMMCJITCompilerOptions);
 
 inherit_from!(MCJITCompilerOptions, LLVMMCJITCompilerOptions);
@@ -214,6 +219,7 @@ impl Default for MCJITCompilerOptions {
 
 pub type MCJIT = MCJITCompiler;
 
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct MCJITCompiler(ExecutionEngine);
 
@@ -254,6 +260,7 @@ impl MCJITCompiler {
 }
 
 /// Create an MCJIT execution engine for a module, with the given options.
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct ExecutionEngine(LLVMExecutionEngineRef);
 

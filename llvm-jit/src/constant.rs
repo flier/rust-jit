@@ -57,6 +57,7 @@ impl ValueRef {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Constant(ValueRef);
 
@@ -101,6 +102,7 @@ impl Constants for TypeRef {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ConstantInt(Constant);
 
@@ -159,6 +161,7 @@ impl ConstantInts for IntegerType {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ConstantFP(Constant);
 
@@ -193,6 +196,7 @@ impl ConstantFPs for FloatingPointType {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ConstantString(Constant);
 
@@ -236,6 +240,7 @@ impl ConstantStrings for Context {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ConstantStruct(Constant);
 
@@ -307,6 +312,7 @@ impl ConstantDataSequential for ConstantArray {}
 impl ConstantDataSequential for ConstantVector {}
 
 /// Constant Array Declarations.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ConstantArray(Constant);
 
@@ -330,6 +336,7 @@ impl ToConstantArray for TypeRef {
 }
 
 /// Constant Vector Declarations.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ConstantVector(Constant);
 
@@ -367,6 +374,7 @@ macro_rules! vector {
     )
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InlineAsm(Constant);
 

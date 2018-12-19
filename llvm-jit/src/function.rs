@@ -29,6 +29,7 @@ macro_rules! func {
 }
 
 /// Structure to represent function types.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FunctionType(TypeRef);
 
@@ -76,6 +77,7 @@ impl FunctionType {
 }
 
 /// Functions in this group operate on `ValueRef` instances that correspond to `Function` instances.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Function(ValueRef);
 

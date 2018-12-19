@@ -64,6 +64,7 @@ impl<'a> InstructionBuilder for Phi<'a> {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PhiNode(Instruction);
 

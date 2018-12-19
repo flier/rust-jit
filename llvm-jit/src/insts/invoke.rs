@@ -92,6 +92,7 @@ impl<'a> InstructionBuilder for Invoke<'a> {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InvokeInst(Instruction);
 

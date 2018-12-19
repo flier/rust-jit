@@ -6,6 +6,7 @@ use crate::llvm::object::*;
 use crate::membuf::MemoryBuffer;
 use crate::utils::{AsBool, AsRaw, UncheckedCStr};
 
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct ObjectFile(LLVMObjectFileRef);
 
@@ -115,6 +116,7 @@ impl_iter!(SymbolIter<ObjectFile, LLVMSymbolIteratorRef> -> Symbol {
     is_end => LLVMIsSymbolIteratorAtEnd,
 });
 
+#[repr(transparent)]
 pub struct Section(LLVMSectionIteratorRef);
 
 impl From<LLVMSectionIteratorRef> for Section {
@@ -200,6 +202,7 @@ impl Symbol {
     }
 }
 
+#[repr(transparent)]
 pub struct Relocation(LLVMRelocationIteratorRef);
 
 impl From<LLVMRelocationIteratorRef> for Relocation {

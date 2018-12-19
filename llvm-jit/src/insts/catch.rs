@@ -102,6 +102,7 @@ impl<'a> InstructionBuilder for CatchSwitch<'a> {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CatchSwitchInst(Instruction);
 
@@ -181,6 +182,7 @@ impl<'a> InstructionBuilder for CatchPad<'a> {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CatchPadInst(Instruction);
 
@@ -279,6 +281,7 @@ impl InstructionBuilder for CatchRet {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CatchRetInst(Instruction);
 
@@ -329,6 +332,7 @@ impl InstructionBuilder for CleanupRet {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CleanupRetInst(Instruction);
 

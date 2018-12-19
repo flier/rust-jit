@@ -50,6 +50,7 @@ impl Module {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct DIBuilder(LLVMDIBuilderRef);
 

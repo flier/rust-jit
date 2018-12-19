@@ -23,6 +23,7 @@ pub type RelocMode = LLVMRelocMode;
 pub type CodeModel = LLVMCodeModel;
 pub type CodeGenFileType = LLVMCodeGenFileType;
 
+#[repr(transparent)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Target(LLVMTargetRef);
 
@@ -123,6 +124,7 @@ impl Iterator for TargetIter {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug, PartialEq)]
 pub struct TargetMachine(LLVMTargetMachineRef);
 
@@ -257,6 +259,7 @@ impl TargetMachine {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug, PartialEq)]
 pub struct TargetData(LLVMTargetDataRef);
 

@@ -35,6 +35,7 @@ impl AsResult<()> for LLVMOrcErrorCode {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct JITStack(LLVMOrcJITStackRef);
 

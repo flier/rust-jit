@@ -137,6 +137,7 @@ impl<'a> InstructionBuilder for Alloca<'a> {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AllocaInst(Instruction);
 
@@ -261,6 +262,7 @@ impl<'a> InstructionBuilder for Load<'a> {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LoadInst(Instruction);
 
@@ -345,6 +347,7 @@ impl<'a> InstructionBuilder for Store<'a> {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StoreInst(Instruction);
 

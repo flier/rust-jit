@@ -102,6 +102,7 @@ pub enum Position {
 
 /// An instruction builder represents a point within a basic block
 /// and is the exclusive means of building instructions.
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct IRBuilder(LLVMBuilderRef);
 

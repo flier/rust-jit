@@ -150,6 +150,7 @@ impl<'a> InstructionBuilder for IndirectBr<'a> {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BranchInst(Instruction);
 

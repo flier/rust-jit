@@ -73,6 +73,7 @@ impl<'a> InstructionBuilder for Switch<'a> {
 /// When the `switch` instruction is executed, this table is searched for the given value.
 /// If the value is found, control flow is transferred to the corresponding destination;
 /// otherwise, control flow is transferred to the default destination.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SwitchInst(Instruction);
 

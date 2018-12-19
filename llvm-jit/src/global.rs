@@ -73,6 +73,7 @@ pub trait GlobalValue: AsValueRef {
 pub type ThreadLocalMode = LLVMThreadLocalMode;
 
 /// Global Variables
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GlobalVar(Constant);
 
@@ -139,6 +140,7 @@ impl GlobalVar {
 /// Global Alias
 ///
 /// a single function or variable alias in the IR.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GlobalAlias(Constant);
 

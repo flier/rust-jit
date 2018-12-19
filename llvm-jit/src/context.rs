@@ -74,6 +74,7 @@ impl Context {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug, PartialEq)]
 pub struct GlobalContext(Context);
 

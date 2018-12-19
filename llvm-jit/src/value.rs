@@ -22,6 +22,7 @@ macro_rules! values {
 }
 
 /// Represents an individual value in LLVM IR.
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ValueRef(LLVMValueRef);
 
@@ -128,6 +129,8 @@ impl fmt::Display for ValueRef {
     }
 }
 
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Use(LLVMUseRef);
 
 impl Use {
@@ -142,6 +145,8 @@ impl Use {
     }
 }
 
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Uses(LLVMUseRef);
 
 impl Iterator for Uses {
@@ -158,11 +163,13 @@ impl Iterator for Uses {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BlockAddress(ValueRef);
 
 inherit_value_ref!(BlockAddress);
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Instruction(ValueRef);
 

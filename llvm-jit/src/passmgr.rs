@@ -321,6 +321,7 @@ pub enum Pass {
     BasicAliasAnalysis,
 }
 
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct PassManager(LLVMPassManagerRef);
 
@@ -428,6 +429,7 @@ impl PassManager {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct FunctionPassManager(PassManager);
 
@@ -458,6 +460,7 @@ impl FunctionPassManager {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct PassRegistry(LLVMPassRegistryRef);
 
@@ -470,6 +473,7 @@ impl PassRegistry {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct PassManagerBuilder(LLVMPassManagerBuilderRef);
 

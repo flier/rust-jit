@@ -141,6 +141,7 @@ impl<'a> InstructionBuilder for ICmp<'a> {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ICmpInst(Instruction);
 
@@ -213,13 +214,13 @@ macro_rules! icmp_alias {
     ($op:ident) => {
         #[macro_export]
         macro_rules! $op {
-            ($lhs: expr, $rhs: expr) => {
-                $op !($lhs, $rhs; stringify!($op))
-            };
-            ($lhs: expr, $rhs: expr; $name: expr) => {
-                icmp!($op $lhs, $rhs; $name)
-            };
-        }
+                                                                            ($lhs: expr, $rhs: expr) => {
+                                                                                $op !($lhs, $rhs; stringify!($op))
+                                                                            };
+                                                                            ($lhs: expr, $rhs: expr; $name: expr) => {
+                                                                                icmp!($op $lhs, $rhs; $name)
+                                                                            };
+                                                                        }
     };
 }
 
@@ -277,6 +278,7 @@ impl<'a> InstructionBuilder for FCmp<'a> {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FCmpInst(Instruction);
 
@@ -383,13 +385,13 @@ macro_rules! fcmp_alias {
     ($alias:ident, $op:ident) => {
         #[macro_export]
         macro_rules! $alias {
-            ($lhs: expr, $rhs: expr) => {
-                $alias !($lhs, $rhs; stringify!($op))
-            };
-            ($lhs: expr, $rhs: expr; $name: expr) => {
-                fcmp!($op $lhs, $rhs; $name)
-            };
-        }
+                                                                            ($lhs: expr, $rhs: expr) => {
+                                                                                $alias !($lhs, $rhs; stringify!($op))
+                                                                            };
+                                                                            ($lhs: expr, $rhs: expr; $name: expr) => {
+                                                                                fcmp!($op $lhs, $rhs; $name)
+                                                                            };
+                                                                        }
     };
     ($op:ident) => {
         fcmp_alias!($op, $op);

@@ -189,6 +189,7 @@ pub mod attrs {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AttributeKind(u32);
 
@@ -209,6 +210,7 @@ impl AttributeKind {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Attribute(LLVMAttributeRef);
 
@@ -224,6 +226,7 @@ impl Attribute {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct EnumAttribute(Attribute);
 
@@ -241,6 +244,7 @@ impl EnumAttribute {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StringAttribute(Attribute);
 

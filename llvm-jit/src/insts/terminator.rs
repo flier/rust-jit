@@ -77,6 +77,7 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LandingPadInst(Instruction);
 
@@ -148,6 +149,7 @@ impl<'a> InstructionBuilder for Resume<'a> {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ResumeInst(Instruction);
 
@@ -186,6 +188,7 @@ impl InstructionBuilder for Unreachable {
     }
 }
 
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UnreachableInst(Instruction);
 

@@ -280,7 +280,7 @@ macro_rules! inherit_from {
 
     ($ty: ident, $parent: ty, $ancestor: ty, $raw: ty) => {
         impl ::std::ops::Deref for $ty {
-            type Target = $ancestor;
+            type Target = $parent;
 
             fn deref(&self) -> &Self::Target {
                 &self.0

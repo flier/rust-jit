@@ -64,6 +64,7 @@ impl<'a> InstructionBuilder for Ret<'a> {
 ///
 /// These terminator instructions typically yield a `void` value: they produce control flow,
 /// not values (the one exception being the `invoke` instruction).
+#[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ReturnInst(Instruction);
 
