@@ -11,6 +11,7 @@ use crate::ast::{
     Size::{self, *},
     Src,
 };
+use crate::display::InstFmt;
 use crate::errors::Result;
 use crate::raw::BPF_MEMWORDS;
 
@@ -38,9 +39,15 @@ impl Program {
     pub fn gen<S: AsRef<str>>(self, m: &Module, name: S) -> Result<Function> {
         let ctxt = m.context();
         let name = name.as_ref();
-        let i8_ptr_t = ctxt.int8_t().ptr_t();
+
+        let i8_t = ctxt.int8_t();
+        let i8_ptr_t = i8_t.ptr_t();
         let i32_t = ctxt.int32_t();
+
+        let donothing = m.intrinsic_declaration(IntrinsicId::donothing, &[][..]);
+
         let f = m.add_function(name, func!(|i8_ptr_t, i32_t| -> i32_t));
+
         let arg0 = f.get_param(0).unwrap();
         let arg1 = f.get_param(1).unwrap();
         let pkt = arg0.set_name("pkt");
@@ -50,10 +57,11 @@ impl Program {
 
         let builder = ctxt.create_builder();
 
+        let uint8 = |k: u8| -> ConstantInt { i8_t.uint(k as u64) };
         let uint32 = |k: u32| -> ConstantInt { i32_t.uint(k as u64) };
 
         let labels = Rc::new(RefCell::new(HashMap::new()));
-        let mut get_or_insert_label = |off| -> BasicBlock {
+        let get_or_insert_label = |off| -> BasicBlock {
             *labels
                 .borrow_mut()
                 .entry(off)
@@ -78,31 +86,32 @@ impl Program {
             }
         };
 
+        let md_opcode = ctxt.md_kind_id("opcode");
+
         for (idx, inst) in self.into_iter().enumerate() {
             if let Some(label) = labels.borrow().get(&idx) {
                 builder.position_at_end(*label);
+            }
+
+            if cfg!(feature = "debug") {
+                call!(donothing)
+                    .emit_to(&builder)
+                    .set_metadata(md_opcode, ctxt.md_string(InstFmt(idx, &inst).to_string()));
             }
 
             match inst {
                 Inst::Load(mode) => {
                     let value: AstNode = match mode {
                         Mode::Abs(off, size) => {
-                            let name = format!("pkt[k:{}]", size.bytes());
+                            let p = bit_cast!(gep!(*pkt, uint32(off); "p"), size.ty(&ctxt); "p");
 
-                            zext!(
-                                load!(bit_cast!(gep!(*pkt, uint32(off); "p"), size.ty(&ctxt)); name),
-                                i32_t
-                            )
-                            .into()
+                            zext!(load!(p; format!("P[k:{}]", size.bytes())), i32_t; "v").into()
                         }
                         Mode::Ind(off, size) => {
-                            let name = format!("pkt[X+k:{}]", size.bytes());
+                            let p = gep!(*pkt, add!(load!(x; "x"), uint32(off); "idx"); "p");
+                            let p = bit_cast!(p, size.ty(&ctxt); "p");
 
-                            zext!(
-                                load!(bit_cast!(gep!(*pkt, add!(load!(x; "x"), uint32(off); "idx"); "p"), size.ty(&ctxt)); name),
-                                i32_t
-                            )
-                            .into()
+                            zext!(load!(p; format!("P[X+k:{}]", size.bytes())), i32_t; "v").into()
                         }
                         Mode::Len => (*len).into(),
                         Mode::Imm(off) => uint32(off).into(),
@@ -111,6 +120,29 @@ impl Program {
                     };
 
                     store!(value, a).emit_to(&builder);
+                }
+                Inst::LoadX(mode) => {
+                    let value: AstNode = match mode {
+                        Mode::Len => (*len).into(),
+                        Mode::Imm(off) => uint32(off).into(),
+                        Mode::Mem(off) => extract_value!(m, off; "M[k]").into(),
+                        Mode::Msh(off) => mul!(
+                            uint32(4),
+                            zext!(
+                                and!(
+                                    load!(gep!(*pkt, uint32(off); "p"); "P[k:1]"),
+                                    uint8(0x0f);
+                                    "P[k:1]&0xf"
+                                ),
+                                i32_t
+                            );
+                            "4*(P[k:1]&0xf)"
+                        )
+                        .into(),
+                        _ => unreachable!(),
+                    };
+
+                    store!(value, x).emit_to(&builder);
                 }
                 Inst::Store(off) => {
                     store!(load!(a; "a"), gep!(m, uint32(off); "M[k]")).emit_to(&builder);
@@ -190,9 +222,6 @@ impl Program {
                 Inst::Misc(MiscOp::Txa) => {
                     store!(load!(x; "x"), a).emit_to(&builder);
                 }
-                _ => {
-                    debug!("skip inst: {:?}", inst);
-                }
             }
         }
 
@@ -220,6 +249,21 @@ mod tests {
 
         let p = compile(DLT_EN10MB, "ip and udp and port 53").unwrap();
         assert!(p.validate());
+
+        debug!("compiled program:\n{}", p);
+        // (000) ldh	[12]
+        // (001) jeq	#0x800	jt 2	jf 12
+        // (002) ldb	[23]
+        // (003) jeq	#0x11	jt 4	jf 12
+        // (004) ldh	[20]
+        // (005) jset	#0x1fff	jt 12	jf 6
+        // (006) ldxb	4*([14]&0xf)
+        // (007) ldh	[x + 14]
+        // (008) jeq	#0x35	jt 11	jf 9
+        // (009) ldh	[x + 16]
+        // (010) jeq	#0x35	jt 11	jf 12
+        // (011) ret	#65535
+        // (012) ret	#0
 
         let f = p.gen(&m, "filter");
 

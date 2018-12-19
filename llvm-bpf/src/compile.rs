@@ -304,12 +304,12 @@ mod tests {
         assert_eq!(&*p, insts.as_slice());
         assert_eq!(
             p.to_string(),
-            r#"(000) ldh	[12]
-(001) jeq	#0x800	jt 2	jf 5
-(002) ldb	[23]
-(003) jeq	#0x11	jt 4	jf 5
-(004) ret	#65535
-(005) ret	#0
+            r#"(000) ldh      [12]
+(001) jeq      #0x800 jt 2 jf 5
+(002) ldb      [23]
+(003) jeq      #0x11 jt 4 jf 5
+(004) ret      #65535
+(005) ret      #0
 "#
         );
 
