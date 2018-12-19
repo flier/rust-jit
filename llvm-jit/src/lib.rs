@@ -107,8 +107,8 @@ pub mod prelude {
 
     pub use crate::attribute::AttributeGroups;
     pub use crate::constant::{
-        ConstantFPs, ConstantInts, ConstantStrings, Constants, ToConstantArray, ToConstantStruct, ToConstantVector,
-        ToNamedConstantStruct,
+        ConstantFP, ConstantFPs, ConstantInt, ConstantInts, ConstantString, ConstantStrings, Constants,
+        ToConstantArray, ToConstantStruct, ToConstantVector, ToNamedConstantStruct,
     };
     pub use crate::constexpr::ConstantExpr;
     pub use crate::global::GlobalValue;

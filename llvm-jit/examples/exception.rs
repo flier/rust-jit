@@ -580,7 +580,7 @@ impl Example {
 
         // Branch to the external_exception_block if the exception is foreign or
         // to a catch router if not. Either way the finally block will be run.
-        let eq = icmp!(EQ unwind_exception_class, i64_t.int(OUR_BASE_EXCEPTION_CLASS as i64)).emit_to(&builder);
+        let eq = eq!(unwind_exception_class, i64_t.int(OUR_BASE_EXCEPTION_CLASS as i64)).emit_to(&builder);
         br!(
             eq => exception_route_block,
             _ => external_exception_block

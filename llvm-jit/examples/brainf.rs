@@ -416,10 +416,10 @@ impl<'a> BrainF<'a> {
             trace!("checking array bounds");
 
             //%test.%d = icmp uge i8 *%head.%d, %arrmax
-            let test_0 = icmp!(UGE cur_head, self.ptr_arrmax.unwrap(); TEST_REG);
+            let test_0 = uge!(cur_head, self.ptr_arrmax.unwrap(); TEST_REG);
 
             //%test.%d = icmp ult i8 *%head.%d, %arr
-            let test_1 = icmp!(ULT cur_head, self.ptr_arr; TEST_REG);
+            let test_1 = ult!(cur_head, self.ptr_arr; TEST_REG);
 
             //%test.%d = or i1 %test.%d, %test.%d
             let test_2 = or!(test_0, test_1; TEST_REG);
@@ -493,7 +493,7 @@ impl<'a> BrainF<'a> {
         let tape_0 = load!(head_0; TAPER_REG);
 
         //%test.%d = icmp eq i8 %tape.%d, 0
-        let test_0 = icmp!(EQ tape_0, i8_t.int(0); TEST_REG);
+        let test_0 = eq!(tape_0, i8_t.int(0); TEST_REG);
 
         //br i1 %test.%d, label %main.%d, label %main.%d
         let loop_end_bb = self
