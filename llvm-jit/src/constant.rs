@@ -7,7 +7,7 @@ use crate::llvm::prelude::*;
 use crate::llvm::LLVMOpcode;
 
 use crate::context::Context;
-use crate::types::{FloatingPointType, IntegerType, IntegerTypes, StructType, TypeRef};
+use crate::types::{FloatingPointType, FloatingPointTypes, IntegerType, IntegerTypes, StructType, TypeRef};
 use crate::utils::{from_unchecked_cstr, AsBool, AsLLVMBool, AsRaw, AsResult};
 use crate::value::{AsValueRef, ValueRef};
 
@@ -242,6 +242,20 @@ impl ConstantFPs for FloatingPointType {
         let s = s.as_ref();
 
         unsafe { LLVMConstRealOfStringAndSize(self.as_raw(), cstr!(s), s.len() as u32) }.into()
+    }
+}
+
+impl Context {
+    pub fn half<V: Into<f32>>(&self, v: V) -> ConstantFP {
+        self.half_t().real(v.into() as f64)
+    }
+
+    pub fn float<V: Into<f32>>(&self, v: V) -> ConstantFP {
+        self.float_t().real(v.into() as f64)
+    }
+
+    pub fn double<V: Into<f64>>(&self, v: V) -> ConstantFP {
+        self.double_t().real(v.into())
     }
 }
 

@@ -1,11 +1,30 @@
+use std::fmt;
+
 use crate::constant::*;
 use crate::global::GlobalVar;
 use crate::insts::*;
+use crate::prelude::*;
 use crate::value::*;
 use crate::value::{BlockAddress, Instruction};
 
+#[derive(Clone)]
+pub struct DynamicNode(fn(&IRBuilder) -> ValueRef);
+
+impl fmt::Debug for DynamicNode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "DynamicNodeCallback({:p})", &self.0)
+    }
+}
+
+impl PartialEq for DynamicNode {
+    fn eq(&self, other: &Self) -> bool {
+        &self.0 as *const _ == &other.0 as *const _
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum AstNode<'a> {
+    Dynamic(DynamicNode),
     ValueRef(ValueRef),
     Instruction(Instruction),
     Constant(Constant),
@@ -104,6 +123,7 @@ impl<'a> InstructionBuilder for AstNode<'a> {
 
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         match self {
+            AstNode::Dynamic(DynamicNode(callback)) => callback(builder),
             AstNode::ValueRef(node) => node,
             AstNode::Instruction(node) => node.into(),
             AstNode::Constant(node) => node.into(),
@@ -324,3 +344,28 @@ impl_ast_node!(InsertValue<'a>);
 impl_ast_node!(Fence);
 impl_ast_node!(AtomicRMW<'a>);
 impl_ast_node!(AtomicCmpXchg<'a>);
+
+macro_rules! impl_const_node {
+    ($from:ty, $to:ident) => {
+        impl<'a> From<$from> for AstNode<'a> {
+            fn from(v: $from) -> Self {
+                AstNode::Constant(Context::global().$to(v).into())
+            }
+        }
+    };
+}
+
+impl_const_node!(u8, uint8);
+impl_const_node!(u16, uint16);
+impl_const_node!(u32, uint32);
+impl_const_node!(u64, uint64);
+impl_const_node!(u128, uint128);
+
+impl_const_node!(i8, int8);
+impl_const_node!(i16, int16);
+impl_const_node!(i32, int32);
+impl_const_node!(i64, int64);
+impl_const_node!(i128, int128);
+
+impl_const_node!(f32, float);
+impl_const_node!(f64, double);

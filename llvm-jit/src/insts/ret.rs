@@ -15,7 +15,7 @@ impl<'a> Ret<'a> {
         Ret(Return::Void)
     }
 
-    pub fn new<V>(value: V) -> Self
+    pub fn value<V>(value: V) -> Self
     where
         V: Into<AstNode<'a>>,
     {
@@ -95,7 +95,7 @@ macro_rules! ret {
         $crate::insts::Ret::void()
     };
     ($result:expr) => {
-        $crate::insts::Ret::new($result)
+        $crate::insts::Ret::value($result)
     };
     ($( $result:expr ),*) => {
         $crate::insts::Ret::aggregate(vec![$( $crate::insts::AstNode::from($result) ),*])
@@ -115,7 +115,7 @@ impl IRBuilder {
     where
         T: Into<AstNode<'a>>,
     {
-        Ret::new(result.into()).emit_to(self)
+        Ret::value(result.into()).emit_to(self)
     }
 
     /// The ‘ret‘ instruction is used to return control flow (and optionally a value)

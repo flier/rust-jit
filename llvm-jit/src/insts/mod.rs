@@ -41,8 +41,6 @@ mod aggregate;
 mod atomic;
 mod ast;
 #[macro_use]
-mod ir;
-#[macro_use]
 mod catch;
 #[macro_use]
 mod invoke;
