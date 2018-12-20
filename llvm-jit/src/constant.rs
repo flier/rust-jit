@@ -1,12 +1,13 @@
 use std::borrow::Cow;
 use std::mem;
+use std::slice;
 
 use crate::llvm::core::*;
 use crate::llvm::prelude::*;
 use crate::llvm::LLVMOpcode;
 
 use crate::context::Context;
-use crate::types::{FloatingPointType, IntegerType, StructType, TypeRef};
+use crate::types::{FloatingPointType, IntegerType, IntegerTypes, StructType, TypeRef};
 use crate::utils::{from_unchecked_cstr, AsBool, AsLLVMBool, AsRaw, AsResult};
 use crate::value::{AsValueRef, ValueRef};
 
@@ -158,6 +159,54 @@ impl ConstantInts for IntegerType {
         let s = s.as_ref();
 
         unsafe { LLVMConstIntOfStringAndSize(self.as_raw(), cstr!(s), s.len() as u32, radix) }.into()
+    }
+}
+
+impl Context {
+    pub fn uint8<V: Into<u8>>(&self, v: V) -> ConstantInt {
+        self.int8_t().uint(v.into() as u64)
+    }
+
+    pub fn uint16<V: Into<u16>>(&self, v: V) -> ConstantInt {
+        self.int16_t().uint(v.into() as u64)
+    }
+
+    pub fn uint32<V: Into<u32>>(&self, v: V) -> ConstantInt {
+        self.int32_t().uint(v.into() as u64)
+    }
+
+    pub fn uint64<V: Into<u64>>(&self, v: V) -> ConstantInt {
+        self.int64_t().uint(v.into())
+    }
+
+    pub fn uint128<V: Into<u128>>(&self, v: V) -> ConstantInt {
+        let v: u128 = v.into();
+
+        self.int128_t()
+            .int_with_precision(unsafe { slice::from_raw_parts(&v as *const _ as *const u64, 2) })
+    }
+
+    pub fn int8<V: Into<i8>>(&self, v: V) -> ConstantInt {
+        self.int8_t().int(v.into() as i64)
+    }
+
+    pub fn int16<V: Into<i16>>(&self, v: V) -> ConstantInt {
+        self.int16_t().int(v.into() as i64)
+    }
+
+    pub fn int32<V: Into<i32>>(&self, v: V) -> ConstantInt {
+        self.int32_t().int(v.into() as i64)
+    }
+
+    pub fn int64<V: Into<i64>>(&self, v: V) -> ConstantInt {
+        self.int64_t().int(v.into())
+    }
+
+    pub fn int128<V: Into<i128>>(&self, v: V) -> ConstantInt {
+        let v: i128 = v.into();
+
+        self.int128_t()
+            .int_with_precision(unsafe { slice::from_raw_parts(&v as *const _ as *const u64, 2) })
     }
 }
 

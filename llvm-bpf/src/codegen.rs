@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem;
+use std::ops::Deref;
 use std::rc::Rc;
 
 use jit::insts::AstNode;
@@ -39,39 +40,50 @@ impl Size {
 
 impl Program {
     pub fn gen<S: AsRef<str>>(self, m: &Module, name: S) -> Result<Function> {
-        let ctxt = m.context();
-        let name = name.as_ref();
+        Generator::new(m, name).gen(self.into_iter())
+    }
+}
 
-        let i8_t = ctxt.int8_t();
-        let i8_ptr_t = i8_t.ptr_t();
+struct Generator<'a> {
+    ctxt: jit::Context,
+    m: &'a jit::Module,
+    f: jit::Function,
+    state: State,
+}
+
+impl<'a> Deref for Generator<'a> {
+    type Target = State;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+struct State {
+    builder: jit::IRBuilder,
+    pkt: jit::ValueRef,
+    len: jit::ValueRef,
+    a: jit::insts::AllocaInst,
+    x: jit::insts::AllocaInst,
+    mem: jit::insts::AllocaInst,
+    labels: Rc<RefCell<HashMap<usize, BasicBlock>>>,
+}
+
+impl State {
+    pub fn new(ctxt: &jit::Context, f: &jit::Function) -> Self {
         let i32_t = ctxt.int32_t();
+        let uint32 = |v: u64| -> ConstantInt { i32_t.uint(v) };
 
-        let donothing = m.intrinsic_declaration(IntrinsicId::donothing, &[][..]);
+        let pkt = f.get_param(0).unwrap();
+        let len = f.get_param(1).unwrap();
 
-        let f = m.add_function(name, func!(|i8_ptr_t, i32_t| -> i32_t));
-
-        let arg0 = f.get_param(0).unwrap();
-        let arg1 = f.get_param(1).unwrap();
-        let pkt = arg0.set_name("pkt");
-        let len = arg1.set_name("len");
-
-        info!("generate BPF function `{}` with signature: {}", name, *f);
+        pkt.set_name("pkt");
+        len.set_name("len");
 
         let builder = ctxt.create_builder();
 
-        let uint8 = |k: u8| -> ConstantInt { i8_t.uint(k as u64) };
-        let uint32 = |k: u32| -> ConstantInt { i32_t.uint(k as u64) };
-
-        let labels = Rc::new(RefCell::new(HashMap::new()));
-        let get_or_insert_label = |off| -> BasicBlock {
-            *labels
-                .borrow_mut()
-                .entry(off)
-                .or_insert_with(|| f.append_basic_block_in_context(format!("L{}", off), &ctxt))
-        };
-
         let entry = f.append_basic_block_in_context("entry", &ctxt);
-        let (a, x, m) = builder.within(entry, || {
+        let (a, x, mem) = builder.within(entry, || {
             (
                 alloca!(i32_t; "A"),
                 alloca!(i32_t; "X"),
@@ -81,155 +93,206 @@ impl Program {
 
         builder.within(entry, || (store!(uint32(0), a), store!(uint32(0), x)));
 
-        let get_src_value = |src| -> AstNode {
-            match src {
-                Src::K(k) => uint32(k).into(),
-                Src::X => load!(x; "x").into(),
-            }
-        };
+        let labels = Rc::new(RefCell::new(HashMap::new()));
 
-        let md_opcode = ctxt.md_kind_id("opcode");
+        State {
+            builder,
+            pkt,
+            len,
+            a,
+            x,
+            mem,
+            labels,
+        }
+    }
+}
 
-        for (idx, inst) in self.into_iter().enumerate() {
-            if let Some(label) = labels.borrow().get(&idx) {
-                builder.position_at_end(*label);
+impl<'a> Generator<'a> {
+    pub fn new<S: AsRef<str>>(m: &'a jit::Module, name: S) -> Self {
+        let ctxt = m.context();
+        let name = name.as_ref();
+
+        let i8_t = ctxt.int8_t();
+        let i8_ptr_t = i8_t.ptr_t();
+        let i32_t = ctxt.int32_t();
+
+        let f = m.add_function(name, func!(|i8_ptr_t, i32_t| -> i32_t));
+
+        info!("generate BPF function `{}` with signature: {}", name, *f);
+
+        let state = State::new(&ctxt, &f);
+
+        Generator { ctxt, m, f, state }
+    }
+
+    pub fn gen<I>(self, insts: I) -> Result<jit::Function>
+    where
+        I: Iterator<Item = Inst>,
+    {
+        let donothing = self.m.intrinsic_declaration(IntrinsicId::donothing, &[][..]);
+        let md_opcode = self.ctxt.md_kind_id("opcode");
+
+        for (idx, inst) in insts.enumerate() {
+            if let Some(label) = self.labels.borrow().get(&idx) {
+                self.builder.position_at_end(*label);
             }
 
             if cfg!(feature = "debug") {
                 call!(donothing)
-                    .emit_to(&builder)
-                    .set_metadata(md_opcode, ctxt.md_string(InstFmt(idx, &inst).to_string()));
+                    .emit_to(&self.builder)
+                    .set_metadata(md_opcode, self.ctxt.md_string(InstFmt(idx, &inst).to_string()));
             }
 
-            match inst {
-                Inst::Load(mode) => {
-                    let value: AstNode = match mode {
-                        Mode::Abs(off, size) => {
-                            let p = bit_cast!(gep!(*pkt, uint32(off); "p"), size.ty(&ctxt); "p");
-
-                            zext!(load!(p; format!("P[k:{}]", size.bytes())), i32_t; "v").into()
-                        }
-                        Mode::Ind(off, size) => {
-                            let p = gep!(*pkt, add!(load!(x; "x"), uint32(off); "idx"); "p");
-                            let p = bit_cast!(p, size.ty(&ctxt); "p");
-
-                            zext!(load!(p; format!("P[X+k:{}]", size.bytes())), i32_t; "v").into()
-                        }
-                        Mode::Len => (*len).into(),
-                        Mode::Imm(off) => uint32(off).into(),
-                        Mode::Mem(off) => extract_value!(m, off; "M[k]").into(),
-                        _ => unreachable!(),
-                    };
-
-                    store!(value, a).emit_to(&builder);
-                }
-                Inst::LoadX(mode) => {
-                    let value: AstNode = match mode {
-                        Mode::Len => (*len).into(),
-                        Mode::Imm(off) => uint32(off).into(),
-                        Mode::Mem(off) => extract_value!(m, off; "M[k]").into(),
-                        Mode::Msh(off) => mul!(
-                            uint32(4),
-                            zext!(
-                                and!(
-                                    load!(gep!(*pkt, uint32(off); "p"); "P[k:1]"),
-                                    uint8(0x0f);
-                                    "P[k:1]&0xf"
-                                ),
-                                i32_t
-                            );
-                            "4*(P[k:1]&0xf)"
-                        )
-                        .into(),
-                        _ => unreachable!(),
-                    };
-
-                    store!(value, x).emit_to(&builder);
-                }
-                Inst::Store(off) => {
-                    store!(load!(a; "a"), gep!(m, uint32(off); "M[k]")).emit_to(&builder);
-                }
-                Inst::StoreX(off) => {
-                    store!(load!(x; "x"), gep!(m, uint32(off); "M[k]")).emit_to(&builder);
-                }
-
-                Inst::Jmp(Cond::Abs(off)) => {
-                    br!(get_or_insert_label(idx + off as usize + 1)).emit_to(&builder);
-                }
-                Inst::Jmp(Cond::Gt(src, jt, jf)) => {
-                    let cond = ugt!(load!(a; "a"), get_src_value(src));
-
-                    br!(
-                        cond => get_or_insert_label(idx + jt as usize + 1),
-                        _ => get_or_insert_label(idx + jf as usize + 1)
-                    )
-                    .emit_to(&builder);
-                }
-                Inst::Jmp(Cond::Ge(src, jt, jf)) => {
-                    let cond = uge!(load!(a; "a"), get_src_value(src));
-
-                    br!(
-                        cond => get_or_insert_label(idx + jt as usize + 1),
-                        _ => get_or_insert_label(idx + jf as usize + 1)
-                    )
-                    .emit_to(&builder);
-                }
-                Inst::Jmp(Cond::Eq(src, jt, jf)) => {
-                    let cond = eq!(load!(a; "a"), get_src_value(src));
-
-                    br!(
-                        cond => get_or_insert_label(idx + jt as usize + 1),
-                        _ => get_or_insert_label(idx + jf as usize + 1)
-                    )
-                    .emit_to(&builder);
-                }
-                Inst::Jmp(Cond::Set(src, jt, jf)) => {
-                    let cond = eq!(and!(load!(a; "a"), get_src_value(src)), get_src_value(src));
-
-                    br!(
-                        cond => get_or_insert_label(idx + jt as usize + 1),
-                        _ => get_or_insert_label(idx + jf as usize + 1)
-                    )
-                    .emit_to(&builder);
-                }
-                Inst::Alu(op) => {
-                    let value: AstNode = match op {
-                        Op::Add(src) => add!(load!(a; "a"), get_src_value(src)).into(),
-                        Op::Sub(src) => sub!(load!(a; "a"), get_src_value(src)).into(),
-                        Op::Mul(src) => mul!(load!(a; "a"), get_src_value(src)).into(),
-                        Op::Div(src) => udiv!(load!(a; "a"), get_src_value(src)).into(),
-                        Op::Mod(src) => urem!(load!(a; "a"), get_src_value(src)).into(),
-                        Op::And(src) => and!(load!(a; "a"), get_src_value(src)).into(),
-                        Op::Or(src) => or!(load!(a; "a"), get_src_value(src)).into(),
-                        Op::Xor(src) => xor!(load!(a; "a"), get_src_value(src)).into(),
-                        Op::LShift(src) => shl!(load!(a; "a"), get_src_value(src)).into(),
-                        Op::RShift(src) => lshr!(load!(a; "a"), get_src_value(src)).into(),
-                        Op::Neg => sub!(uint32(0), load!(a; "a")).into(),
-                    };
-
-                    store!(value, a).emit_to(&builder);
-                }
-                Inst::Ret(rval) => {
-                    let result: AstNode = match rval {
-                        Some(RVal::K(k)) => uint32(k).into(),
-                        Some(RVal::A) => a.into(),
-                        None => uint32(0).into(),
-                    };
-
-                    ret!(result).emit_to(&builder);
-                }
-                Inst::Misc(MiscOp::Tax) => {
-                    store!(load!(a; "a"), x).emit_to(&builder);
-                }
-                Inst::Misc(MiscOp::Txa) => {
-                    store!(load!(x; "x"), a).emit_to(&builder);
-                }
-            }
+            self.gen_inst(idx, inst).emit_to(&self.builder);
         }
 
-        f.verify()?;
+        self.f.verify()?;
 
-        Ok(f)
+        Ok(self.f)
+    }
+
+    pub fn gen_inst(&self, idx: usize, inst: Inst) -> AstNode {
+        let i8_t = self.ctxt.int8_t();
+        let i32_t = self.ctxt.int32_t();
+
+        let uint8 = |k: u8| -> ConstantInt { i8_t.uint(k as u64) };
+        let uint32 = |k: u32| -> ConstantInt { i32_t.uint(k as u64) };
+
+        let load_a = || load!(self.a; "a");
+        let load_x = || load!(self.x; "x");
+
+        let get_src_value = |src| -> AstNode {
+            match src {
+                Src::K(k) => self.ctxt.uint32(k).into(),
+                Src::X => load!(self.x; "x").into(),
+            }
+        };
+
+        let get_or_insert_label_at_offset = |off: usize| {
+            let off = idx + off + 1;
+
+            *self
+                .labels
+                .borrow_mut()
+                .entry(off)
+                .or_insert_with(|| self.f.append_basic_block_in_context(format!("L{}", off), &self.ctxt))
+        };
+
+        match inst {
+            Inst::Load(mode) => {
+                let value: AstNode = match mode {
+                    Mode::Abs(off, size) => {
+                        let p = bit_cast!(gep!(self.pkt, uint32(off); "p"), size.ty(&self.ctxt); "p");
+
+                        zext!(load!(p; format!("P[k:{}]", size.bytes())), i32_t; "v").into()
+                    }
+                    Mode::Ind(off, size) => {
+                        let p = gep!(self.pkt, add!(load_x(), uint32(off); "idx"); "p");
+                        let p = bit_cast!(p, size.ty(&self.ctxt); "p");
+
+                        zext!(load!(p; format!("P[X+k:{}]", size.bytes())), i32_t; "v").into()
+                    }
+                    Mode::Len => self.len.into(),
+                    Mode::Imm(off) => uint32(off).into(),
+                    Mode::Mem(off) => extract_value!(self.mem, off; "M[k]").into(),
+                    _ => unreachable!(),
+                };
+
+                store!(value, self.a).into()
+            }
+            Inst::LoadX(mode) => {
+                let value: AstNode = match mode {
+                    Mode::Len => self.len.into(),
+                    Mode::Imm(off) => uint32(off).into(),
+                    Mode::Mem(off) => extract_value!(self.mem, off; "M[k]").into(),
+                    Mode::Msh(off) => mul!(
+                        uint32(4),
+                        zext!(
+                            and!(
+                                load!(gep!(self.pkt, uint32(off); "p"); "P[k:1]"),
+                                uint8(0x0f);
+                                "P[k:1]&0xf"
+                            ),
+                            i32_t
+                        );
+                        "4*(P[k:1]&0xf)"
+                    )
+                    .into(),
+                    _ => unreachable!(),
+                };
+
+                store!(value, self.x).into()
+            }
+
+            Inst::Store(off) => store!(load_a(), gep!(self.mem, uint32(off); "M[k]")).into(),
+            Inst::StoreX(off) => store!(load_x(), gep!(self.mem, uint32(off); "M[k]")).into(),
+
+            Inst::Jmp(Cond::Abs(off)) => br!(get_or_insert_label_at_offset(off as usize)).into(),
+            Inst::Jmp(Cond::Gt(src, jt, jf)) => {
+                let cond = ugt!(load_a(), get_src_value(src));
+
+                br!(
+                    cond => get_or_insert_label_at_offset(jt as usize),
+                    _ =>get_or_insert_label_at_offset(jf as usize)
+                )
+                .into()
+            }
+            Inst::Jmp(Cond::Ge(src, jt, jf)) => {
+                let cond = uge!(load_a(), get_src_value(src));
+
+                br!(
+                    cond => get_or_insert_label_at_offset(jt as usize),
+                    _ => get_or_insert_label_at_offset(jf as usize)
+                )
+                .into()
+            }
+            Inst::Jmp(Cond::Eq(src, jt, jf)) => {
+                let cond = eq!(load_a(), get_src_value(src));
+
+                br!(
+                    cond => get_or_insert_label_at_offset(jt as usize),
+                    _ => get_or_insert_label_at_offset(jf as usize)
+                )
+                .into()
+            }
+            Inst::Jmp(Cond::Set(src, jt, jf)) => {
+                let cond = eq!(and!(load_a(), get_src_value(src)), get_src_value(src));
+
+                br!(
+                    cond => get_or_insert_label_at_offset(jt as usize),
+                    _ => get_or_insert_label_at_offset(jf as usize)
+                )
+                .into()
+            }
+            Inst::Alu(op) => {
+                let value: AstNode = match op {
+                    Op::Add(src) => add!(load_a(), get_src_value(src)).into(),
+                    Op::Sub(src) => sub!(load_a(), get_src_value(src)).into(),
+                    Op::Mul(src) => mul!(load_a(), get_src_value(src)).into(),
+                    Op::Div(src) => udiv!(load_a(), get_src_value(src)).into(),
+                    Op::Mod(src) => urem!(load_a(), get_src_value(src)).into(),
+                    Op::And(src) => and!(load_a(), get_src_value(src)).into(),
+                    Op::Or(src) => or!(load_a(), get_src_value(src)).into(),
+                    Op::Xor(src) => xor!(load_a(), get_src_value(src)).into(),
+                    Op::LShift(src) => shl!(load_a(), get_src_value(src)).into(),
+                    Op::RShift(src) => lshr!(load_a(), get_src_value(src)).into(),
+                    Op::Neg => sub!(uint32(0), load_a()).into(),
+                };
+
+                store!(value, self.a).into()
+            }
+            Inst::Ret(rval) => {
+                let result: AstNode = match rval {
+                    Some(RVal::K(k)) => uint32(k).into(),
+                    Some(RVal::A) => self.a.into(),
+                    None => uint32(0).into(),
+                };
+
+                ret!(result).into()
+            }
+            Inst::Misc(MiscOp::Tax) => store!(load_a(), self.x).into(),
+            Inst::Misc(MiscOp::Txa) => store!(load_x(), self.a).into(),
+        }
     }
 }
 
