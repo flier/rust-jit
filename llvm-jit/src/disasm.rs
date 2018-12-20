@@ -174,7 +174,10 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let pos = self.cur.position();
 
-        self.disasm.disasm_inst(self.cur, self.pc).ok().map(|inst| (pos, self.cur.position() - pos, inst))
+        self.disasm
+            .disasm_inst(self.cur, self.pc)
+            .ok()
+            .map(|inst| (pos, self.cur.position() - pos, inst))
     }
 }
 
@@ -197,7 +200,10 @@ mod tests {
         ]);
 
         assert_eq!(
-            disasm.disasm_insts(&mut cur, 0).map(|(off, len, inst)| format!("[{}:{}]{}", off, off+len, inst)).collect::<Vec<String>>(),
+            disasm
+                .disasm_insts(&mut cur, 0)
+                .map(|(off, len, inst)| format!("[{}:{}]{}", off, off + len, inst))
+                .collect::<Vec<String>>(),
             vec![
                 "[0:1]\tpushq\t%rbp",
                 "[1:4]\tmovq\t%rsp, %rbp",

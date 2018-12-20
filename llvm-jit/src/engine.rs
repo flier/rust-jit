@@ -204,57 +204,91 @@ impl MCJITMemoryManager {
 
 pub mod mmap {
     use std::alloc::Layout;
-    use std::ops::{Deref, DerefMut};
+    use std::ops::Deref;
     use std::ptr::{self, NonNull};
     use std::slice;
 
     use boolinator::Boolinator;
     use llvm_sys::prelude::*;
+    use memmap::{Mmap, MmapMut};
 
     use crate::engine::MCJITMemoryManager;
+    use crate::errors::Result;
     use crate::utils::{AsBool, UncheckedCStr, TRUE};
 
-    pub struct MemorySection(mmap::MemoryMap);
+    pub struct MemorySection(Option<State>);
+
+    enum State {
+        Init(Init),
+        Finalized(Finalized),
+    }
+
+    enum Init {
+        Code(MmapMut),
+        Data(MmapMut, bool),
+    }
+
+    enum Finalized {
+        Executable(Mmap),
+        ReadOnly(Mmap),
+        Writable(MmapMut),
+    }
 
     impl Deref for MemorySection {
         type Target = [u8];
 
         fn deref(&self) -> &Self::Target {
-            unsafe { slice::from_raw_parts(self.0.data(), self.0.len()) }
-        }
-    }
+            let (data, len) = match self.0.as_ref() {
+                Some(State::Init(Init::Code(mm)))
+                | Some(State::Init(Init::Data(mm, _)))
+                | Some(State::Finalized(Finalized::Writable(mm))) => (mm.as_ptr(), mm.len()),
+                Some(State::Finalized(Finalized::Executable(mm))) | Some(State::Finalized(Finalized::ReadOnly(mm))) => {
+                    (mm.as_ptr(), mm.len())
+                }
+                None => unreachable!(),
+            };
 
-    impl DerefMut for MemorySection {
-        fn deref_mut(&mut self) -> &mut Self::Target {
-            unsafe { slice::from_raw_parts_mut(self.0.data(), self.0.len()) }
+            unsafe { slice::from_raw_parts(data, len) }
         }
     }
 
     impl MemorySection {
-        pub fn code(size: usize, alignment: usize) -> Self {
-            let layout = Layout::from_size_align(size, alignment).unwrap();
-            let options = &[mmap::MapOption::MapWritable, mmap::MapOption::MapExecutable];
+        pub fn code(size: usize, alignment: usize) -> Result<Self> {
+            let layout = Layout::from_size_align(size, alignment)?;
+            let mm = MmapMut::map_anon(layout.size())?;
 
-            MemorySection(mmap::MemoryMap::new(layout.size(), options).unwrap())
+            Ok(MemorySection(Some(State::Init(Init::Code(mm)))))
         }
 
-        pub fn data(size: usize, alignment: usize, is_read_only: bool) -> Self {
-            let layout = Layout::from_size_align(size, alignment).unwrap();
-            let mut options = vec![mmap::MapOption::MapReadable];
+        pub fn data(size: usize, alignment: usize, read_only: bool) -> Result<Self> {
+            let layout = Layout::from_size_align(size, alignment)?;
+            let mm = MmapMut::map_anon(layout.size())?;
 
-            if !is_read_only {
-                options.push(mmap::MapOption::MapWritable);
+            Ok(MemorySection(Some(State::Init(Init::Data(mm, read_only)))))
+        }
+
+        pub fn finalize(&mut self) -> Result<()> {
+            self.0 = match self.0.take() {
+                Some(State::Init(Init::Code(mm))) => Some(State::Finalized(Finalized::Executable(mm.make_exec()?))),
+                Some(State::Init(Init::Data(mm, read_only))) => {
+                    if read_only {
+                        Some(State::Finalized(Finalized::ReadOnly(mm.make_read_only()?)))
+                    } else {
+                        Some(State::Finalized(Finalized::Writable(mm)))
+                    }
+                }
+                state => state,
             };
 
-            MemorySection(mmap::MemoryMap::new(layout.size(), &options).unwrap())
+            Ok(())
         }
 
         pub fn begin(&self) -> *const u8 {
-            self.0.data()
+            self.as_ptr()
         }
 
         pub fn end(&self) -> *const u8 {
-            unsafe { self.0.data().add(self.0.len()) }
+            unsafe { self.as_ptr().add(self.len()) }
         }
 
         pub fn contains<T>(&self, p: *const T) -> bool {
@@ -266,8 +300,8 @@ pub mod mmap {
 
     #[derive(Default)]
     pub struct MemoryManager {
-        pub code_sections: Vec<(MemorySection, usize)>,
-        pub data_sections: Vec<(MemorySection, usize)>,
+        pub code_sections: Vec<MemorySection>,
+        pub data_sections: Vec<MemorySection>,
     }
 
     impl From<&mut MemoryManager> for MCJITMemoryManager {
@@ -284,8 +318,8 @@ pub mod mmap {
         section_name: *const ::libc::c_char,
     ) -> *mut u8 {
         if let Some(mm) = NonNull::new(data) {
-            let mut section = MemorySection::code(size as usize, alignment as usize);
-            let p = section.as_mut_ptr();
+            let section = MemorySection::code(size as usize, alignment as usize).unwrap();
+            let p = section.as_ptr();
 
             trace!(
                 "allocate {} bytes (align to {}) code section `{}` #{} @ {:?}, mm @ {:?}",
@@ -298,10 +332,10 @@ pub mod mmap {
             );
 
             unsafe {
-                mm.cast::<MemoryManager>().as_mut().code_sections.push((section, size));
+                mm.cast::<MemoryManager>().as_mut().code_sections.push(section);
             }
 
-            p
+            p as *mut _
         } else {
             ptr::null_mut()
         }
@@ -315,8 +349,8 @@ pub mod mmap {
         is_read_only: LLVMBool,
     ) -> *mut u8 {
         if let Some(mm) = NonNull::new(data) {
-            let mut section = MemorySection::data(size as usize, alignment as usize, is_read_only.as_bool());
-            let p = section.as_mut_ptr();
+            let section = MemorySection::data(size as usize, alignment as usize, is_read_only.as_bool()).unwrap();
+            let p = section.as_ptr();
 
             trace!(
                 "allocated {} bytes (align to {}) {} data section `{}` #{} @ {:?}, mm @ {:?}",
@@ -330,16 +364,28 @@ pub mod mmap {
             );
 
             unsafe {
-                mm.cast::<MemoryManager>().as_mut().data_sections.push((section, size));
+                mm.cast::<MemoryManager>().as_mut().data_sections.push(section);
             }
 
-            p
+            p as *mut _
         } else {
             ptr::null_mut()
         }
     }
     extern "C" fn mm_finalize(data: *mut ::libc::c_void, err_msg: *mut *mut ::libc::c_char) -> LLVMBool {
         trace!("finalize memory, mm @ {:?}", data);
+
+        if let Some(mm) = NonNull::new(data) {
+            let mut mm = mm.cast::<MemoryManager>();
+            let mm = unsafe { mm.as_mut() };
+
+            for section in &mut mm.code_sections {
+                section.finalize().unwrap();
+            }
+            for section in &mut mm.data_sections {
+                section.finalize().unwrap();
+            }
+        }
 
         unsafe {
             *err_msg = ptr::null_mut();

@@ -235,7 +235,7 @@ impl Program {
 
 #[cfg(test)]
 mod tests {
-    use std::io::{Cursor};
+    use std::io::Cursor;
 
     use crate::compile;
     use crate::raw::*;
@@ -281,7 +281,9 @@ mod tests {
         debug!("generated filter: {:?}", f);
 
         let passmgr = jit::PassManager::new();
-        jit::PassManagerBuilder::new().set_opt_level(3).populate_module_pass_manager(&passmgr);
+        jit::PassManagerBuilder::new()
+            .set_opt_level(3)
+            .populate_module_pass_manager(&passmgr);
         passmgr.run(&m);
 
         // build an execution engine
@@ -291,13 +293,14 @@ mod tests {
         let engine = jit::engine::MCJITCompiler::for_module(m, opts).unwrap();
 
         let addr = engine.get_function_address(fname).unwrap() as *const u8;
-        let (section, size) = mm.code_sections.iter().find(|(section, _)| section.contains(addr)).unwrap();
+        let section = mm.code_sections.iter().find(|section| section.contains(addr)).unwrap();
+        let size = section.len();
 
         let triple = Target::default_triple();
         let disasm = jit::Disasm::new::<()>(&triple, 0, None, None, None);
 
         let off = addr as usize - section.begin() as usize;
-        let code = &section[off..*size];
+        let code = &section[off..size];
         let mut cur = Cursor::new(code);
         for (off, _len, inst) in disasm.disasm_insts(&mut cur, 0) {
             debug!("0x{:04x} {}", off, inst);
