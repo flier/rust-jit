@@ -1,2 +1,2 @@
 [workspace]
-members = ["llvm-jit", "llvm-bpf", "llvm-wasm"]
+members = ["llvm-jit", "llvm-bpf", "llvm-ir", "llvm-wasm"]

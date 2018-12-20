@@ -1,0 +1,18 @@
+[package]
+name = "llvm-ir"
+version = "0.1.0"
+authors = ["Flier Lu <flier.lu@gmail.com>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+log = "0.4"
+syn = { version = "0.15", features = ["full"] }
+quote = "0.6"
+proc-macro2 = "0.4"
+lazy_static = "1"
+regex = "1"
+
+llvm-jit = { path = "../llvm-jit" }
