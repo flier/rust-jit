@@ -13,3 +13,8 @@ pub fn ret() {
 
     assert_eq!(ir! { ret i32 5 }, Ret::value(5));
 }
+
+#[test]
+pub fn unreachable() {
+    assert_eq!(ir! { unreachable }, Unreachable);
+}

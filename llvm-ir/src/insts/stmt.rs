@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::{ToTokens, TokenStreamExt};
+use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
 use syn::Result;
 
@@ -11,10 +11,10 @@ pub struct Ret(Option<(Type, Value)>);
 
 impl Parse for Ret {
     fn parse(input: ParseStream) -> Result<Self> {
-        input.parse::<kw::ret>()?;
+        let _ret = input.parse::<kw::ret>()?;
 
         if input.peek(kw::void) {
-            input.parse::<kw::void>()?;
+            let _void = input.parse::<kw::void>()?;
 
             Ok(Ret(None))
         } else {
@@ -28,7 +28,7 @@ impl Parse for Ret {
 
 impl ToTokens for Ret {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let expanded = if let Some((_ty, val)) = self.0.as_ref() {
+        if let Some((_ty, val)) = self.0.as_ref() {
             quote! {
                 ret!(#val)
             }
@@ -36,8 +36,7 @@ impl ToTokens for Ret {
             quote! {
                 ret!()
             }
-        };
-
-        tokens.append_all(expanded)
+        }
+        .to_tokens(tokens)
     }
 }
