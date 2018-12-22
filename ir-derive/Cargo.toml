@@ -1,5 +1,5 @@
 [package]
-name = "llvm-ir"
+name = "llvm-ir-derive"
 version = "0.1.0"
 authors = ["Flier Lu <flier.lu@gmail.com>"]
 edition = "2018"
@@ -8,11 +8,13 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
-log = "0.4"
 syn = { version = "0.15", features = ["full"] }
 quote = "0.6"
-proc-macro2 = "0.4"
-lazy_static = "1"
-regex = "1"
 
-llvm-jit = { path = "../llvm-jit" }
+llvm-ir = { path = "../ir" }
+
+[dev-dependencies]
+matches = "0.1"
+
+llvm-jit = { path = "../jit" }
+

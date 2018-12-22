@@ -12,6 +12,15 @@ pub enum Operand {
     Bool(LitBool),
 }
 
+impl Operand {
+    pub fn ident(&self) -> Option<&Ident> {
+        match self {
+            Operand::Ident(ident) => Some(ident),
+            _ => None,
+        }
+    }
+}
+
 impl Parse for Operand {
     fn parse(input: ParseStream) -> Result<Self> {
         let lookahead = input.lookahead1();

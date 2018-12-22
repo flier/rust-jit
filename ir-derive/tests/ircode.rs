@@ -1,9 +1,12 @@
 #![feature(proc_macro_hygiene)]
 
 #[macro_use]
-extern crate llvm_jit as jit;
+extern crate matches;
 #[macro_use]
-extern crate llvm_ir;
+extern crate llvm_jit as jit;
+extern crate llvm_ir as ir;
+#[macro_use]
+extern crate llvm_ir_derive;
 
 use jit::insts::*;
 
@@ -17,4 +20,11 @@ pub fn ret() {
 #[test]
 pub fn unreachable() {
     assert_eq!(ir! { unreachable }, Unreachable);
+}
+
+#[test]
+pub fn fneg() {
+    let val = 5;
+
+    assert_matches!(ir! { fneg float %val }, FNeg{..});
 }

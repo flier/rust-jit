@@ -3,18 +3,10 @@ extern crate proc_macro;
 extern crate syn;
 #[macro_use]
 extern crate quote;
-#[macro_use]
-extern crate lazy_static;
 
 use proc_macro::TokenStream;
 
-mod expr;
-mod ir;
-mod kw;
-mod op;
-mod stmt;
-mod ty;
-mod value;
+use llvm_ir as ir;
 
 #[proc_macro]
 pub fn ir(input: TokenStream) -> TokenStream {

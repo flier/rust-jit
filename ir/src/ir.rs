@@ -11,23 +11,24 @@ use crate::stmt::Ret;
 pub enum IrCode {
     Ret(Ret),
     Unreachable(kw::unreachable),
-    Expr(Operand, Expr),
+    Assign(Operand, Expr),
+    Expr(Expr),
 }
 
 impl Parse for IrCode {
     fn parse(input: ParseStream) -> Result<Self> {
-        let lookahead = input.lookahead1();
-
-        if lookahead.peek(kw::ret) {
+        if input.peek(kw::ret) {
             input.parse().map(IrCode::Ret)
-        } else if lookahead.peek(kw::unreachable) {
+        } else if input.peek(kw::unreachable) {
             input.parse().map(IrCode::Unreachable)
-        } else {
+        } else if input.peek(Token![%]) {
             let result = input.parse::<Operand>()?;
             let _eq = input.parse::<Token![=]>()?;
             let op = input.parse::<Expr>()?;
 
-            Ok(IrCode::Expr(result, op))
+            Ok(IrCode::Assign(result, op))
+        } else {
+            input.parse().map(IrCode::Expr)
         }
     }
 }
@@ -37,7 +38,8 @@ impl ToTokens for IrCode {
         match self {
             IrCode::Ret(ret) => quote! { #ret },
             IrCode::Unreachable(_) => quote! { ::llvm_jit::insts::Unreachable },
-            IrCode::Expr(operand, expr) => quote! { let #operand = #expr; },
+            IrCode::Assign(operand, expr) => quote! { let #operand = #expr; },
+            IrCode::Expr(expr) => quote! { #expr },
         }
         .to_tokens(tokens)
     }

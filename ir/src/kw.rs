@@ -18,6 +18,8 @@ custom_keyword!(ppc_fp128);
 /// The x86_mmx type represents a value held in an MMX register on an x86 machine.
 custom_keyword!(x86_mmx);
 
+custom_keyword!(x);
+
 custom_keyword!(ret);
 custom_keyword!(unreachable);
 custom_keyword!(fneg);

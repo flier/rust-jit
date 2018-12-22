@@ -8,7 +8,7 @@ use crate::op::Operand;
 use crate::ty::Type;
 
 pub enum Expr {
-    Fneg(Fneg),
+    FNeg(FNeg),
     Add(Add),
     FAdd(FAdd),
     Sub(Sub),
@@ -28,7 +28,7 @@ impl Parse for Expr {
         let lookahead = input.lookahead1();
 
         if lookahead.peek(kw::fneg) {
-            input.parse().map(Expr::Fneg)
+            input.parse().map(Expr::FNeg)
         } else if lookahead.peek(kw::add) {
             input.parse().map(Expr::Add)
         } else if lookahead.peek(kw::fadd) {
@@ -60,22 +60,38 @@ impl Parse for Expr {
 }
 
 impl ToTokens for Expr {
-    fn to_tokens(&self, tokens: &mut TokenStream) {}
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            Expr::FNeg(fneg) => fneg.to_tokens(tokens),
+            _ => unimplemented!(),
+        }
+    }
 }
 
-pub struct Fneg {
+pub struct FNeg {
     fneg: kw::fneg,
     ty: Type,
     op: Operand,
 }
 
-impl Parse for Fneg {
+impl Parse for FNeg {
     fn parse(input: ParseStream) -> Result<Self> {
         let fneg = input.parse()?;
         let ty = input.parse()?;
         let op = input.parse()?;
 
-        Ok(Fneg { fneg, ty, op })
+        Ok(FNeg { fneg, ty, op })
+    }
+}
+
+impl ToTokens for FNeg {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        if let Some(ident) = self.op.ident() {
+            quote! { fneg!(#ident) }
+        } else {
+            quote! {}
+        }
+        .to_tokens(tokens)
     }
 }
 
