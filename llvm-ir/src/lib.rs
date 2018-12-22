@@ -8,9 +8,11 @@ extern crate lazy_static;
 
 use proc_macro::TokenStream;
 
-mod insts;
+mod expr;
 mod ir;
 mod kw;
+mod op;
+mod stmt;
 mod ty;
 mod value;
 

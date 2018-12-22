@@ -1,15 +1,17 @@
 use proc_macro2::TokenStream;
-use quote::{ToTokens, TokenStreamExt};
+use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
 use syn::Result;
 
-use crate::insts::*;
+use crate::expr::Expr;
 use crate::kw;
+use crate::op::Operand;
+use crate::stmt::Ret;
 
 pub enum IrCode {
     Ret(Ret),
     Unreachable(kw::unreachable),
-    Assign(Operand, Operation),
+    Expr(Operand, Expr),
 }
 
 impl Parse for IrCode {
@@ -23,9 +25,9 @@ impl Parse for IrCode {
         } else {
             let result = input.parse::<Operand>()?;
             let _eq = input.parse::<Token![=]>()?;
-            let op = input.parse::<Operation>()?;
+            let op = input.parse::<Expr>()?;
 
-            Ok(IrCode::Assign(result, op))
+            Ok(IrCode::Expr(result, op))
         }
     }
 }
@@ -35,7 +37,7 @@ impl ToTokens for IrCode {
         match self {
             IrCode::Ret(ret) => quote! { #ret },
             IrCode::Unreachable(_) => quote! { ::llvm_jit::insts::Unreachable },
-            IrCode::Assign(operand, operation) => quote! { let #operand = #operation; },
+            IrCode::Expr(operand, expr) => quote! { let #operand = #expr; },
         }
         .to_tokens(tokens)
     }

@@ -1,67 +1,13 @@
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
-use syn::{Ident, LitBool, LitChar, LitFloat, LitInt, LitStr, Result};
+use syn::Result;
 
 use crate::kw;
+use crate::op::Operand;
 use crate::ty::Type;
 
-pub enum Operand {
-    Ident(Ident),
-    Str(LitStr),
-    Char(LitChar),
-    Int(LitInt),
-    Float(LitFloat),
-    Bool(LitBool),
-}
-
-impl Parse for Operand {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let lookahead = input.lookahead1();
-
-        if lookahead.peek(Token![%]) && (input.peek2(Ident) || input.peek2(LitInt)) {
-            let _rem = input.parse::<Token![%]>()?;
-
-            if input.peek(Ident) {
-                input.parse::<Ident>().map(Operand::Ident)
-            } else if input.peek(LitInt) {
-                input
-                    .parse::<LitInt>()
-                    .map(|int| Ident::new(&format!("v{}", int.value()), Span::call_site()))
-                    .map(Operand::Ident)
-            } else {
-                unreachable!()
-            }
-        } else if lookahead.peek(LitStr) {
-            input.parse().map(Operand::Str)
-        } else if lookahead.peek(LitChar) {
-            input.parse().map(Operand::Char)
-        } else if lookahead.peek(LitInt) {
-            input.parse().map(Operand::Int)
-        } else if lookahead.peek(LitFloat) {
-            input.parse().map(Operand::Float)
-        } else if lookahead.peek(LitBool) {
-            input.parse().map(Operand::Bool)
-        } else {
-            Err(lookahead.error())
-        }
-    }
-}
-
-impl ToTokens for Operand {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            Operand::Ident(ident) => ident.to_tokens(tokens),
-            Operand::Str(s) => s.value().to_tokens(tokens),
-            Operand::Char(c) => c.value().to_tokens(tokens),
-            Operand::Int(n) => n.value().to_tokens(tokens),
-            Operand::Float(f) => f.value().to_tokens(tokens),
-            Operand::Bool(b) => b.value.to_tokens(tokens),
-        }
-    }
-}
-
-pub enum Operation {
+pub enum Expr {
     Fneg(Fneg),
     Add(Add),
     FAdd(FAdd),
@@ -77,43 +23,43 @@ pub enum Operation {
     FRem(FRem),
 }
 
-impl Parse for Operation {
+impl Parse for Expr {
     fn parse(input: ParseStream) -> Result<Self> {
         let lookahead = input.lookahead1();
 
         if lookahead.peek(kw::fneg) {
-            input.parse().map(Operation::Fneg)
+            input.parse().map(Expr::Fneg)
         } else if lookahead.peek(kw::add) {
-            input.parse().map(Operation::Add)
+            input.parse().map(Expr::Add)
         } else if lookahead.peek(kw::fadd) {
-            input.parse().map(Operation::FAdd)
+            input.parse().map(Expr::FAdd)
         } else if lookahead.peek(kw::sub) {
-            input.parse().map(Operation::Sub)
+            input.parse().map(Expr::Sub)
         } else if lookahead.peek(kw::fsub) {
-            input.parse().map(Operation::FSub)
+            input.parse().map(Expr::FSub)
         } else if lookahead.peek(kw::mul) {
-            input.parse().map(Operation::Mul)
+            input.parse().map(Expr::Mul)
         } else if lookahead.peek(kw::fmul) {
-            input.parse().map(Operation::FMul)
+            input.parse().map(Expr::FMul)
         } else if lookahead.peek(kw::udiv) {
-            input.parse().map(Operation::UDiv)
+            input.parse().map(Expr::UDiv)
         } else if lookahead.peek(kw::sdiv) {
-            input.parse().map(Operation::SDiv)
+            input.parse().map(Expr::SDiv)
         } else if lookahead.peek(kw::fdiv) {
-            input.parse().map(Operation::FDiv)
+            input.parse().map(Expr::FDiv)
         } else if lookahead.peek(kw::urem) {
-            input.parse().map(Operation::URem)
+            input.parse().map(Expr::URem)
         } else if lookahead.peek(kw::srem) {
-            input.parse().map(Operation::SRem)
+            input.parse().map(Expr::SRem)
         } else if lookahead.peek(kw::frem) {
-            input.parse().map(Operation::FRem)
+            input.parse().map(Expr::FRem)
         } else {
             Err(lookahead.error())
         }
     }
 }
 
-impl ToTokens for Operation {
+impl ToTokens for Expr {
     fn to_tokens(&self, tokens: &mut TokenStream) {}
 }
 
