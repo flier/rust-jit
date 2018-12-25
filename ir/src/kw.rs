@@ -1,6 +1,8 @@
 use syn::custom_keyword;
 
 custom_keyword!(void);
+custom_keyword!(null);
+custom_keyword!(none);
 
 /// 16-bit floating-point value
 custom_keyword!(half);
@@ -17,6 +19,15 @@ custom_keyword!(ppc_fp128);
 
 /// The x86_mmx type represents a value held in an MMX register on an x86 machine.
 custom_keyword!(x86_mmx);
+
+custom_keyword!(nnan);
+custom_keyword!(ninf);
+custom_keyword!(nsz);
+custom_keyword!(arcp);
+custom_keyword!(contract);
+custom_keyword!(afn);
+custom_keyword!(reassoc);
+custom_keyword!(fast);
 
 custom_keyword!(x);
 
@@ -107,6 +118,7 @@ custom_keyword!(tail);
 custom_keyword!(musttail);
 custom_keyword!(notail);
 custom_keyword!(va_arg);
+custom_keyword!(zeroinitializer);
 
 custom_keyword!(landingpad);
 custom_keyword!(cleanup);

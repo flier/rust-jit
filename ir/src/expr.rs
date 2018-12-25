@@ -7,6 +7,65 @@ use crate::kw;
 use crate::op::Operand;
 use crate::ty::Type;
 
+bitflags! {
+    struct FastMath: u8 {
+        const nnan = 0x01;
+        const ninf = 0x02;
+        const nsz = 0x04;
+        const arcp = 0x08;
+        const contract = 0x10;
+        const afn = 0x20;
+        const reassoc = 0x40;
+        const fast = 0x80;
+    }
+}
+
+impl Parse for FastMath {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let mut flags = FastMath::empty();
+
+        loop {
+            if input.peek(kw::nnan) {
+                let _ = input.parse::<kw::nnan>()?;
+
+                flags |= FastMath::nnan;
+            } else if input.peek(kw::ninf) {
+                let _ = input.parse::<kw::ninf>()?;
+
+                flags |= FastMath::ninf;
+            } else if input.peek(kw::nsz) {
+                let _ = input.parse::<kw::nsz>()?;
+
+                flags |= FastMath::nsz;
+            } else if input.peek(kw::arcp) {
+                let _ = input.parse::<kw::arcp>()?;
+
+                flags |= FastMath::arcp;
+            } else if input.peek(kw::contract) {
+                let _ = input.parse::<kw::contract>()?;
+
+                flags |= FastMath::contract;
+            } else if input.peek(kw::afn) {
+                let _ = input.parse::<kw::afn>()?;
+
+                flags |= FastMath::afn;
+            } else if input.peek(kw::reassoc) {
+                let _ = input.parse::<kw::reassoc>()?;
+
+                flags |= FastMath::reassoc;
+            } else if input.peek(kw::fast) {
+                let _ = input.parse::<kw::fast>()?;
+
+                flags |= FastMath::fast;
+            } else {
+                break;
+            }
+        }
+
+        Ok(flags)
+    }
+}
+
 pub enum Expr {
     FNeg(FNeg),
     Add(Add),
@@ -119,6 +178,7 @@ impl Parse for Add {
 
 pub struct FAdd {
     fadd: kw::fadd,
+    fast_math: FastMath,
     ty: Type,
     op1: Operand,
     op2: Operand,
@@ -128,6 +188,7 @@ impl Parse for FAdd {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(FAdd {
             fadd: input.parse()?,
+            fast_math: input.parse()?,
             ty: input.parse()?,
             op1: input.parse()?,
             op2: input.parse()?,
@@ -159,6 +220,7 @@ impl Parse for Sub {
 
 pub struct FSub {
     fsub: kw::fsub,
+    fast_math: FastMath,
     ty: Type,
     op1: Operand,
     op2: Operand,
@@ -168,6 +230,7 @@ impl Parse for FSub {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(FSub {
             fsub: input.parse()?,
+            fast_math: input.parse()?,
             ty: input.parse()?,
             op1: input.parse()?,
             op2: input.parse()?,
@@ -199,6 +262,7 @@ impl Parse for Mul {
 
 pub struct FMul {
     fmul: kw::fmul,
+    fast_math: FastMath,
     ty: Type,
     op1: Operand,
     op2: Operand,
@@ -208,6 +272,7 @@ impl Parse for FMul {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(FMul {
             fmul: input.parse()?,
+            fast_math: input.parse()?,
             ty: input.parse()?,
             op1: input.parse()?,
             op2: input.parse()?,
@@ -257,6 +322,7 @@ impl Parse for SDiv {
 
 pub struct FDiv {
     fdiv: kw::fdiv,
+    fast_math: FastMath,
     ty: Type,
     op1: Operand,
     op2: Operand,
@@ -266,6 +332,7 @@ impl Parse for FDiv {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(FDiv {
             fdiv: input.parse()?,
+            fast_math: input.parse()?,
             ty: input.parse()?,
             op1: input.parse()?,
             op2: input.parse()?,
@@ -311,6 +378,7 @@ impl Parse for SRem {
 
 pub struct FRem {
     frem: kw::frem,
+    fast_math: FastMath,
     ty: Type,
     op1: Operand,
     op2: Operand,
@@ -320,6 +388,7 @@ impl Parse for FRem {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(FRem {
             frem: input.parse()?,
+            fast_math: input.parse()?,
             ty: input.parse()?,
             op1: input.parse()?,
             op2: input.parse()?,
