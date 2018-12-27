@@ -7,12 +7,8 @@ use crate::utils::AsRaw;
 
 /// Contexts are execution states for the core LLVM IR system.
 #[derive(Debug)]
-pub struct Context(State);
-
-#[derive(Debug)]
-enum State {
+pub enum Context {
     Owned(LLVMContextRef),
-    Global(LLVMContextRef),
     Borrowed(LLVMContextRef),
 }
 
@@ -20,8 +16,8 @@ impl AsRaw for Context {
     type RawType = LLVMContextRef;
 
     fn as_raw(&self) -> Self::RawType {
-        match self.0 {
-            State::Owned(context) | State::Global(context) | State::Borrowed(context) => context,
+        match self {
+            Context::Owned(context) | Context::Borrowed(context) => *context,
         }
     }
 }
@@ -40,16 +36,16 @@ impl PartialEq<Context> for Context {
 
 impl From<LLVMContextRef> for Context {
     fn from(context: LLVMContextRef) -> Self {
-        Context(State::Borrowed(context))
+        Context::Borrowed(context)
     }
 }
 
 impl Drop for Context {
     fn drop(&mut self) {
-        if let State::Owned(context) = self.0 {
-            trace!("drop {:?}", self);
+        if let Context::Owned(context) = self {
+            unsafe { LLVMContextDispose(*context) }
 
-            unsafe { LLVMContextDispose(context) }
+            trace!("drop {:?}", self);
         }
     }
 }
@@ -61,16 +57,16 @@ impl Context {
 
         trace!("create Context({:?})", context);
 
-        Context(State::Owned(context))
+        Context::Owned(context)
     }
 
     /// Obtain the global context instance.
     pub fn global() -> GlobalContext {
         let context = unsafe { LLVMGetGlobalContext() };
 
-        trace!("obtain global Context({:?})", context);
+        trace!("global Context({:?})", context);
 
-        GlobalContext(Context(State::Global(context)))
+        GlobalContext(Context::Borrowed(context))
     }
 }
 
