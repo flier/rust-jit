@@ -71,6 +71,12 @@ impl Constant {
     }
 }
 
+#[macro_export]
+macro_rules! constants {
+    ($($x:expr),*) => (&[ $( $x.into() ),* ]);
+    ($($x:expr,)*) => (&[ $( $x.into() ),* ]);
+}
+
 pub trait Constants {
     /// Obtain a constant value referring to the null instance of a type.
     fn null(&self) -> Constant;
@@ -303,6 +309,58 @@ impl ConstantStrings for Context {
     }
 }
 
+macro_rules! from_buildin_type {
+    ($from:ty => $ty:ident : $to:ty) => {
+        impl From<$from> for $to {
+            fn from(v: $from) -> Self {
+                crate::Context::global().$ty(v)
+            }
+        }
+
+        impl From<$from> for Constant {
+            fn from(v: $from) -> Self {
+                crate::Context::global().$ty(v).into()
+            }
+        }
+
+        impl From<$from> for ValueRef {
+            fn from(v: $from) -> Self {
+                crate::Context::global().$ty(v).into()
+            }
+        }
+    };
+}
+
+from_buildin_type!(u8 => uint8: ConstantInt);
+from_buildin_type!(u16 => uint16: ConstantInt);
+from_buildin_type!(u32 => uint32: ConstantInt);
+from_buildin_type!(u64 => uint64: ConstantInt);
+from_buildin_type!(u128 => uint128: ConstantInt);
+from_buildin_type!(i8 => int8: ConstantInt);
+from_buildin_type!(i16 => int16: ConstantInt);
+from_buildin_type!(i32 => int32: ConstantInt);
+from_buildin_type!(i64 => int64: ConstantInt);
+from_buildin_type!(i128 => int128: ConstantInt);
+from_buildin_type!(f32 => float: ConstantFP);
+from_buildin_type!(f64 => double: ConstantFP);
+from_buildin_type!(&str => str: ConstantString);
+
+#[macro_export]
+macro_rules! struct_of {
+    ( | $context:ident | $( $value:expr ),* ; packed ) => {
+        $context.struct_of(constants!{ $( $value ),* }, true)
+    };
+    ( | $context:ident | $( $value:expr ),* ) => {
+        $context.struct_of(constants!{ $( $value ),* }, false)
+    };
+    ( $( $value:expr ),* ; packed ) => {
+        $crate::ConstantStruct::structure(constants!{ $( $value ),* }, true)
+    };
+    ( $( $value:expr ),* ) => {
+        $crate::ConstantStruct::structure(constants!{ $( $value ),* }, false)
+    };
+}
+
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ConstantStruct(Constant);
@@ -373,6 +431,13 @@ pub trait ConstantDataSequential: AsValueRef {
 
 impl ConstantDataSequential for ConstantArray {}
 impl ConstantDataSequential for ConstantVector {}
+
+#[macro_export]
+macro_rules! array_of {
+    ( $ty:ident [ $( $value:expr ),* ] ) => {
+        values!{ $( $value ),* }
+    };
+}
 
 /// Constant Array Declarations.
 #[repr(transparent)]

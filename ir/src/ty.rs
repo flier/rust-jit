@@ -1,6 +1,8 @@
+use std::iter;
 use std::rc::Rc;
 
-use proc_macro2::Ident;
+use proc_macro2::{Ident, TokenStream};
+use quote::ToTokens;
 use regex::Regex;
 use syn::parse::{Parse, ParseStream};
 use syn::token::CustomKeyword;
@@ -12,6 +14,7 @@ lazy_static! {
     static ref RE_INTEGER: Regex = Regex::new("i(\\d+)").unwrap();
 }
 
+#[derive(Clone, Debug)]
 pub enum Type {
     Void,
     Integer(usize),
@@ -93,7 +96,7 @@ impl Parse for Type {
             let _: Token![>] = input.parse()?;
 
             Type::Vector(Rc::new(ty), n.value() as usize)
-        } else {
+        } else if lookahead.peek(syn::Ident) {
             let ident: Ident = input.parse()?;
             let typename = ident.to_string();
 
@@ -106,6 +109,8 @@ impl Parse for Type {
             } else {
                 Type::Named(ident)
             }
+        } else {
+            return Err(lookahead.error());
         };
 
         if input.peek(Token![*]) {
@@ -115,5 +120,45 @@ impl Parse for Type {
         } else {
             Ok(ty)
         }
+    }
+}
+
+impl ToTokens for Type {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            Type::Void => {
+                quote! { ::std::ffi::c_void }
+            }
+            Type::Integer(bits) => match bits {
+                1 => quote! { bool },
+                8 => quote! { i8 },
+                16 => quote! { i16 },
+                32 => quote! { i32 },
+                64 => quote! { i64 },
+                128 => quote! { i128 },
+                _ => unimplemented!(),
+            },
+            Type::Half | Type::Float => {
+                quote! { f32 }
+            }
+            Type::Double => {
+                quote! { f64 }
+            }
+            Type::Fp128 | Type::Fp80 | Type::Mmx => unimplemented!(),
+            Type::Vector(ty, len) => {
+                let types = iter::repeat(&**ty).take(*len);
+
+                quote! { ( #( #types ),* ) }
+            }
+            Type::Pointer(ty) => {
+                let ty = &**ty;
+
+                quote! { *mut #ty }
+            }
+            Type::Named(name) => {
+                quote! { #name }
+            }
+        }
+        .to_tokens(tokens)
     }
 }

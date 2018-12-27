@@ -30,6 +30,7 @@ custom_keyword!(reassoc);
 custom_keyword!(fast);
 
 custom_keyword!(x);
+custom_keyword!(c);
 
 custom_keyword!(ret);
 custom_keyword!(unreachable);

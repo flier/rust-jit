@@ -5,15 +5,17 @@ use syn::{Ident, LitInt, Result};
 
 use crate::value::Value;
 
+#[derive(Clone, Debug)]
 pub enum Operand {
-    Ident(Ident),
+    Local(Ident),
+    Global(Ident),
     Value(Value),
 }
 
 impl Operand {
     pub fn ident(&self) -> Option<&Ident> {
         match self {
-            Operand::Ident(ident) => Some(ident),
+            Operand::Local(ident) | Operand::Global(ident) => Some(ident),
             _ => None,
         }
     }
@@ -25,12 +27,25 @@ impl Parse for Operand {
             let _rem = input.parse::<Token![%]>()?;
 
             if input.peek(Ident) {
-                input.parse::<Ident>().map(Operand::Ident)
+                input.parse::<Ident>().map(Operand::Local)
             } else if input.peek(LitInt) {
                 input
                     .parse::<LitInt>()
                     .map(|int| Ident::new(&format!("v{}", int.value()), Span::call_site()))
-                    .map(Operand::Ident)
+                    .map(Operand::Local)
+            } else {
+                unreachable!()
+            }
+        } else if input.peek(Token![@]) && (input.peek2(Ident) || input.peek2(LitInt)) {
+            let _rem = input.parse::<Token![@]>()?;
+
+            if input.peek(Ident) {
+                input.parse::<Ident>().map(Operand::Global)
+            } else if input.peek(LitInt) {
+                input
+                    .parse::<LitInt>()
+                    .map(|int| Ident::new(&format!("v{}", int.value()), Span::call_site()))
+                    .map(Operand::Global)
             } else {
                 unreachable!()
             }
@@ -43,7 +58,7 @@ impl Parse for Operand {
 impl ToTokens for Operand {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            Operand::Ident(ident) => ident.to_tokens(tokens),
+            Operand::Local(ident) | Operand::Global(ident) => ident.to_tokens(tokens),
             Operand::Value(value) => value.to_tokens(tokens),
         }
     }

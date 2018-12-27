@@ -10,7 +10,7 @@ use llvm_ir as ir;
 
 #[proc_macro]
 pub fn ir(input: TokenStream) -> TokenStream {
-    let ir = parse_macro_input!(input as ir::IrCode);
+    let ir = parse_macro_input!(input as ir::Ir);
 
     let expanded = quote! {
         #ir

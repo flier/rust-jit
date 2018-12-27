@@ -1,4 +1,6 @@
 #[macro_use]
+extern crate log;
+#[macro_use]
 extern crate bitflags;
 #[macro_use]
 extern crate lazy_static;
@@ -16,7 +18,7 @@ mod ty;
 mod value;
 
 pub use self::expr::Expr;
-pub use self::ir::IrCode;
+pub use self::ir::Ir;
 pub use self::op::Operand;
 pub use self::stmt::*;
 pub use self::ty::Type;

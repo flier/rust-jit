@@ -3,24 +3,28 @@ use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::token::{Brace, Bracket};
-use syn::{Lit, LitBool, LitFloat, LitInt, Result};
+use syn::{Lit, LitBool, LitFloat, LitInt, LitStr, Result};
 
 use crate::kw;
 use crate::op::Operand;
 use crate::ty::Type;
 
+#[derive(Clone, Debug)]
 pub enum Value {
-    Boolean(bool),
-    Integer(u64),
+    Bool(bool),
+    Int(i64),
+    Uint(u64),
     Float(f64),
-    Null(kw::null),
-    None(kw::none),
-    Struct(Punctuated<Field, Token![,]>),
+    Str(String),
+    Null,
+    None,
+    Zeroed,
+    Struct(Punctuated<Field, Token![,]>, bool),
     Array(Punctuated<Field, Token![,]>),
     Vector(Punctuated<Field, Token![,]>),
-    Zero(kw::zeroinitializer),
 }
 
+#[derive(Clone, Debug)]
 pub struct Field {
     ty: Type,
     op: Operand,
@@ -40,36 +44,81 @@ impl Parse for Value {
         let lookahead = input.lookahead1();
 
         if lookahead.peek(LitBool) {
-            Ok(Value::Boolean(input.parse::<LitBool>()?.value))
+            Ok(Value::Bool(input.parse::<LitBool>()?.value))
         } else if lookahead.peek(LitInt) {
-            Ok(Value::Integer(input.parse::<LitInt>()?.value()))
+            input.parse::<LitInt>().map(|n| n.value()).map(Value::Uint)
+        } else if lookahead.peek(Token![-]) && input.peek2(LitInt) {
+            let _ = input.parse::<Token![-]>()?;
+
+            input.parse::<LitInt>().map(|n| -(n.value() as i64)).map(Value::Int)
         } else if lookahead.peek(LitFloat) {
-            Ok(Value::Float(input.parse::<LitFloat>()?.value()))
-        } else if lookahead.peek(Lit) {
-            // TODO: represents an integer larger than 64 bits.
-            unimplemented!()
+            input.parse::<LitFloat>().map(|f| f.value()).map(Value::Float)
+        } else if lookahead.peek(Token![-]) && input.peek2(LitFloat) {
+            let _ = input.parse::<Token![-]>()?;
+
+            input.parse::<LitFloat>().map(|f| -f.value()).map(Value::Float)
+        } else if lookahead.peek(kw::c) && input.peek2(LitStr) {
+            let _ = input.parse::<kw::c>()?;
+
+            input.parse::<LitStr>().map(|s| s.value()).map(Value::Str)
         } else if lookahead.peek(kw::null) {
-            input.parse().map(Value::Null)
+            input.parse::<kw::null>().map(|_| Value::Null)
         } else if lookahead.peek(kw::none) {
-            input.parse().map(Value::None)
+            input.parse::<kw::none>().map(|_| Value::None)
         } else if lookahead.peek(kw::zeroinitializer) {
-            input.parse().map(Value::Zero)
+            input.parse::<kw::zeroinitializer>().map(|_| Value::Zeroed)
         } else if lookahead.peek(Brace) {
             let content;
             let _brace = braced!(content in input);
 
-            content.parse_terminated(Field::parse).map(Value::Struct)
+            content
+                .parse_terminated(Field::parse)
+                .map(|fields| Value::Struct(fields, false))
+        } else if lookahead.peek(Token![<]) && input.peek2(Brace) {
+            let _ = input.parse::<Token![<]>()?;
+            let content;
+            let _brace = braced!(content in input);
+            let s = content
+                .parse_terminated(Field::parse)
+                .map(|fields| Value::Struct(fields, true))?;
+            let _ = input.parse::<Token![>]>()?;
+
+            Ok(s)
         } else if lookahead.peek(Bracket) {
             let content;
-            let bracket = bracketed!(content in input);
+            let _bracket = bracketed!(content in input);
 
             content.parse_terminated(Field::parse).map(Value::Array)
         } else if lookahead.peek(Token![<]) {
             let _ = input.parse::<Token![<]>()?;
-            let v = Punctuated::parse_terminated_with(input, Field::parse).map(Value::Vector);
-            let _ = input.parse::<Token![>]>()?;
+            let mut elements = Punctuated::new();
 
-            v
+            loop {
+                if input.is_empty() {
+                    break
+                }
+                if input.peek(Token![>]) {
+                    let _ = input.parse::<Token![>]>()?;
+                    break
+                }
+
+                elements.push_value(input.parse()?);
+
+                if input.is_empty() {
+                    break
+                }
+                if input.peek(Token![>]) {
+                    let _ = input.parse::<Token![>]>()?;
+                    break
+                }
+
+                elements.push_punct(input.parse()?);
+            }            
+
+            Ok(Value::Vector(elements))
+        } else if lookahead.peek(Lit) {
+            // TODO: represents an integer larger than 64 bits.
+            unimplemented!()
         } else {
             Err(lookahead.error())
         }
@@ -79,15 +128,46 @@ impl Parse for Value {
 impl ToTokens for Value {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            Value::Boolean(b) => b.to_tokens(tokens),
-            Value::Integer(n) => n.to_tokens(tokens),
+            Value::Bool(b) => b.to_tokens(tokens),
+            Value::Int(n) => n.to_tokens(tokens),
+            Value::Uint(n) => n.to_tokens(tokens),
             Value::Float(f) => f.to_tokens(tokens),
-            Value::Null(kw) => kw.to_tokens(tokens),
-            Value::None(kw) => kw.to_tokens(tokens),
-            Value::Struct { .. } => {}
-            Value::Array { .. } => {}
-            Value::Vector { .. } => {}
-            Value::Zero(kw) => kw.to_tokens(tokens),
+            Value::Str(s) => s.to_tokens(tokens),
+            Value::Null => quote! { ::std::ptr::null_mut() }.to_tokens(tokens),
+            Value::None => quote! { None }.to_tokens(tokens),
+            Value::Zeroed => quote! { unsafe { ::std::mem::zeroed() } }.to_tokens(tokens),
+            Value::Struct(fields, packed) => {
+                let fields = fields.iter().map(|field| &field.op);
+
+                let expand = if *packed {
+                    quote! { struct_of!( #( #fields ),* ; packed) }
+                } else {
+                    quote! { struct_of!( #( #fields ),* ) }
+                };
+
+                trace!("expand {:?} to `{}`", self, expand);
+
+                expand.to_tokens(tokens)
+            }
+            Value::Array(elements) => {
+                let ty = elements.first().map(|p| &p.value().ty);
+                let elements = elements.iter().map(|field| &field.op);
+
+                let expand = quote! { array_of!{ #ty [#( #elements ),*] } };
+
+                trace!("expand {:?} to {}", self, expand);
+
+                expand.to_tokens(tokens)
+            }
+            Value::Vector(elements) => {
+                let elements = elements.iter().map(|field| &field.op);
+
+                let expand = quote! { ( #( #elements ),* ) };
+
+                eprintln!("expand {:?} to {}", self, expand);
+
+                expand.to_tokens(tokens)
+            }
         }
     }
 }

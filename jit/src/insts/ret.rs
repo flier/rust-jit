@@ -8,18 +8,22 @@ use crate::value::{Instruction, ValueRef};
 
 /// Create a 'ret' instruction.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Ret<'a>(Return<'a>);
+pub enum Ret<'a> {
+    Void,
+    Value(Box<AstNode<'a>>),
+    Aggregate(Vec<AstNode<'a>>),
+}
 
 impl<'a> Ret<'a> {
     pub fn void() -> Self {
-        Ret(Return::Void)
+        Ret::Void
     }
 
     pub fn value<V>(value: V) -> Self
     where
         V: Into<AstNode<'a>>,
     {
-        Ret(Return::Value(Box::new(value.into())))
+        Ret::Value(Box::new(value.into()))
     }
 
     pub fn aggregate<I, V>(values: I) -> Self
@@ -27,15 +31,8 @@ impl<'a> Ret<'a> {
         I: IntoIterator<Item = V>,
         V: Into<AstNode<'a>>,
     {
-        Ret(Return::Aggregate(values.into_iter().map(|v| v.into()).collect()))
+        Ret::Aggregate(values.into_iter().map(|v| v.into()).collect())
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-enum Return<'a> {
-    Void,
-    Value(Box<AstNode<'a>>),
-    Aggregate(Vec<AstNode<'a>>),
 }
 
 impl<'a> InstructionBuilder for Ret<'a> {
@@ -44,10 +41,10 @@ impl<'a> InstructionBuilder for Ret<'a> {
     fn emit_to(self, builder: &IRBuilder) -> Self::Target {
         trace!("{:?} emit instruction: {:?}", builder, self);
 
-        match self.0 {
-            Return::Void => unsafe { LLVMBuildRetVoid(builder.as_raw()) }.into(),
-            Return::Value(value) => unsafe { LLVMBuildRet(builder.as_raw(), value.emit_to(builder).into_raw()) }.into(),
-            Return::Aggregate(values) => {
+        match self {
+            Ret::Void => unsafe { LLVMBuildRetVoid(builder.as_raw()) }.into(),
+            Ret::Value(value) => unsafe { LLVMBuildRet(builder.as_raw(), value.emit_to(builder).into_raw()) }.into(),
+            Ret::Aggregate(values) => {
                 let mut values = values
                     .into_iter()
                     .map(|v| v.emit_to(builder).into_raw())
