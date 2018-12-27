@@ -1,6 +1,9 @@
+use std::fmt;
+
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
+use syn::token::CustomKeyword;
 use syn::Result;
 
 use crate::expr::Expr;
@@ -13,6 +16,16 @@ pub enum Stmt {
     Ret(Ret),
     Unreachable(kw::unreachable),
     Assign(Operand, Expr),
+}
+
+impl fmt::Display for Stmt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Stmt::Ret(ret) => ret.fmt(f),
+            Stmt::Unreachable(_) => kw::unreachable::ident().fmt(f),
+            Stmt::Assign(op, expr) => write!(f, "{} = {}", op, expr),
+        }
+    }
 }
 
 impl Parse for Stmt {
@@ -41,11 +54,26 @@ impl ToTokens for Stmt {
             Stmt::Ret(ret) => quote! { #ret },
             Stmt::Unreachable(_) => quote! { ::llvm_jit::insts::Unreachable },
             Stmt::Assign(operand, expr) => quote! { let #operand = #expr; },
-        }.to_tokens(tokens)
+        }
+        .to_tokens(tokens)
     }
 }
 
 pub struct Ret(Option<(Type, Value)>);
+
+impl fmt::Display for Ret {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {}",
+            kw::ret::ident(),
+            self.0
+                .as_ref()
+                .map(|(ty, value)| format!("{} {}", ty, value))
+                .unwrap_or(kw::void::ident().to_string())
+        )
+    }
+}
 
 impl Parse for Ret {
     fn parse(input: ParseStream) -> Result<Self> {

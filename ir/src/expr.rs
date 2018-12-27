@@ -1,6 +1,9 @@
+use std::fmt;
+
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
+use syn::token::CustomKeyword;
 use syn::Result;
 
 use crate::kw;
@@ -17,6 +20,33 @@ bitflags! {
         const afn = 0x20;
         const reassoc = 0x40;
         const fast = 0x80;
+    }
+}
+
+impl fmt::Display for FastMath {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let fast_math_flags = [
+            FastMath::nnan,
+            FastMath::ninf,
+            FastMath::nsz,
+            FastMath::arcp,
+            FastMath::contract,
+            FastMath::afn,
+            FastMath::reassoc,
+            FastMath::fast,
+        ];
+
+        itertools::join(
+            fast_math_flags.into_iter().flat_map(|flag| {
+                if self.contains(*flag) {
+                    Some(kw::nnan::ident())
+                } else {
+                    None
+                }
+            }),
+            " ",
+        )
+        .fmt(f)
     }
 }
 
@@ -82,6 +112,26 @@ pub enum Expr {
     FRem(FRem),
 }
 
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Expr::FNeg(fneg) => fneg.fmt(f),
+            Expr::Add(add) => add.fmt(f),
+            Expr::FAdd(fadd) => fadd.fmt(f),
+            Expr::Sub(sub) => sub.fmt(f),
+            Expr::FSub(fsub) => fsub.fmt(f),
+            Expr::Mul(mul) => mul.fmt(f),
+            Expr::FMul(fmul) => fmul.fmt(f),
+            Expr::UDiv(udiv) => udiv.fmt(f),
+            Expr::SDiv(sdiv) => sdiv.fmt(f),
+            Expr::FDiv(fdiv) => fdiv.fmt(f),
+            Expr::URem(urem) => urem.fmt(f),
+            Expr::SRem(srem) => srem.fmt(f),
+            Expr::FRem(frem) => frem.fmt(f),
+        }
+    }
+}
+
 impl Parse for Expr {
     fn parse(input: ParseStream) -> Result<Self> {
         let lookahead = input.lookahead1();
@@ -129,17 +179,36 @@ impl ToTokens for Expr {
 
 pub struct FNeg {
     fneg: kw::fneg,
+    fast_math: FastMath,
     ty: Type,
     op: Operand,
 }
 
+impl fmt::Display for FNeg {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {}{} {}",
+            kw::fneg::ident(),
+            if self.fast_math.is_empty() {
+                "".to_string()
+            } else {
+                format!("{} ", self.fast_math)
+            },
+            self.ty,
+            self.op
+        )
+    }
+}
+
 impl Parse for FNeg {
     fn parse(input: ParseStream) -> Result<Self> {
-        let fneg = input.parse()?;
-        let ty = input.parse()?;
-        let op = input.parse()?;
-
-        Ok(FNeg { fneg, ty, op })
+        Ok(FNeg {
+            fneg: input.parse()?,
+            fast_math: input.parse()?,
+            ty: input.parse()?,
+            op: input.parse()?,
+        })
     }
 }
 
@@ -163,6 +232,21 @@ pub struct Add {
     op2: Operand,
 }
 
+impl fmt::Display for Add {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {}{}{} {} {}",
+            kw::add::ident(),
+            self.nuw.map_or("".to_string(), |_| format!("{} ", kw::nuw::ident())),
+            self.nsw.map_or("".to_string(), |_| format!("{} ", kw::nsw::ident())),
+            self.ty,
+            self.op1,
+            self.op2
+        )
+    }
+}
+
 impl Parse for Add {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(Add {
@@ -182,6 +266,24 @@ pub struct FAdd {
     ty: Type,
     op1: Operand,
     op2: Operand,
+}
+
+impl fmt::Display for FAdd {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {}{} {} {}",
+            kw::fadd::ident(),
+            if self.fast_math.is_empty() {
+                "".to_string()
+            } else {
+                format!("{} ", self.fast_math)
+            },
+            self.ty,
+            self.op1,
+            self.op2
+        )
+    }
 }
 
 impl Parse for FAdd {
@@ -205,6 +307,21 @@ pub struct Sub {
     op2: Operand,
 }
 
+impl fmt::Display for Sub {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {}{}{} {} {}",
+            kw::sub::ident(),
+            self.nuw.map_or("".to_string(), |_| format!("{} ", kw::nuw::ident())),
+            self.nsw.map_or("".to_string(), |_| format!("{} ", kw::nsw::ident())),
+            self.ty,
+            self.op1,
+            self.op2
+        )
+    }
+}
+
 impl Parse for Sub {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(Sub {
@@ -224,6 +341,24 @@ pub struct FSub {
     ty: Type,
     op1: Operand,
     op2: Operand,
+}
+
+impl fmt::Display for FSub {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {}{} {} {}",
+            kw::fsub::ident(),
+            if self.fast_math.is_empty() {
+                "".to_string()
+            } else {
+                format!("{} ", self.fast_math)
+            },
+            self.ty,
+            self.op1,
+            self.op2
+        )
+    }
 }
 
 impl Parse for FSub {
@@ -247,6 +382,21 @@ pub struct Mul {
     op2: Operand,
 }
 
+impl fmt::Display for Mul {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {}{}{} {} {}",
+            kw::mul::ident(),
+            self.nuw.map_or("".to_string(), |_| format!("{} ", kw::nuw::ident())),
+            self.nsw.map_or("".to_string(), |_| format!("{} ", kw::nsw::ident())),
+            self.ty,
+            self.op1,
+            self.op2
+        )
+    }
+}
+
 impl Parse for Mul {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(Mul {
@@ -266,6 +416,24 @@ pub struct FMul {
     ty: Type,
     op1: Operand,
     op2: Operand,
+}
+
+impl fmt::Display for FMul {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {}{} {} {}",
+            kw::fmul::ident(),
+            if self.fast_math.is_empty() {
+                "".to_string()
+            } else {
+                format!("{} ", self.fast_math)
+            },
+            self.ty,
+            self.op1,
+            self.op2
+        )
+    }
 }
 
 impl Parse for FMul {
@@ -288,6 +456,21 @@ pub struct UDiv {
     op2: Operand,
 }
 
+impl fmt::Display for UDiv {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {}{} {} {}",
+            kw::udiv::ident(),
+            self.exact
+                .map_or("".to_string(), |_| format!("{} ", kw::exact::ident())),
+            self.ty,
+            self.op1,
+            self.op2
+        )
+    }
+}
+
 impl Parse for UDiv {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(UDiv {
@@ -306,6 +489,21 @@ pub struct SDiv {
     ty: Type,
     op1: Operand,
     op2: Operand,
+}
+
+impl fmt::Display for SDiv {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {}{} {} {}",
+            kw::sdiv::ident(),
+            self.exact
+                .map_or("".to_string(), |_| format!("{} ", kw::exact::ident())),
+            self.ty,
+            self.op1,
+            self.op2
+        )
+    }
 }
 
 impl Parse for SDiv {
@@ -328,6 +526,24 @@ pub struct FDiv {
     op2: Operand,
 }
 
+impl fmt::Display for FDiv {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {}{} {} {}",
+            kw::fdiv::ident(),
+            if self.fast_math.is_empty() {
+                "".to_string()
+            } else {
+                format!("{} ", self.fast_math)
+            },
+            self.ty,
+            self.op1,
+            self.op2
+        )
+    }
+}
+
 impl Parse for FDiv {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(FDiv {
@@ -345,6 +561,12 @@ pub struct URem {
     ty: Type,
     op1: Operand,
     op2: Operand,
+}
+
+impl fmt::Display for URem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {} {} {}", kw::urem::ident(), self.ty, self.op1, self.op2)
+    }
 }
 
 impl Parse for URem {
@@ -365,6 +587,12 @@ pub struct SRem {
     op2: Operand,
 }
 
+impl fmt::Display for SRem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {} {} {}", kw::srem::ident(), self.ty, self.op1, self.op2)
+    }
+}
+
 impl Parse for SRem {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(SRem {
@@ -382,6 +610,20 @@ pub struct FRem {
     ty: Type,
     op1: Operand,
     op2: Operand,
+}
+
+impl fmt::Display for FRem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {}{} {} {}",
+            kw::frem::ident(),
+            self.fast_math,
+            self.ty,
+            self.op1,
+            self.op2
+        )
+    }
 }
 
 impl Parse for FRem {

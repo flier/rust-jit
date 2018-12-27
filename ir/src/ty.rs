@@ -1,3 +1,4 @@
+use std::fmt;
 use std::iter;
 use std::rc::Rc;
 
@@ -53,6 +54,24 @@ impl From<Ident> for Type {
                 .unwrap()
         } else {
             Type::Named(ident)
+        }
+    }
+}
+
+impl fmt::Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Type::Void => kw::void::ident().fmt(f),
+            Type::Integer(bits) => write!(f, "i{}", bits),
+            Type::Half => kw::half::ident().fmt(f),
+            Type::Float => kw::float::ident().fmt(f),
+            Type::Double => kw::double::ident().fmt(f),
+            Type::Fp128 => kw::fp128::ident().fmt(f),
+            Type::Fp80 => kw::x86_fp80::ident().fmt(f),
+            Type::Mmx => kw::x86_mmx::ident().fmt(f),
+            Type::Vector(ty, len) => write!(f, "<{} x {}>", len, ty),
+            Type::Pointer(ty) => write!(f, "{} *", ty),
+            Type::Named(name) => name.fmt(f),
         }
     }
 }

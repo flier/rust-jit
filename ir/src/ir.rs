@@ -1,3 +1,5 @@
+use std::fmt;
+
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
@@ -11,6 +13,16 @@ pub enum Ir {
     Stmt(Stmt),
     Expr(Expr),
     Value(Value),
+}
+
+impl fmt::Display for Ir {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Ir::Stmt(stmt) => stmt.fmt(f),
+            Ir::Expr(expr) => expr.fmt(f),
+            Ir::Value(value) => value.fmt(f),
+        }
+    }
 }
 
 impl Parse for Ir {

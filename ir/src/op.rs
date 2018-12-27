@@ -1,3 +1,5 @@
+use std::fmt;
+
 use proc_macro2::{Span, TokenStream};
 use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
@@ -17,6 +19,16 @@ impl Operand {
         match self {
             Operand::Local(ident) | Operand::Global(ident) => Some(ident),
             _ => None,
+        }
+    }
+}
+
+impl fmt::Display for Operand {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Operand::Local(ident) => write!(f, "%{}", ident),
+            Operand::Global(ident) => write!(f, "@{}", ident),
+            Operand::Value(value) => value.fmt(f),
         }
     }
 }

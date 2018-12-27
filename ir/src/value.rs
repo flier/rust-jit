@@ -1,8 +1,10 @@
+use std::fmt;
+
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
-use syn::token::{Brace, Bracket};
+use syn::token::{Brace, Bracket, CustomKeyword};
 use syn::{Lit, LitBool, LitFloat, LitInt, LitStr, Result};
 
 use crate::kw;
@@ -36,6 +38,40 @@ impl Parse for Field {
             ty: input.parse()?,
             op: input.parse()?,
         })
+    }
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Value::Bool(v) => v.fmt(f),
+            Value::Int(v) => v.fmt(f),
+            Value::Uint(v) => v.fmt(f),
+            Value::Float(v) => v.fmt(f),
+            Value::Str(v) => v.fmt(f),
+            Value::Null => kw::null::ident().fmt(f),
+            Value::None => kw::none::ident().fmt(f),
+            Value::Zeroed => kw::zeroinitializer::ident().fmt(f),
+            Value::Struct(fields, packed) => {
+                let fields = itertools::join(fields.iter().map(|field| format!("{} {}", field.ty, field.op)), ",");
+
+                if *packed {
+                    write!(f, "<{}>", fields)
+                } else {
+                    write!(f, "{}", fields)
+                }
+            }
+            Value::Array(elements) => write!(
+                f,
+                "[{}]",
+                itertools::join(elements.iter().map(|field| format!("{} {}", field.ty, field.op)), ",")
+            ),
+            Value::Vector(elements) => write!(
+                f,
+                "<{}>",
+                itertools::join(elements.iter().map(|field| format!("{} {}", field.ty, field.op)), ",")
+            ),
+        }
     }
 }
 
