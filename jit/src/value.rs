@@ -54,7 +54,7 @@ impl ValueRef {
     }
 
     /// Obtain the type of a value.
-    pub fn type_of(&self) -> TypeRef {
+    pub fn ty(&self) -> TypeRef {
         unsafe { LLVMTypeOf(self.0) }.into()
     }
 

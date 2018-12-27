@@ -235,7 +235,7 @@ impl<'a> BrainF<'a> {
             //@aberrormsg = internal constant [%d x i8] c"\00"
             let msg = context.str("Error: The head has left the tape.");
 
-            let aberror_msg = module.add_global_var("aberrormsg", msg.type_of());
+            let aberror_msg = module.add_global_var("aberrormsg", msg.ty());
 
             aberror_msg.set_linkage(llvm::LLVMLinkage::LLVMInternalLinkage);
             aberror_msg.set_initializer(msg);

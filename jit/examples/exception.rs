@@ -709,7 +709,7 @@ impl Example {
         let exception_caught = self.create_entry_block_alloca(
             to_add_to,
             "exception_caught",
-            self.our_exception_not_thrown_state.unwrap().type_of(),
+            self.our_exception_not_thrown_state.unwrap().ty(),
             Some(self.our_exception_not_thrown_state.unwrap().into()),
         );
         let exception_storage_type = self.context.int8_t().ptr_t();

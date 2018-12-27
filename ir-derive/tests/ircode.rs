@@ -36,10 +36,10 @@ pub fn value() {
 
     let s = ir! { { i32 4, float 17.0 } };
     assert_matches!(s.kind(), jit::llvm::LLVMValueKind::LLVMConstantStructValueKind);
-    assert!(!s.type_of().as_struct_ty().unwrap().is_packed());
+    assert!(!s.ty().as_struct_ty().unwrap().is_packed());
     let s = ir! { <{ i32 4, float 17.0 }> };
     assert_matches!(s.kind(), jit::llvm::LLVMValueKind::LLVMConstantStructValueKind);
-    assert!(s.type_of().as_struct_ty().unwrap().is_packed());
+    assert!(s.ty().as_struct_ty().unwrap().is_packed());
 
     let a = ir! { [ i32 42, i32 11, i32 74 ] };
     assert_eq!(a.len(), 3);

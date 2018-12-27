@@ -439,7 +439,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn add(self, rhs: $type) -> Self::Output {
-                ConstantExpr::add(&self, self.type_of().int_value(rhs as u64, $signed)).into()
+                ConstantExpr::add(&self, self.ty().int_value(rhs as u64, $signed)).into()
             }
         }
 
@@ -447,7 +447,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn sub(self, rhs: $type) -> Self::Output {
-                ConstantExpr::sub(&self, self.type_of().int_value(rhs as u64, $signed)).into()
+                ConstantExpr::sub(&self, self.ty().int_value(rhs as u64, $signed)).into()
             }
         }
 
@@ -455,7 +455,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn mul(self, rhs: $type) -> Self::Output {
-                ConstantExpr::mul(&self, self.type_of().int_value(rhs as u64, $signed)).into()
+                ConstantExpr::mul(&self, self.ty().int_value(rhs as u64, $signed)).into()
             }
         }
 
@@ -463,7 +463,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn div(self, rhs: $type) -> Self::Output {
-                let rhs = self.type_of().int_value(rhs as u64, $signed);
+                let rhs = self.ty().int_value(rhs as u64, $signed);
 
                 if $signed {
                     ConstantExpr::sdiv(&self, rhs).into()
@@ -477,7 +477,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn rem(self, rhs: $type) -> Self::Output {
-                let rhs = self.type_of().int_value(rhs as u64, $signed);
+                let rhs = self.ty().int_value(rhs as u64, $signed);
 
                 if $signed {
                     ConstantExpr::srem(&self, rhs).into()
@@ -491,7 +491,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn bitand(self, rhs: $type) -> Self::Output {
-                ConstantExpr::and(&self, self.type_of().int_value(rhs as u64, $signed)).into()
+                ConstantExpr::and(&self, self.ty().int_value(rhs as u64, $signed)).into()
             }
         }
 
@@ -499,7 +499,7 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn bitor(self, rhs: $type) -> Self::Output {
-                ConstantExpr::or(&self, self.type_of().int_value(rhs as u64, $signed)).into()
+                ConstantExpr::or(&self, self.ty().int_value(rhs as u64, $signed)).into()
             }
         }
 
@@ -507,13 +507,13 @@ macro_rules! impl_const_int_operators {
             type Output = Self;
 
             fn bitxor(self, rhs: $type) -> Self::Output {
-                ConstantExpr::xor(&self, self.type_of().int_value(rhs as u64, $signed)).into()
+                ConstantExpr::xor(&self, self.ty().int_value(rhs as u64, $signed)).into()
             }
         }
 
         impl PartialEq<$type> for ConstantInt {
             fn eq(&self, other: &$type) -> bool {
-                let rhs = self.type_of().int_value(*other as u64, $signed);
+                let rhs = self.ty().int_value(*other as u64, $signed);
 
                 ConstantExpr::icmp(self, LLVMIntPredicate::LLVMIntEQ, rhs)
             }
@@ -521,7 +521,7 @@ macro_rules! impl_const_int_operators {
 
         impl PartialOrd<$type> for ConstantInt {
             fn partial_cmp(&self, other: &$type) -> Option<Ordering> {
-                let rhs = self.type_of().int_value(*other as u64, $signed);
+                let rhs = self.ty().int_value(*other as u64, $signed);
                 let lt = if $signed {
                     LLVMIntPredicate::LLVMIntSLT
                 } else {
@@ -605,7 +605,7 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn add(self, rhs: $type) -> Self::Output {
-                ConstantExpr::fadd(&self, self.type_of().real(f64::from(rhs))).into()
+                ConstantExpr::fadd(&self, self.ty().real(f64::from(rhs))).into()
             }
         }
 
@@ -613,7 +613,7 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn sub(self, rhs: $type) -> Self::Output {
-                ConstantExpr::fsub(&self, self.type_of().real(f64::from(rhs))).into()
+                ConstantExpr::fsub(&self, self.ty().real(f64::from(rhs))).into()
             }
         }
 
@@ -621,7 +621,7 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn mul(self, rhs: $type) -> Self::Output {
-                ConstantExpr::fmul(&self, self.type_of().real(f64::from(rhs))).into()
+                ConstantExpr::fmul(&self, self.ty().real(f64::from(rhs))).into()
             }
         }
 
@@ -629,7 +629,7 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn div(self, rhs: $type) -> Self::Output {
-                ConstantExpr::fdiv(&self, self.type_of().real(f64::from(rhs))).into()
+                ConstantExpr::fdiv(&self, self.ty().real(f64::from(rhs))).into()
             }
         }
 
@@ -637,13 +637,13 @@ macro_rules! impl_const_floating_point_operators {
             type Output = Self;
 
             fn rem(self, rhs: $type) -> Self::Output {
-                ConstantExpr::frem(&self, self.type_of().real(f64::from(rhs))).into()
+                ConstantExpr::frem(&self, self.ty().real(f64::from(rhs))).into()
             }
         }
 
         impl PartialEq<$type> for ConstantFP {
             fn eq(&self, other: &$type) -> bool {
-                let rhs = self.type_of().real(f64::from(*other));
+                let rhs = self.ty().real(f64::from(*other));
 
                 ConstantExpr::fcmp(self, LLVMRealPredicate::LLVMRealOEQ, rhs)
             }
@@ -651,7 +651,7 @@ macro_rules! impl_const_floating_point_operators {
 
         impl PartialOrd<$type> for ConstantFP {
             fn partial_cmp(&self, other: &$type) -> Option<Ordering> {
-                let rhs = self.type_of().real(f64::from(*other));
+                let rhs = self.ty().real(f64::from(*other));
 
                 Some(if ConstantExpr::fcmp(self, LLVMRealPredicate::LLVMRealOLT, rhs) {
                     Ordering::Less

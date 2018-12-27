@@ -526,7 +526,7 @@ mod tests {
         let v = i64_t.null();
 
         assert!(!v.as_raw().is_null());
-        assert_eq!(v.type_of(), i64_t);
+        assert_eq!(v.ty(), i64_t);
         assert_eq!(v.to_string(), "i64 0");
         assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMConstantIntValueKind);
         assert_eq!(v.name(), Some("".into()));
@@ -542,7 +542,7 @@ mod tests {
         let v = i64_t.undef();
 
         assert!(!v.as_raw().is_null());
-        assert_eq!(v.type_of(), i64_t);
+        assert_eq!(v.ty(), i64_t);
         assert_eq!(v.to_string(), "i64 undef");
         assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMUndefValueValueKind);
         assert_eq!(v.name(), Some("".into()));
@@ -559,7 +559,7 @@ mod tests {
         let v = i64_ptr_t.null_ptr();
 
         assert!(!v.as_raw().is_null());
-        assert_eq!(v.type_of(), i64_ptr_t.into());
+        assert_eq!(v.ty(), i64_ptr_t.into());
         assert_eq!(v.to_string(), "i64* null");
         assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMConstantPointerNullValueKind);
         assert_eq!(v.name(), Some("".into()));
@@ -575,7 +575,7 @@ mod tests {
         let v = i32_t.int(-123);
 
         assert!(!v.as_raw().is_null());
-        assert_eq!(v.type_of(), i32_t);
+        assert_eq!(v.ty(), i32_t);
         assert_eq!(v.to_string(), "i32 -123");
         assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMConstantIntValueKind);
         assert_eq!(v.name(), Some("".into()));
@@ -594,7 +594,7 @@ mod tests {
         let v = f32_t.real(-123.0);
 
         assert!(!v.as_raw().is_null());
-        assert_eq!(v.type_of(), f32_t);
+        assert_eq!(v.ty(), f32_t);
         assert_eq!(v.to_string(), "float -1.230000e+02");
         assert_eq!(v.kind(), llvm::LLVMValueKind::LLVMConstantFPValueKind);
         assert_eq!(v.name(), Some("".into()));
