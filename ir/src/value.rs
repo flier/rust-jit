@@ -94,26 +94,20 @@ impl Parse for Value {
             let mut elements = Punctuated::new();
 
             loop {
-                if input.is_empty() {
-                    break
-                }
                 if input.peek(Token![>]) {
-                    let _ = input.parse::<Token![>]>()?;
-                    break
+                    break;
                 }
 
                 elements.push_value(input.parse()?);
 
-                if input.is_empty() {
-                    break
-                }
                 if input.peek(Token![>]) {
-                    let _ = input.parse::<Token![>]>()?;
-                    break
+                    break;
                 }
 
                 elements.push_punct(input.parse()?);
-            }            
+            }
+
+            let _ = input.parse::<Token![>]>()?;
 
             Ok(Value::Vector(elements))
         } else if lookahead.peek(Lit) {
@@ -164,7 +158,7 @@ impl ToTokens for Value {
 
                 let expand = quote! { ( #( #elements ),* ) };
 
-                eprintln!("expand {:?} to {}", self, expand);
+                trace!("expand {:?} to {}", self, expand);
 
                 expand.to_tokens(tokens)
             }
