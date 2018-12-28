@@ -1,2 +1,2 @@
 [workspace]
-members = ["jit", "ir", "ir-derive", "bpf", "wasm"]
+members = ["jit", "ir", "ir-parse", "ir-derive", "bpf", "wasm"]

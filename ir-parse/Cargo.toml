@@ -1,0 +1,13 @@
+[package]
+name = "llvm-ir-parse"
+version = "0.1.0"
+authors = ["Flier Lu <flier.lu@gmail.com>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "0.4"
+syn = { version = "0.15", features = ["full"] }
+quote = "0.6"

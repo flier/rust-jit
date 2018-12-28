@@ -12,6 +12,7 @@ use crate::op::Operand;
 use crate::ty::Type;
 use crate::value::Value;
 
+#[derive(Debug)]
 pub enum Stmt {
     Ret(Ret),
     Unreachable(kw::unreachable),
@@ -59,19 +60,18 @@ impl ToTokens for Stmt {
     }
 }
 
-pub struct Ret(Option<(Type, Value)>);
+#[derive(Debug)]
+pub enum Ret {
+    Void(kw::void),
+    Result { ty: Type, value: Value },
+}
 
 impl fmt::Display for Ret {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{} {}",
-            kw::ret::ident(),
-            self.0
-                .as_ref()
-                .map(|(ty, value)| format!("{} {}", ty, value))
-                .unwrap_or(kw::void::ident().to_string())
-        )
+        match self {
+            Ret::Void(_) => write!(f, "{} {}", kw::ret::ident(), kw::void::ident()),
+            Ret::Result { ty, value } => write!(f, "{} {} {}", kw::ret::ident(), ty, value),
+        }
     }
 }
 
@@ -80,27 +80,22 @@ impl Parse for Ret {
         let _ret = input.parse::<kw::ret>()?;
 
         if input.peek(kw::void) {
-            let _void = input.parse::<kw::void>()?;
-
-            Ok(Ret(None))
+            input.parse().map(Ret::Void)
         } else {
-            let ty = input.parse::<Type>()?;
-            let val = input.parse::<Value>()?;
-
-            Ok(Ret(Some((ty, val))))
+            Ok(Ret::Result {
+                ty: input.parse()?,
+                value: input.parse()?,
+            })
         }
     }
 }
 
 impl ToTokens for Ret {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        if let Some((_ty, val)) = self.0.as_ref() {
-            quote! {
-                ret!(#val)
-            }
-        } else {
-            quote! {
-                ret!()
+        match self {
+            Ret::Void(_) => quote! { ret!() },
+            Ret::Result { value, .. } => {
+                quote! { ret!(#value) }
             }
         }
         .to_tokens(tokens)

@@ -96,6 +96,7 @@ impl Parse for FastMath {
     }
 }
 
+#[derive(Debug, Parse)]
 pub enum Expr {
     FNeg(FNeg),
     Add(Add),
@@ -132,42 +133,6 @@ impl fmt::Display for Expr {
     }
 }
 
-impl Parse for Expr {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let lookahead = input.lookahead1();
-
-        if lookahead.peek(kw::fneg) {
-            input.parse().map(Expr::FNeg)
-        } else if lookahead.peek(kw::add) {
-            input.parse().map(Expr::Add)
-        } else if lookahead.peek(kw::fadd) {
-            input.parse().map(Expr::FAdd)
-        } else if lookahead.peek(kw::sub) {
-            input.parse().map(Expr::Sub)
-        } else if lookahead.peek(kw::fsub) {
-            input.parse().map(Expr::FSub)
-        } else if lookahead.peek(kw::mul) {
-            input.parse().map(Expr::Mul)
-        } else if lookahead.peek(kw::fmul) {
-            input.parse().map(Expr::FMul)
-        } else if lookahead.peek(kw::udiv) {
-            input.parse().map(Expr::UDiv)
-        } else if lookahead.peek(kw::sdiv) {
-            input.parse().map(Expr::SDiv)
-        } else if lookahead.peek(kw::fdiv) {
-            input.parse().map(Expr::FDiv)
-        } else if lookahead.peek(kw::urem) {
-            input.parse().map(Expr::URem)
-        } else if lookahead.peek(kw::srem) {
-            input.parse().map(Expr::SRem)
-        } else if lookahead.peek(kw::frem) {
-            input.parse().map(Expr::FRem)
-        } else {
-            Err(lookahead.error())
-        }
-    }
-}
-
 impl ToTokens for Expr {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
@@ -177,6 +142,7 @@ impl ToTokens for Expr {
     }
 }
 
+#[derive(Debug, Parse)]
 pub struct FNeg {
     fneg: kw::fneg,
     fast_math: FastMath,
@@ -201,17 +167,6 @@ impl fmt::Display for FNeg {
     }
 }
 
-impl Parse for FNeg {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(FNeg {
-            fneg: input.parse()?,
-            fast_math: input.parse()?,
-            ty: input.parse()?,
-            op: input.parse()?,
-        })
-    }
-}
-
 impl ToTokens for FNeg {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         if let Some(ident) = self.op.ident() {
@@ -223,6 +178,7 @@ impl ToTokens for FNeg {
     }
 }
 
+#[derive(Debug, Parse)]
 pub struct Add {
     add: kw::add,
     nuw: Option<kw::nuw>,
@@ -247,19 +203,7 @@ impl fmt::Display for Add {
     }
 }
 
-impl Parse for Add {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(Add {
-            add: input.parse()?,
-            nuw: input.parse::<kw::nuw>().ok(),
-            nsw: input.parse::<kw::nsw>().ok(),
-            ty: input.parse()?,
-            op1: input.parse()?,
-            op2: input.parse()?,
-        })
-    }
-}
-
+#[derive(Debug, Parse)]
 pub struct FAdd {
     fadd: kw::fadd,
     fast_math: FastMath,
@@ -286,18 +230,7 @@ impl fmt::Display for FAdd {
     }
 }
 
-impl Parse for FAdd {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(FAdd {
-            fadd: input.parse()?,
-            fast_math: input.parse()?,
-            ty: input.parse()?,
-            op1: input.parse()?,
-            op2: input.parse()?,
-        })
-    }
-}
-
+#[derive(Debug, Parse)]
 pub struct Sub {
     sub: kw::sub,
     nuw: Option<kw::nuw>,
@@ -322,19 +255,7 @@ impl fmt::Display for Sub {
     }
 }
 
-impl Parse for Sub {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(Sub {
-            sub: input.parse()?,
-            nuw: input.parse::<kw::nuw>().ok(),
-            nsw: input.parse::<kw::nsw>().ok(),
-            ty: input.parse()?,
-            op1: input.parse()?,
-            op2: input.parse()?,
-        })
-    }
-}
-
+#[derive(Debug, Parse)]
 pub struct FSub {
     fsub: kw::fsub,
     fast_math: FastMath,
@@ -361,18 +282,7 @@ impl fmt::Display for FSub {
     }
 }
 
-impl Parse for FSub {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(FSub {
-            fsub: input.parse()?,
-            fast_math: input.parse()?,
-            ty: input.parse()?,
-            op1: input.parse()?,
-            op2: input.parse()?,
-        })
-    }
-}
-
+#[derive(Debug, Parse)]
 pub struct Mul {
     mul: kw::mul,
     nuw: Option<kw::nuw>,
@@ -397,19 +307,7 @@ impl fmt::Display for Mul {
     }
 }
 
-impl Parse for Mul {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(Mul {
-            mul: input.parse()?,
-            nuw: input.parse::<kw::nuw>().ok(),
-            nsw: input.parse::<kw::nsw>().ok(),
-            ty: input.parse()?,
-            op1: input.parse()?,
-            op2: input.parse()?,
-        })
-    }
-}
-
+#[derive(Debug, Parse)]
 pub struct FMul {
     fmul: kw::fmul,
     fast_math: FastMath,
@@ -436,18 +334,7 @@ impl fmt::Display for FMul {
     }
 }
 
-impl Parse for FMul {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(FMul {
-            fmul: input.parse()?,
-            fast_math: input.parse()?,
-            ty: input.parse()?,
-            op1: input.parse()?,
-            op2: input.parse()?,
-        })
-    }
-}
-
+#[derive(Debug, Parse)]
 pub struct UDiv {
     udiv: kw::udiv,
     exact: Option<kw::exact>,
@@ -471,18 +358,7 @@ impl fmt::Display for UDiv {
     }
 }
 
-impl Parse for UDiv {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(UDiv {
-            udiv: input.parse()?,
-            exact: input.parse().ok(),
-            ty: input.parse()?,
-            op1: input.parse()?,
-            op2: input.parse()?,
-        })
-    }
-}
-
+#[derive(Debug, Parse)]
 pub struct SDiv {
     sdiv: kw::sdiv,
     exact: Option<kw::exact>,
@@ -506,18 +382,7 @@ impl fmt::Display for SDiv {
     }
 }
 
-impl Parse for SDiv {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(SDiv {
-            sdiv: input.parse()?,
-            exact: input.parse().ok(),
-            ty: input.parse()?,
-            op1: input.parse()?,
-            op2: input.parse()?,
-        })
-    }
-}
-
+#[derive(Debug, Parse)]
 pub struct FDiv {
     fdiv: kw::fdiv,
     fast_math: FastMath,
@@ -544,18 +409,7 @@ impl fmt::Display for FDiv {
     }
 }
 
-impl Parse for FDiv {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(FDiv {
-            fdiv: input.parse()?,
-            fast_math: input.parse()?,
-            ty: input.parse()?,
-            op1: input.parse()?,
-            op2: input.parse()?,
-        })
-    }
-}
-
+#[derive(Debug, Parse)]
 pub struct URem {
     urem: kw::urem,
     ty: Type,
@@ -569,17 +423,7 @@ impl fmt::Display for URem {
     }
 }
 
-impl Parse for URem {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(URem {
-            urem: input.parse()?,
-            ty: input.parse()?,
-            op1: input.parse()?,
-            op2: input.parse()?,
-        })
-    }
-}
-
+#[derive(Debug, Parse)]
 pub struct SRem {
     srem: kw::srem,
     ty: Type,
@@ -593,17 +437,7 @@ impl fmt::Display for SRem {
     }
 }
 
-impl Parse for SRem {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(SRem {
-            srem: input.parse()?,
-            ty: input.parse()?,
-            op1: input.parse()?,
-            op2: input.parse()?,
-        })
-    }
-}
-
+#[derive(Debug, Parse)]
 pub struct FRem {
     frem: kw::frem,
     fast_math: FastMath,
@@ -623,17 +457,5 @@ impl fmt::Display for FRem {
             self.op1,
             self.op2
         )
-    }
-}
-
-impl Parse for FRem {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(FRem {
-            frem: input.parse()?,
-            fast_math: input.parse()?,
-            ty: input.parse()?,
-            op1: input.parse()?,
-            op2: input.parse()?,
-        })
     }
 }

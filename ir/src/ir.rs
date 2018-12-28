@@ -2,13 +2,13 @@ use std::fmt;
 
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::parse::{Parse, ParseStream};
 use syn::Result;
 
 use crate::expr::Expr;
 use crate::stmt::Stmt;
 use crate::value::Value;
 
+#[derive(Debug, Parse)]
 pub enum Ir {
     Stmt(Stmt),
     Expr(Expr),
@@ -22,16 +22,6 @@ impl fmt::Display for Ir {
             Ir::Expr(expr) => expr.fmt(f),
             Ir::Value(value) => value.fmt(f),
         }
-    }
-}
-
-impl Parse for Ir {
-    fn parse(input: ParseStream) -> Result<Self> {
-        input
-            .parse()
-            .map(Ir::Stmt)
-            .or_else(|_| input.parse().map(Ir::Expr))
-            .or_else(|_| input.parse().map(Ir::Value))
     }
 }
 

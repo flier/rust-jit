@@ -8,6 +8,8 @@ extern crate lazy_static;
 extern crate syn;
 #[macro_use]
 extern crate quote;
+#[macro_use]
+extern crate llvm_ir_parse;
 
 pub mod expr;
 mod ir;
