@@ -16,12 +16,12 @@ pub mod expr;
 mod ir;
 mod kw;
 mod op;
-mod stmt;
+pub mod stmt;
 mod ty;
 
 pub use self::constant::Constant;
 pub use self::expr::Expr;
 pub use self::ir::Ir;
 pub use self::op::Operand;
-pub use self::stmt::*;
+pub use self::stmt::Stmt;
 pub use self::ty::Type;

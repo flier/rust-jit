@@ -1,13 +1,11 @@
-use std::fmt;
 use std::iter;
 use std::rc::Rc;
 
-use proc_macro2::{Ident, TokenStream};
-use quote::ToTokens;
+use proc_macro2::Ident;
 use regex::Regex;
 use syn::parse::{Parse, ParseStream};
 use syn::token::CustomKeyword;
-use syn::{LitInt, Result};
+use syn::{Error, LitInt, Result};
 
 use crate::kw;
 
@@ -54,24 +52,6 @@ impl From<Ident> for Type {
                 .unwrap()
         } else {
             Type::Named(ident)
-        }
-    }
-}
-
-impl fmt::Display for Type {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Type::Void => kw::void::ident().fmt(f),
-            Type::Integer(bits) => write!(f, "i{}", bits),
-            Type::Half => kw::half::ident().fmt(f),
-            Type::Float => kw::float::ident().fmt(f),
-            Type::Double => kw::double::ident().fmt(f),
-            Type::Fp128 => kw::fp128::ident().fmt(f),
-            Type::Fp80 => kw::x86_fp80::ident().fmt(f),
-            Type::Mmx => kw::x86_mmx::ident().fmt(f),
-            Type::Vector(ty, len) => write!(f, "<{} x {}>", len, ty),
-            Type::Pointer(ty) => write!(f, "{} *", ty),
-            Type::Named(name) => name.fmt(f),
         }
     }
 }
@@ -129,7 +109,9 @@ impl Parse for Type {
                 Type::Named(ident)
             }
         } else {
-            return Err(lookahead.error());
+            let err = lookahead.error();
+
+            return Err(Error::new(err.span(), format!("invalid type, {}", err)));
         };
 
         if input.peek(Token![*]) {
@@ -142,42 +124,77 @@ impl Parse for Type {
     }
 }
 
-impl ToTokens for Type {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            Type::Void => {
-                quote! { ::std::ffi::c_void }
-            }
-            Type::Integer(bits) => match bits {
-                1 => quote! { bool },
-                8 => quote! { i8 },
-                16 => quote! { i16 },
-                32 => quote! { i32 },
-                64 => quote! { i64 },
-                128 => quote! { i128 },
-                _ => unimplemented!(),
-            },
-            Type::Half | Type::Float => {
-                quote! { f32 }
-            }
-            Type::Double => {
-                quote! { f64 }
-            }
-            Type::Fp128 | Type::Fp80 | Type::Mmx => unimplemented!(),
-            Type::Vector(ty, len) => {
-                let types = iter::repeat(&**ty).take(*len);
+#[cfg(feature = "display")]
+mod display {
+    use std::fmt;
 
-                quote! { ( #( #types ),* ) }
-            }
-            Type::Pointer(ty) => {
-                let ty = &**ty;
+    use syn::token::CustomKeyword;
 
-                quote! { *mut #ty }
-            }
-            Type::Named(name) => {
-                quote! { #name }
+    use super::*;
+
+    impl fmt::Display for Type {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            match self {
+                Type::Void => kw::void::ident().fmt(f),
+                Type::Integer(bits) => write!(f, "i{}", bits),
+                Type::Half => kw::half::ident().fmt(f),
+                Type::Float => kw::float::ident().fmt(f),
+                Type::Double => kw::double::ident().fmt(f),
+                Type::Fp128 => kw::fp128::ident().fmt(f),
+                Type::Fp80 => kw::x86_fp80::ident().fmt(f),
+                Type::Mmx => kw::x86_mmx::ident().fmt(f),
+                Type::Vector(ty, len) => write!(f, "<{} x {}>", len, ty),
+                Type::Pointer(ty) => write!(f, "{} *", ty),
+                Type::Named(name) => name.fmt(f),
             }
         }
-        .to_tokens(tokens)
+    }
+}
+
+#[cfg(feature = "gen")]
+mod gen {
+    use proc_macro2::TokenStream;
+    use quote::ToTokens;
+
+    use super::*;
+
+    impl ToTokens for Type {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            match self {
+                Type::Void => {
+                    quote! { ::std::ffi::c_void }
+                }
+                Type::Integer(bits) => match bits {
+                    1 => quote! { bool },
+                    8 => quote! { i8 },
+                    16 => quote! { i16 },
+                    32 => quote! { i32 },
+                    64 => quote! { i64 },
+                    128 => quote! { i128 },
+                    _ => unimplemented!(),
+                },
+                Type::Half | Type::Float => {
+                    quote! { f32 }
+                }
+                Type::Double => {
+                    quote! { f64 }
+                }
+                Type::Fp128 | Type::Fp80 | Type::Mmx => unimplemented!(),
+                Type::Vector(ty, len) => {
+                    let types = iter::repeat(&**ty).take(*len);
+
+                    quote! { ( #( #types ),* ) }
+                }
+                Type::Pointer(ty) => {
+                    let ty = &**ty;
+
+                    quote! { *mut #ty }
+                }
+                Type::Named(name) => {
+                    quote! { #name }
+                }
+            }
+            .to_tokens(tokens)
+        }
     }
 }

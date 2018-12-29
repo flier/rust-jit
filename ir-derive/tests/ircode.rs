@@ -65,4 +65,30 @@ pub fn fneg() {
     let val = 5;
 
     assert_matches!(ir! { fneg float %val }, FNeg{..});
+    assert_matches!(ir! { fneg float 3.14 }, FNeg{..});
+}
+
+#[test]
+pub fn add() {
+    let x = 3;
+    let y = 4;
+
+    assert_matches!(ir! { add i32 %x, %y }, Add{..});
+    assert_matches!(ir! { add i32 3, %y }, Add{..});
+    assert_matches!(ir! { add i32 %x, 4 }, Add{..});
+    assert_matches!(ir! { add i32 3, 4 }, Add{..});
+
+    assert_matches!(ir! { add nsw i32 3, %y }, NSWAdd{..});
+    assert_matches!(ir! { add nuw i32 %x, 4 }, NUWAdd{..});
+}
+
+#[test]
+pub fn fadd() {
+    let x = 3.0;
+    let y = 4.0;
+
+    assert_matches!(ir! { fadd float %x, %y }, FAdd{..});
+    assert_matches!(ir! { fadd float 3.0, %y }, FAdd{..});
+    assert_matches!(ir! { fadd float %x, 4.0 }, FAdd{..});
+    assert_matches!(ir! { fadd float 3.0, 4.0 }, FAdd{..});
 }

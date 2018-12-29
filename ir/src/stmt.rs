@@ -1,10 +1,5 @@
-use std::fmt;
-
-use proc_macro2::TokenStream;
-use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
-use syn::token::CustomKeyword;
-use syn::Result;
+use syn::{Error, Result};
 
 use crate::expr::Expr;
 use crate::kw;
@@ -16,16 +11,6 @@ pub enum Stmt {
     Ret(Ret),
     Unreachable(kw::unreachable),
     Assign(Operand, Expr),
-}
-
-impl fmt::Display for Stmt {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Stmt::Ret(ret) => ret.fmt(f),
-            Stmt::Unreachable(_) => kw::unreachable::ident().fmt(f),
-            Stmt::Assign(op, expr) => write!(f, "{} = {}", op, expr),
-        }
-    }
 }
 
 impl Parse for Stmt {
@@ -43,19 +28,10 @@ impl Parse for Stmt {
 
             Ok(Stmt::Assign(result, op))
         } else {
-            Err(lookahead.error())
-        }
-    }
-}
+            let err = lookahead.error();
 
-impl ToTokens for Stmt {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            Stmt::Ret(ret) => quote! { #ret },
-            Stmt::Unreachable(_) => quote! { ::llvm_jit::insts::Unreachable },
-            Stmt::Assign(operand, expr) => quote! { let #operand = #expr; },
+            return Err(Error::new(err.span(), format!("invalid statement, {}", err)));
         }
-        .to_tokens(tokens)
     }
 }
 
@@ -63,15 +39,6 @@ impl ToTokens for Stmt {
 pub enum Ret {
     Void(kw::void),
     Result { ty: Type, op: Operand },
-}
-
-impl fmt::Display for Ret {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Ret::Void(_) => write!(f, "{} {}", kw::ret::ident(), kw::void::ident()),
-            Ret::Result { ty, op } => write!(f, "{} {} {}", kw::ret::ident(), ty, op),
-        }
-    }
 }
 
 impl Parse for Ret {
@@ -89,14 +56,61 @@ impl Parse for Ret {
     }
 }
 
-impl ToTokens for Ret {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            Ret::Void(_) => quote! { ret!() },
-            Ret::Result { op, .. } => {
-                quote! { ret!(#op) }
+#[cfg(feature = "display")]
+mod display {
+    use std::fmt;
+
+    use syn::token::CustomKeyword;
+
+    use super::*;
+
+    impl fmt::Display for Stmt {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            match self {
+                Stmt::Ret(ret) => ret.fmt(f),
+                Stmt::Unreachable(_) => kw::unreachable::ident().fmt(f),
+                Stmt::Assign(op, expr) => write!(f, "{} = {}", op, expr),
             }
         }
-        .to_tokens(tokens)
+    }
+
+    impl fmt::Display for Ret {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            match self {
+                Ret::Void(_) => write!(f, "{} {}", kw::ret::ident(), kw::void::ident()),
+                Ret::Result { ty, op } => write!(f, "{} {} {}", kw::ret::ident(), ty, op),
+            }
+        }
+    }
+}
+
+#[cfg(feature = "gen")]
+mod gen {
+    use proc_macro2::TokenStream;
+    use quote::ToTokens;
+
+    use super::*;
+
+    impl ToTokens for Stmt {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            match self {
+                Stmt::Ret(ret) => quote! { #ret },
+                Stmt::Unreachable(_) => quote! { ::llvm_jit::insts::Unreachable },
+                Stmt::Assign(operand, expr) => quote! { let #operand = #expr; },
+            }
+            .to_tokens(tokens)
+        }
+    }
+
+    impl ToTokens for Ret {
+        fn to_tokens(&self, tokens: &mut TokenStream) {
+            match self {
+                Ret::Void(_) => quote! { ret!() },
+                Ret::Result { op, .. } => {
+                    quote! { ret!(#op) }
+                }
+            }
+            .to_tokens(tokens)
+        }
     }
 }

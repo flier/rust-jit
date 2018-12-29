@@ -18,3 +18,36 @@ pub fn ir(input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
+
+#[proc_macro]
+pub fn expr(input: TokenStream) -> TokenStream {
+    let expr = parse_macro_input!(input as ir::Expr);
+
+    let expanded = quote! {
+        #expr
+    };
+
+    TokenStream::from(expanded)
+}
+
+#[proc_macro]
+pub fn stmt(input: TokenStream) -> TokenStream {
+    let stmt = parse_macro_input!(input as ir::Stmt);
+
+    let expanded = quote! {
+        #stmt
+    };
+
+    TokenStream::from(expanded)
+}
+
+#[proc_macro]
+pub fn constant(input: TokenStream) -> TokenStream {
+    let constant = parse_macro_input!(input as ir::Constant);
+
+    let expanded = quote! {
+        #constant
+    };
+
+    TokenStream::from(expanded)
+}

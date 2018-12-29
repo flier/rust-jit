@@ -41,7 +41,7 @@ fn parse_struct<'a>(name: proc_macro2::Ident, fields: Fields) -> proc_macro2::To
 
             quote! {
                 impl ::syn::parse::Parse for #name {
-                    fn parse(input: ::syn::parse::ParseStream) -> Result<Self> {
+                    fn parse(input: ::syn::parse::ParseStream) -> ::syn::Result<Self> {
                         Ok(#name { #( #fields ),* })
                     }
                 }
@@ -58,7 +58,7 @@ fn parse_struct<'a>(name: proc_macro2::Ident, fields: Fields) -> proc_macro2::To
 
             quote! {
                 impl ::syn::parse::Parse for #name {
-                    fn parse(input: ::syn::parse::ParseStream) -> Result<Self> {
+                    fn parse(input: ::syn::parse::ParseStream) -> ::syn::Result<Self> {
                         Ok(#name ( #( #fields ),* ))
                     }
                 }
@@ -67,7 +67,7 @@ fn parse_struct<'a>(name: proc_macro2::Ident, fields: Fields) -> proc_macro2::To
         Fields::Unit => quote! {
             quote! {
                 impl ::syn::parse::Parse for #name {
-                    fn parse(input: ::syn::parse::ParseStream) -> Result<Self> {
+                    fn parse(input: ::syn::parse::ParseStream) -> ::syn::Result<Self> {
                         Ok(#name)
                     }
                 }
@@ -85,7 +85,11 @@ fn parse_enum<'a>(name: proc_macro2::Ident, variants: impl Iterator<Item = &'a V
             Fields::Unnamed(fields) => {
                 if fields.unnamed.len() == 1 {
                     quote! {
-                        input.parse().map(#name :: #varname)
+                        match input.fork().parse().map(#name :: #varname) {
+                            Ok(_) => input.parse().map(#name :: #varname),
+                            Err(err) => Err(::syn::Error::new(err.span(),
+                                format!("invalid {}::{}, {}", stringify!(#name), stringify!(#varname), err)))
+                        }
                     }
                 } else {
                     panic!("not support multi variant fields")
@@ -99,8 +103,10 @@ fn parse_enum<'a>(name: proc_macro2::Ident, variants: impl Iterator<Item = &'a V
 
     quote! {
         impl ::syn::parse::Parse for #name {
-            fn parse(input: ::syn::parse::ParseStream) -> Result<Self> {
-                #first_step #( .or_else(|_| #steps ) )*
+            fn parse(input: ::syn::parse::ParseStream) -> ::syn::Result<Self> {
+                #first_step #( .or_else(|_| #steps ) )* .map_err(|err|
+                    ::syn::Error::new(err.span(), format!("invalid {}, {}", stringify!(#name), err))
+                )
             }
         }
     }
