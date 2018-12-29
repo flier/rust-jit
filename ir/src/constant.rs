@@ -12,7 +12,7 @@ use crate::op::Operand;
 use crate::ty::Type;
 
 #[derive(Clone, Debug)]
-pub enum Value {
+pub enum Constant {
     Bool(bool),
     Int(i64),
     Uint(u64),
@@ -41,18 +41,18 @@ impl Parse for Field {
     }
 }
 
-impl fmt::Display for Value {
+impl fmt::Display for Constant {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Value::Bool(v) => v.fmt(f),
-            Value::Int(v) => v.fmt(f),
-            Value::Uint(v) => v.fmt(f),
-            Value::Float(v) => v.fmt(f),
-            Value::Str(v) => v.fmt(f),
-            Value::Null => kw::null::ident().fmt(f),
-            Value::None => kw::none::ident().fmt(f),
-            Value::Zeroed => kw::zeroinitializer::ident().fmt(f),
-            Value::Struct(fields, packed) => {
+            Constant::Bool(v) => v.fmt(f),
+            Constant::Int(v) => v.fmt(f),
+            Constant::Uint(v) => v.fmt(f),
+            Constant::Float(v) => v.fmt(f),
+            Constant::Str(v) => v.fmt(f),
+            Constant::Null => kw::null::ident().fmt(f),
+            Constant::None => kw::none::ident().fmt(f),
+            Constant::Zeroed => kw::zeroinitializer::ident().fmt(f),
+            Constant::Struct(fields, packed) => {
                 let fields = itertools::join(fields.iter().map(|field| format!("{} {}", field.ty, field.op)), ",");
 
                 if *packed {
@@ -61,12 +61,12 @@ impl fmt::Display for Value {
                     write!(f, "{}", fields)
                 }
             }
-            Value::Array(elements) => write!(
+            Constant::Array(elements) => write!(
                 f,
                 "[{}]",
                 itertools::join(elements.iter().map(|field| format!("{} {}", field.ty, field.op)), ",")
             ),
-            Value::Vector(elements) => write!(
+            Constant::Vector(elements) => write!(
                 f,
                 "<{}>",
                 itertools::join(elements.iter().map(|field| format!("{} {}", field.ty, field.op)), ",")
@@ -75,48 +75,48 @@ impl fmt::Display for Value {
     }
 }
 
-impl Parse for Value {
+impl Parse for Constant {
     fn parse(input: ParseStream) -> Result<Self> {
         let lookahead = input.lookahead1();
 
         if lookahead.peek(LitBool) {
-            Ok(Value::Bool(input.parse::<LitBool>()?.value))
+            Ok(Constant::Bool(input.parse::<LitBool>()?.value))
         } else if lookahead.peek(LitInt) {
-            input.parse::<LitInt>().map(|n| n.value()).map(Value::Uint)
+            input.parse::<LitInt>().map(|n| n.value()).map(Constant::Uint)
         } else if lookahead.peek(Token![-]) && input.peek2(LitInt) {
             let _ = input.parse::<Token![-]>()?;
 
-            input.parse::<LitInt>().map(|n| -(n.value() as i64)).map(Value::Int)
+            input.parse::<LitInt>().map(|n| -(n.value() as i64)).map(Constant::Int)
         } else if lookahead.peek(LitFloat) {
-            input.parse::<LitFloat>().map(|f| f.value()).map(Value::Float)
+            input.parse::<LitFloat>().map(|f| f.value()).map(Constant::Float)
         } else if lookahead.peek(Token![-]) && input.peek2(LitFloat) {
             let _ = input.parse::<Token![-]>()?;
 
-            input.parse::<LitFloat>().map(|f| -f.value()).map(Value::Float)
+            input.parse::<LitFloat>().map(|f| -f.value()).map(Constant::Float)
         } else if lookahead.peek(kw::c) && input.peek2(LitStr) {
             let _ = input.parse::<kw::c>()?;
 
-            input.parse::<LitStr>().map(|s| s.value()).map(Value::Str)
+            input.parse::<LitStr>().map(|s| s.value()).map(Constant::Str)
         } else if lookahead.peek(kw::null) {
-            input.parse::<kw::null>().map(|_| Value::Null)
+            input.parse::<kw::null>().map(|_| Constant::Null)
         } else if lookahead.peek(kw::none) {
-            input.parse::<kw::none>().map(|_| Value::None)
+            input.parse::<kw::none>().map(|_| Constant::None)
         } else if lookahead.peek(kw::zeroinitializer) {
-            input.parse::<kw::zeroinitializer>().map(|_| Value::Zeroed)
+            input.parse::<kw::zeroinitializer>().map(|_| Constant::Zeroed)
         } else if lookahead.peek(Brace) {
             let content;
             let _brace = braced!(content in input);
 
             content
                 .parse_terminated(Field::parse)
-                .map(|fields| Value::Struct(fields, false))
+                .map(|fields| Constant::Struct(fields, false))
         } else if lookahead.peek(Token![<]) && input.peek2(Brace) {
             let _ = input.parse::<Token![<]>()?;
             let content;
             let _brace = braced!(content in input);
             let s = content
                 .parse_terminated(Field::parse)
-                .map(|fields| Value::Struct(fields, true))?;
+                .map(|fields| Constant::Struct(fields, true))?;
             let _ = input.parse::<Token![>]>()?;
 
             Ok(s)
@@ -124,7 +124,7 @@ impl Parse for Value {
             let content;
             let _bracket = bracketed!(content in input);
 
-            content.parse_terminated(Field::parse).map(Value::Array)
+            content.parse_terminated(Field::parse).map(Constant::Array)
         } else if lookahead.peek(Token![<]) {
             let _ = input.parse::<Token![<]>()?;
             let mut elements = Punctuated::new();
@@ -145,7 +145,7 @@ impl Parse for Value {
 
             let _ = input.parse::<Token![>]>()?;
 
-            Ok(Value::Vector(elements))
+            Ok(Constant::Vector(elements))
         } else if lookahead.peek(Lit) {
             // TODO: represents an integer larger than 64 bits.
             unimplemented!()
@@ -155,18 +155,18 @@ impl Parse for Value {
     }
 }
 
-impl ToTokens for Value {
+impl ToTokens for Constant {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            Value::Bool(b) => b.to_tokens(tokens),
-            Value::Int(n) => n.to_tokens(tokens),
-            Value::Uint(n) => n.to_tokens(tokens),
-            Value::Float(f) => f.to_tokens(tokens),
-            Value::Str(s) => s.to_tokens(tokens),
-            Value::Null => quote! { ::std::ptr::null_mut() }.to_tokens(tokens),
-            Value::None => quote! { None }.to_tokens(tokens),
-            Value::Zeroed => quote! { unsafe { ::std::mem::zeroed() } }.to_tokens(tokens),
-            Value::Struct(fields, packed) => {
+            Constant::Bool(b) => b.to_tokens(tokens),
+            Constant::Int(n) => n.to_tokens(tokens),
+            Constant::Uint(n) => n.to_tokens(tokens),
+            Constant::Float(f) => f.to_tokens(tokens),
+            Constant::Str(s) => s.to_tokens(tokens),
+            Constant::Null => quote! { ::std::ptr::null_mut() }.to_tokens(tokens),
+            Constant::None => quote! { None }.to_tokens(tokens),
+            Constant::Zeroed => quote! { unsafe { ::std::mem::zeroed() } }.to_tokens(tokens),
+            Constant::Struct(fields, packed) => {
                 let fields = fields.iter().map(|field| &field.op);
 
                 let expand = if *packed {
@@ -179,7 +179,7 @@ impl ToTokens for Value {
 
                 expand.to_tokens(tokens)
             }
-            Value::Array(elements) => {
+            Constant::Array(elements) => {
                 let ty = elements.first().map(|p| &p.value().ty);
                 let elements = elements.iter().map(|field| &field.op);
 
@@ -189,7 +189,7 @@ impl ToTokens for Value {
 
                 expand.to_tokens(tokens)
             }
-            Value::Vector(elements) => {
+            Constant::Vector(elements) => {
                 let elements = elements.iter().map(|field| &field.op);
 
                 let expand = quote! { ( #( #elements ),* ) };

@@ -11,17 +11,17 @@ extern crate quote;
 #[macro_use]
 extern crate llvm_ir_parse;
 
+mod constant;
 pub mod expr;
 mod ir;
 mod kw;
 mod op;
 mod stmt;
 mod ty;
-mod value;
 
+pub use self::constant::Constant;
 pub use self::expr::Expr;
 pub use self::ir::Ir;
 pub use self::op::Operand;
 pub use self::stmt::*;
 pub use self::ty::Type;
-pub use self::value::Value;

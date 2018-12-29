@@ -169,12 +169,11 @@ impl fmt::Display for FNeg {
 
 impl ToTokens for FNeg {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        if let Some(ident) = self.op.ident() {
-            quote! { fneg!(#ident) }
-        } else {
-            quote! {}
-        }
-        .to_tokens(tokens)
+        let op = &self.op;
+
+        let expanded = quote! { fneg!(#op) };
+
+        expanded.to_tokens(tokens)
     }
 }
 

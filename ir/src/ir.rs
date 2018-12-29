@@ -4,15 +4,15 @@ use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::Result;
 
+use crate::constant::Constant;
 use crate::expr::Expr;
 use crate::stmt::Stmt;
-use crate::value::Value;
 
 #[derive(Debug, Parse)]
 pub enum Ir {
     Stmt(Stmt),
     Expr(Expr),
-    Value(Value),
+    Constant(Constant),
 }
 
 impl fmt::Display for Ir {
@@ -20,7 +20,7 @@ impl fmt::Display for Ir {
         match self {
             Ir::Stmt(stmt) => stmt.fmt(f),
             Ir::Expr(expr) => expr.fmt(f),
-            Ir::Value(value) => value.fmt(f),
+            Ir::Constant(constant) => constant.fmt(f),
         }
     }
 }
@@ -30,7 +30,7 @@ impl ToTokens for Ir {
         match self {
             Ir::Stmt(stmt) => stmt.to_tokens(tokens),
             Ir::Expr(expr) => expr.to_tokens(tokens),
-            Ir::Value(value) => value.to_tokens(tokens),
+            Ir::Constant(constant) => constant.to_tokens(tokens),
         }
     }
 }

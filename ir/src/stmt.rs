@@ -10,7 +10,6 @@ use crate::expr::Expr;
 use crate::kw;
 use crate::op::Operand;
 use crate::ty::Type;
-use crate::value::Value;
 
 #[derive(Debug)]
 pub enum Stmt {
@@ -63,14 +62,14 @@ impl ToTokens for Stmt {
 #[derive(Debug)]
 pub enum Ret {
     Void(kw::void),
-    Result { ty: Type, value: Value },
+    Result { ty: Type, op: Operand },
 }
 
 impl fmt::Display for Ret {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Ret::Void(_) => write!(f, "{} {}", kw::ret::ident(), kw::void::ident()),
-            Ret::Result { ty, value } => write!(f, "{} {} {}", kw::ret::ident(), ty, value),
+            Ret::Result { ty, op } => write!(f, "{} {} {}", kw::ret::ident(), ty, op),
         }
     }
 }
@@ -84,7 +83,7 @@ impl Parse for Ret {
         } else {
             Ok(Ret::Result {
                 ty: input.parse()?,
-                value: input.parse()?,
+                op: input.parse()?,
             })
         }
     }
@@ -94,8 +93,8 @@ impl ToTokens for Ret {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
             Ret::Void(_) => quote! { ret!() },
-            Ret::Result { value, .. } => {
-                quote! { ret!(#value) }
+            Ret::Result { op, .. } => {
+                quote! { ret!(#op) }
             }
         }
         .to_tokens(tokens)
