@@ -213,10 +213,11 @@ pub struct CleanupPad<'a> {
 /// The `cleanuppad` instruction is used by LLVM’s exception handling system
 /// to specify that a basic block is a cleanup block —
 /// one where a personality routine attempts to transfer control to run cleanup actions.
-pub fn cleanuppad<'a, T, I, N>(parent: T, args: I, name: N) -> CleanupPad<'a>
+pub fn cleanuppad<'a, T, I, V, N>(parent: T, args: I, name: N) -> CleanupPad<'a>
 where
     T: Into<CatchSwitchInst>,
-    I: IntoIterator<Item = ValueRef>,
+    I: IntoIterator<Item = V>,
+    V: Into<ValueRef>,
     N: Into<Cow<'a, str>>,
 {
     CleanupPad {

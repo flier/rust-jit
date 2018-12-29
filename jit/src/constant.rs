@@ -170,15 +170,15 @@ impl ConstantInts for IntegerType {
 
 impl Context {
     pub fn uint8<V: Into<u8>>(&self, v: V) -> ConstantInt {
-        self.int8_t().uint(v.into() as u64)
+        self.int8_t().uint(u64::from(v.into()))
     }
 
     pub fn uint16<V: Into<u16>>(&self, v: V) -> ConstantInt {
-        self.int16_t().uint(v.into() as u64)
+        self.int16_t().uint(u64::from(v.into()))
     }
 
     pub fn uint32<V: Into<u32>>(&self, v: V) -> ConstantInt {
-        self.int32_t().uint(v.into() as u64)
+        self.int32_t().uint(u64::from(v.into()))
     }
 
     pub fn uint64<V: Into<u64>>(&self, v: V) -> ConstantInt {
@@ -193,15 +193,15 @@ impl Context {
     }
 
     pub fn int8<V: Into<i8>>(&self, v: V) -> ConstantInt {
-        self.int8_t().int(v.into() as i64)
+        self.int8_t().int(i64::from(v.into()))
     }
 
     pub fn int16<V: Into<i16>>(&self, v: V) -> ConstantInt {
-        self.int16_t().int(v.into() as i64)
+        self.int16_t().int(i64::from(v.into()))
     }
 
     pub fn int32<V: Into<i32>>(&self, v: V) -> ConstantInt {
-        self.int32_t().int(v.into() as i64)
+        self.int32_t().int(i64::from(v.into()))
     }
 
     pub fn int64<V: Into<i64>>(&self, v: V) -> ConstantInt {
@@ -253,11 +253,11 @@ impl ConstantFPs for FloatingPointType {
 
 impl Context {
     pub fn half<V: Into<f32>>(&self, v: V) -> ConstantFP {
-        self.half_t().real(v.into() as f64)
+        self.half_t().real(f64::from(v.into()))
     }
 
     pub fn float<V: Into<f32>>(&self, v: V) -> ConstantFP {
-        self.float_t().real(v.into() as f64)
+        self.float_t().real(f64::from(v.into()))
     }
 
     pub fn double<V: Into<f64>>(&self, v: V) -> ConstantFP {

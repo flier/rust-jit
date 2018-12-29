@@ -61,7 +61,7 @@ impl Module {
     }
 
     /// Returns the module flags.
-    pub fn flags<'a>(&'a self) -> ModuleFlagsMetadata<'a> {
+    pub fn flags(&self) -> ModuleFlagsMetadata {
         ModuleFlagsMetadata::new(self)
     }
 

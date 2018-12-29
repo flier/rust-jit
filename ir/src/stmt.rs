@@ -30,7 +30,7 @@ impl Parse for Stmt {
         } else {
             let err = lookahead.error();
 
-            return Err(Error::new(err.span(), format!("invalid statement, {}", err)));
+            Err(Error::new(err.span(), format!("invalid statement, {}", err)))
         }
     }
 }
