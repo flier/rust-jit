@@ -2,6 +2,7 @@
 name = "llvm-bpf"
 version = "0.1.0"
 authors = ["Flier Lu <flier.lu@gmail.com>"]
+edition = "2018"
 
 [features]
 default = []
@@ -10,10 +11,18 @@ gen = ["bindgen"]
 
 [dependencies]
 log = "0.4"
-pretty_env_logger = "0.3"
 failure = "0.1"
 
 llvm-jit = { path = "../jit" }
+
+[dev-dependencies]
+pretty_env_logger = "0.3"
+structopt = "0.2"
+rustyline = "3.0"
+nom = { version = "4.1", features = ["verbose-errors"] }
+hex = "0.3"
+pcap-file = "0.10"
+shellexpand = "1.0"
 
 [build-dependencies]
 log = "0.4"
