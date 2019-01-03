@@ -3,8 +3,6 @@ extern crate log;
 #[macro_use]
 extern crate failure;
 #[macro_use]
-extern crate structopt;
-#[macro_use]
 extern crate nom;
 extern crate llvm_bpf as bpf;
 
@@ -22,7 +20,7 @@ use bpf::{
 use failure::Error;
 use nom::{digit, multispace, rest_s};
 use pcap_file::{Packet, PcapReader};
-use rustyline::{error::ReadlineError, Editor};
+use rustyline::{completion::Completer, error::ReadlineError, highlight::Highlighter, hint::Hinter, Editor, Helper};
 use structopt::StructOpt;
 
 type Result<T> = StdResult<T, Error>;
@@ -52,12 +50,7 @@ struct State {
     m: [u32; bpf::BPF_MEMWORDS],
 }
 
-impl Debugger {
-    pub fn run(&mut self, cmd: Cmd) -> Result<()> {
-        match cmd {
-            Cmd::Help => {
-                println!(
-                    r#"
+const CMD_USAGE: &str = r#"
 load bpf <code>         Load BPF program.
                         use `tcpdump -ien0 -ddd port 22 | tr '\n' ','` to load as filter
 load pcap <file>        Load PCAP file as packets
@@ -74,37 +67,28 @@ disassemble <where>     Disassemble the <where> line.
 dump                    Dump the runtime status.
 help, h, ?              Show the help screen.
 quit, q                 Quit the program.
-"#
-                );
+"#;
+
+impl Debugger {
+    pub fn run(&mut self, cmd: Cmd) -> Result<()> {
+        match cmd {
+            Cmd::Help => {
+                println!("{}", CMD_USAGE);
+
+                Ok(())
             }
-            Cmd::Load(Load::Bpf(code)) => {
-                self.load_bpf(&code)?;
-            }
-            Cmd::Load(Load::Pcap(filename)) => {
-                self.load_pcap(&filename)?;
-            }
-            Cmd::Select(idx) => {
-                self.select_packet(idx)?;
-            }
-            Cmd::Breakpoint(Breakpoint::List) => {
-                self.list_breakpoints()?;
-            }
-            Cmd::Breakpoint(Breakpoint::Reset) => {
-                self.clear_breakpoints()?;
-            }
-            Cmd::Breakpoint(Breakpoint::Line(pos)) => {
-                self.set_breakpoint(pos)?;
-            }
-            Cmd::Disassemble(pos) => {
-                self.disassemble(pos)?;
-            }
+            Cmd::Load(Load::Bpf(code)) => self.load_bpf(&code),
+            Cmd::Load(Load::Pcap(filename)) => self.load_pcap(&filename),
+            Cmd::Select(idx) => self.select_packet(idx),
+            Cmd::Breakpoint(Breakpoint::List) => self.list_breakpoints(),
+            Cmd::Breakpoint(Breakpoint::Reset) => self.clear_breakpoints(),
+            Cmd::Breakpoint(Breakpoint::Line(pos)) => self.set_breakpoint(pos),
+            Cmd::Disassemble(pos) => self.disassemble(pos),
             _ => unimplemented!(),
         }
-
-        Ok(())
     }
 
-    fn program(&self) -> Result<&Program>{
+    fn program(&self) -> Result<&Program> {
         if self.state.program.is_empty() {
             bail!("no BPF program loaded")
         }
@@ -246,6 +230,28 @@ enum Breakpoint {
     Line(usize),
 }
 
+const CMD_LOAD: &str = "load";
+const CMD_SELECT: &str = "select";
+const CMD_STEP: &str = "step";
+const CMD_NEXT: &str = "next";
+const CMD_RUN: &str = "run";
+const CMD_BREAKPOINT: &str = "breakpoint";
+const CMD_DISASSEMBLE: &str = "disassemble";
+const CMD_HELP: &str = "help";
+const CMD_QUIT: &str = "quit";
+
+const COMMANDS: &[&str] = &[
+    CMD_LOAD,
+    CMD_SELECT,
+    CMD_STEP,
+    CMD_NEXT,
+    CMD_RUN,
+    CMD_BREAKPOINT,
+    CMD_DISASSEMBLE,
+    CMD_HELP,
+    CMD_QUIT,
+];
+
 named!(parse_cmd<&str, Cmd>, alt_complete!(
     tuple!(cmd_load, multispace, parse_load) => {
         |(_, _, load)| Cmd::Load(load)
@@ -280,20 +286,20 @@ named!(parse_cmd<&str, Cmd>, alt_complete!(
     tag!("dump") => {
         |_| Cmd::Dump
     } |
-    alt_complete!(tag!("h") | tag!("?") | tag!("help")) => {
+    alt_complete!(tag!("h") | tag!("?") | tag!(CMD_HELP)) => {
         |_| Cmd::Help
     } |
-    alt_complete!(tag!("q") | tag!("quit")) => {
+    alt_complete!(tag!("q") | tag!(CMD_QUIT)) => {
         |_| Cmd::Quit
     }
 ));
 
-named!(cmd_load<&str, &str>, alt_complete!(tag!("load") | tag!("l")));
-named!(cmd_select<&str, &str>, alt_complete!(tag!("select") | tag!("sel")));
-named!(cmd_step<&str, &str>, alt_complete!(tag!("step") | tag!("next") | tag!("n")));
-named!(cmd_run<&str, &str>, alt_complete!(tag!("run") | tag!("r")));
-named!(cmd_breakpoint<&str, &str>, alt_complete!(tag!("br") | tag!("breakpoint")));
-named!(cmd_disassemble<&str, &str>, alt_complete!(tag!("disassemble") | tag!("dis") | tag!("d")));
+named!(cmd_load<&str, &str>, alt_complete!(tag!(CMD_LOAD) | tag!("l")));
+named!(cmd_select<&str, &str>, alt_complete!(tag!(CMD_SELECT) | tag!("sel")));
+named!(cmd_step<&str, &str>, alt_complete!(tag!(CMD_STEP) | tag!(CMD_NEXT) | tag!("n")));
+named!(cmd_run<&str, &str>, alt_complete!(tag!(CMD_RUN) | tag!("r")));
+named!(cmd_breakpoint<&str, &str>, alt_complete!(tag!(CMD_BREAKPOINT) | tag!("br")));
+named!(cmd_disassemble<&str, &str>, alt_complete!(tag!(CMD_DISASSEMBLE) | tag!("dis") | tag!("d")));
 
 named!(parse_load<&str, Load>, alt_complete!(
     tuple!(tag!("bpf"), multispace, parse_code) => {
@@ -340,8 +346,43 @@ named!(parse_breakpoint<&str, Breakpoint>, alt_complete!(
 
 named!(parse_num<&str, usize>, map_res!(rest_s, usize::from_str));
 
+struct CmdHelper;
+
+impl Helper for CmdHelper {}
+
+impl Completer for CmdHelper {
+    type Candidate = String;
+
+    fn complete(&self, line: &str, pos: usize) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
+        let mut candidates = COMMANDS
+            .iter()
+            .filter(|cmd| cmd.starts_with(line))
+            .map(|cmd| (*cmd).to_owned())
+            .collect();
+
+        Ok((0, candidates))
+    }
+}
+
+impl Hinter for CmdHelper {
+    fn hint(&self, line: &str, pos: usize) -> Option<String> {
+        if line.is_empty() {
+            None
+        } else {
+            COMMANDS
+                .iter()
+                .find(|cmd| cmd.starts_with(line))
+                .map(|cmd| (&cmd[pos..]).to_owned())
+        }
+    }
+}
+
+impl Highlighter for CmdHelper {}
+
 fn run_shell_loop(opt: Opt) -> Result<()> {
-    let mut rl = Editor::<()>::new();
+    let mut rl = Editor::<CmdHelper>::new();
+
+    rl.set_helper(Some(CmdHelper));
 
     let history_file = PathBuf::from(String::from(shellexpand::full(&opt.history_file)?));
 
