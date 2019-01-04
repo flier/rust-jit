@@ -55,7 +55,8 @@ pub mod insts;
 mod analysis;
 mod bitcode;
 mod block;
-mod debuginfo;
+#[macro_use]
+pub mod debuginfo;
 mod disasm;
 pub mod engine;
 mod inlineasm;
@@ -72,7 +73,6 @@ pub use crate::constant::{
     Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString, ConstantStruct, ConstantVector, InlineAsm,
 };
 pub use crate::context::{Context, GlobalContext};
-pub use crate::debuginfo::{debug_metadata_version, DIBuilder};
 pub use crate::disasm::Disasm;
 pub use crate::engine::{
     shutdown, CodeGenOptLevel, ExecutionEngine, GenericValue, Interpreter, JITCompiler, MCJITCompiler,

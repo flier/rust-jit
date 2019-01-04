@@ -7,9 +7,9 @@ use arrayvec::ArrayVec;
 use crate::llvm::core::*;
 use crate::llvm::prelude::*;
 
-use crate::errors::Result;
 use crate::block::BasicBlock;
 use crate::context::{Context, GlobalContext};
+use crate::errors::Result;
 use crate::utils::{AsRaw, AsResult};
 use crate::value::{Instruction, ValueRef};
 

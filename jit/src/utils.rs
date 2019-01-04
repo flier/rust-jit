@@ -87,6 +87,26 @@ impl AsResult<()> for LLVMBool {
     }
 }
 
+impl<P, T> AsResult<T> for *const P
+where
+    T: From<*const P>,
+{
+    fn is_ok(self) -> bool {
+        !self.is_null()
+    }
+
+    fn ok_or_else<F, E>(self, err: F) -> Result<T, E>
+    where
+        F: FnOnce() -> E,
+    {
+        if !self.is_null() {
+            Ok(self.into())
+        } else {
+            Err(err())
+        }
+    }
+}
+
 impl<P, T> AsResult<T> for *mut P
 where
     T: From<*mut P>,
