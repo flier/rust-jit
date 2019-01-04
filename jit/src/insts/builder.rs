@@ -7,6 +7,7 @@ use arrayvec::ArrayVec;
 use crate::llvm::core::*;
 use crate::llvm::prelude::*;
 
+use crate::errors::Result;
 use crate::block::BasicBlock;
 use crate::context::{Context, GlobalContext};
 use crate::utils::{AsRaw, AsResult};
@@ -23,6 +24,22 @@ impl<T: Into<ValueRef>> InstructionBuilder for T {
 
     fn emit_to(self, _builder: &IRBuilder) -> Self::Target {
         self.into()
+    }
+}
+
+impl<T: InstructionBuilder> InstructionBuilder for Option<T> {
+    type Target = Option<T::Target>;
+
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
+        self.map(|ib| ib.emit_to(builder))
+    }
+}
+
+impl<T: InstructionBuilder> InstructionBuilder for Result<T> {
+    type Target = Result<T::Target>;
+
+    fn emit_to(self, builder: &IRBuilder) -> Self::Target {
+        self.map(|ib| ib.emit_to(builder))
     }
 }
 
