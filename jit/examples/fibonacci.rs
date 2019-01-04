@@ -27,12 +27,8 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
     let i32_t = context.int32_t();
     let fib_f = module.get_or_insert_function("fib", i32_t, &[i32_t]);
 
-    // Add a basic block to the function.
-    let entry_bb = fib_f.append_basic_block_in_context("entry", &context);
-
     // Create a basic block builder with default parameters.
-    let mut builder = context.create_builder();
-    builder.position_at_end(entry_bb);
+    let builder = context.create_builder();
 
     // Get the constants.
     let one = i32_t.int(1);
@@ -42,37 +38,41 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
     let argx = fib_f.get_param(0).unwrap(); // Get the arg
     argx.set_name("AnArg"); // Give it a nice symbolic name for fun.
 
+    // Add a basic block to the function.
+    let entry_bb = fib_f.append_basic_block_in_context("entry", &context);
     // Create the true_block.
     let ret_bb = fib_f.append_basic_block_in_context("return", &context);
     // Create an exit block.
     let recurse_bb = fib_f.append_basic_block_in_context("recurse", &context);
 
-    // Create the "if (arg < 2) goto exitbb"
-    builder <<= br!(
-        sle!(argx, two; "cond") => ret_bb,
-        _ => recurse_bb
-    );
+    builder.within(entry_bb, || {
+        // Create the "if (arg < 2) goto exitbb"
+        br!(
+            sle!(argx, two; "cond") => ret_bb,
+            _ => recurse_bb
+        )
+    });
 
-    // Create: ret int 1
-    builder.position_at_end(ret_bb);
+    builder.within(ret_bb, || {
+        // Create: ret int 1
+        ret!(one)
+    });
 
-    builder <<= ret!(one);
+    builder.within(recurse_bb, || {
+        // create fib(x-1)
+        let arg = sub!(argx, one; "arg");
+        let call_fib_x1 = call!(fib_f, arg; "fibx1");
 
-    builder.position_at_end(recurse_bb);
+        // create fib(x-2)
+        let arg = sub!(argx, two; "arg");
+        let call_fib_x2 = call!(fib_f, arg; "fibx2");
 
-    // create fib(x-1)
-    let arg = sub!(argx, one; "arg");
-    let call_fib_x1 = call!(fib_f, arg; "fibx1");
+        // fib(x-1)+fib(x-2)
+        let sum = add!(call_fib_x1, call_fib_x2);
 
-    // create fib(x-2)
-    let arg = sub!(argx, two; "arg");
-    let call_fib_x2 = call!(fib_f, arg; "fibx2");
-
-    // fib(x-1)+fib(x-2)
-    let sum = add!(call_fib_x1, call_fib_x2);
-
-    // Create the return instruction and add it to the basic block
-    builder <<= ret!(sum);
+        // Create the return instruction and add it to the basic block
+        ret!(sum)
+    });
 
     return fib_f;
 }

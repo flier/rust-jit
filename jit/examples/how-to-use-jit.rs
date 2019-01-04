@@ -95,6 +95,4 @@ fn main() {
     let gv = ee.run_function(&foo_f, noargs);
 
     println!("Result: {}\n", gv.to_int());
-
-    jit::shutdown();
 }

@@ -18,7 +18,7 @@ mod errors {
     #[derive(Fail, Debug)]
     pub enum ErrorKind {
         #[fail(display = "{}, but got unexpected token: {:?}", _0, _1)]
-        UnexpectedToken(String, ::lexer::Token),
+        UnexpectedToken(String, crate::lexer::Token),
 
         #[fail(display = "unknown variable: {}", _0)]
         UnknownVariable(String),
@@ -202,9 +202,9 @@ mod ast {
 
     use jit::prelude::*;
 
-    use codegen::CodeGenerator;
-    use errors::Result;
-    use lexer::Token;
+    use crate::codegen::CodeGenerator;
+    use crate::errors::Result;
+    use crate::lexer::Token;
 
     #[derive(Debug, PartialEq, PartialOrd)]
     pub enum BinOp {
@@ -313,9 +313,9 @@ mod ast {
 //===----------------------------------------------------------------------===//
 
 mod parser {
-    use ast;
-    use errors::{ErrorKind, Result};
-    use lexer::{Lexer, Token};
+    use crate::ast;
+    use crate::errors::{ErrorKind, Result};
+    use crate::lexer::{Lexer, Token};
 
     pub const ANNO_EXPR: &str = "__anon_expr";
 
@@ -642,8 +642,8 @@ mod codegen {
     use jit::insts::*;
     use jit::prelude::*;
 
-    use ast::{self, Expr};
-    use errors::{ErrorKind, Result};
+    use crate::ast::{self, Expr};
+    use crate::errors::{ErrorKind, Result};
 
     pub struct CodeGenerator<'a> {
         pub context: &'a Context,
@@ -735,11 +735,12 @@ mod codegen {
                 ast::BinOp::Sub => fsub!(lhs, rhs; "subtmp").emit_to(&gen.builder),
                 ast::BinOp::Mul => fmul!(lhs, rhs; "multmp").emit_to(&gen.builder),
                 ast::BinOp::LessThen => {
-                    let lhs = fcmp!(ULT lhs, rhs; "cmptmp");
+                    let lhs = ult!(lhs, rhs; "cmptmp");
                     // Convert bool 0/1 to double 0.0 or 1.0
                     uitofp!(lhs, f64_t; "booltmp").emit_to(&gen.builder)
                 }
-            }.into())
+            }
+            .into())
         }
     }
 
@@ -770,7 +771,7 @@ mod codegen {
             let f64_t = gen.context.double_t();
 
             // Convert condition to a bool by comparing non-equal to 0.0.
-            let cond = fcmp!(ONE self.cond.codegen(gen)?, f64_t.real(0.0));
+            let cond = one!(self.cond.codegen(gen)?, f64_t.real(0.0));
 
             let func = gen.builder.insert_block().unwrap().parent();
 
@@ -854,7 +855,7 @@ mod codegen {
             let end_val = self.end.codegen(gen)?;
 
             // Convert condition to a bool by comparing non-equal to 0.0.
-            let end_cond = fcmp!(ONE end_val, f64_t.real(0.0); "loopcond");
+            let end_cond = one!( end_val, f64_t.real(0.0); "loopcond");
 
             // Create the "after loop" block and insert it.
             let loop_end_bb = gen.builder.insert_block().unwrap();
@@ -915,7 +916,8 @@ mod codegen {
             gen.builder.position_at_end(bb);
 
             // Record the function arguments in the NamedValues map.
-            gen.named_values = func.params()
+            gen.named_values = func
+                .params()
                 .map(|arg| (String::from(arg.name().unwrap()), arg))
                 .collect::<HashMap<String, ValueRef>>();
 
@@ -950,10 +952,10 @@ use libc::c_void;
 use jit::prelude::*;
 use jit::target::*;
 
-use ast::Expr;
-use codegen::CodeGenerator;
-use errors::Result;
-use lexer::Token;
+use crate::ast::Expr;
+use crate::codegen::CodeGenerator;
+use crate::errors::Result;
+use crate::lexer::Token;
 
 //===----------------------------------------------------------------------===//
 // Top-Level parsing and JIT Driver
@@ -1084,7 +1086,8 @@ impl KaleidoscopeJIT {
 
         trace!("finding symbol `{}`", symbol);
 
-        let addr = self.engine
+        let addr = self
+            .engine
             .get_symbol_address(symbol)?
             .map(|addr| {
                 trace!("got symbol `{}` from JIT engine @ {:?}", symbol, addr);
@@ -1126,7 +1129,7 @@ enum Parsed {
 
 /// putchard - putchar that takes a double and returns 0.
 extern "C" fn putchard(x: f64) -> f64 {
-    print!("{}", char::from_u32(u32::from(x)).unwrap_or_default());
+    print!("{}", char::from_u32(x as u32).unwrap_or_default());
     0.0
 }
 

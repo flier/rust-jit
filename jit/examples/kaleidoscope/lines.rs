@@ -1,5 +1,3 @@
-use rustyline;
-
 pub struct Lines<'a> {
     rl: rustyline::Editor<()>,
     prompt: (&'a str, &'a str),
@@ -21,7 +19,7 @@ impl<'a> Lines<'a> {
         self.rl
             .readline(if first { &self.prompt.0 } else { &self.prompt.1 })
             .map(|line| {
-                self.rl.add_history_entry(&line);
+                self.rl.add_history_entry(line.as_str());
 
                 line
             })

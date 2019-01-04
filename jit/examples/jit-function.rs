@@ -21,19 +21,16 @@ fn main() {
 
     // Create a basic block in the function and set our builder to generate code in it.
     let bb = function.append_basic_block_in_context("entry", &context);
-    let mut builder = context.create_builder();
-    builder.position_at_end(bb);
 
-    // get the function's arguments
-    let x = function.get_param(0).unwrap();
-    let y = function.get_param(1).unwrap();
-    let z = function.get_param(2).unwrap();
+    context.create_builder().within(bb, || {
+        // get the function's arguments
+        let x = function.get_param(0).unwrap();
+        let y = function.get_param(1).unwrap();
+        let z = function.get_param(2).unwrap();
 
-    // Emit a `ret` into the function
-    builder <<= ret!(add!(add!(x, y; "sum.1"), z; "sum.2"));
-
-    // done building
-    drop(builder);
+        // Emit a `ret` into the function
+        ret!(add!(add!(x, y; "sum.1"), z; "sum.2"))
+    });
 
     // Dump the module as IR to stdout.
     module.dump();

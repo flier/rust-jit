@@ -2,8 +2,6 @@
 extern crate failure;
 #[macro_use]
 extern crate log;
-extern crate pretty_env_logger;
-extern crate rustyline;
 
 mod lines;
 
@@ -15,7 +13,7 @@ mod errors {
     #[derive(Fail, Debug)]
     pub enum ErrorKind {
         #[fail(display = "{}, but got unexpected token: {:?}", _0, _1)]
-        UnexpectedToken(String, ::lexer::Token),
+        UnexpectedToken(String, crate::lexer::Token),
     }
 
     pub type Result<T> = ::std::result::Result<T, ::failure::Error>;
@@ -176,7 +174,7 @@ mod lexer {
 mod ast {
     use std::fmt;
 
-    use lexer::Token;
+    use crate::lexer::Token;
 
     #[derive(Debug, PartialEq, PartialOrd)]
     pub enum BinOp {
@@ -262,9 +260,9 @@ mod ast {
 //===----------------------------------------------------------------------===//
 
 mod parser {
-    use ast;
-    use errors::{ErrorKind, Result};
-    use lexer::{Lexer, Token};
+    use crate::ast;
+    use crate::errors::{ErrorKind, Result};
+    use crate::lexer::{Lexer, Token};
 
     pub const ANNO_EXPR: &str = "__anon_expr";
 
@@ -514,7 +512,7 @@ mod parser {
     }
 }
 
-use lexer::Token;
+use crate::lexer::Token;
 
 //===----------------------------------------------------------------------===//
 // Top-Level parsing

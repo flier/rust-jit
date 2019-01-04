@@ -22,17 +22,17 @@ fn main() {
     // Add a basic block to the function... again, it automatically inserts
     // because of the last argument.
     let bb = f.append_basic_block_in_context("EntryBlock", &context);
-    let mut builder = context.create_builder();
-    builder.position_at_end(bb);
 
-    // Get the constant integers...
-    let two = i32_t.int(2);
-    let three = i32_t.int(3);
+    context.create_builder().within(bb, || {
+        // Get the constant integers...
+        let two = i32_t.int(2);
+        let three = i32_t.int(3);
 
-    // Create the add instruction... does not insert...
-    let add = add!(two, three; "addresult");
+        // Create the add instruction... does not insert...
+        let add = add!(two, three; "addresult");
 
-    builder <<= ret!(add);
+        ret!(add)
+    });
 
     m.dump();
 }

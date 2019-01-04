@@ -32,3 +32,31 @@ matches = "0.1"
 hamcrest = "*"
 crossbeam = "0.4"
 rustyline = "2.1"
+
+[[example]]
+name = "kaleidoscope_chapter2"
+path = "examples/kaleidoscope/chapter2.rs"
+
+[[example]]
+name = "kaleidoscope_chapter3"
+path = "examples/kaleidoscope/chapter3.rs"
+
+[[example]]
+name = "kaleidoscope_chapter4"
+path = "examples/kaleidoscope/chapter4.rs"
+
+[[example]]
+name = "kaleidoscope_chapter5"
+path = "examples/kaleidoscope/chapter5.rs"
+
+[[example]]
+name = "kaleidoscope_chapter6"
+path = "examples/kaleidoscope/chapter6.rs"
+
+[[example]]
+name = "kaleidoscope_chapter7"
+path = "examples/kaleidoscope/chapter7.rs"
+
+[[example]]
+name = "kaleidoscope_chapter8"
+path = "examples/kaleidoscope/chapter8.rs"
