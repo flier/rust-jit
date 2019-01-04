@@ -1,12 +1,26 @@
 sudo: false
-os: linux
-dist: trusty
 
 language: rust
 rust:
   - stable
   - beta
   - nightly
+
+addons:
+  apt:
+    packages:
+      - clang-7
+      - g++-5
+      - llvm-7-dev
+      - libpcap-dev
+    sources:
+      - ubuntu-toolchain-r-test
+      - llvm-toolchain-trusty-7
+  homebrew:
+    packages:
+      - llvm
+      - libpcap
+    update: true
 
 matrix:
   allow_failures:
@@ -15,17 +29,8 @@ matrix:
     - os: osx
       osx_image: xcode10.1
       compiler: clang
-
-    - addons:
-        apt:
-          packages:
-            - clang-7
-            - g++-5
-            - llvm-7-dev
-            - libpcap-dev
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-7
+    - os: linux
+      dist: trusty
 
 env:
   global:
@@ -36,10 +41,8 @@ env:
 install:
   - |
     if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      apt-get update && apt-get install llvm-7-dev
       export LLVM_SYS_70_PREFIX=/usr/lib/llvm-7
     else
-      brew install llvm libpcap
       export LLVM_SYS_70_PREFIX=`brew --prefix llvm`
       export PKG_CONFIG_PATH=`brew --prefix libpcap`/lib/pkgconfig
     fi
