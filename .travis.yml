@@ -43,6 +43,7 @@ install:
     else
       brew install llvm libpcap
       export LLVM_SYS_70_PREFIX=`brew --prefix llvm`
+      export PKG_CONFIG_PATH="/usr/local/opt/libpcap/lib/pkgconfig"
     fi
   - export PATH=$LLVM_SYS_70_PREFIX/bin:$PATH
   - llvm-config --version
