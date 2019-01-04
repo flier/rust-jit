@@ -26,8 +26,6 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
             - llvm-toolchain-trusty-7
-            - sourceline: 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-7 main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
 
 env:
   global:
@@ -43,7 +41,7 @@ install:
     else
       brew install llvm libpcap
       export LLVM_SYS_70_PREFIX=`brew --prefix llvm`
-      export PKG_CONFIG_PATH="/usr/local/opt/libpcap/lib/pkgconfig"
+      export PKG_CONFIG_PATH=`brew --prefix libpcap`/lib/pkgconfig
     fi
   - export PATH=$LLVM_SYS_70_PREFIX/bin:$PATH
   - llvm-config --version
