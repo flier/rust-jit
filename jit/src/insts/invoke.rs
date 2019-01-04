@@ -221,29 +221,40 @@ mod tests {
     fn invoke() {
         let context = Context::new();
         let module = context.create_module("invoke");
-        let builder = context.create_builder();
 
+        let i32_t = context.int32_t();
         let i64_t = context.int64_t();
 
         let fn_hello = module.add_function("hello", FunctionType::new(i64_t, &[i64_t, i64_t], false));
+        let entry_bb = fn_hello.append_basic_block_in_context("entry", &context);
+        context.create_builder().within(entry_bb, || {
+            let arg0 = fn_hello.get_param(0).unwrap();
+            let arg1 = fn_hello.get_param(1).unwrap();
 
-        context
-            .create_builder()
-            .within(fn_hello.append_basic_block_in_context("entry", &context), || {
-                ret!(add!(fn_hello.get_param(0).unwrap(), fn_hello.get_param(1).unwrap()))
-            });
-
+            ret!(add!(arg0, arg1))
+        });
         fn_hello.verify().unwrap();
 
+        let fn_frame_handler = module.add_function("frame_handler", FunctionType::new(i32_t, &[], false));
+        let entry_bb = fn_frame_handler.append_basic_block_in_context("entry", &context);
+        context.create_builder().within(entry_bb, || ret!(i32_t.uint(0)));
+        fn_frame_handler.verify().unwrap();
+
         let fn_test = module.add_function("test", FunctionType::new(context.void_t(), &[], false));
+        fn_test.set_personality_function(fn_frame_handler);
 
         let entry_bb = fn_test.append_basic_block_in_context("entry", &context);
         let normal_bb = fn_test.append_basic_block_in_context("normal", &context);
         let unwind_bb = fn_test.append_basic_block_in_context("unwind", &context);
         let catch_bb = fn_test.append_basic_block_in_context("catch", &context);
 
+        let builder = context.create_builder();
+
         let invoke = builder.within(entry_bb, || {
-            invoke!(cc11 fn_hello(i64_t.uint(123), i64_t.int(456)) to label normal_bb unwind label unwind_bb ; "hello")
+            let arg0 = i64_t.uint(123);
+            let arg1 = i64_t.int(456);
+
+            invoke!(cc11 fn_hello(arg0, arg1) to label normal_bb unwind label unwind_bb ; "hello")
         });
 
         assert_eq!(
