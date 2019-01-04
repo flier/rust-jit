@@ -1,13 +1,10 @@
 #[macro_use]
 extern crate failure;
-extern crate getopts;
-extern crate libc;
-#[macro_use]
-extern crate llvm_jit as jit;
 #[macro_use]
 extern crate log;
-extern crate pretty_env_logger;
-extern crate rustyline;
+
+#[macro_use]
+extern crate llvm_jit as jit;
 
 mod lines;
 
@@ -1584,7 +1581,7 @@ fn main() {
         engine.add_symbol("putchard", Some(putchard));
         engine.add_symbol("printd", Some(printd));
 
-        let mut parser = parser::new(lines::Lines::new());
+        let mut parser = parser::new(lines::Lines::new(Some((">>> ", "... "))));
         let optimize = opts
             .opt_str("o")
             .map(|s| s.parse().expect("parse `optimize` option"))

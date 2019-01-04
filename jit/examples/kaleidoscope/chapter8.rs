@@ -1,14 +1,11 @@
 #[macro_use]
 extern crate failure;
-extern crate getopts;
-extern crate libc;
+#[macro_use]
+extern crate log;
+
 #[macro_use]
 extern crate llvm_jit as jit;
 extern crate llvm_sys as llvm;
-#[macro_use]
-extern crate log;
-extern crate pretty_env_logger;
-extern crate rustyline;
 
 mod lines;
 
@@ -1454,7 +1451,7 @@ fn main() {
     if let Some(opts) = parse_cmdline(program, &args[1..]).expect("parse command line") {
         let context = Context::new();
 
-        let mut parser = parser::new(lines::Lines::new());
+        let mut parser = parser::new(lines::Lines::new(Some((">>> ", "... "))));
         let mut gen = codegen::new(&context, "my cool jit", parser.binop_precedences.clone());
 
         loop {

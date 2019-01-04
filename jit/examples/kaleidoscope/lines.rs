@@ -1,15 +1,15 @@
 pub struct Lines<'a> {
     rl: rustyline::Editor<()>,
-    prompt: (&'a str, &'a str),
+    prompt: Option<(&'a str, &'a str)>,
     line: String,
     pos: usize,
 }
 
 impl<'a> Lines<'a> {
-    pub fn new() -> Self {
+    pub fn new(prompt: Option<(&'a str, &'a str)>) -> Self {
         Lines {
             rl: rustyline::Editor::<()>::new(),
-            prompt: ("ready> ", "... "),
+            prompt,
             line: String::default(),
             pos: 0,
         }
@@ -17,7 +17,11 @@ impl<'a> Lines<'a> {
 
     fn read_line(&mut self, first: bool) -> rustyline::Result<String> {
         self.rl
-            .readline(if first { &self.prompt.0 } else { &self.prompt.1 })
+            .readline(if first {
+                self.prompt.map(|(prompt, _)| prompt).unwrap_or_default()
+            } else {
+                self.prompt.map(|(_, prompt)| prompt).unwrap_or_default()
+            })
             .map(|line| {
                 self.rl.add_history_entry(line.as_str());
 

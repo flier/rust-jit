@@ -563,7 +563,7 @@ where
 fn main() {
     pretty_env_logger::init();
 
-    let mut parser = parser::new(lines::Lines::new());
+    let mut parser = parser::new(lines::Lines::new(Some((">>> ", "... "))));
 
     loop {
         // top ::= definition | external | expression | ';'

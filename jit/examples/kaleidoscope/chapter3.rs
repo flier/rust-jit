@@ -1,9 +1,10 @@
 #[macro_use]
 extern crate failure;
 #[macro_use]
-extern crate llvm_jit as jit;
-#[macro_use]
 extern crate log;
+
+#[macro_use]
+extern crate llvm_jit as jit;
 
 mod lines;
 
@@ -753,7 +754,7 @@ fn main() {
     // Make the module, which holds all the code.
     let mut gen = codegen::new("my cool jit");
 
-    let mut parser = parser::new(lines::Lines::new());
+    let mut parser = parser::new(lines::Lines::new(Some((">>> ", "... "))));
 
     // Run the main "interpreter loop" now.
     loop {
