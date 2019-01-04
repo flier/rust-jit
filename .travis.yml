@@ -29,8 +29,13 @@ matrix:
     - os: osx
       osx_image: xcode10.1
       compiler: clang
+      env:
+        - LLVM_SYS_70_PREFIX=/usr/lib/llvm-7
     - os: linux
       dist: trusty
+      env:
+        - LLVM_SYS_70_PREFIX=/usr/local/opt/llvm
+        - PKG_CONFIG_PATH=/usr/local/opt/libpcap/lib/pkgconfig
 
 env:
   global:
@@ -39,13 +44,6 @@ env:
     - LLVM_SYS_70_FFI_WORKAROUND=1
 
 install:
-  - |
-    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      export LLVM_SYS_70_PREFIX=/usr/lib/llvm-7
-    else
-      export LLVM_SYS_70_PREFIX=`brew --prefix llvm`
-      export PKG_CONFIG_PATH=`brew --prefix libpcap`/lib/pkgconfig
-    fi
   - export PATH=$LLVM_SYS_70_PREFIX/bin:$PATH
   - llvm-config --version
 
