@@ -903,12 +903,12 @@ mod codegen {
         name: &str,
         protos: Rc<RefCell<HashMap<String, ast::Prototype>>>,
         binop_precedences: Rc<RefCell<HashMap<String, isize>>>,
-    ) -> Result<CodeGenerator<'a>> {
+    ) -> CodeGenerator<'a> {
         // Open a new module.
         let module = context.create_module(name);
-        let dbg_info = DebugInfo::new(&module)?;
+        let dbg_info = DebugInfo::new(&module);
 
-        Ok(CodeGenerator {
+        CodeGenerator {
             context,
             module,
             builder: context.create_builder(),
@@ -916,7 +916,7 @@ mod codegen {
             protos,
             binop_precedences,
             dbg_info,
-        })
+        }
     }
 
     impl ast::Expr for ast::NumberExpr {
@@ -1417,37 +1417,35 @@ enum Parsed {
 //===----------------------------------------------------------------------===//
 
 mod dbginfo {
-    use jit::debuginfo::{DIBasicType, DIBuilder, DICompileUnit};
+    use jit::debuginfo::{DIBasicType, DIBuilder, DICompileUnit, DIScope, encoding};
     use jit::prelude::*;
     use llvm::debuginfo::LLVMDWARFSourceLanguage::*;
-
-    use crate::errors::Result;
 
     pub struct DebugInfo {
         pub builder: DIBuilder,
         pub compile_unit: DICompileUnit,
         pub double_ty: DIBasicType,
+        pub lexical_blocks: Vec<DIScope>,
     }
 
     impl DebugInfo {
-        pub fn new(m: &Module) -> Result<Self> {
+        pub fn new(m: &Module) -> Self {
             let builder = m.create_di_builder();
 
             // Construct the DIBuilder
-            let file = builder.create_file("kaleidoscope_chapter9.rs")?;
+            let file = builder.create_file("kaleidoscope_chapter9.rs");
 
             // Create the compile unit for the module.
-            let compile_unit = builder
-                .create_compile_unit(LLVMDWARFSourceLanguageC, file, "Kaleidoscope Compiler")
-                .build()?;
+            let compile_unit = builder.create_compile_unit(LLVMDWARFSourceLanguageC, file, "Kaleidoscope Compiler");
 
-            let double_ty = builder.create_basic_type("double", 64, gimli::DW_ATE_float.0.into())?;
+            let double_ty = builder.create_basic_type("double", 64, encoding::FLOAT);
 
-            Ok(DebugInfo {
+            DebugInfo {
                 builder,
                 compile_unit,
                 double_ty,
-            })
+                lexical_blocks: vec![],
+            }
         }
 
         pub fn build(&self) {
@@ -1481,7 +1479,7 @@ fn main() -> Result<()> {
         "my cool jit",
         engine.protos.clone(),
         binop_precedences.clone(),
-    )?;
+    );
 
     // Run the main "interpreter loop" now.
     loop {

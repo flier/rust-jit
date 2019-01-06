@@ -101,13 +101,14 @@ pub mod prelude {
     pub use crate::engine::{ExecutionEngine, GenericValue};
     pub use crate::function::{Function, FunctionType};
     pub use crate::insts::{IRBuilder, Position};
+    pub use crate::metadata::Metadata;
     pub use crate::module::Module;
     pub use crate::types::TypeRef;
     pub use crate::value::ValueRef;
 
     pub use crate::attribute::AttributeGroups;
     pub use crate::constant::{
-        ConstantFP, ConstantFPs, ConstantInt, ConstantInts, ConstantString, ConstantStrings, Constants,
+        Constant, ConstantFP, ConstantFPs, ConstantInt, ConstantInts, ConstantString, ConstantStrings, Constants,
         ToConstantArray, ToConstantStruct, ToConstantVector, ToNamedConstantStruct,
     };
     pub use crate::constexpr::ConstantExpr;
