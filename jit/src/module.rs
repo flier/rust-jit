@@ -225,7 +225,7 @@ mod tests {
 
         assert_eq!(m.flags().collect::<Vec<_>>(), vec![]);
 
-        let md = GlobalContext::md_string("value").into();
+        let md = GlobalContext::md_string("value").as_metadata();
         m.add_flag(LLVMModuleFlagBehavior::LLVMModuleFlagBehaviorError, "key", md);
 
         assert_eq!(m.get_flag("key"), md);

@@ -1417,7 +1417,7 @@ enum Parsed {
 //===----------------------------------------------------------------------===//
 
 mod dbginfo {
-    use jit::debuginfo::{DIBasicType, DIBuilder, DICompileUnit, DIScope, encoding};
+    use jit::debuginfo::{encoding, DIBasicType, DIBuilder, DICompileUnit, DIScope};
     use jit::prelude::*;
     use llvm::debuginfo::LLVMDWARFSourceLanguage::*;
 

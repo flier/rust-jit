@@ -6,29 +6,34 @@ use std::slice;
 use std::str;
 
 use crate::llvm::LLVMModuleFlagBehavior;
-use boolinator::Boolinator;
 use libc;
 use llvm_sys::core::*;
 use llvm_sys::prelude::*;
 
 use crate::context::{Context, GlobalContext};
 use crate::module::Module;
-use crate::utils::{from_unchecked_cstr, AsBool, AsRaw};
+use crate::utils::{from_unchecked_cstr, AsBool, AsRaw, AsResult};
 use crate::value::{Instruction, ValueRef};
 
 pub type MDKindId = libc::c_uint;
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MDString(ValueRef);
+pub struct MetadataAsValue(ValueRef);
 
-inherit_from!(MDString, ValueRef, LLVMValueRef);
+inherit_from!(MetadataAsValue, ValueRef, LLVMValueRef);
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MDNode(ValueRef);
+pub struct MDString(MetadataAsValue);
 
-inherit_from!(MDNode, ValueRef, LLVMValueRef);
+inherit_from!(MDString, MetadataAsValue, LLVMValueRef);
+
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MDNode(MetadataAsValue);
+
+inherit_from!(MDNode, MetadataAsValue, LLVMValueRef);
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -36,15 +41,9 @@ pub struct Metadata(LLVMMetadataRef);
 
 inherit_from!(Metadata, LLVMMetadataRef);
 
-impl<T: AsRaw<RawType = LLVMValueRef>> From<T> for Metadata {
-    fn from(value: T) -> Self {
-        Metadata(unsafe { LLVMValueAsMetadata(value.as_raw()) })
-    }
-}
-
 impl Module {
     /// Obtain the named metadata operands for a module.
-    pub fn get_named_operands<S: AsRef<str>>(&self, name: S) -> Vec<ValueRef> {
+    pub fn get_named_operands<S: AsRef<str>>(&self, name: S) -> Vec<MetadataAsValue> {
         let name = name.as_ref();
         let count = unsafe { LLVMGetNamedMetadataNumOperands(self.as_raw(), cstr!(name)) };
 
@@ -152,7 +151,7 @@ impl<'a> Iterator for ModuleFlagsMetadata<'a> {
 
 impl Context {
     /// Obtain Metadata as a Value.
-    pub fn as_value<T: AsRaw<RawType = LLVMMetadataRef>>(&self, metadata: &T) -> ValueRef {
+    pub fn as_value<T: AsRaw<RawType = LLVMMetadataRef>>(&self, metadata: &T) -> MetadataAsValue {
         unsafe { LLVMMetadataAsValue(self.as_raw(), metadata.as_raw()) }.into()
     }
 
@@ -206,7 +205,7 @@ impl fmt::Display for MDString {
     }
 }
 
-impl MDNode {
+impl MetadataAsValue {
     /// Obtain the given MDNode's operands.
     pub fn operands(&self) -> Vec<ValueRef> {
         let num = unsafe { LLVMGetMDNodeNumOperands(self.as_raw()) };
@@ -215,6 +214,11 @@ impl MDNode {
         unsafe { LLVMGetMDNodeOperands(self.as_raw(), values.as_mut_ptr()) }
 
         values.into_iter().map(|v| v.into()).collect()
+    }
+
+    /// Obtain a Value as Metadata.
+    pub fn as_metadata(&self) -> Metadata {
+        unsafe { LLVMValueAsMetadata(self.as_raw()) }.into()
     }
 }
 
@@ -225,8 +229,10 @@ impl Instruction {
     }
 
     /// Return metadata associated with an instruction value.
-    pub fn get_metadata(&self, kind_id: MDKindId) -> ValueRef {
-        unsafe { LLVMGetMetadata(self.as_raw(), kind_id) }.into()
+    pub fn metadata(&self, kind_id: MDKindId) -> Option<MetadataAsValue> {
+        unsafe { LLVMGetMetadata(self.as_raw(), kind_id) }
+            .ok()
+            .map(|v: LLVMValueRef| MetadataAsValue(v.into()))
     }
 
     /// Set metadata associated with an instruction value.
@@ -236,24 +242,12 @@ impl Instruction {
     }
 }
 
-impl ValueRef {
+impl MetadataAsValue {
     pub fn is_md_node(&self) -> bool {
-        self.as_md_node().is_some()
-    }
-
-    pub fn as_md_node(&self) -> Option<MDNode> {
-        let ptr = unsafe { LLVMIsAMDNode(self.as_raw()) };
-
-        ptr.is_null().as_some(ptr.into())
+        !unsafe { LLVMIsAMDNode(self.as_raw()) }.is_null()
     }
 
     pub fn is_md_string(&self) -> bool {
-        self.as_md_string().is_some()
-    }
-
-    pub fn as_md_string(&self) -> Option<MDString> {
-        let ptr = unsafe { LLVMIsAMDString(self.as_raw()) };
-
-        ptr.is_null().as_some(ptr.into())
+        !unsafe { LLVMIsAMDString(self.as_raw()) }.is_null()
     }
 }

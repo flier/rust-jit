@@ -24,16 +24,25 @@ pub trait AsRaw {
     }
 }
 
-pub trait IntoRaw {
-    type RawType;
+impl<R, T> AsRaw for Option<R>
+where
+    R: AsRaw<RawType = *mut T>,
+{
+    type RawType = *mut T;
 
+    fn as_raw(&self) -> Self::RawType {
+        self.as_ref()
+            .map(|t| t.as_raw())
+            .unwrap_or_else(|| ptr::null_mut() as *mut T)
+    }
+}
+
+pub trait IntoRaw: AsRaw {
     /// Consumer the wrapper, returning the wrapped raw reference.
     fn into_raw(self) -> Self::RawType;
 }
 
 impl<T: AsRaw> IntoRaw for T {
-    type RawType = T::RawType;
-
     fn into_raw(self) -> Self::RawType {
         let raw = self.as_raw();
         mem::forget(self);
