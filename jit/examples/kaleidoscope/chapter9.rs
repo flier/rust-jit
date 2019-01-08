@@ -1177,6 +1177,7 @@ mod codegen {
     use llvm::debuginfo::LLVMDIFlags;
 
     use jit;
+    use jit::debuginfo::*;
     use jit::insts::*;
     use jit::prelude::*;
 
@@ -1234,6 +1235,22 @@ mod codegen {
             let loc = self.dbg_info.create_debug_location(item);
 
             self.builder.set_current_debug_location(loc, self.context)
+        }
+
+        pub fn insert_declare_at_end<V: Into<ValueRef>>(
+            &self,
+            init_val: V,
+            var: DILocalVariable,
+            span: Span,
+        ) -> Instruction {
+            self.builder
+                .emit(self.dbg_info.insert_declare_at_end(
+                    init_val.into(),
+                    var,
+                    span,
+                    self.builder.insert_block().unwrap(),
+                ))
+                .into()
         }
     }
 
@@ -1563,7 +1580,11 @@ mod codegen {
 
                 let alloca = gen.create_entry_block_alloca(&func, var_name);
 
+                let var = gen.dbg_info.create_auto_variable(var_name, self.span.start.line);
+
                 gen.builder <<= store!(init_val, alloca);
+
+                gen.insert_declare_at_end(init_val, var, self.span);
 
                 // Remember the old variable binding so that we can restore the binding when we unrecurse.
                 old_bindings.push(gen.named_values.insert(var_name.clone(), alloca));
@@ -1658,25 +1679,14 @@ mod codegen {
                     let alloca = gen.create_entry_block_alloca(&func, &arg_name);
 
                     // Create a debug descriptor for the variable.
-                    let var = gen.dbg_info.create_parameter_variable(
-                        sp,
-                        &arg_name,
-                        pos as u32 + 1,
-                        unit,
-                        line_no,
-                        gen.dbg_info.double_ty,
-                    );
-
-                    gen.dbg_info.insert_declare_at_end(
-                        alloca,
-                        var,
-                        gen.dbg_info.create_expression(&[]),
-                        gen.context.create_debug_location(line_no, 0, sp, None),
-                        bb,
-                    );
+                    let var = gen
+                        .dbg_info
+                        .create_parameter_variable(&arg_name, pos as u32 + 1, line_no as usize);
 
                     // Store the initial value into the alloca.
                     gen.builder <<= store!(arg, alloca);
+
+                    gen.insert_declare_at_end(alloca, var, self.proto.span);
 
                     // Add arguments to variable symbol table.
                     (arg_name, alloca)
@@ -1923,6 +1933,43 @@ mod dbginfo {
 
         pub fn leave_lexical_block(&mut self) {
             self.lexical_blocks.pop();
+        }
+
+        pub fn create_parameter_variable(&self, name: &str, arg_no: u32, line: usize) -> DILocalVariable {
+            self.builder.create_parameter_variable(
+                self.lexical_blocks.last().unwrap(),
+                name,
+                arg_no,
+                self.file,
+                line as u32,
+                self.double_ty,
+            )
+        }
+
+        pub fn create_auto_variable(&self, name: &str, line: usize) -> DILocalVariable {
+            self.builder.create_auto_variable(
+                self.lexical_blocks.last().unwrap(),
+                name,
+                self.file,
+                line as u32,
+                self.double_ty,
+            )
+        }
+
+        pub fn insert_declare_at_end<V: Into<ValueRef>>(
+            &self,
+            init_val: V,
+            var: DILocalVariable,
+            span: Span,
+            bb: BasicBlock,
+        ) -> Instruction {
+            self.builder.insert_declare_at_end(
+                init_val.into(),
+                var,
+                self.builder.create_expression(&[]),
+                self.create_debug_location(Some(span)),
+                bb,
+            )
         }
     }
 }
