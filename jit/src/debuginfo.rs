@@ -1,4 +1,5 @@
 use std::alloc::Layout;
+use std::fmt;
 use std::ops::Deref;
 use std::path::Path;
 use std::ptr::{self, NonNull};
@@ -7,8 +8,10 @@ use std::str;
 
 use gimli::{DwAte, DwTag};
 
+use crate::llvm::core::*;
 use crate::llvm::debuginfo::*;
 use crate::llvm::prelude::*;
+use crate::metadata::MetadataAsValue;
 use crate::prelude::*;
 use crate::utils::{AsBool, AsLLVMBool, AsRaw, AsResult, IntoRaw};
 
@@ -156,6 +159,26 @@ impl Function {
     /// Set the subprogram attached to a function.
     pub fn set_subprogram(&self, subprogram: DISubprogram) {
         unsafe { LLVMSetSubprogram(self.as_raw(), subprogram.into_raw()) }
+    }
+}
+
+impl IRBuilder {
+    /// Set location information used by debugging information.
+    pub fn set_current_debug_location(&self, loc: DILocation, ctxt: &Context) {
+        unsafe { LLVMSetCurrentDebugLocation(self.as_raw(), loc.as_value(ctxt).as_raw()) }
+    }
+
+    /// Get location information used by debugging information.
+    pub fn get_current_debug_location(&self) -> DILocation {
+        MetadataAsValue::from(unsafe { LLVMGetCurrentDebugLocation(self.as_raw()) }).as_metadata()
+    }
+
+    /// If this builder has a current debug location, set it on the specified instruction.
+    pub fn set_inst_debug_location<T>(&self, inst: T)
+    where
+        T: Deref<Target = Instruction>,
+    {
+        unsafe { LLVMSetInstDebugLocation(self.as_raw(), inst.as_raw()) }
     }
 }
 
@@ -971,7 +994,7 @@ impl DIBuilder {
 
     /// Insert a new llvm.dbg.declare intrinsic call before the given instruction.
     pub fn insert_declare_before<V, I>(
-        self,
+        &self,
         storage: V,
         var: DILocalVariable,
         expr: DIExpression,
@@ -979,7 +1002,7 @@ impl DIBuilder {
         inst: I,
     ) -> Instruction
     where
-        V: Deref<Target = ValueRef>,
+        V: AsRaw<RawType = LLVMValueRef>,
         I: Deref<Target = Instruction>,
     {
         unsafe {
@@ -997,17 +1020,16 @@ impl DIBuilder {
 
     /// Insert a new llvm.dbg.declare intrinsic call at the end of the given basic block.
     /// If the basic block has a terminator instruction, the intrinsic is inserted before that terminator instruction.
-    pub fn insert_declare_at_end<V, B>(
-        self,
+    pub fn insert_declare_at_end<V>(
+        &self,
         storage: V,
         var: DILocalVariable,
         expr: DIExpression,
         loc: DILocation,
-        bb: B,
+        bb: BasicBlock,
     ) -> Instruction
     where
-        V: Deref<Target = ValueRef>,
-        B: Deref<Target = BasicBlock>,
+        V: AsRaw<RawType = LLVMValueRef>,
     {
         unsafe {
             LLVMDIBuilderInsertDeclareAtEnd(
@@ -1024,7 +1046,7 @@ impl DIBuilder {
 
     /// Insert a new llvm.dbg.value intrinsic call before the given instruction.
     pub fn insert_debug_value_before<V, I>(
-        self,
+        &self,
         value: V,
         var: DILocalVariable,
         expr: DIExpression,
@@ -1050,17 +1072,16 @@ impl DIBuilder {
 
     /// Insert a new llvm.dbg.value intrinsic call at the end of the given basic block.
     /// If the basic block has a terminator instruction, the intrinsic is inserted before that terminator instruction.
-    pub fn insert_debug_value_at_end<V, B>(
-        self,
+    pub fn insert_debug_value_at_end<V>(
+        &self,
         value: V,
         var: DILocalVariable,
         expr: DIExpression,
         loc: DILocation,
-        bb: B,
+        bb: BasicBlock,
     ) -> Instruction
     where
         V: Deref<Target = ValueRef>,
-        B: Deref<Target = BasicBlock>,
     {
         unsafe {
             LLVMDIBuilderInsertDbgValueAtEnd(
@@ -1207,6 +1228,12 @@ impl DILocation {
     /// Get the local scope associated with this debug location.
     pub fn scope(&self) -> Option<DIScope> {
         unsafe { LLVMDILocationGetScope(self.as_raw()) }.ok()
+    }
+}
+
+impl fmt::Display for DILocation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "!DILocation(line: {}, column: {})", self.line(), self.column())
     }
 }
 

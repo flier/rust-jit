@@ -101,7 +101,7 @@ impl Function {
     }
 
     /// Obtain all of the basic blocks in a function.
-    pub fn get_basic_blocks(&self) -> Vec<BasicBlock> {
+    pub fn all_basic_blocks(&self) -> Vec<BasicBlock> {
         let count = unsafe { LLVMCountBasicBlocks(self.as_raw()) };
         let mut blocks: Vec<LLVMBasicBlockRef> = vec![ptr::null_mut(); count as usize];
 
@@ -147,8 +147,7 @@ impl Function {
 
     /// Obtain the parameters in a function.
     pub fn get_params(&self) -> Vec<ValueRef> {
-        let count = unsafe { LLVMCountParams(self.as_raw()) };
-        let mut params: Vec<LLVMValueRef> = vec![ptr::null_mut(); count as usize];
+        let mut params: Vec<LLVMValueRef> = vec![ptr::null_mut(); self.param_count()];
 
         unsafe { LLVMGetParams(self.as_raw(), params.as_mut_ptr()) };
 
@@ -156,10 +155,8 @@ impl Function {
     }
 
     /// Obtain the parameter at the specified index.
-    pub fn get_param(&self, index: u32) -> Option<ValueRef> {
-        let count = unsafe { LLVMCountParams(self.as_raw()) };
-
-        (index < count).and_option_from(|| unsafe { LLVMGetParam(self.as_raw(), index) }.ok())
+    pub fn param(&self, index: usize) -> Option<ValueRef> {
+        (index < self.param_count()).and_option_from(|| unsafe { LLVMGetParam(self.as_raw(), index as u32) }.ok())
     }
 
     /// Remove a function from its containing module and deletes it.
@@ -173,7 +170,7 @@ impl Function {
     }
 
     /// Obtain the personality function attached to the function.
-    pub fn get_personality_function(&self) -> Function {
+    pub fn personality_function(&self) -> Function {
         unsafe { LLVMGetPersonalityFn(self.as_raw()) }.into()
     }
 

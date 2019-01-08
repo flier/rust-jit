@@ -45,7 +45,9 @@ impl<'a> Iterator for Lines<'a> {
 
             match self.read_line(first_line) {
                 Ok(mut line) => {
-                    line.push('\n');
+                    if line.starts_with('#') {
+                        line.push('\n')
+                    }
 
                     self.line = line;
                     self.pos = 0;

@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::fmt;
 use std::marker::PhantomData;
+use std::ops::Deref;
 use std::ptr;
 use std::slice;
 use std::str;
@@ -23,6 +24,34 @@ pub struct MetadataAsValue(ValueRef);
 
 inherit_from!(MetadataAsValue, ValueRef, LLVMValueRef);
 
+impl MetadataAsValue {
+    /// Obtain the given MDNode's operands.
+    pub fn operands(&self) -> Vec<ValueRef> {
+        let num = unsafe { LLVMGetMDNodeNumOperands(self.as_raw()) };
+        let mut values = vec![ptr::null_mut(); num as usize];
+
+        unsafe { LLVMGetMDNodeOperands(self.as_raw(), values.as_mut_ptr()) }
+
+        values.into_iter().map(|v| v.into()).collect()
+    }
+
+    /// Obtain a Value as Metadata.
+    pub fn as_metadata<T>(&self) -> T
+    where
+        T: From<LLVMMetadataRef>,
+    {
+        unsafe { LLVMValueAsMetadata(self.as_raw()) }.into()
+    }
+
+    pub fn is_md_node(&self) -> bool {
+        !unsafe { LLVMIsAMDNode(self.as_raw()) }.is_null()
+    }
+
+    pub fn is_md_string(&self) -> bool {
+        !unsafe { LLVMIsAMDString(self.as_raw()) }.is_null()
+    }
+}
+
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MDString(MetadataAsValue);
@@ -41,6 +70,13 @@ pub struct Metadata(LLVMMetadataRef);
 
 inherit_from!(Metadata, LLVMMetadataRef);
 
+impl Metadata {
+    /// Obtain Metadata as a Value.
+    pub fn as_value(&self, ctxt: &Context) -> MetadataAsValue {
+        unsafe { LLVMMetadataAsValue(ctxt.as_raw(), self.as_raw()) }.into()
+    }
+}
+
 impl Module {
     /// Obtain the named metadata operands for a module.
     pub fn get_named_operands<S: AsRef<str>>(&self, name: S) -> Vec<MetadataAsValue> {
@@ -55,8 +91,8 @@ impl Module {
     }
 
     /// Add an operand to named metadata.
-    pub fn add_named_operand<S: AsRef<str>, V: AsRef<ValueRef>>(&self, name: S, v: V) {
-        unsafe { LLVMAddNamedMetadataOperand(self.as_raw(), cstr!(name.as_ref()), v.as_ref().as_raw()) }
+    pub fn add_named_operand<S: AsRef<str>, V: Deref<Target = ValueRef>>(&self, name: S, v: V) {
+        unsafe { LLVMAddNamedMetadataOperand(self.as_raw(), cstr!(name.as_ref()), v.as_raw()) }
     }
 
     /// Returns the module flags.
@@ -150,11 +186,6 @@ impl<'a> Iterator for ModuleFlagsMetadata<'a> {
 }
 
 impl Context {
-    /// Obtain Metadata as a Value.
-    pub fn as_value<T: AsRaw<RawType = LLVMMetadataRef>>(&self, metadata: &T) -> MetadataAsValue {
-        unsafe { LLVMMetadataAsValue(self.as_raw(), metadata.as_raw()) }.into()
-    }
-
     pub fn md_kind_id<T: AsRef<str>>(&self, name: T) -> MDKindId {
         let name = name.as_ref();
 
@@ -205,23 +236,6 @@ impl fmt::Display for MDString {
     }
 }
 
-impl MetadataAsValue {
-    /// Obtain the given MDNode's operands.
-    pub fn operands(&self) -> Vec<ValueRef> {
-        let num = unsafe { LLVMGetMDNodeNumOperands(self.as_raw()) };
-        let mut values = vec![ptr::null_mut(); num as usize];
-
-        unsafe { LLVMGetMDNodeOperands(self.as_raw(), values.as_mut_ptr()) }
-
-        values.into_iter().map(|v| v.into()).collect()
-    }
-
-    /// Obtain a Value as Metadata.
-    pub fn as_metadata(&self) -> Metadata {
-        unsafe { LLVMValueAsMetadata(self.as_raw()) }.into()
-    }
-}
-
 impl Instruction {
     /// Determine whether an instruction has any metadata attached.
     pub fn has_metadata(&self) -> bool {
@@ -239,15 +253,5 @@ impl Instruction {
     pub fn set_metadata<T: Into<ValueRef>>(&self, kind_id: MDKindId, node: T) -> &Self {
         unsafe { LLVMSetMetadata(self.as_raw(), kind_id, node.into().as_raw()) };
         self
-    }
-}
-
-impl MetadataAsValue {
-    pub fn is_md_node(&self) -> bool {
-        !unsafe { LLVMIsAMDNode(self.as_raw()) }.is_null()
-    }
-
-    pub fn is_md_string(&self) -> bool {
-        !unsafe { LLVMIsAMDString(self.as_raw()) }.is_null()
     }
 }
