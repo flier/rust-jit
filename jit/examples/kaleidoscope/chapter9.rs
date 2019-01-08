@@ -1422,9 +1422,13 @@ mod codegen {
             // Emit then value.
             gen.builder.position_at_end(then_bb);
 
+            gen.dbg_info.enter_lexical_block(self.then.span());
+
             let then = self.then.codegen(gen)?;
 
             gen.builder <<= br!(merge_bb);
+
+            gen.dbg_info.leave_lexical_block();
 
             // Codegen of 'Then' can change the current block, update ThenBB for the PHI.
             let then_bb = gen.builder.insert_block().unwrap();
@@ -1432,9 +1436,13 @@ mod codegen {
             // Emit else block.
             gen.builder.position_at_end(else_bb);
 
+            gen.dbg_info.enter_lexical_block(self.or_else.span());
+
             let or_else = self.or_else.codegen(gen)?;
 
             gen.builder <<= br!(merge_bb);
+
+            gen.dbg_info.leave_lexical_block();
 
             // codegen of 'Else' can change the current block, update ElseBB for the PHI.
             let else_bb = gen.builder.insert_block().unwrap();
@@ -1481,10 +1489,14 @@ mod codegen {
             // If it shadows an existing variable, we have to restore it, so save it now.
             let old_value = gen.named_values.insert(self.var_name.clone(), alloca.into());
 
+            gen.dbg_info.enter_lexical_block(self.body.span());
+
             // Emit the body of the loop.
             // This, like any other expr, can change the current BB.
             // Note that we ignore the value computed by the body, but don't allow an error.
             self.body.codegen(gen)?;
+
+            gen.dbg_info.leave_lexical_block();
 
             // Emit the step value.
             let step_val = if let Some(ref step) = self.step {
@@ -1895,6 +1907,22 @@ mod dbginfo {
             trace!("create debug location @ {}", loc);
 
             loc
+        }
+
+        pub fn enter_lexical_block(&mut self, span: Span) {
+            self.lexical_blocks.push(
+                self.create_lexical_block(
+                    self.lexical_blocks.last().unwrap(),
+                    self.file,
+                    span.start.line as u32,
+                    span.start.column as u32,
+                )
+                .into(),
+            )
+        }
+
+        pub fn leave_lexical_block(&mut self) {
+            self.lexical_blocks.pop();
         }
     }
 }
