@@ -56,7 +56,7 @@ impl Module {
     pub fn set_name<S: AsRef<str>>(&self, name: S) {
         let name = name.as_ref();
 
-        unsafe { LLVMSetModuleIdentifier(self.as_raw(), cstr!(name), name.len()) }
+        unsafe { LLVMSetModuleIdentifier(self.as_raw(), name.as_ptr() as *const _, name.len()) }
     }
 
     /// Obtain the module's original source file name.
@@ -73,7 +73,7 @@ impl Module {
     pub fn set_source_filename<S: AsRef<str>>(&self, filename: S) {
         let filename = filename.as_ref();
 
-        unsafe { LLVMSetSourceFileName(self.as_raw(), cstr!(filename), filename.len()) }
+        unsafe { LLVMSetSourceFileName(self.as_raw(), filename.as_ptr() as *const _, filename.len()) }
     }
 
     /// Obtain the data layout for a module.
@@ -83,7 +83,7 @@ impl Module {
 
     /// Set the data layout for a module.
     pub fn set_data_layout_str<S: AsRef<str>>(&self, name: S) {
-        unsafe { LLVMSetDataLayout(self.as_raw(), cstr!(name.as_ref())) }
+        unsafe { LLVMSetDataLayout(self.as_raw(), cstr!(name)) }
     }
 
     /// Obtain the target triple for a module.
@@ -93,7 +93,7 @@ impl Module {
 
     /// Set the target triple for a module.
     pub fn set_target_triple<S: AsRef<str>>(&self, triple: S) {
-        unsafe { LLVMSetTarget(self.as_raw(), cstr!(triple.as_ref())) }
+        unsafe { LLVMSetTarget(self.as_raw(), cstr!(triple)) }
     }
 
     /// Dump a representation of a module to stderr.
@@ -111,8 +111,6 @@ impl Module {
 
     /// Obtain a Type from a module by its registered name.
     pub fn get_type<S: AsRef<str>>(&self, name: S) -> Option<TypeRef> {
-        let name = name.as_ref();
-
         unsafe { LLVMGetTypeByName(self.as_raw(), cstr!(name)) }.ok()
     }
 }

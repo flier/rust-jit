@@ -284,7 +284,7 @@ impl fmt::Display for TargetData {
 impl TargetData {
     /// Creates target data from a target layout string.
     pub fn create<S: AsRef<str>>(s: S) -> Self {
-        unsafe { LLVMCreateTargetData(cstr!(s.as_ref())) }.into()
+        unsafe { LLVMCreateTargetData(cstr!(s)) }.into()
     }
 
     /// Returns the byte order of a target, either `LLVMBigEndian` or `LLVMLittleEndian`.

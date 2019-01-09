@@ -413,7 +413,16 @@ impl DIBuilder {
             .unwrap_or_default();
         let dir = path.parent().and_then(|dir| dir.to_str()).unwrap_or_default();
 
-        unsafe { LLVMDIBuilderCreateFile(self.as_raw(), cstr!(filename), filename.len(), cstr!(dir), dir.len()) }.into()
+        unsafe {
+            LLVMDIBuilderCreateFile(
+                self.as_raw(),
+                filename.as_ptr() as *const _,
+                filename.len(),
+                dir.as_ptr() as *const _,
+                dir.len(),
+            )
+        }
+        .into()
     }
 
     /// Creates a new descriptor for a module with the specified parent scope.
@@ -442,7 +451,7 @@ impl DIBuilder {
             LLVMDIBuilderCreateNameSpace(
                 self.as_raw(),
                 parent.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
                 export_symbols.as_bool(),
             )
@@ -592,7 +601,7 @@ impl DIBuilder {
                 decl.as_raw(),
                 file.as_raw(),
                 line,
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
             )
         }
@@ -652,7 +661,7 @@ impl DIBuilder {
             LLVMDIBuilderCreateEnumerationType(
                 self.as_raw(),
                 scope.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
                 file.into_raw(),
                 line,
@@ -689,7 +698,7 @@ impl DIBuilder {
             LLVMDIBuilderCreateUnionType(
                 self.as_raw(),
                 scope.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
                 file.into_raw(),
                 line,
@@ -755,7 +764,7 @@ impl DIBuilder {
     {
         let name = name.as_ref();
 
-        unsafe { LLVMDIBuilderCreateUnspecifiedType(self.as_raw(), cstr!(name), name.len()) }.into()
+        unsafe { LLVMDIBuilderCreateUnspecifiedType(self.as_raw(), name.as_ptr() as *const _, name.len()) }.into()
     }
 
     /// Create debugging information entry for a basic type.
@@ -765,7 +774,16 @@ impl DIBuilder {
     {
         let name = name.as_ref();
 
-        unsafe { LLVMDIBuilderCreateBasicType(self.as_raw(), cstr!(name), name.len(), bits, encoding.into()) }.into()
+        unsafe {
+            LLVMDIBuilderCreateBasicType(
+                self.as_raw(),
+                name.as_ptr() as *const _,
+                name.len(),
+                bits,
+                encoding.into(),
+            )
+        }
+        .into()
     }
 
     /// Create debugging information entry for a pointer.
@@ -925,7 +943,7 @@ impl DIBuilder {
             LLVMDIBuilderCreateTypedef(
                 self.as_raw(),
                 ty.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
                 file.into_raw(),
                 line,
@@ -1029,7 +1047,7 @@ impl DIBuilder {
             LLVMDIBuilderCreateBitFieldMemberType(
                 self.as_raw(),
                 scope.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
                 file.as_raw(),
                 line,
@@ -1554,13 +1572,13 @@ where
                 self.builder.as_raw(),
                 self.lang,
                 self.file.into_raw(),
-                cstr!(producer),
+                producer.as_ptr() as *const _,
                 producer.len(),
                 self.optimized.as_bool(),
-                cstr!(self.flags),
+                self.flags.as_ptr() as *const _,
                 self.flags.len(),
                 self.runtime_version,
-                cstr!(self.split_name),
+                self.split_name.as_ptr() as *const _,
                 self.split_name.len(),
                 self.emission_kind,
                 self.dwoid,
@@ -1621,13 +1639,13 @@ where
             LLVMDIBuilderCreateModule(
                 self.builder.as_raw(),
                 self.scope.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
-                cstr!(self.config_macros),
+                self.config_macros.as_ptr() as *const _,
                 self.config_macros.len(),
-                cstr!(self.include_path),
+                self.include_path.as_ptr() as *const _,
                 self.include_path.len(),
-                cstr!(self.isysroot),
+                self.isysroot.as_ptr() as *const _,
                 self.isysroot.len(),
             )
         }
@@ -1715,9 +1733,9 @@ where
             LLVMDIBuilderCreateFunction(
                 self.builder.as_raw(),
                 self.scope.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
-                cstr!(linkage_name),
+                linkage_name.as_ptr() as *const _,
                 linkage_name.len(),
                 self.file.into_raw(),
                 self.line_no,
@@ -1785,7 +1803,7 @@ where
                 self.size,
                 self.align.unwrap_or_default(),
                 self.addr_space.unwrap_or_default(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
             )
         }
@@ -1874,7 +1892,7 @@ where
             LLVMDIBuilderCreateStructType(
                 self.builder.as_raw(),
                 self.scope.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
                 self.file.as_raw(),
                 self.line,
@@ -1886,7 +1904,7 @@ where
                 elements.len() as u32,
                 0,
                 self.vtable.as_raw(),
-                cstr!(id),
+                id.as_ptr() as *const _,
                 id.len(),
             )
         }
@@ -1955,7 +1973,7 @@ where
             LLVMDIBuilderCreateMemberType(
                 self.builder.as_raw(),
                 self.scope.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
                 self.file.as_raw(),
                 self.line,
@@ -2022,7 +2040,7 @@ where
             LLVMDIBuilderCreateStaticMemberType(
                 self.builder.as_raw(),
                 self.scope.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
                 self.file.as_raw(),
                 self.line,
@@ -2151,7 +2169,7 @@ where
             LLVMDIBuilderCreateForwardDecl(
                 self.builder.as_raw(),
                 self.tag as u32,
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
                 self.scope.as_raw(),
                 self.file.into_raw(),
@@ -2159,7 +2177,7 @@ where
                 self.runtime_lang.unwrap_or_default(),
                 self.size.unwrap_or_default(),
                 self.align.unwrap_or_default(),
-                cstr!(id),
+                id.as_ptr() as *const _,
                 id.len(),
             )
         }
@@ -2237,7 +2255,7 @@ where
             LLVMDIBuilderCreateReplaceableCompositeType(
                 self.builder.as_raw(),
                 self.tag as u32,
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
                 self.scope.as_raw(),
                 self.file.into_raw(),
@@ -2246,7 +2264,7 @@ where
                 self.size.unwrap_or_default(),
                 self.align.unwrap_or_default(),
                 self.flags,
-                cstr!(id),
+                id.as_ptr() as *const _,
                 id.len(),
             )
         }
@@ -2340,7 +2358,7 @@ where
             LLVMDIBuilderCreateClassType(
                 self.builder.as_raw(),
                 self.scope.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
                 self.file.as_raw(),
                 self.line,
@@ -2353,7 +2371,7 @@ where
                 elements.len() as u32,
                 self.vtable.as_raw(),
                 self.template_params.as_raw(),
-                cstr!(id),
+                id.as_ptr() as *const _,
                 id.len(),
             )
         }
@@ -2432,9 +2450,9 @@ where
             LLVMDIBuilderCreateGlobalVariableExpression(
                 self.builder.as_raw(),
                 self.scope.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
-                cstr!(linkage_name),
+                linkage_name.as_ptr() as *const _,
                 linkage_name.len(),
                 self.file.into_raw(),
                 self.line,
@@ -2513,9 +2531,9 @@ where
             LLVMDIBuilderCreateTempGlobalVariableFwdDecl(
                 self.builder.as_raw(),
                 self.scope.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
-                cstr!(linkage_name),
+                linkage_name.as_ptr() as *const _,
                 linkage_name.len(),
                 self.file.into_raw(),
                 self.line,
@@ -2585,7 +2603,7 @@ where
             LLVMDIBuilderCreateAutoVariable(
                 self.builder.as_raw(),
                 self.scope.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
                 self.file.into_raw(),
                 self.line,
@@ -2650,7 +2668,7 @@ where
             LLVMDIBuilderCreateParameterVariable(
                 self.builder.as_raw(),
                 self.scope.as_raw(),
-                cstr!(name),
+                name.as_ptr() as *const _,
                 name.len(),
                 self.arg_no,
                 self.file.into_raw(),

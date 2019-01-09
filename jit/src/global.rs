@@ -37,7 +37,7 @@ pub trait GlobalValue: AsValueRef {
         unsafe { LLVMGetSection(self.as_raw()).as_ref() }.map(|s| s.as_str())
     }
 
-    fn set_section(&self, section: &str) -> &Self {
+    fn set_section<S: AsRef<str>>(&self, section: S) -> &Self {
         unsafe { LLVMSetSection(self.as_raw(), cstr!(section)) };
         self
     }
@@ -211,6 +211,7 @@ impl Module {
     pub fn get_global_alias<S: AsRef<str>>(&self, name: S) -> Option<GlobalAlias> {
         let name = name.as_ref();
 
+        // NOTE: `LLVMGetNamedGlobalAlias` has a bug that not use the `NameLen`, we need NUL at end
         unsafe { LLVMGetNamedGlobalAlias(self.as_raw(), cstr!(name), name.len()) }.ok()
     }
 

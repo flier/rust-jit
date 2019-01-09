@@ -92,7 +92,7 @@ impl Module {
 
     /// Add an operand to named metadata.
     pub fn add_named_operand<S: AsRef<str>, V: Deref<Target = ValueRef>>(&self, name: S, v: V) {
-        unsafe { LLVMAddNamedMetadataOperand(self.as_raw(), cstr!(name.as_ref()), v.as_raw()) }
+        unsafe { LLVMAddNamedMetadataOperand(self.as_raw(), cstr!(name), v.as_raw()) }
     }
 
     /// Returns the module flags.

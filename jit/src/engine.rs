@@ -656,7 +656,6 @@ impl ExecutionEngine {
     ///
     /// This may involve code generation.
     pub fn get_global_value_address<S: AsRef<str>>(&self, name: S) -> Option<u64> {
-        let name = name.as_ref();
         let addr = unsafe { LLVMGetGlobalValueAddress(self.0, cstr!(name)) };
 
         (addr != 0).as_some(addr)
@@ -666,7 +665,6 @@ impl ExecutionEngine {
     ///
     /// This may involve code generation.
     pub fn get_function_address<S: AsRef<str>>(&self, name: S) -> Option<u64> {
-        let name = name.as_ref();
         let addr = unsafe { LLVMGetFunctionAddress(self.0, cstr!(name)) };
 
         (addr != 0).as_some(addr)

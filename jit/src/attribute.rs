@@ -199,8 +199,7 @@ impl AttributeKind {
     /// Return an unique id given the name of a enum attribute.
     pub fn get<S: AsRef<str>>(name: S) -> Option<Self> {
         let name = name.as_ref();
-
-        let kind = unsafe { LLVMGetEnumAttributeKindForName(cstr!(name), name.len()) };
+        let kind = unsafe { LLVMGetEnumAttributeKindForName(name.as_ptr() as *const _, name.len()) };
 
         (kind != 0).as_some(kind.into())
     }

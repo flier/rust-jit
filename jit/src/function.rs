@@ -228,8 +228,6 @@ impl Module {
 
     /// Obtain a Function value from a Module by its name.
     pub fn get_function<S: AsRef<str>>(&self, name: S) -> Option<Function> {
-        let name = name.as_ref();
-
         unsafe { LLVMGetNamedFunction(self.as_raw(), cstr!(name)) }.ok()
     }
 
