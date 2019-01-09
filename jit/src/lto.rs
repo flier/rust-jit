@@ -150,7 +150,7 @@ impl Drop for Module {
 
 impl Module {
     /// Loads an object file from disk or memory.
-    pub fn new<T: AsRef<O>, O: ObjectFile>(object_file: T) -> Result<Self> {
+    pub fn create<T: AsRef<O>, O: ObjectFile>(object_file: T) -> Result<Self> {
         object_file.as_ref().create()
     }
 
@@ -176,19 +176,21 @@ impl Module {
     }
 
     /// Loads an object file from disk. The seek point of fd is not preserved.
-    pub fn from_fd_and_offset<T: AsRawFd, P: AsRef<Path>>(
+    pub fn from_fd_and_offset<T: AsRef<F>, F: AsRawFd, P: AsRef<Path>>(
         f: T,
         path: P,
         file_size: usize,
         map_size: usize,
         offset: i64,
     ) -> Result<Self> {
-        unsafe { lto_module_create_from_fd_at_offset(f.as_raw_fd(), cpath!(path), file_size, map_size, offset) }
-            .ok_or_else(report_last_error)
+        unsafe {
+            lto_module_create_from_fd_at_offset(f.as_ref().as_raw_fd(), cpath!(path), file_size, map_size, offset)
+        }
+        .ok_or_else(report_last_error)
     }
 
     /// Returns triple string which the object module was compiled under.
-    pub fn target_triple<'a>(&'a self) -> Cow<'a, str> {
+    pub fn target_triple(&self) -> Cow<str> {
         unsafe { lto_module_get_target_triple(self.as_raw()) }.as_str()
     }
 
@@ -209,7 +211,7 @@ impl Module {
     }
 
     /// Returns the module's linker options.
-    pub fn linkeropts<'a>(&'a self) -> Cow<'a, str> {
+    pub fn linkeropts(&self) -> Cow<str> {
         unsafe { lto_module_get_linkeropts(self.as_raw()) }.as_str()
     }
 }
@@ -308,7 +310,7 @@ impl Drop for CodeGenerator {
 
 impl CodeGenerator {
     /// Instantiates a code generator.
-    pub fn new() -> Result<Self> {
+    pub fn create() -> Result<Self> {
         unsafe { lto_codegen_create() }.ok_or_else(report_last_error)
     }
 
@@ -434,7 +436,7 @@ impl Drop for ThinCodeGenerator {
 
 impl ThinCodeGenerator {
     /// Instantiates a ThinLTO code generator.
-    pub fn new() -> Result<Self> {
+    pub fn create() -> Result<Self> {
         unsafe { thinlto_create_codegen() }.ok_or_else(report_last_error)
     }
 

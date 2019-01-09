@@ -395,12 +395,12 @@ impl DIBuilder {
 
     /// Create a CompileUnit which provides an anchor
     /// for all debugging information generated during this instance of compilation.
-    pub fn create_compile_unit_builder<'a, N>(
-        &'a self,
+    pub fn create_compile_unit_builder<N>(
+        &self,
         lang: DWARFSourceLanguage,
         file: DIFile,
         producer: N,
-    ) -> DICompileUnitBuilder<'a, N> {
+    ) -> DICompileUnitBuilder<N> {
         DICompileUnitBuilder::new(self, lang, file, producer)
     }
 
@@ -435,7 +435,7 @@ impl DIBuilder {
     }
 
     /// Creates a new descriptor for a module with the specified parent scope.
-    pub fn create_module_builder<'a, S, N>(&'a self, scope: S, name: N) -> DIModuleBuilder<'a, S, N> {
+    pub fn create_module_builder<S, N>(&self, scope: S, name: N) -> DIModuleBuilder<S, N> {
         DIModuleBuilder::new(self, scope, name)
     }
 
@@ -460,8 +460,8 @@ impl DIBuilder {
     }
 
     /// Create a new descriptor for the specified subprogram.
-    pub fn create_function<'a, S, N>(
-        &'a self,
+    pub fn create_function<S, N>(
+        &self,
         scope: S,
         name: N,
         file: DIFile,
@@ -478,15 +478,15 @@ impl DIBuilder {
     }
 
     /// Create a new descriptor for the specified subprogram.
-    pub fn create_function_builder<'a, S, N>(
-        &'a self,
+    pub fn create_function_builder<S, N>(
+        &self,
         scope: S,
         name: N,
         file: DIFile,
         line_no: u32,
         func_ty: DISubroutineType,
         scope_line: u32,
-    ) -> DIFunctionBuilder<'a, S, N> {
+    ) -> DIFunctionBuilder<S, N> {
         DIFunctionBuilder::new(self, scope, name, file, line_no, func_ty, scope_line)
     }
 
@@ -795,17 +795,13 @@ impl DIBuilder {
     }
 
     /// Create debugging information entry for a pointer.
-    pub fn create_pointer_type_builder<'a, T>(
-        &'a self,
-        pointee_ty: T,
-        size_in_bits: u64,
-    ) -> DIPointerTypeBuilder<'a, T> {
+    pub fn create_pointer_type_builder<T>(&self, pointee_ty: T, size_in_bits: u64) -> DIPointerTypeBuilder<T> {
         DIPointerTypeBuilder::new(self, pointee_ty, size_in_bits)
     }
 
     /// Create debugging information entry for a struct.
-    pub fn create_struct_type<'a, S, N, I>(
-        &'a self,
+    pub fn create_struct_type<S, N, I>(
+        &self,
         scope: S,
         name: N,
         file: DIFile,
@@ -823,28 +819,28 @@ impl DIBuilder {
     }
 
     /// Create debugging information entry for a struct.
-    pub fn create_struct_type_builder<'a, S, N, I>(
-        &'a self,
+    pub fn create_struct_type_builder<S, N, I>(
+        &self,
         scope: S,
         name: N,
         file: DIFile,
         line: u32,
         layout: Layout,
         elements: I,
-    ) -> DIStructTypeBuilder<'a, S, N, I> {
+    ) -> DIStructTypeBuilder<S, N, I> {
         DIStructTypeBuilder::new(self, scope, name, file, line, layout, elements)
     }
 
     /// Create debugging information entry for a member.
-    pub fn create_member_type<'a, S, N>(
-        &'a self,
+    pub fn create_member_type<S, N>(
+        &self,
         scope: S,
         name: N,
         file: DIFile,
         line: u32,
         layout: Layout,
         offset: u64,
-    ) -> DIMemberBuilder<'a, S, N> {
+    ) -> DIMemberBuilder<S, N> {
         DIMemberBuilder::new(self, scope, name, file, line, layout, offset)
     }
 
@@ -869,15 +865,15 @@ impl DIBuilder {
     }
 
     /// Create debugging information entry for a C++ static data member.
-    pub fn create_static_member_builder<'a, S, N, T, V>(
-        &'a self,
+    pub fn create_static_member_builder<S, N, T, V>(
+        &self,
         scope: S,
         name: N,
         file: DIFile,
         line: u32,
         ty: T,
         value: V,
-    ) -> DIStaticMemberBuilder<'a, S, N, T, V> {
+    ) -> DIStaticMemberBuilder<S, N, T, V> {
         DIStaticMemberBuilder::new(self, scope, name, file, line, ty, value)
     }
 
@@ -892,12 +888,12 @@ impl DIBuilder {
     }
 
     /// Create debugging information entry for a pointer to member.
-    pub fn create_member_pointer_type_builder<'a, T, C>(
-        &'a self,
+    pub fn create_member_pointer_type_builder<T, C>(
+        &self,
         pointee_ty: T,
         class_ty: C,
         size_in_bits: u64,
-    ) -> DIMemberPointerTypeBuilder<'a, T, C> {
+    ) -> DIMemberPointerTypeBuilder<T, C> {
         DIMemberPointerTypeBuilder::new(self, pointee_ty, class_ty, size_in_bits)
     }
 
@@ -980,14 +976,7 @@ impl DIBuilder {
     }
 
     /// Create a permanent forward-declared type.
-    pub fn create_forward_decl<'a, N, S>(
-        &'a self,
-        tag: DwTag,
-        name: N,
-        scope: S,
-        file: DIFile,
-        line: u32,
-    ) -> DICompositeType
+    pub fn create_forward_decl<N, S>(&self, tag: DwTag, name: N, scope: S, file: DIFile, line: u32) -> DICompositeType
     where
         N: AsRef<str>,
         S: Deref<Target = DIScope>,
@@ -996,26 +985,26 @@ impl DIBuilder {
     }
 
     /// Create a permanent forward-declared type.
-    pub fn create_forward_decl_builder<'a, N, S>(
-        &'a self,
+    pub fn create_forward_decl_builder<N, S>(
+        &self,
         tag: DwTag,
         name: N,
         scope: S,
         file: DIFile,
         line: u32,
-    ) -> DIForwardDeclBuilder<'a, N, S> {
+    ) -> DIForwardDeclBuilder<N, S> {
         DIForwardDeclBuilder::new(self, tag, name, scope, file, line)
     }
 
     /// Create a temporary forward-declared type.
-    pub fn create_replaceable_composite_type<'a, N, S>(
-        &'a self,
+    pub fn create_replaceable_composite_type<N, S>(
+        &self,
         tag: DwTag,
         name: N,
         scope: S,
         file: DIFile,
         line: u32,
-    ) -> ReplaceableCompositeTypeBuilder<'a, N, S>
+    ) -> ReplaceableCompositeTypeBuilder<N, S>
     where
         N: AsRef<str>,
         S: Deref<Target = DIScope>,
@@ -1062,8 +1051,8 @@ impl DIBuilder {
     }
 
     /// Create debugging information entry for a class.
-    pub fn create_class_type<'a, S, N, I>(
-        &'a self,
+    pub fn create_class_type<S, N, I>(
+        &self,
         scope: S,
         name: N,
         file: DIFile,
@@ -1082,8 +1071,8 @@ impl DIBuilder {
     }
 
     /// Create debugging information entry for a class.
-    pub fn create_class_type_builder<'a, S, N, I>(
-        &'a self,
+    pub fn create_class_type_builder<S, N, I>(
+        &self,
         scope: S,
         name: N,
         file: DIFile,
@@ -1091,7 +1080,7 @@ impl DIBuilder {
         layout: Layout,
         offset_in_bits: u64,
         elements: I,
-    ) -> ClassTypeBuilder<'a, S, N, I> {
+    ) -> ClassTypeBuilder<S, N, I> {
         ClassTypeBuilder::new(self, scope, name, file, line, layout, offset_in_bits, elements)
     }
 
@@ -1129,8 +1118,8 @@ impl DIBuilder {
     }
 
     /// Create a new descriptor for the specified variable.
-    pub fn create_global_variable_expression<'a, S, N, T>(
-        &'a self,
+    pub fn create_global_variable_expression<S, N, T>(
+        &self,
         scope: S,
         name: N,
         file: DIFile,
@@ -1148,21 +1137,21 @@ impl DIBuilder {
     }
 
     /// Create a new descriptor for the specified variable.
-    pub fn create_global_variable_expression_builder<'a, S, N, T>(
-        &'a self,
+    pub fn create_global_variable_expression_builder<S, N, T>(
+        &self,
         scope: S,
         name: N,
         file: DIFile,
         line: u32,
         ty: T,
         local_to_unit: bool,
-    ) -> DIGlobalVariableExpressionBuilder<'a, S, N, T> {
+    ) -> DIGlobalVariableExpressionBuilder<S, N, T> {
         DIGlobalVariableExpressionBuilder::new(self, scope, name, file, line, ty, local_to_unit)
     }
 
     /// Create a new descriptor for the specified global variable that is temporary
-    pub fn create_temp_global_variable_forward_decl<'a, S, N, T>(
-        &'a self,
+    pub fn create_temp_global_variable_forward_decl<S, N, T>(
+        &self,
         scope: S,
         name: N,
         file: DIFile,
@@ -1180,22 +1169,22 @@ impl DIBuilder {
     }
 
     /// Create a new descriptor for the specified global variable that is temporary
-    pub fn create_temp_global_variable_forward_decl_builder<'a, S, N, T>(
-        &'a self,
+    pub fn create_temp_global_variable_forward_decl_builder<S, N, T>(
+        &self,
         scope: S,
         name: N,
         file: DIFile,
         line: u32,
         ty: T,
         local_to_unit: bool,
-    ) -> DITempGlobalVariableFwdDeclBuilder<'a, S, N, T> {
+    ) -> DITempGlobalVariableFwdDeclBuilder<S, N, T> {
         DITempGlobalVariableFwdDeclBuilder::new(self, scope, name, file, line, ty, local_to_unit)
     }
 
     /// Insert a new llvm.dbg.declare intrinsic call before the given instruction.
     pub fn insert_declare_before<V, I>(
         &self,
-        storage: V,
+        storage: &V,
         var: DILocalVariable,
         expr: DIExpression,
         loc: DILocation,
@@ -1222,7 +1211,7 @@ impl DIBuilder {
     /// If the basic block has a terminator instruction, the intrinsic is inserted before that terminator instruction.
     pub fn insert_declare_at_end<V>(
         &self,
-        storage: V,
+        storage: &V,
         var: DILocalVariable,
         expr: DIExpression,
         loc: DILocation,
@@ -1297,14 +1286,7 @@ impl DIBuilder {
     }
 
     /// Create a new descriptor for a local auto variable.
-    pub fn create_auto_variable<'a, S, N, T>(
-        &'a self,
-        scope: S,
-        name: N,
-        file: DIFile,
-        line: u32,
-        ty: T,
-    ) -> DILocalVariable
+    pub fn create_auto_variable<S, N, T>(&self, scope: S, name: N, file: DIFile, line: u32, ty: T) -> DILocalVariable
     where
         S: Deref<Target = DIScope>,
         N: AsRef<str>,
@@ -1314,14 +1296,14 @@ impl DIBuilder {
     }
 
     /// Create a new descriptor for a local auto variable.
-    pub fn create_auto_variable_builder<'a, S, N, T>(
-        &'a self,
+    pub fn create_auto_variable_builder<S, N, T>(
+        &self,
         scope: S,
         name: N,
         file: DIFile,
         line: u32,
         ty: T,
-    ) -> DIAutoVariableBuilder<'a, S, N, T>
+    ) -> DIAutoVariableBuilder<S, N, T>
     where
         S: Deref<Target = DIScope>,
         N: AsRef<str>,
@@ -1331,8 +1313,8 @@ impl DIBuilder {
     }
 
     /// Create a new descriptor for a function parameter variable.
-    pub fn create_parameter_variable<'a, S, N, T>(
-        &'a self,
+    pub fn create_parameter_variable<S, N, T>(
+        &self,
         scope: S,
         name: N,
         arg_no: u32,
@@ -1350,15 +1332,15 @@ impl DIBuilder {
     }
 
     /// Create a new descriptor for a function parameter variable.
-    pub fn create_parameter_variable_builder<'a, S, N, T>(
-        &'a self,
+    pub fn create_parameter_variable_builder<S, N, T>(
+        &self,
         scope: S,
         name: N,
         arg_no: u32,
         file: DIFile,
         line: u32,
         ty: T,
-    ) -> DIParameterVariableBuilder<'a, S, N, T>
+    ) -> DIParameterVariableBuilder<S, N, T>
     where
         S: Deref<Target = DIScope>,
         N: AsRef<str>,

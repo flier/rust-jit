@@ -1963,8 +1963,10 @@ mod dbginfo {
             span: Span,
             bb: BasicBlock,
         ) -> Instruction {
+            let init_val = init_val.into();
+
             self.builder.insert_declare_at_end(
-                init_val.into(),
+                &init_val,
                 var,
                 self.builder.create_expression(&[]),
                 self.create_debug_location(Some(span)),
