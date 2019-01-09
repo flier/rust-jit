@@ -5,6 +5,8 @@
 extern crate failure;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate bitflags;
 #[macro_use(
     call,
     do_parse,
@@ -60,6 +62,7 @@ pub mod debuginfo;
 mod disasm;
 pub mod engine;
 mod inlineasm;
+pub mod lto;
 mod membuf;
 mod metadata;
 mod object;

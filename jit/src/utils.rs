@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::mem;
+use std::path::Path;
 use std::ptr;
 use std::result::Result;
 use std::slice;
@@ -204,6 +205,10 @@ pub fn unchecked_cstring<S: AsRef<str>>(s: S) -> CString {
     unsafe { CString::from_vec_unchecked(s.as_ref().as_bytes().to_vec()) }
 }
 
+pub fn unchecked_cpath<P: AsRef<Path>>(path: P) -> CString {
+    unchecked_cstring(path.as_ref().to_string_lossy())
+}
+
 macro_rules! cstr {
     ($s: expr) => {
         $crate::utils::unchecked_cstring($s).as_bytes_with_nul().as_ptr() as *const i8
@@ -212,9 +217,7 @@ macro_rules! cstr {
 
 macro_rules! cpath {
     ($s: expr) => {
-        $crate::utils::unchecked_cstring($s.to_string_lossy().as_ref())
-            .as_bytes_with_nul()
-            .as_ptr() as *const i8
+        $crate::utils::unchecked_cpath($s).as_bytes_with_nul().as_ptr() as *const i8
     };
 }
 

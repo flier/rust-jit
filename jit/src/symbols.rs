@@ -16,12 +16,9 @@ impl Symbols {
     /// Use this instead of getPermanentLibrary() when you won't need to get
     /// symbols from the library itself.
     pub fn load_library<P: AsRef<Path>>(filename: P) -> Result<()> {
-        let filename = filename.as_ref();
+        debug!("load library: {:?}", filename.as_ref());
 
-        debug!("load library: {:?}", filename);
-
-        unsafe { LLVMLoadLibraryPermanently(cpath!(filename)) }
-            .ok_or_else(|| format_err!("fail to load library {:?}", filename))
+        unsafe { LLVMLoadLibraryPermanently(cpath!(filename)) }.ok_or_else(|| failure::err_msg("fail to load library"))
     }
 
     /// This function load’the host process itself, making its exported symbols available for execution.
@@ -30,8 +27,7 @@ impl Symbols {
 
         debug!("load executable: {:?}", filename);
 
-        unsafe { LLVMLoadLibraryPermanently(ptr::null()) }
-            .ok_or_else(|| format_err!("fail to load executable {:?}", filename))
+        unsafe { LLVMLoadLibraryPermanently(ptr::null()) }.ok_or_else(|| failure::err_msg("fail to load executable"))
     }
 
     /// This functions permanently adds the symbol with the value.

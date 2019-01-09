@@ -40,20 +40,13 @@ impl<'a> AsRaw for MemoryBuffer<'a> {
 impl<'a> MemoryBuffer<'a> {
     /// Open the specified file as a MemoryBuffer.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let path = path.as_ref();
         let mut buf = ptr::null_mut();
         let mut msg = DisposableMessage::new();
 
-        trace!("MemoryBuffer from file: {}", path.to_string_lossy());
+        trace!("MemoryBuffer from file: {:?}", path.as_ref());
 
         unsafe { LLVMCreateMemoryBufferWithContentsOfFile(cpath!(path), &mut buf, &mut msg) }
-            .ok_or_else(|| {
-                format_err!(
-                    "fail to create memory buffer from file {:?}, {}",
-                    path,
-                    msg.into_string(),
-                )
-            })
+            .ok_or_else(|| format_err!("fail to create memory buffer from file , {}", msg.into_string(),))
             .map(|_| buf.into())
     }
 

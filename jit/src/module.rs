@@ -103,17 +103,10 @@ impl Module {
 
     /// Print a representation of a module to a file.
     pub fn print_to_file<P: AsRef<Path>>(&self, filename: P) -> Result<()> {
-        let filename = filename.as_ref();
         let mut err = DisposableMessage::new();
 
-        unsafe { LLVMPrintModuleToFile(self.as_raw(), cpath!(filename), &mut err) }.ok_or_else(|| {
-            format_err!(
-                "fail to print {:?} to file `{:?}`, {}",
-                self,
-                filename,
-                err.into_string()
-            )
-        })
+        unsafe { LLVMPrintModuleToFile(self.as_raw(), cpath!(filename), &mut err) }
+            .ok_or_else(|| format_err!("fail to print {:?} to file, {}", self, err.into_string()))
     }
 
     /// Obtain a Type from a module by its registered name.

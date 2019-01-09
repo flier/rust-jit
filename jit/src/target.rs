@@ -229,7 +229,7 @@ impl TargetMachine {
             LLVMTargetMachineEmitToFile(
                 self.as_raw(),
                 module.as_raw(),
-                cpath!(path.as_ref()) as *mut i8,
+                cpath!(path) as *mut i8,
                 codegen,
                 &mut err,
             )

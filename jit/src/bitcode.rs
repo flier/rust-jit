@@ -75,10 +75,8 @@ impl Context {
 impl Module {
     ///  Write a module to the specified path.
     pub fn write_bitcode<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let path = path.as_ref();
-
         (unsafe { LLVMWriteBitcodeToFile(self.as_raw(), cpath!(path)) } == 0)
-            .ok_or_else(|| format_err!("fail to write bitcode to file @ {:?}", path))
+            .ok_or_else(|| failure::err_msg("fail to write bitcode to file"))
     }
 
     ///  Write a module to the file.
