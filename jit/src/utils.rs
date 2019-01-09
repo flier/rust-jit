@@ -3,11 +3,12 @@ use std::ffi::{CStr, CString};
 use std::mem;
 use std::path::Path;
 use std::ptr;
-use std::result::Result;
+use std::result::Result as StdResult;
 use std::slice;
 
 use libc;
 
+use crate::errors::Result;
 use crate::llvm::core::LLVMDisposeMessage;
 use crate::llvm::prelude::*;
 
@@ -71,11 +72,11 @@ pub trait AsResult<T>: Sized {
         self.ok_or(()).ok()
     }
 
-    fn ok_or<E>(self, err: E) -> Result<T, E> {
+    fn ok_or<E>(self, err: E) -> StdResult<T, E> {
         self.ok_or_else(|| err)
     }
 
-    fn ok_or_else<F, E>(self, err: F) -> Result<T, E>
+    fn ok_or_else<F, E>(self, err: F) -> StdResult<T, E>
     where
         F: FnOnce() -> E;
 }
@@ -85,7 +86,7 @@ impl AsResult<()> for LLVMBool {
         self == FALSE
     }
 
-    fn ok_or_else<F, E>(self, err: F) -> Result<(), E>
+    fn ok_or_else<F, E>(self, err: F) -> StdResult<(), E>
     where
         F: FnOnce() -> E,
     {
@@ -105,7 +106,7 @@ where
         !self.is_null()
     }
 
-    fn ok_or_else<F, E>(self, err: F) -> Result<T, E>
+    fn ok_or_else<F, E>(self, err: F) -> StdResult<T, E>
     where
         F: FnOnce() -> E,
     {
@@ -125,7 +126,7 @@ where
         !self.is_null()
     }
 
-    fn ok_or_else<F, E>(self, err: F) -> Result<T, E>
+    fn ok_or_else<F, E>(self, err: F) -> StdResult<T, E>
     where
         F: FnOnce() -> E,
     {
@@ -201,28 +202,44 @@ impl<'a, T> AsMutPtr<T> for Option<&'a mut T> {
     }
 }
 
-pub fn unchecked_cstring<S: AsRef<str>>(s: S) -> CString {
-    unsafe { CString::from_vec_unchecked(s.as_ref().as_bytes().to_vec()) }
+pub trait ToCString {
+    fn to_cstring(&self) -> Result<CString>;
 }
 
-pub fn unchecked_cpath<P: AsRef<Path>>(path: P) -> CString {
-    unchecked_cstring(path.as_ref().to_string_lossy())
+impl ToCString for str {
+    fn to_cstring(&self) -> Result<CString> {
+        Ok(CString::new(self)?)
+    }
+}
+
+impl ToCString for Path {
+    fn to_cstring(&self) -> Result<CString> {
+        Ok(CString::new(self.to_string_lossy().as_ref())?)
+    }
+}
+
+pub unsafe fn unchecked_cstring<S: AsRef<str>>(s: S) -> CString {
+    CString::from_vec_unchecked(s.as_ref().as_bytes().to_vec())
+}
+
+pub unsafe fn unchecked_cpath<P: AsRef<Path>>(path: P) -> CString {
+    unchecked_cstring(path.as_ref().to_string_lossy().as_ref())
 }
 
 macro_rules! cstr {
     ($s: expr) => {
-        $crate::utils::unchecked_cstring($s).as_bytes_with_nul().as_ptr() as *const i8
+        $crate::utils::unchecked_cstring($s).into_bytes_with_nul().as_ptr() as *const ::std::os::raw::c_char
     };
 }
 
 macro_rules! cpath {
     ($s: expr) => {
-        $crate::utils::unchecked_cpath($s).as_bytes_with_nul().as_ptr() as *const i8
+        $crate::utils::unchecked_cpath($s).into_bytes_with_nul().as_ptr() as *const ::std::os::raw::c_char
     };
 }
 
-pub fn from_unchecked_cstr<'a>(p: *const u8, len: usize) -> Cow<'a, str> {
-    unsafe { CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(p, len)).to_string_lossy() }
+pub unsafe fn unchecked_cstr<'a>(p: *const u8, len: usize) -> Cow<'a, str> {
+    CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(p, len)).to_string_lossy()
 }
 
 pub trait UncheckedCStr<'a> {

@@ -8,7 +8,7 @@ use crate::llvm::prelude::*;
 use crate::context::{Context, GlobalContext};
 use crate::errors::Result;
 use crate::types::TypeRef;
-use crate::utils::{from_unchecked_cstr, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
+use crate::utils::{unchecked_cstr, AsRaw, AsResult, DisposableMessage, UncheckedCStr};
 
 pub type AddressSpace = u32;
 
@@ -48,7 +48,7 @@ impl Module {
             let mut len = 0;
             let p = LLVMGetModuleIdentifier(self.as_raw(), &mut len);
 
-            from_unchecked_cstr(p as *const u8, len as usize + 1)
+            unchecked_cstr(p as *const u8, len as usize + 1)
         }
     }
 
@@ -65,7 +65,7 @@ impl Module {
             let mut len = 0;
             let p = LLVMGetSourceFileName(self.as_raw(), &mut len);
 
-            from_unchecked_cstr(p as *const u8, len as usize + 1)
+            unchecked_cstr(p as *const u8, len as usize + 1)
         }
     }
 

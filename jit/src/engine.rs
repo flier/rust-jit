@@ -531,7 +531,10 @@ impl ExecutionEngine {
             env_vars
         );
 
-        let args = args.iter().map(unchecked_cstring).collect::<Vec<CString>>();
+        let args = args
+            .iter()
+            .map(|s| unsafe { unchecked_cstring(s) })
+            .collect::<Vec<CString>>();
 
         let mut argv = args
             .iter()
@@ -540,7 +543,10 @@ impl ExecutionEngine {
 
         argv.push(ptr::null());
 
-        let env_vars = env_vars.iter().map(unchecked_cstring).collect::<Vec<CString>>();
+        let env_vars = env_vars
+            .iter()
+            .map(|s| unsafe { unchecked_cstring(s) })
+            .collect::<Vec<CString>>();
 
         let mut environ = env_vars
             .iter()

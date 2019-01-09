@@ -7,7 +7,7 @@ use libc::c_char;
 use crate::constant::InlineAsm;
 use crate::function::FunctionType;
 use crate::module::Module;
-use crate::utils::{from_unchecked_cstr, AsLLVMBool, AsRaw};
+use crate::utils::{unchecked_cstr, AsLLVMBool, AsRaw};
 
 impl Module {
     pub fn inline_asm(&self) -> Cow<str> {
@@ -15,7 +15,7 @@ impl Module {
             let mut len = 0;
             let p = LLVMGetModuleInlineAsm(self.as_raw(), &mut len);
 
-            from_unchecked_cstr(p as *const u8, len as usize + 1)
+            unchecked_cstr(p as *const u8, len as usize + 1)
         }
     }
 

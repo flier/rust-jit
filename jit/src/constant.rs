@@ -8,7 +8,7 @@ use crate::llvm::LLVMOpcode;
 
 use crate::context::Context;
 use crate::types::{FloatingPointType, FloatingPointTypes, IntegerType, IntegerTypes, StructType, TypeRef};
-use crate::utils::{from_unchecked_cstr, AsBool, AsLLVMBool, AsRaw, AsResult};
+use crate::utils::{unchecked_cstr, AsBool, AsLLVMBool, AsRaw, AsResult};
 use crate::value::{AsValueRef, ValueRef};
 
 pub trait AsConstant: AsValueRef {
@@ -291,7 +291,7 @@ impl ConstantString {
         unsafe {
             LLVMGetAsString(self.as_raw(), &mut len)
                 .as_ref()
-                .map(|p| from_unchecked_cstr(p as *const i8 as *const u8, len))
+                .map(|p| unchecked_cstr(p as *const i8 as *const u8, len))
         }
     }
 }

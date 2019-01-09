@@ -12,7 +12,7 @@ use crate::llvm::*;
 use crate::context::Context;
 use crate::function::Function;
 use crate::insts::CallSite;
-use crate::utils::{from_unchecked_cstr, AsBool, AsRaw};
+use crate::utils::{unchecked_cstr, AsBool, AsRaw};
 
 pub type AttributeIndex = LLVMAttributeIndex;
 
@@ -253,17 +253,23 @@ impl StringAttribute {
     /// Get the string attribute's kind.
     pub fn kind(&self) -> Cow<str> {
         let mut len = 0;
-        let p = unsafe { LLVMGetStringAttributeKind(self.as_raw(), &mut len) };
 
-        from_unchecked_cstr(p as *const u8, len as usize)
+        unsafe {
+            let p = LLVMGetStringAttributeKind(self.as_raw(), &mut len);
+
+            unchecked_cstr(p as *const u8, len as usize)
+        }
     }
 
     /// Get the string attribute's value.
     pub fn value(&self) -> Cow<str> {
         let mut len = 0;
-        let p = unsafe { LLVMGetStringAttributeValue(self.as_raw(), &mut len) };
 
-        from_unchecked_cstr(p as *const u8, len as usize)
+        unsafe {
+            let p = LLVMGetStringAttributeValue(self.as_raw(), &mut len);
+
+            unchecked_cstr(p as *const u8, len as usize)
+        }
     }
 }
 

@@ -13,7 +13,7 @@ use llvm_sys::prelude::*;
 
 use crate::context::{Context, GlobalContext};
 use crate::module::Module;
-use crate::utils::{from_unchecked_cstr, AsBool, AsRaw, AsResult};
+use crate::utils::{unchecked_cstr, AsBool, AsRaw, AsResult};
 use crate::value::{Instruction, ValueRef};
 
 pub type MDKindId = libc::c_uint;
@@ -168,7 +168,7 @@ impl<'a> Iterator for ModuleFlagsMetadata<'a> {
                 let mut len = 0;
                 let p = LLVMModuleFlagEntriesGetKey(self.entry, self.index as libc::c_uint, &mut len);
 
-                from_unchecked_cstr(p as *const u8, len as usize + 1)
+                unchecked_cstr(p as *const u8, len as usize + 1)
             };
             let metadata = unsafe { LLVMModuleFlagEntriesGetMetadata(self.entry, self.index as libc::c_uint) }.into();
 
