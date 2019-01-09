@@ -6,8 +6,6 @@ use std::ptr::{self, NonNull};
 use std::slice;
 use std::str;
 
-use gimli::{DwAte, DwTag};
-
 use crate::llvm::core::*;
 use crate::llvm::debuginfo::*;
 use crate::llvm::prelude::*;
@@ -15,23 +13,206 @@ use crate::metadata::MetadataAsValue;
 use crate::prelude::*;
 use crate::utils::{AsBool, AsLLVMBool, AsRaw, AsResult, IntoRaw};
 
+use self::dwarf::DwTag;
+
 pub type DWARFSourceLanguage = LLVMDWARFSourceLanguage;
 pub type DWARFEmissionKind = LLVMDWARFEmissionKind;
 pub type DWARFTypeEncoding = LLVMDWARFTypeEncoding;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct TypeModifier(DwTag);
+pub mod dwarf {
+    #![allow(non_camel_case_types)]
 
-impl From<TypeModifier> for u32 {
-    fn from(tm: TypeModifier) -> u32 {
-        (tm.0).0 as u32
+    /// The tag encodings for DIE attributes.
+    /// See Section 7.5.3, Table 7.3.
+    #[repr(u32)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub enum DwTag {
+        DW_TAG_null = 0x00,
+
+        DW_TAG_array_type = 0x01,
+        DW_TAG_class_type = 0x02,
+        DW_TAG_entry_point = 0x03,
+        DW_TAG_enumeration_type = 0x04,
+        DW_TAG_formal_parameter = 0x05,
+        DW_TAG_imported_declaration = 0x08,
+        DW_TAG_label = 0x0a,
+        DW_TAG_lexical_block = 0x0b,
+        DW_TAG_member = 0x0d,
+        DW_TAG_pointer_type = 0x0f,
+        DW_TAG_reference_type = 0x10,
+        DW_TAG_compile_unit = 0x11,
+        DW_TAG_string_type = 0x12,
+        DW_TAG_structure_type = 0x13,
+        DW_TAG_subroutine_type = 0x15,
+        DW_TAG_typedef = 0x16,
+        DW_TAG_union_type = 0x17,
+        DW_TAG_unspecified_parameters = 0x18,
+        DW_TAG_variant = 0x19,
+        DW_TAG_common_block = 0x1a,
+        DW_TAG_common_inclusion = 0x1b,
+        DW_TAG_inheritance = 0x1c,
+        DW_TAG_inlined_subroutine = 0x1d,
+        DW_TAG_module = 0x1e,
+        DW_TAG_ptr_to_member_type = 0x1f,
+        DW_TAG_set_type = 0x20,
+        DW_TAG_subrange_type = 0x21,
+        DW_TAG_with_stmt = 0x22,
+        DW_TAG_access_declaration = 0x23,
+        DW_TAG_base_type = 0x24,
+        DW_TAG_catch_block = 0x25,
+        DW_TAG_const_type = 0x26,
+        DW_TAG_constant = 0x27,
+        DW_TAG_enumerator = 0x28,
+        DW_TAG_file_type = 0x29,
+        DW_TAG_friend = 0x2a,
+        DW_TAG_namelist = 0x2b,
+        DW_TAG_namelist_item = 0x2c,
+        DW_TAG_packed_type = 0x2d,
+        DW_TAG_subprogram = 0x2e,
+        DW_TAG_template_type_parameter = 0x2f,
+        DW_TAG_template_value_parameter = 0x30,
+        DW_TAG_thrown_type = 0x31,
+        DW_TAG_try_block = 0x32,
+        DW_TAG_variant_part = 0x33,
+        DW_TAG_variable = 0x34,
+        DW_TAG_volatile_type = 0x35,
+
+        // DWARF 3.
+        DW_TAG_dwarf_procedure = 0x36,
+        DW_TAG_restrict_type = 0x37,
+        DW_TAG_interface_type = 0x38,
+        DW_TAG_namespace = 0x39,
+        DW_TAG_imported_module = 0x3a,
+        DW_TAG_unspecified_type = 0x3b,
+        DW_TAG_partial_unit = 0x3c,
+        DW_TAG_imported_unit = 0x3d,
+        DW_TAG_condition = 0x3f,
+        DW_TAG_shared_type = 0x40,
+
+        // DWARF 4.
+        DW_TAG_type_unit = 0x41,
+        DW_TAG_rvalue_reference_type = 0x42,
+        DW_TAG_template_alias = 0x43,
+
+        // DWARF 5.
+        DW_TAG_coarray_type = 0x44,
+        DW_TAG_generic_subrange = 0x45,
+        DW_TAG_dynamic_type = 0x46,
+        DW_TAG_atomic_type = 0x47,
+        DW_TAG_call_site = 0x48,
+        DW_TAG_call_site_parameter = 0x49,
+        DW_TAG_skeleton_unit = 0x4a,
+        DW_TAG_immutable_type = 0x4b,
+
+        DW_TAG_lo_user = 0x4080,
+        DW_TAG_hi_user = 0xffff,
+
+        // SGI/MIPS extensions.
+        DW_TAG_MIPS_loop = 0x4081,
+
+        // HP extensions.
+        DW_TAG_HP_array_descriptor = 0x4090,
+        DW_TAG_HP_Bliss_field = 0x4091,
+        DW_TAG_HP_Bliss_field_set = 0x4092,
+
+        // GNU extensions.
+        DW_TAG_format_label = 0x4101,
+        DW_TAG_function_template = 0x4102,
+        DW_TAG_class_template = 0x4103,
+        DW_TAG_GNU_BINCL = 0x4104,
+        DW_TAG_GNU_EINCL = 0x4105,
+        DW_TAG_GNU_template_template_param = 0x4106,
+        DW_TAG_GNU_template_parameter_pack = 0x4107,
+        DW_TAG_GNU_formal_parameter_pack = 0x4108,
+        DW_TAG_GNU_call_site = 0x4109,
+        DW_TAG_GNU_call_site_parameter = 0x410a,
+
+        DW_TAG_APPLE_property = 0x4200,
+
+        // SUN extensions.
+        DW_TAG_SUN_function_template = 0x4201,
+        DW_TAG_SUN_class_template = 0x4202,
+        DW_TAG_SUN_struct_template = 0x4203,
+        DW_TAG_SUN_union_template = 0x4204,
+        DW_TAG_SUN_indirect_inheritance = 0x4205,
+        DW_TAG_SUN_codeflags = 0x4206,
+        DW_TAG_SUN_memop_info = 0x4207,
+        DW_TAG_SUN_omp_child_func = 0x4208,
+        DW_TAG_SUN_rtti_descriptor = 0x4209,
+        DW_TAG_SUN_dtor_info = 0x420a,
+        DW_TAG_SUN_dtor = 0x420b,
+        DW_TAG_SUN_f90_interface = 0x420c,
+        DW_TAG_SUN_fortran_vax_structure = 0x420d,
+
+        // ALTIUM extensions.
+        DW_TAG_ALTIUM_circ_type = 0x5101,
+        DW_TAG_ALTIUM_mwa_circ_type = 0x5102,
+        DW_TAG_ALTIUM_rev_carry_type = 0x5103,
+        DW_TAG_ALTIUM_rom = 0x5111,
+
+        // Extensions for UPC.
+        DW_TAG_upc_shared_type = 0x8765,
+        DW_TAG_upc_strict_type = 0x8766,
+        DW_TAG_upc_relaxed_type = 0x8767,
+
+        // PGI (STMicroelectronics) extensions.
+        DW_TAG_PGI_kanji_type = 0xa000,
+        DW_TAG_PGI_interface_block = 0xa020,
+
+        // Borland extensions.
+        DW_TAG_BORLAND_property = 0xb000,
+        DW_TAG_BORLAND_Delphi_string = 0xb001,
+        DW_TAG_BORLAND_Delphi_dynamic_array = 0xb002,
+        DW_TAG_BORLAND_Delphi_set = 0xb003,
+        DW_TAG_BORLAND_Delphi_variant = 0xb004,
+    }
+
+    /// The encodings of the constants used in the `DW_AT_encoding` attribute.
+    /// See Section 7.8, Table 7.11.
+    #[repr(u32)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub enum DwAte {
+        DW_ATE_address = 0x01,
+        DW_ATE_boolean = 0x02,
+        DW_ATE_complex_float = 0x03,
+        DW_ATE_float = 0x04,
+        DW_ATE_signed = 0x05,
+        DW_ATE_signed_char = 0x06,
+        DW_ATE_unsigned = 0x07,
+        DW_ATE_unsigned_char = 0x08,
+
+        // DWARF 3.
+        DW_ATE_imaginary_float = 0x09,
+        DW_ATE_packed_decimal = 0x0a,
+        DW_ATE_numeric_string = 0x0b,
+        DW_ATE_edited = 0x0c,
+        DW_ATE_signed_fixed = 0x0d,
+        DW_ATE_unsigned_fixed = 0x0e,
+        DW_ATE_decimal_float = 0x0f,
+
+        // DWARF 4.
+        DW_ATE_UTF = 0x10,
+        DW_ATE_UCS = 0x11,
+        DW_ATE_ASCII = 0x12,
+
+        DW_ATE_lo_user = 0x80,
+        DW_ATE_hi_user = 0xff,
     }
 }
 
-pub mod type_modifier {
-    use gimli::*;
+pub use self::type_modifier::TypeModifier;
 
-    use super::TypeModifier;
+pub mod type_modifier {
+    use super::dwarf::DwTag::{self, *};
+
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub struct TypeModifier(DwTag);
+
+    impl From<TypeModifier> for u32 {
+        fn from(tm: TypeModifier) -> u32 {
+            tm.0 as u32
+        }
+    }
 
     /// atomic qualified type (for example, in C)
     pub const ATOMIC: TypeModifier = TypeModifier(DW_TAG_atomic_type);
@@ -53,21 +234,22 @@ pub mod type_modifier {
     pub const SHARED: TypeModifier = TypeModifier(DW_TAG_shared_type);
     /// volatile qualified type (for example, in C, C++)
     pub const VOLATILE: TypeModifier = TypeModifier(DW_TAG_volatile_type);
+
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Encoding(DwAte);
-
-impl From<Encoding> for u32 {
-    fn from(encoding: Encoding) -> u32 {
-        (encoding.0).0 as u32
-    }
-}
+pub use self::encoding::Encoding;
 
 pub mod encoding {
-    use gimli::*;
+    use super::dwarf::DwAte::{self, *};
 
-    use super::Encoding;
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub struct Encoding(DwAte);
+
+    impl From<Encoding> for u32 {
+        fn from(encoding: Encoding) -> u32 {
+            encoding.0 as u32
+        }
+    }
 
     /// true or false
     pub const BOOLEAN: Encoding = Encoding(DW_ATE_boolean);
@@ -1968,7 +2150,7 @@ where
         unsafe {
             LLVMDIBuilderCreateForwardDecl(
                 self.builder.as_raw(),
-                self.tag.0 as u32,
+                self.tag as u32,
                 cstr!(name),
                 name.len(),
                 self.scope.as_raw(),
@@ -2054,7 +2236,7 @@ where
         unsafe {
             LLVMDIBuilderCreateReplaceableCompositeType(
                 self.builder.as_raw(),
-                self.tag.0 as u32,
+                self.tag as u32,
                 cstr!(name),
                 name.len(),
                 self.scope.as_raw(),
