@@ -50,6 +50,14 @@ impl MetadataAsValue {
         !unsafe { LLVMIsAMDString(self.as_raw()) }.is_null()
     }
 
+    pub fn as_md_string(&self) -> Option<MDString> {
+        if self.is_md_string() {
+            Some(self.as_metadata())
+        } else {
+            None
+        }
+    }
+
     pub fn as_str(&self) -> Option<&str> {
         let mut len = 0;
 

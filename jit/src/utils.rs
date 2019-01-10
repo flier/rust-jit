@@ -369,12 +369,6 @@ macro_rules! inherit_from {
         }
     };
 
-    ($ty: ident, $parent: ty ; $raw: ty) => {
-        inherit_from!(__impl_deref $ty, $parent);
-        inherit_from!(__impl_raw $ty, $raw);
-        inherit_from!(__impl_convert_between $ty, $parent);
-    };
-
     ($ty:ident, $parent:ty $( , $ancestor:ty )* ; $raw:ty) => {
         inherit_from!(__impl_deref $ty, $parent);
         inherit_from!(__impl_raw $ty, $raw);
