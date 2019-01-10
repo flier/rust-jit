@@ -106,7 +106,7 @@ impl<'a> InstructionBuilder for CatchSwitch<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CatchSwitchInst(Instruction);
 
-inherit_from!(CatchSwitchInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(CatchSwitchInst, Instruction, ValueRef; LLVMValueRef);
 
 impl TerminatorInst for CatchSwitchInst {}
 
@@ -186,7 +186,7 @@ impl<'a> InstructionBuilder for CatchPad<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CatchPadInst(Instruction);
 
-inherit_from!(CatchPadInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(CatchPadInst, Instruction, ValueRef; LLVMValueRef);
 
 impl CatchPadInst {
     /// Get the parent `catchswitch` instruction of a catchpad instruction.
@@ -286,7 +286,7 @@ impl InstructionBuilder for CatchRet {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CatchRetInst(Instruction);
 
-inherit_from!(CatchRetInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(CatchRetInst, Instruction, ValueRef; LLVMValueRef);
 
 impl TerminatorInst for CatchRetInst {}
 
@@ -337,7 +337,7 @@ impl InstructionBuilder for CleanupRet {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CleanupRetInst(Instruction);
 
-inherit_from!(CleanupRetInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(CleanupRetInst, Instruction, ValueRef; LLVMValueRef);
 
 impl TerminatorInst for CleanupRetInst {}
 

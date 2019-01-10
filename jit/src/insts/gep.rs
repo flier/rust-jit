@@ -114,7 +114,7 @@ impl<'a> InstructionBuilder for GetElementPtr<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GetElementPtrInst(Instruction);
 
-inherit_from!(GetElementPtrInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(GetElementPtrInst, Instruction, ValueRef; LLVMValueRef);
 
 /// an instruction for type-safe pointer arithmetic to access elements of arrays and structs
 impl GetElementPtrInst {

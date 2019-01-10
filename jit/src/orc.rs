@@ -39,7 +39,7 @@ impl AsResult<()> for LLVMOrcErrorCode {
 #[derive(Debug)]
 pub struct JITStack(LLVMOrcJITStackRef);
 
-inherit_from!(JITStack, LLVMOrcJITStackRef);
+inherit_from!(JITStack; LLVMOrcJITStackRef);
 
 impl Drop for JITStack {
     fn drop(&mut self) {

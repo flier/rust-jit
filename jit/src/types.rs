@@ -29,11 +29,11 @@ pub struct TypeRef(LLVMTypeRef);
 unsafe impl Send for TypeRef {}
 unsafe impl Sync for TypeRef {}
 
-inherit_from!(TypeRef, LLVMTypeRef);
+inherit_from!(TypeRef; LLVMTypeRef);
 
 macro_rules! inherit_type_ref {
     ($ty: ident) => {
-        inherit_from!($ty, TypeRef, LLVMTypeRef);
+        inherit_from!($ty, TypeRef; LLVMTypeRef);
     };
 }
 

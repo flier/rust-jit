@@ -76,8 +76,6 @@ struct State {
 
 impl State {
     pub fn new(ctxt: &jit::Context, func: &jit::Function, dbg: &DbgInfo, subprogram: DISubprogram) -> Self {
-        let i8_t = ctxt.int8_t();
-        let i8_ptr_t = i8_t.ptr_t();
         let i32_t = ctxt.int32_t();
 
         let uint32 = |v: u64| -> ConstantInt { i32_t.uint(v) };

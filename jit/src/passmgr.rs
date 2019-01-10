@@ -325,7 +325,7 @@ pub enum Pass {
 #[derive(Debug)]
 pub struct PassManager(LLVMPassManagerRef);
 
-inherit_from!(PassManager, LLVMPassManagerRef);
+inherit_from!(PassManager; LLVMPassManagerRef);
 
 impl Drop for PassManager {
     fn drop(&mut self) {
@@ -433,7 +433,7 @@ impl PassManager {
 #[derive(Debug)]
 pub struct FunctionPassManager(PassManager);
 
-inherit_from!(FunctionPassManager, PassManager, LLVMPassManagerRef);
+inherit_from!(FunctionPassManager, PassManager; LLVMPassManagerRef);
 
 impl FunctionPassManager {
     /// Constructs a new function-by-function pass pipeline over the module provider.
@@ -464,7 +464,7 @@ impl FunctionPassManager {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PassRegistry(LLVMPassRegistryRef);
 
-inherit_from!(PassRegistry, LLVMPassRegistryRef);
+inherit_from!(PassRegistry; LLVMPassRegistryRef);
 
 impl PassRegistry {
     /// Return the global pass registry, for use with initialization functions.
@@ -477,7 +477,7 @@ impl PassRegistry {
 #[derive(Debug)]
 pub struct PassManagerBuilder(LLVMPassManagerBuilderRef);
 
-inherit_from!(PassManagerBuilder, LLVMPassManagerBuilderRef);
+inherit_from!(PassManagerBuilder; LLVMPassManagerBuilderRef);
 
 impl Drop for PassManagerBuilder {
     fn drop(&mut self) {

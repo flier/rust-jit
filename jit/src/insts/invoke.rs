@@ -96,7 +96,7 @@ impl<'a> InstructionBuilder for Invoke<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InvokeInst(Instruction);
 
-inherit_from!(InvokeInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(InvokeInst, Instruction, ValueRef; LLVMValueRef);
 
 impl CallSite for InvokeInst {}
 

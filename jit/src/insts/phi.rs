@@ -68,7 +68,7 @@ impl<'a> InstructionBuilder for Phi<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PhiNode(Instruction);
 
-inherit_from!(PhiNode, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(PhiNode, Instruction, ValueRef; LLVMValueRef);
 
 impl PhiNode {
     pub fn add_incoming<V: Into<ValueRef>, B: Into<BasicBlock>>(&self, value: V, block: B) -> &Self {

@@ -65,7 +65,7 @@ impl<'a> InstructionBuilder for Ret<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ReturnInst(Instruction);
 
-inherit_from!(ReturnInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(ReturnInst, Instruction, ValueRef; LLVMValueRef);
 
 impl TerminatorInst for ReturnInst {}
 

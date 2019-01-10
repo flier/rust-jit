@@ -140,7 +140,7 @@ pub fn is_object_file_for_target<T: AsRef<O>, O: ObjectFile, S: AsRef<str>>(
 #[derive(Debug)]
 pub struct Module(lto_module_t);
 
-inherit_from!(Module, lto_module_t);
+inherit_from!(Module; lto_module_t);
 
 impl Drop for Module {
     fn drop(&mut self) {
@@ -300,7 +300,7 @@ pub enum CodeGenModel {
 #[derive(Debug)]
 pub struct CodeGenerator(lto_code_gen_t);
 
-inherit_from!(CodeGenerator, lto_code_gen_t);
+inherit_from!(CodeGenerator; lto_code_gen_t);
 
 impl Drop for CodeGenerator {
     fn drop(&mut self) {
@@ -426,7 +426,7 @@ impl CodeGenerator {
 #[derive(Debug)]
 pub struct ThinCodeGenerator(thinlto_code_gen_t);
 
-inherit_from!(ThinCodeGenerator, thinlto_code_gen_t);
+inherit_from!(ThinCodeGenerator; thinlto_code_gen_t);
 
 impl Drop for ThinCodeGenerator {
     fn drop(&mut self) {

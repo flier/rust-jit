@@ -19,7 +19,7 @@ use crate::value::{BlockAddress, Instruction, ValueRef};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BasicBlock(LLVMBasicBlockRef);
 
-inherit_from!(BasicBlock, LLVMBasicBlockRef);
+inherit_from!(BasicBlock; LLVMBasicBlockRef);
 
 impl BasicBlock {
     /// Obtain the string name of a basic block.

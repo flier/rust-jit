@@ -10,7 +10,7 @@ use crate::utils::{AsBool, AsRaw, UncheckedCStr};
 #[derive(Debug)]
 pub struct ObjectFile(LLVMObjectFileRef);
 
-inherit_from!(ObjectFile, LLVMObjectFileRef);
+inherit_from!(ObjectFile; LLVMObjectFileRef);
 
 impl Drop for ObjectFile {
     fn drop(&mut self) {

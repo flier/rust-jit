@@ -77,7 +77,7 @@ pub type ThreadLocalMode = LLVMThreadLocalMode;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GlobalVar(Constant);
 
-inherit_from!(GlobalVar, Constant, ValueRef, LLVMValueRef);
+inherit_from!(GlobalVar, Constant, ValueRef; LLVMValueRef);
 
 impl AsConstant for GlobalVar {
     fn as_const(&self) -> &Constant {
@@ -144,7 +144,7 @@ impl GlobalVar {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GlobalAlias(Constant);
 
-inherit_from!(GlobalAlias, Constant, ValueRef, LLVMValueRef);
+inherit_from!(GlobalAlias, Constant, ValueRef; LLVMValueRef);
 
 impl AsConstant for GlobalAlias {
     fn as_const(&self) -> &Constant {

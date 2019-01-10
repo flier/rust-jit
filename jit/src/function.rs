@@ -33,7 +33,7 @@ macro_rules! func {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FunctionType(TypeRef);
 
-inherit_from!(FunctionType, TypeRef, LLVMTypeRef);
+inherit_from!(FunctionType, TypeRef; LLVMTypeRef);
 
 impl FunctionType {
     /// Obtain a function type consisting of a specified signature.
@@ -81,7 +81,7 @@ impl FunctionType {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Function(ValueRef);
 
-inherit_from!(Function, ValueRef, LLVMValueRef);
+inherit_from!(Function, ValueRef; LLVMValueRef);
 
 impl GlobalValue for Function {}
 

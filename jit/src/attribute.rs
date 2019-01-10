@@ -193,7 +193,7 @@ pub mod attrs {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AttributeKind(u32);
 
-inherit_from!(AttributeKind, u32);
+inherit_from!(AttributeKind; u32);
 
 impl AttributeKind {
     /// Return an unique id given the name of a enum attribute.
@@ -213,7 +213,7 @@ impl AttributeKind {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Attribute(LLVMAttributeRef);
 
-inherit_from!(Attribute, LLVMAttributeRef);
+inherit_from!(Attribute; LLVMAttributeRef);
 
 impl Attribute {
     pub fn is_enum_attribute(&self) -> bool {
@@ -229,7 +229,7 @@ impl Attribute {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct EnumAttribute(Attribute);
 
-inherit_from!(EnumAttribute, Attribute, LLVMAttributeRef);
+inherit_from!(EnumAttribute, Attribute; LLVMAttributeRef);
 
 impl EnumAttribute {
     /// Get the unique id corresponding to the enum attribute passed as argument.
@@ -247,7 +247,7 @@ impl EnumAttribute {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StringAttribute(Attribute);
 
-inherit_from!(StringAttribute, Attribute, LLVMAttributeRef);
+inherit_from!(StringAttribute, Attribute; LLVMAttributeRef);
 
 impl StringAttribute {
     /// Get the string attribute's kind.

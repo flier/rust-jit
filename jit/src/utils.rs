@@ -356,28 +356,7 @@ macro_rules! inherit_from {
         inherit_from!(__impl_from $to, $from);
     };
 
-    ($ty:ident, $parent:ty, $grandfather:ty, $ancestor:ty, $raw:ty) => {
-        inherit_from!(__impl_deref $ty, $parent);
-        inherit_from!(__impl_raw $ty, $raw);
-        inherit_from!(__impl_convert_between $ty, $parent);
-        inherit_from!(__impl_convert_between $ty, $grandfather);
-        inherit_from!(__impl_convert_between $ty, $ancestor);
-    };
-
-    ($ty:ident, $parent:ty, $ancestor:ty, $raw:ty) => {
-        inherit_from!(__impl_deref $ty, $parent);
-        inherit_from!(__impl_raw $ty, $raw);
-        inherit_from!(__impl_convert_between $ty, $parent);
-        inherit_from!(__impl_convert_between $ty, $ancestor);
-    };
-
-    ($ty: ident, $parent: ty, $raw: ty) => {
-        inherit_from!(__impl_deref $ty, $parent);
-        inherit_from!(__impl_raw $ty, $raw);
-        inherit_from!(__impl_convert_between $ty, $parent);
-    };
-
-    ($ty:ident, $raw:ty) => {
+    ($ty:ident ; $raw:ty) => {
         inherit_from!(__impl_deref $ty, $raw);
         inherit_from!(__impl_from_raw $ty, $raw);
 
@@ -388,6 +367,21 @@ macro_rules! inherit_from {
                 self.0
             }
         }
+    };
+
+    ($ty: ident, $parent: ty ; $raw: ty) => {
+        inherit_from!(__impl_deref $ty, $parent);
+        inherit_from!(__impl_raw $ty, $raw);
+        inherit_from!(__impl_convert_between $ty, $parent);
+    };
+
+    ($ty:ident, $parent:ty $( , $ancestor:ty )* ; $raw:ty) => {
+        inherit_from!(__impl_deref $ty, $parent);
+        inherit_from!(__impl_raw $ty, $raw);
+        inherit_from!(__impl_convert_between $ty, $parent);
+        $(
+        inherit_from!(__impl_convert_between $ty, $ancestor);
+        )*
     };
 }
 

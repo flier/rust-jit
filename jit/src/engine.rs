@@ -26,7 +26,7 @@ pub fn shutdown() {
 #[derive(Debug, PartialEq)]
 pub struct GenericValue(LLVMGenericValueRef);
 
-inherit_from!(GenericValue, LLVMGenericValueRef);
+inherit_from!(GenericValue; LLVMGenericValueRef);
 
 impl Drop for GenericValue {
     fn drop(&mut self) {
@@ -97,7 +97,7 @@ impl GenericValue {
 #[derive(Debug)]
 pub struct Interpreter(ExecutionEngine);
 
-inherit_from!(Interpreter, ExecutionEngine, LLVMExecutionEngineRef);
+inherit_from!(Interpreter, ExecutionEngine; LLVMExecutionEngineRef);
 
 impl Interpreter {
     pub fn link_in() {
@@ -145,7 +145,7 @@ impl Default for CodeGenOptLevel {
 #[derive(Debug)]
 pub struct JITCompiler(ExecutionEngine);
 
-inherit_from!(JITCompiler, ExecutionEngine, LLVMExecutionEngineRef);
+inherit_from!(JITCompiler, ExecutionEngine; LLVMExecutionEngineRef);
 
 impl JITCompiler {
     pub fn for_module(module: Module, opt_level: CodeGenOptLevel) -> Result<Self> {
@@ -173,7 +173,7 @@ impl JITCompiler {
 #[derive(Debug)]
 pub struct MCJITMemoryManager(LLVMMCJITMemoryManagerRef);
 
-inherit_from!(MCJITMemoryManager, LLVMMCJITMemoryManagerRef);
+inherit_from!(MCJITMemoryManager; LLVMMCJITMemoryManagerRef);
 
 impl Drop for MCJITMemoryManager {
     fn drop(&mut self) {
@@ -410,7 +410,7 @@ pub mod mmap {
 #[repr(transparent)]
 pub struct MCJITCompilerOptions(LLVMMCJITCompilerOptions);
 
-inherit_from!(MCJITCompilerOptions, LLVMMCJITCompilerOptions);
+inherit_from!(MCJITCompilerOptions; LLVMMCJITCompilerOptions);
 
 impl Default for MCJITCompilerOptions {
     fn default() -> Self {
@@ -430,7 +430,7 @@ pub type MCJIT = MCJITCompiler;
 #[derive(Debug)]
 pub struct MCJITCompiler(ExecutionEngine);
 
-inherit_from!(MCJITCompiler, ExecutionEngine, LLVMExecutionEngineRef);
+inherit_from!(MCJITCompiler, ExecutionEngine; LLVMExecutionEngineRef);
 
 impl MCJITCompiler {
     pub fn link_in() {
@@ -471,7 +471,7 @@ impl MCJITCompiler {
 #[derive(Debug)]
 pub struct ExecutionEngine(LLVMExecutionEngineRef);
 
-inherit_from!(ExecutionEngine, LLVMExecutionEngineRef);
+inherit_from!(ExecutionEngine; LLVMExecutionEngineRef);
 
 unsafe impl Send for ExecutionEngine {}
 unsafe impl Sync for ExecutionEngine {}

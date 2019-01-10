@@ -1,8 +1,7 @@
 use std::borrow::Cow;
-use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Deref;
-use std::ptr;
+use std::ptr::{self, NonNull};
 use std::slice;
 use std::str;
 
@@ -22,7 +21,7 @@ pub type MDKindId = libc::c_uint;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MetadataAsValue(ValueRef);
 
-inherit_from!(MetadataAsValue, ValueRef, LLVMValueRef);
+inherit_from!(MetadataAsValue, ValueRef; LLVMValueRef);
 
 impl MetadataAsValue {
     /// Obtain the given MDNode's operands.
@@ -50,25 +49,34 @@ impl MetadataAsValue {
     pub fn is_md_string(&self) -> bool {
         !unsafe { LLVMIsAMDString(self.as_raw()) }.is_null()
     }
+
+    pub fn as_str(&self) -> Option<&str> {
+        let mut len = 0;
+
+        unsafe {
+            NonNull::new(LLVMGetMDString(self.as_raw(), &mut len) as *mut u8)
+                .map(|data| str::from_utf8_unchecked(slice::from_raw_parts(data.as_ptr() as *const u8, len as usize)))
+        }
+    }
 }
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MDString(MetadataAsValue);
+pub struct MDString(Metadata);
 
-inherit_from!(MDString, MetadataAsValue, LLVMValueRef);
+inherit_from!(MDString, Metadata; LLVMMetadataRef);
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MDNode(MetadataAsValue);
+pub struct MDNode(Metadata);
 
-inherit_from!(MDNode, MetadataAsValue, LLVMValueRef);
+inherit_from!(MDNode, Metadata; LLVMMetadataRef);
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Metadata(LLVMMetadataRef);
 
-inherit_from!(Metadata, LLVMMetadataRef);
+inherit_from!(Metadata; LLVMMetadataRef);
 
 impl Metadata {
     /// Obtain Metadata as a Value.
@@ -192,13 +200,13 @@ impl Context {
         unsafe { LLVMGetMDKindIDInContext(self.as_raw(), name.as_ptr() as *const i8, name.len() as u32) }
     }
 
-    pub fn md_string<T: AsRef<str>>(&self, name: T) -> MDString {
+    pub fn md_string<T: AsRef<str>>(&self, name: T) -> MetadataAsValue {
         let name = name.as_ref();
 
         unsafe { LLVMMDStringInContext(self.as_raw(), name.as_ptr() as *const i8, name.len() as u32) }.into()
     }
 
-    pub fn md_node<I: Iterator<Item = ValueRef>>(&self, values: I) -> MDNode {
+    pub fn md_node<I: Iterator<Item = ValueRef>>(&self, values: I) -> MetadataAsValue {
         let mut values = values.map(|v| v.as_raw()).collect::<Vec<LLVMValueRef>>();
 
         unsafe { LLVMMDNodeInContext(self.as_raw(), values.as_mut_ptr(), values.len() as u32) }.into()
@@ -212,27 +220,16 @@ impl GlobalContext {
         unsafe { LLVMGetMDKindID(name.as_ptr() as *const i8, name.len() as u32) }
     }
 
-    pub fn md_string<T: AsRef<str>>(name: T) -> MDString {
+    pub fn md_string<T: AsRef<str>>(name: T) -> MetadataAsValue {
         let name = name.as_ref();
 
         unsafe { LLVMMDString(name.as_ptr() as *const i8, name.len() as u32) }.into()
     }
 
-    pub fn md_node<I: Iterator<Item = ValueRef>>(values: I) -> MDNode {
-        let mut values = values.map(|v| v.as_raw()).collect::<Vec<LLVMValueRef>>();
+    pub fn md_node<I: Iterator<Item = ValueRef>>(values: I) -> MetadataAsValue {
+        let mut values = values.map(|v| v.as_raw()).collect::<Vec<_>>();
 
         unsafe { LLVMMDNode(values.as_mut_ptr(), values.len() as u32) }.into()
-    }
-}
-
-impl fmt::Display for MDString {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut len = 0;
-        let ptr = unsafe { LLVMGetMDString(self.as_raw(), &mut len) };
-
-        write!(f, "{}", unsafe {
-            str::from_utf8_unchecked(slice::from_raw_parts(ptr as *const u8, len as usize))
-        })
     }
 }
 

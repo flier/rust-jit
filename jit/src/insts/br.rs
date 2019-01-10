@@ -154,7 +154,7 @@ impl<'a> InstructionBuilder for IndirectBr<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BranchInst(Instruction);
 
-inherit_from!(BranchInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(BranchInst, Instruction, ValueRef; LLVMValueRef);
 
 impl TerminatorInst for BranchInst {}
 

@@ -27,7 +27,7 @@ pub type CodeGenFileType = LLVMCodeGenFileType;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Target(LLVMTargetRef);
 
-inherit_from!(Target, LLVMTargetRef);
+inherit_from!(Target; LLVMTargetRef);
 
 impl Default for Target {
     fn default() -> Self {
@@ -128,7 +128,7 @@ impl Iterator for TargetIter {
 #[derive(Debug, PartialEq)]
 pub struct TargetMachine(LLVMTargetMachineRef);
 
-inherit_from!(TargetMachine, LLVMTargetMachineRef);
+inherit_from!(TargetMachine; LLVMTargetMachineRef);
 
 impl Drop for TargetMachine {
     fn drop(&mut self) {
@@ -263,7 +263,7 @@ impl TargetMachine {
 #[derive(Debug, PartialEq)]
 pub struct TargetData(LLVMTargetDataRef);
 
-inherit_from!(TargetData, LLVMTargetDataRef);
+inherit_from!(TargetData; LLVMTargetDataRef);
 
 impl Drop for TargetData {
     fn drop(&mut self) {

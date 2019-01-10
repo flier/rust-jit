@@ -9,7 +9,7 @@ use std::str;
 use crate::llvm::core::*;
 use crate::llvm::debuginfo::*;
 use crate::llvm::prelude::*;
-use crate::metadata::MetadataAsValue;
+use crate::metadata::{MDNode, MetadataAsValue};
 use crate::prelude::*;
 use crate::utils::{AsBool, AsLLVMBool, AsRaw, AsResult, IntoRaw};
 
@@ -374,7 +374,7 @@ impl IRBuilder {
 #[derive(Debug)]
 pub struct DIBuilder(LLVMDIBuilderRef);
 
-inherit_from!(DIBuilder, LLVMDIBuilderRef);
+inherit_from!(DIBuilder; LLVMDIBuilderRef);
 
 impl Drop for DIBuilder {
     fn drop(&mut self) {
@@ -1372,15 +1372,15 @@ macro_rules! define_debug_info_class {
     };
 
     ($name:ident) => {
-        define_debug_info_class!(__def_struct $name, Metadata);
+        define_debug_info_class!(__def_struct $name, MDNode);
 
-        inherit_from!($name, Metadata, LLVMMetadataRef);
+        inherit_from!($name, MDNode, Metadata; LLVMMetadataRef);
     };
 
-    ($name:ident, $parent:ident $(, $base:ident )*) => {
+    ($name:ident, $parent:ident $( , $base:ident )*) => {
         define_debug_info_class!(__def_struct $name, $parent);
 
-        inherit_from!($name, $parent, $( $base, )* Metadata, LLVMMetadataRef);
+        inherit_from!($name, $parent, $( $base, )* MDNode, Metadata; LLVMMetadataRef);
     };
 }
 
@@ -1392,19 +1392,19 @@ macro_rules! define_debug_info_node {
 
 macro_rules! define_debug_info_scope {
     ( $( $name:ident ),* ) => {
-        define_debug_info_class!( $( $name, )* DIScope);
+        define_debug_info_node!( $( $name, )* DIScope);
     };
 }
 
 macro_rules! define_debug_info_local_scope {
     ( $( $name:ident ),* ) => {
-        define_debug_info_class!( $( $name, )* DILocalScope, DIScope);
+        define_debug_info_scope!( $( $name, )* DILocalScope);
     };
 }
 
 macro_rules! define_debug_info_type {
     ( $( $name:ident ),* ) => {
-        define_debug_info_class!( $( $name, )* DIType);
+        define_debug_info_node!( $( $name, )* DIType);
     };
 }
 

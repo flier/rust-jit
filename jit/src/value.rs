@@ -29,14 +29,14 @@ pub struct ValueRef(LLVMValueRef);
 unsafe impl Send for ValueRef {}
 unsafe impl Sync for ValueRef {}
 
-inherit_from!(ValueRef, LLVMValueRef);
+inherit_from!(ValueRef; LLVMValueRef);
 
 macro_rules! inherit_value_ref {
     ($ty: ident) => {
-        inherit_from!($ty, ValueRef, LLVMValueRef);
+        inherit_from!($ty, ValueRef; LLVMValueRef);
     };
     ($ty: ident, $parent: ty) => {
-        inherit_from!($ty, $parent, ValueRef, LLVMValueRef);
+        inherit_from!($ty, $parent, ValueRef; LLVMValueRef);
     };
 }
 

@@ -77,7 +77,7 @@ impl<'a> InstructionBuilder for Switch<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SwitchInst(Instruction);
 
-inherit_from!(SwitchInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(SwitchInst, Instruction, ValueRef; LLVMValueRef);
 
 impl TerminatorInst for SwitchInst {}
 

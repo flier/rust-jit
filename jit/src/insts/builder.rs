@@ -123,7 +123,7 @@ pub enum Position {
 #[derive(Debug)]
 pub struct IRBuilder(LLVMBuilderRef);
 
-inherit_from!(IRBuilder, LLVMBuilderRef);
+inherit_from!(IRBuilder; LLVMBuilderRef);
 
 impl Drop for IRBuilder {
     fn drop(&mut self) {

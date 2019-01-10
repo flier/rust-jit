@@ -30,7 +30,7 @@ bitflags! {
 #[derive(Debug)]
 pub struct Disasm(LLVMDisasmContextRef);
 
-inherit_from!(Disasm, LLVMDisasmContextRef);
+inherit_from!(Disasm; LLVMDisasmContextRef);
 
 impl Drop for Disasm {
     fn drop(&mut self) {

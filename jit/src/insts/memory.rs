@@ -141,7 +141,7 @@ impl<'a> InstructionBuilder for Alloca<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AllocaInst(Instruction);
 
-inherit_from!(AllocaInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(AllocaInst, Instruction, ValueRef; LLVMValueRef);
 
 impl AllocaInst {
     /// Obtain the type that is being allocated by the alloca instruction.
@@ -266,7 +266,7 @@ impl<'a> InstructionBuilder for Load<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LoadInst(Instruction);
 
-inherit_from!(LoadInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(LoadInst, Instruction, ValueRef; LLVMValueRef);
 
 /// The `load` instruction is used to read from memory.
 pub fn load<'a, P, N>(ptr: P, name: N) -> Load<'a>
@@ -351,7 +351,7 @@ impl<'a> InstructionBuilder for Store<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct StoreInst(Instruction);
 
-inherit_from!(StoreInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(StoreInst, Instruction, ValueRef; LLVMValueRef);
 
 /// The `store` instruction is used to write to memory.
 pub fn store<'a, V, P>(value: V, ptr: P) -> Store<'a>

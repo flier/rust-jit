@@ -111,7 +111,7 @@ pub trait CallSite: AsValueRef {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CallInst(Instruction);
 
-inherit_from!(CallInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(CallInst, Instruction, ValueRef; LLVMValueRef);
 
 impl CallSite for CallInst {}
 

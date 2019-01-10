@@ -81,7 +81,7 @@ impl<'a> InstructionBuilder for LandingPad<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LandingPadInst(Instruction);
 
-inherit_from!(LandingPadInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(LandingPadInst, Instruction, ValueRef; LLVMValueRef);
 
 impl TerminatorInst for LandingPadInst {}
 
@@ -153,7 +153,7 @@ impl<'a> InstructionBuilder for Resume<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ResumeInst(Instruction);
 
-inherit_from!(ResumeInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(ResumeInst, Instruction, ValueRef; LLVMValueRef);
 
 impl TerminatorInst for ResumeInst {}
 
@@ -192,7 +192,7 @@ impl InstructionBuilder for Unreachable {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UnreachableInst(Instruction);
 
-inherit_from!(UnreachableInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(UnreachableInst, Instruction, ValueRef; LLVMValueRef);
 
 impl TerminatorInst for UnreachableInst {}
 

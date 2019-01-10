@@ -145,7 +145,7 @@ impl<'a> InstructionBuilder for ICmp<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ICmpInst(Instruction);
 
-inherit_from!(ICmpInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(ICmpInst, Instruction, ValueRef; LLVMValueRef);
 
 impl ICmpInst {
     /// Obtain the predicate of an instruction.
@@ -282,7 +282,7 @@ impl<'a> InstructionBuilder for FCmp<'a> {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct FCmpInst(Instruction);
 
-inherit_from!(FCmpInst, Instruction, ValueRef, LLVMValueRef);
+inherit_from!(FCmpInst, Instruction, ValueRef; LLVMValueRef);
 
 impl FCmpInst {
     /// Obtain the float predicate of an instruction.
