@@ -297,9 +297,9 @@ impl DisposableMessage for *mut libc::c_char {
 }
 
 macro_rules! inherit_from {
-    ($ty: ident, $raw: ty) => {
+    (__impl_deref $ty:ident, $parent:ty) => {
         impl ::std::ops::Deref for $ty {
-            type Target = $raw;
+            type Target = $parent;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
@@ -311,128 +311,81 @@ macro_rules! inherit_from {
                 &mut self.0
             }
         }
+    };
 
-        impl ::std::convert::From<$raw> for $ty {
-            fn from(p: $raw) -> Self {
-                $ty(p)
+    (__impl_as_raw $ty:ident, $raw:ty) => {
+        impl $crate::utils::AsRaw for $ty {
+            type RawType = $raw;
+
+            fn as_raw(&self) -> Self::RawType {
+                self.0.as_raw()
             }
         }
+    };
+
+    (__impl_from_raw $ty:ident, $raw:ty) => {
+        impl ::std::convert::From<$raw> for $ty {
+            fn from(f: $raw) -> Self {
+                $ty::from_raw(f)
+            }
+        }
+
+        impl $ty {
+            /// Wrap a raw $ty reference.
+            pub fn from_raw(v: $raw) -> Self {
+                $ty(v.into())
+            }
+        }
+    };
+
+    (__impl_raw $ty:ident, $raw:ty) => {
+        inherit_from!(__impl_as_raw $ty, $raw);
+        inherit_from!(__impl_from_raw $ty, $raw);
+    };
+
+    (__impl_from $ty:ty, $to:ty) => {
+        impl ::std::convert::From<$ty> for $to {
+            fn from(from: $ty) -> Self {
+                from.as_raw().into()
+            }
+        }
+    };
+
+    (__impl_convert_between $from:ty, $to: ty) => {
+        inherit_from!(__impl_from $from, $to);
+        inherit_from!(__impl_from $to, $from);
+    };
+
+    ($ty:ident, $parent:ty, $grandfather:ty, $ancestor:ty, $raw:ty) => {
+        inherit_from!(__impl_deref $ty, $parent);
+        inherit_from!(__impl_raw $ty, $raw);
+        inherit_from!(__impl_convert_between $ty, $parent);
+        inherit_from!(__impl_convert_between $ty, $grandfather);
+        inherit_from!(__impl_convert_between $ty, $ancestor);
+    };
+
+    ($ty:ident, $parent:ty, $ancestor:ty, $raw:ty) => {
+        inherit_from!(__impl_deref $ty, $parent);
+        inherit_from!(__impl_raw $ty, $raw);
+        inherit_from!(__impl_convert_between $ty, $parent);
+        inherit_from!(__impl_convert_between $ty, $ancestor);
+    };
+
+    ($ty: ident, $parent: ty, $raw: ty) => {
+        inherit_from!(__impl_deref $ty, $parent);
+        inherit_from!(__impl_raw $ty, $raw);
+        inherit_from!(__impl_convert_between $ty, $parent);
+    };
+
+    ($ty:ident, $raw:ty) => {
+        inherit_from!(__impl_deref $ty, $raw);
+        inherit_from!(__impl_from_raw $ty, $raw);
 
         impl $crate::utils::AsRaw for $ty {
             type RawType = $raw;
 
             fn as_raw(&self) -> Self::RawType {
                 self.0
-            }
-        }
-    };
-
-    ($ty: ident, $parent: ty, $ancestor: ty, $raw: ty) => {
-        impl ::std::ops::Deref for $ty {
-            type Target = $parent;
-
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-
-        impl ::std::ops::DerefMut for $ty {
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                &mut self.0
-            }
-        }
-
-        impl ::std::convert::From<$ty> for $parent {
-            fn from(f: $ty) -> Self {
-                f.0.into()
-            }
-        }
-
-        impl ::std::convert::From<$ty> for $ancestor {
-            fn from(f: $ty) -> Self {
-                f.0.into()
-            }
-        }
-
-        impl ::std::convert::From<$parent> for $ty {
-            fn from(parent: $parent) -> Self {
-                $ty(parent)
-            }
-        }
-
-        impl ::std::convert::From<$ancestor> for $ty {
-            fn from(ancestor: $ancestor) -> Self {
-                ancestor.into()
-            }
-        }
-
-        impl ::std::convert::From<$raw> for $ty {
-            fn from(f: $raw) -> Self {
-                $ty::from_raw(f)
-            }
-        }
-
-        impl $crate::utils::AsRaw for $ty {
-            type RawType = $raw;
-
-            fn as_raw(&self) -> Self::RawType {
-                self.0.as_raw()
-            }
-        }
-
-        impl $ty {
-            /// Wrap a raw $ty reference.
-            pub fn from_raw(v: $raw) -> Self {
-                $ty(v.into())
-            }
-        }
-    };
-
-    ($ty: ident, $parent: ty, $raw: ty) => {
-        impl ::std::ops::Deref for $ty {
-            type Target = $parent;
-
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-
-        impl ::std::ops::DerefMut for $ty {
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                &mut self.0
-            }
-        }
-
-        impl ::std::convert::From<$ty> for $parent {
-            fn from(f: $ty) -> Self {
-                f.0
-            }
-        }
-
-        impl ::std::convert::From<$parent> for $ty {
-            fn from(f: $parent) -> Self {
-                $ty::from_raw(f.as_raw())
-            }
-        }
-
-        impl ::std::convert::From<$raw> for $ty {
-            fn from(f: $raw) -> Self {
-                $ty::from_raw(f)
-            }
-        }
-
-        impl $crate::utils::AsRaw for $ty {
-            type RawType = $raw;
-
-            fn as_raw(&self) -> Self::RawType {
-                self.0.as_raw()
-            }
-        }
-
-        impl $ty {
-            /// Wrap a raw $ty reference.
-            pub fn from_raw(v: $raw) -> Self {
-                $ty(v.into())
             }
         }
     };

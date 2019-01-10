@@ -1,10 +1,13 @@
+use std::alloc::Layout;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use jit::insts::AstNode;
+use jit::debuginfo::*;
+use jit::insts::*;
+use jit::llvm::debuginfo::{LLVMDIFlags::*, LLVMDWARFSourceLanguage::*};
 use jit::prelude::*;
 
 use crate::ast::{
@@ -12,7 +15,6 @@ use crate::ast::{
     Size::{self, *},
     Src,
 };
-use crate::display::InstFmt;
 use crate::errors::Result;
 use crate::raw::BPF_MEMWORDS;
 
@@ -47,7 +49,8 @@ impl Program {
 struct Generator<'a> {
     ctxt: jit::Context,
     m: &'a jit::Module,
-    f: jit::Function,
+    func: jit::Function,
+    dbg: DbgInfo,
     state: State,
 }
 
@@ -61,28 +64,63 @@ impl<'a> Deref for Generator<'a> {
 
 struct State {
     builder: jit::IRBuilder,
-    pkt: jit::ValueRef,
-    len: jit::ValueRef,
-    a: jit::insts::AllocaInst,
-    x: jit::insts::AllocaInst,
-    mem: jit::insts::AllocaInst,
+    pkt: ValueRef,
+    len: ValueRef,
+    a: AllocaInst,
+    x: AllocaInst,
+    mem: AllocaInst,
     labels: Rc<RefCell<HashMap<usize, BasicBlock>>>,
+    subprogram: DISubprogram,
+    entry_block: DILexicalBlock,
 }
 
 impl State {
-    pub fn new(ctxt: &jit::Context, f: &jit::Function) -> Self {
+    pub fn new(ctxt: &jit::Context, func: &jit::Function, dbg: &DbgInfo, subprogram: DISubprogram) -> Self {
+        let i8_t = ctxt.int8_t();
+        let i8_ptr_t = i8_t.ptr_t();
         let i32_t = ctxt.int32_t();
+
         let uint32 = |v: u64| -> ConstantInt { i32_t.uint(v) };
 
-        let pkt = f.param(0).unwrap();
-        let len = f.param(1).unwrap();
+        let pkt = func.param(0).unwrap();
+        let len = func.param(1).unwrap();
 
         pkt.set_name("pkt");
         len.set_name("len");
 
         let builder = ctxt.create_builder();
 
-        let entry = f.append_basic_block_in_context("entry", &ctxt);
+        let entry = func.append_basic_block_in_context("entry", &ctxt);
+
+        let expr = dbg.builder.create_expression(&[]);
+        let loc = ctxt.create_debug_location(0, 0, subprogram, None);
+
+        builder.set_current_debug_location(loc, &ctxt);
+
+        dbg.builder.insert_declare_at_end(
+            &pkt,
+            dbg.builder
+                .create_parameter_variable_builder(subprogram, pkt.name().unwrap(), 1, dbg.file, 0, dbg.u8_ptr_t)
+                .with_always_preserve()
+                .build(),
+            expr,
+            loc,
+            entry,
+        );
+
+        dbg.builder.insert_declare_at_end(
+            &len,
+            dbg.builder
+                .create_parameter_variable_builder(subprogram, len.name().unwrap(), 2, dbg.file, 0, dbg.u32_t)
+                .with_always_preserve()
+                .build(),
+            expr,
+            loc,
+            entry,
+        );
+
+        let entry_block = dbg.builder.create_lexical_block(subprogram, dbg.file, 0, 0);
+
         let (a, x, mem) = builder.within(entry, || {
             (
                 alloca!(i32_t; "A"),
@@ -90,6 +128,37 @@ impl State {
                 alloca!(i32_t.array_t(BPF_MEMWORDS as usize); "M"),
             )
         });
+
+        dbg.builder.insert_declare_at_end(
+            &a,
+            dbg.builder
+                .create_auto_variable(entry_block, "A", dbg.file, 0, dbg.u32_t),
+            expr,
+            loc,
+            entry,
+        );
+        dbg.builder.insert_declare_at_end(
+            &x,
+            dbg.builder
+                .create_auto_variable(entry_block, "X", dbg.file, 0, dbg.u32_t),
+            expr,
+            loc,
+            entry,
+        );
+        dbg.builder.insert_declare_at_end(
+            &mem,
+            dbg.builder.create_auto_variable(
+                entry_block,
+                "M",
+                dbg.file,
+                0,
+                dbg.builder
+                    .create_array_type(Layout::new::<u32>(), dbg.u32_t, vec![(0..BPF_MEMWORDS as i64)]),
+            ),
+            expr,
+            loc,
+            entry,
+        );
 
         builder.within(entry, || (store!(uint32(0), a), store!(uint32(0), x)));
 
@@ -103,7 +172,55 @@ impl State {
             x,
             mem,
             labels,
+            subprogram,
+            entry_block,
         }
+    }
+}
+
+struct DbgInfo {
+    builder: DIBuilder,
+    file: DIFile,
+    unit: DICompileUnit,
+    module: DIModule,
+    u32_t: DIBasicType,
+    u8_ptr_t: DIDerivedType,
+}
+
+impl DbgInfo {
+    pub fn new(m: &Module) -> Self {
+        let builder = m.create_di_builder();
+        let file = builder.create_file("__JIT__");
+        let unit = builder.create_compile_unit(LLVMDWARFSourceLanguageC, file, "llvm-bpf");
+        let module = builder.create_module::<DIModule, _>(None, m.name());
+        let u32_t = builder.create_basic_type("u32", 32, encoding::UNSIGNED_INT);
+        let u8_t = builder.create_basic_type("u8", 8, encoding::UNSIGNED_INT);
+        let u8_ptr_t = builder.create_pointer_type(u8_t, 64);
+
+        DbgInfo {
+            builder,
+            file,
+            unit,
+            module,
+            u32_t,
+            u8_ptr_t,
+        }
+    }
+
+    pub fn build(&self) {
+        self.builder.finalize();
+    }
+
+    pub fn create_subprogram(&self, name: &str) -> DISubprogram {
+        let func_t = self.builder.create_subroutine_type(
+            self.file,
+            ditypes![self.u32_t, self.u8_ptr_t, self.u32_t],
+            LLVMDIFlagZero,
+        );
+        self.builder
+            .create_function_builder(self.module, name, self.file, 0, func_t, 0)
+            .with_flags(LLVMDIFlagPrototyped)
+            .build()
     }
 }
 
@@ -116,39 +233,59 @@ impl<'a> Generator<'a> {
         let i8_ptr_t = i8_t.ptr_t();
         let i32_t = ctxt.int32_t();
 
-        let f = m.add_function(name, func!(|i8_ptr_t, i32_t| -> i32_t));
+        let func = m.add_function(name, func!(|i8_ptr_t, i32_t| -> i32_t));
 
-        info!("generate BPF function `{}` with signature: {}", name, *f);
+        info!("generate BPF function `{}` with signature: {}", name, *func);
 
-        let state = State::new(&ctxt, &f);
+        let dbg = DbgInfo::new(m);
+        let sp = dbg.create_subprogram(name);
 
-        Generator { ctxt, m, f, state }
+        func.set_subprogram(sp);
+
+        let state = State::new(&ctxt, &func, &dbg, sp);
+
+        Generator {
+            ctxt,
+            m,
+            func,
+            dbg,
+            state,
+        }
     }
 
     pub fn gen<I>(self, insts: I) -> Result<jit::Function>
     where
         I: Iterator<Item = Inst>,
     {
-        let donothing = self.m.intrinsic_declaration(IntrinsicId::donothing, &[][..]);
-        let md_opcode = self.ctxt.md_kind_id("opcode");
+        let mut current_block = self
+            .dbg
+            .builder
+            .create_lexical_block(self.state.entry_block, self.dbg.file, 1, 0);
 
         for (idx, inst) in insts.enumerate() {
+            let line_no = idx as u32 + 1;
+
             if let Some(label) = self.labels.borrow().get(&idx) {
                 self.builder.position_at_end(*label);
+
+                current_block =
+                    self.dbg
+                        .builder
+                        .create_lexical_block(self.state.entry_block, self.dbg.file, line_no, 0);
             }
 
-            if cfg!(feature = "debug") {
-                call!(donothing)
-                    .emit_to(&self.builder)
-                    .set_metadata(md_opcode, self.ctxt.md_string(InstFmt(idx, &inst).to_string()));
-            }
+            let loc = self.ctxt.create_debug_location(line_no, 0, current_block, None);
+
+            self.state.builder.set_current_debug_location(loc, &self.ctxt);
 
             self.gen_inst(idx, inst).emit_to(&self.builder);
         }
 
-        self.f.verify()?;
+        self.func.verify()?;
 
-        Ok(self.f)
+        self.dbg.build();
+
+        Ok(self.func)
     }
 
     pub fn gen_inst(&self, idx: usize, inst: Inst) -> AstNode {
@@ -175,7 +312,7 @@ impl<'a> Generator<'a> {
                 .labels
                 .borrow_mut()
                 .entry(off)
-                .or_insert_with(|| self.f.append_basic_block_in_context(format!("L{}", off), &self.ctxt))
+                .or_insert_with(|| self.func.append_basic_block_in_context(format!("L{}", off), &self.ctxt))
         };
 
         match inst {
@@ -335,13 +472,13 @@ mod tests {
         // (012) ret	#0
 
         let fname = "filter";
-        let f = p.gen(&m, fname);
+        let func = p.gen(&m, fname);
 
         debug!("generated module:\n{}", m);
 
-        let f = f.unwrap();
+        let func = func.unwrap();
 
-        debug!("generated filter: {:?}", f);
+        debug!("generated filter: {:?}", func);
 
         let passmgr = jit::PassManager::new();
         jit::PassManagerBuilder::new()
@@ -369,10 +506,10 @@ mod tests {
             debug!("0x{:04x} {}", off, inst);
         }
 
-        let f: Filter = unsafe { mem::transmute(addr) };
+        let func: Filter = unsafe { mem::transmute(addr) };
 
         let pkt = &[];
-        let res = f(pkt.as_ptr(), pkt.len() as u32);
+        let res = func(pkt.as_ptr(), pkt.len() as u32);
 
         assert_eq!(res, 65535);
     }

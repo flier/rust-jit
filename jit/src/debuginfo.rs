@@ -1,6 +1,6 @@
 use std::alloc::Layout;
 use std::fmt;
-use std::ops::Deref;
+use std::ops::{Deref, Range};
 use std::path::Path;
 use std::ptr::{self, NonNull};
 use std::slice;
@@ -301,9 +301,15 @@ pub fn metadata_version() -> u32 {
 
 impl Context {
     /// Creates a new DebugLocation that describes a source location.
-    pub fn create_debug_location<S>(&self, line: u32, column: u32, scope: S, inline_at: Option<Metadata>) -> DILocation
+    pub fn create_debug_location<S>(
+        &self,
+        line: u32,
+        column: u32,
+        scope: S,
+        inline_at: Option<DILocation>,
+    ) -> DILocation
     where
-        S: Deref<Target = DIScope>,
+        S: Deref<Target = DILocalScope>,
     {
         unsafe { LLVMDIBuilderCreateDebugLocation(self.as_raw(), line, column, scope.as_raw(), inline_at.as_raw()) }
             .into()
@@ -426,7 +432,7 @@ impl DIBuilder {
     }
 
     /// Creates a new descriptor for a module with the specified parent scope.
-    pub fn create_module<S, N>(&self, scope: S, name: N) -> DIModule
+    pub fn create_module<S, N>(&self, scope: Option<S>, name: N) -> DIModule
     where
         S: Deref<Target = DIScope>,
         N: AsRef<str>,
@@ -435,7 +441,7 @@ impl DIBuilder {
     }
 
     /// Creates a new descriptor for a module with the specified parent scope.
-    pub fn create_module_builder<S, N>(&self, scope: S, name: N) -> DIModuleBuilder<S, N> {
+    pub fn create_module_builder<S, N>(&self, scope: Option<S>, name: N) -> DIModuleBuilder<S, N> {
         DIModuleBuilder::new(self, scope, name)
     }
 
@@ -493,18 +499,23 @@ impl DIBuilder {
     /// Create a descriptor for a lexical block with the specified parent context.
     pub fn create_lexical_block<S>(&self, scope: S, file: DIFile, line: u32, column: u32) -> DILexicalBlock
     where
-        S: Deref<Target = DIScope>,
+        S: Into<DIScope>,
     {
-        unsafe { LLVMDIBuilderCreateLexicalBlock(self.as_raw(), scope.as_raw(), file.into_raw(), line, column) }.into()
+        unsafe {
+            LLVMDIBuilderCreateLexicalBlock(self.as_raw(), scope.into().into_raw(), file.into_raw(), line, column)
+        }
+        .into()
     }
 
     /// Create a descriptor for a lexical block with a new file attached.
     pub fn create_lexical_block_file<S>(&self, scope: S, file: DIFile, discriminator: u32) -> DILexicalBlockFile
     where
-        S: Deref<Target = DIScope>,
+        S: Into<DIScope>,
     {
-        unsafe { LLVMDIBuilderCreateLexicalBlockFile(self.as_raw(), scope.as_raw(), file.into_raw(), discriminator) }
-            .into()
+        unsafe {
+            LLVMDIBuilderCreateLexicalBlockFile(self.as_raw(), scope.into().into_raw(), file.into_raw(), discriminator)
+        }
+        .into()
     }
 
     /// Create a descriptor for an imported namespace. Suitable for e.g. C++ using declarations.
@@ -719,9 +730,12 @@ impl DIBuilder {
     pub fn create_array_type<T, I>(&self, layout: Layout, ty: T, subscripts: I) -> DICompositeType
     where
         T: Deref<Target = DIType>,
-        I: IntoIterator<Item = Metadata>,
+        I: IntoIterator<Item = Range<i64>>,
     {
-        let subscripts = subscripts.into_iter().map(|md| md.as_raw()).collect::<Vec<_>>();
+        let subscripts = subscripts
+            .into_iter()
+            .map(|subscript| self.get_or_create_subrange(subscript).into_raw())
+            .collect::<Vec<_>>();
 
         unsafe {
             LLVMDIBuilderCreateArrayType(
@@ -1093,8 +1107,8 @@ impl DIBuilder {
     }
 
     /// Create a descriptor for a value range.
-    pub fn get_or_create_subrange(&self, lower_bound: i64, count: i64) -> DISubrange {
-        unsafe { LLVMDIBuilderGetOrCreateSubrange(self.as_raw(), lower_bound, count) }.into()
+    pub fn get_or_create_subrange(&self, range: Range<i64>) -> DISubrange {
+        unsafe { LLVMDIBuilderGetOrCreateSubrange(self.as_raw(), range.start, range.end - range.start) }.into()
     }
 
     /// Create an array of DI Nodes.
@@ -1288,7 +1302,7 @@ impl DIBuilder {
     /// Create a new descriptor for a local auto variable.
     pub fn create_auto_variable<S, N, T>(&self, scope: S, name: N, file: DIFile, line: u32, ty: T) -> DILocalVariable
     where
-        S: Deref<Target = DIScope>,
+        S: Deref<Target = DILocalScope>,
         N: AsRef<str>,
         T: Deref<Target = DIType>,
     {
@@ -1305,7 +1319,7 @@ impl DIBuilder {
         ty: T,
     ) -> DIAutoVariableBuilder<S, N, T>
     where
-        S: Deref<Target = DIScope>,
+        S: Deref<Target = DILocalScope>,
         N: AsRef<str>,
         T: Deref<Target = DIType>,
     {
@@ -1323,7 +1337,7 @@ impl DIBuilder {
         ty: T,
     ) -> DILocalVariable
     where
-        S: Deref<Target = DIScope>,
+        S: Deref<Target = DILocalScope>,
         N: AsRef<str>,
         T: Deref<Target = DIType>,
     {
@@ -1342,7 +1356,7 @@ impl DIBuilder {
         ty: T,
     ) -> DIParameterVariableBuilder<S, N, T>
     where
-        S: Deref<Target = DIScope>,
+        S: Deref<Target = DILocalScope>,
         N: AsRef<str>,
         T: Deref<Target = DIType>,
     {
@@ -1350,51 +1364,83 @@ impl DIBuilder {
     }
 }
 
-macro_rules! define_debug_info_type {
-    ($name:ident) => {
-        #[repr(transparent)]
-        #[derive(Clone, Copy, Debug, PartialEq)]
-        pub struct $name(Metadata);
-
-        inherit_from!($name, Metadata, LLVMMetadataRef);
-    };
-    ($name:ident, $parent:ident) => {
+macro_rules! define_debug_info_class {
+    (__def_struct $name:ident, $parent:ty) => {
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, PartialEq)]
         pub struct $name($parent);
+    };
 
-        inherit_from!($name, $parent, Metadata, LLVMMetadataRef);
+    ($name:ident) => {
+        define_debug_info_class!(__def_struct $name, Metadata);
+
+        inherit_from!($name, Metadata, LLVMMetadataRef);
+    };
+
+    ($name:ident, $parent:ident $(, $base:ident )*) => {
+        define_debug_info_class!(__def_struct $name, $parent);
+
+        inherit_from!($name, $parent, $( $base, )* Metadata, LLVMMetadataRef);
     };
 }
 
-define_debug_info_type!(DINode);
+macro_rules! define_debug_info_node {
+    ( $( $name:ident ),* ) => {
+        define_debug_info_class!( $( $name, )* DINode);
+    };
+}
 
-define_debug_info_type!(DIScope, DINode);
-define_debug_info_type!(DICompileUnit, DIScope);
-define_debug_info_type!(DIFile, DIScope);
-define_debug_info_type!(DIModule, DIScope);
-define_debug_info_type!(DINamespace, DIScope);
-define_debug_info_type!(DILexicalBlock, DIScope);
-define_debug_info_type!(DILexicalBlockFile, DIScope);
-define_debug_info_type!(DISubprogram, DIScope);
+macro_rules! define_debug_info_scope {
+    ( $( $name:ident ),* ) => {
+        define_debug_info_class!( $( $name, )* DIScope);
+    };
+}
 
-define_debug_info_type!(DIImportedEntity, DINode);
-define_debug_info_type!(DILocation);
+macro_rules! define_debug_info_local_scope {
+    ( $( $name:ident ),* ) => {
+        define_debug_info_class!( $( $name, )* DILocalScope, DIScope);
+    };
+}
 
-define_debug_info_type!(DITypeRefArray);
-define_debug_info_type!(DISubrange);
-define_debug_info_type!(DINodeArray);
-define_debug_info_type!(DIExpression);
-define_debug_info_type!(DIGlobalVariableExpression);
+macro_rules! define_debug_info_type {
+    ( $( $name:ident ),* ) => {
+        define_debug_info_class!( $( $name, )* DIType);
+    };
+}
 
-define_debug_info_type!(DIVariable);
-define_debug_info_type!(DILocalVariable, DIVariable);
+define_debug_info_class!(DINode);
 
-define_debug_info_type!(DIType, DIScope);
-define_debug_info_type!(DICompositeType, DIType);
-define_debug_info_type!(DIBasicType, DIType);
-define_debug_info_type!(DIDerivedType, DIType);
-define_debug_info_type!(DISubroutineType, DIType);
+define_debug_info_node!(DIScope);
+
+define_debug_info_scope!(DICompileUnit);
+define_debug_info_scope!(DIFile);
+define_debug_info_scope!(DIModule);
+define_debug_info_scope!(DINamespace);
+
+define_debug_info_scope!(DILocalScope);
+define_debug_info_local_scope!(DILexicalBlock);
+define_debug_info_local_scope!(DILexicalBlockFile);
+define_debug_info_local_scope!(DISubprogram);
+
+define_debug_info_node!(DIImportedEntity);
+
+define_debug_info_class!(DILocation);
+
+define_debug_info_class!(DITypeRefArray);
+define_debug_info_class!(DINodeArray);
+define_debug_info_class!(DIExpression);
+define_debug_info_class!(DIGlobalVariableExpression);
+
+define_debug_info_node!(DISubrange);
+
+define_debug_info_node!(DIVariable);
+define_debug_info_node!(DILocalVariable, DIVariable);
+
+define_debug_info_scope!(DIType);
+define_debug_info_type!(DICompositeType);
+define_debug_info_type!(DIBasicType);
+define_debug_info_type!(DIDerivedType);
+define_debug_info_type!(DISubroutineType);
 
 impl DILocation {
     /// Get the line number of this debug location.
@@ -1421,8 +1467,8 @@ impl fmt::Display for DILocation {
 
 #[macro_export]
 macro_rules! ditypes {
-    ($($x:expr),*) => (&[ $($crate::DIType::from($x)),* ]);
-    ($($x:expr,)*) => (&[ $($crate::DIType::from($x)),* ]);
+    ($($x:expr),*) => (vec![ $($crate::debuginfo::DIType::from($x)),* ]);
+    ($($x:expr,)*) => (vec![ $($crate::debuginfo::DIType::from($x)),* ]);
 }
 
 impl DIType {
@@ -1574,7 +1620,7 @@ where
 
 pub struct DIModuleBuilder<'a, S, N> {
     builder: &'a DIBuilder,
-    scope: S,
+    scope: Option<S>,
     name: N,
     config_macros: &'a str,
     include_path: &'a str,
@@ -1582,7 +1628,7 @@ pub struct DIModuleBuilder<'a, S, N> {
 }
 
 impl<'a, S, N> DIModuleBuilder<'a, S, N> {
-    pub fn new(builder: &'a DIBuilder, scope: S, name: N) -> Self {
+    pub fn new(builder: &'a DIBuilder, scope: Option<S>, name: N) -> Self {
         DIModuleBuilder {
             builder,
             scope,
@@ -1620,7 +1666,9 @@ where
         unsafe {
             LLVMDIBuilderCreateModule(
                 self.builder.as_raw(),
-                self.scope.as_raw(),
+                self.scope
+                    .map(|scope| scope.as_raw())
+                    .unwrap_or(ptr::null_mut() as *mut _),
                 name.as_ptr() as *const _,
                 name.len(),
                 self.config_macros.as_ptr() as *const _,
@@ -2574,7 +2622,7 @@ impl<'a, S, N, T> DIAutoVariableBuilder<'a, S, N, T> {
 
 impl<'a, S, N, T> DIAutoVariableBuilder<'a, S, N, T>
 where
-    S: Deref<Target = DIScope>,
+    S: Deref<Target = DILocalScope>,
     N: AsRef<str>,
     T: Deref<Target = DIType>,
 {
@@ -2639,7 +2687,7 @@ impl<'a, S, N, T> DIParameterVariableBuilder<'a, S, N, T> {
 
 impl<'a, S, N, T> DIParameterVariableBuilder<'a, S, N, T>
 where
-    S: Deref<Target = DIScope>,
+    S: Deref<Target = DILocalScope>,
     N: AsRef<str>,
     T: Deref<Target = DIType>,
 {
