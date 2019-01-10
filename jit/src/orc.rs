@@ -74,7 +74,7 @@ impl JITStack {
     }
 
     /// Mangle the given symbol.
-    pub fn get_mangled_symbol<S: AsRef<str>>(&self, symbol: S) -> String {
+    pub fn mangled_symbol<S: AsRef<str>>(&self, symbol: S) -> String {
         let symbol = symbol.as_ref();
         let mut mangled = ptr::null_mut();
 
@@ -195,7 +195,7 @@ impl JITStack {
     }
 
     /// Get symbol address from JIT instance.
-    pub fn get_symbol_address<S: AsRef<str>>(&self, symbol: S) -> Result<Option<TargetAddress>> {
+    pub fn symbol_address<S: AsRef<str>>(&self, symbol: S) -> Result<Option<TargetAddress>> {
         let mut addr = TargetAddress::default();
         let symbol = symbol.as_ref();
 

@@ -140,7 +140,7 @@ mod tests {
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position_at_end(bb);
 
-        let arg0_bool = function.get_param(0).unwrap();
+        let arg0_bool = function.param(0).unwrap();
 
         let i64_t = context.int64_t();
 

@@ -257,8 +257,8 @@ mod tests {
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position_at_end(bb);
 
-        let arg0_vector = function.get_param(0).unwrap();
-        let arg1_vector = function.get_param(1).unwrap();
+        let arg0_vector = function.param(0).unwrap();
+        let arg1_vector = function.param(1).unwrap();
 
         let idx = i64_t.int(1);
 

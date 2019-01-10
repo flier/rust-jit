@@ -160,9 +160,9 @@ mod tests {
         builder.position_at_end(bb);
 
         // get the function's arguments
-        let x = function.get_param(0).unwrap();
-        let y = function.get_param(1).unwrap();
-        let z = function.get_param(2).unwrap();
+        let x = function.param(0).unwrap();
+        let y = function.param(1).unwrap();
+        let z = function.param(2).unwrap();
 
         let sum1 = add(x, y, "sum.1").emit_to(&builder);
         let sum2 = add(sum1, z, "sum.2").emit_to(&builder);

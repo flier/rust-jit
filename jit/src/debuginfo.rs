@@ -351,7 +351,7 @@ impl IRBuilder {
     }
 
     /// Get location information used by debugging information.
-    pub fn get_current_debug_location(&self) -> DILocation {
+    pub fn current_debug_location(&self) -> DILocation {
         MetadataAsValue::from(unsafe { LLVMGetCurrentDebugLocation(self.as_raw()) }).as_metadata()
     }
 

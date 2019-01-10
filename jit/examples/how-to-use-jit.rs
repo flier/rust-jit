@@ -56,7 +56,7 @@ fn main() {
 
     // Get the integer argument of the add1 function...
     assert!(add1_f.params().count() > 0); // Make sure there's an arg
-    let argx = add1_f.get_param(0).unwrap(); // Get the arg
+    let argx = add1_f.param(0).unwrap(); // Get the arg
     argx.set_name("AnArg"); // Give it a nice symbolic name for fun.
 
     // Create the add instruction, inserting it into the end of BB.

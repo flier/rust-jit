@@ -228,8 +228,8 @@ mod tests {
         let fn_hello = module.add_function("hello", FunctionType::new(i64_t, &[i64_t, i64_t], false));
         let entry_bb = fn_hello.append_basic_block_in_context("entry", &context);
         context.create_builder().within(entry_bb, || {
-            let arg0 = fn_hello.get_param(0).unwrap();
-            let arg1 = fn_hello.get_param(1).unwrap();
+            let arg0 = fn_hello.param(0).unwrap();
+            let arg1 = fn_hello.param(1).unwrap();
 
             ret!(add!(arg0, arg1))
         });

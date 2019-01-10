@@ -155,7 +155,7 @@ impl Function {
     }
 
     /// Obtain the parameter at the specified index.
-    pub fn get_param(&self, index: usize) -> Option<ValueRef> {
+    pub fn param(&self, index: usize) -> Option<ValueRef> {
         (index < self.param_count()).and_option_from(|| unsafe { LLVMGetParam(self.as_raw(), index as u32) }.ok())
     }
 

@@ -278,13 +278,13 @@ pub trait AttributeGroups {
     fn add_attribute<A: Into<Attribute>>(&self, attr: A);
 
     /// get the attribute from the list of attributes.
-    fn get_attributes(&self) -> Vec<Attribute>;
+    fn attributes(&self) -> Vec<Attribute>;
 
     /// get the attribute from the list of attributes.
-    fn get_enum_attribute(&self, kind: AttributeKind) -> EnumAttribute;
+    fn enum_attribute(&self, kind: AttributeKind) -> EnumAttribute;
 
     /// get the attribute from the list of attributes.
-    fn get_string_attribute(&self, kind: &str) -> StringAttribute;
+    fn string_attribute(&self, kind: &str) -> StringAttribute;
 
     /// removes the attribute from the list of attributes.
     fn remove_enum_attribute(&self, kind: AttributeKind);
@@ -330,7 +330,7 @@ impl AttributeGroups for Function {
         unsafe { LLVMAddAttributeAtIndex(self.as_raw(), LLVMAttributeFunctionIndex, attr.into().as_raw()) }
     }
 
-    fn get_attributes(&self) -> Vec<Attribute> {
+    fn attributes(&self) -> Vec<Attribute> {
         let count = unsafe { LLVMGetAttributeCountAtIndex(self.as_raw(), LLVMAttributeFunctionIndex) };
         let mut attrs: Vec<LLVMAttributeRef> = vec![ptr::null_mut(); count as usize];
 
@@ -339,11 +339,11 @@ impl AttributeGroups for Function {
         attrs.into_iter().map(|attr| attr.into()).collect()
     }
 
-    fn get_enum_attribute(&self, kind: AttributeKind) -> EnumAttribute {
+    fn enum_attribute(&self, kind: AttributeKind) -> EnumAttribute {
         unsafe { LLVMGetEnumAttributeAtIndex(self.as_raw(), LLVMAttributeFunctionIndex, kind.as_raw()) }.into()
     }
 
-    fn get_string_attribute(&self, kind: &str) -> StringAttribute {
+    fn string_attribute(&self, kind: &str) -> StringAttribute {
         unsafe {
             LLVMGetStringAttributeAtIndex(
                 self.as_raw(),
@@ -376,7 +376,7 @@ impl<T: CallSite> AttributeGroups for T {
         unsafe { LLVMAddCallSiteAttribute(self.as_raw(), LLVMAttributeReturnIndex, attr.into().as_raw()) }
     }
 
-    fn get_attributes(&self) -> Vec<Attribute> {
+    fn attributes(&self) -> Vec<Attribute> {
         let count = unsafe { LLVMGetCallSiteAttributeCount(self.as_raw(), LLVMAttributeReturnIndex) };
         let mut attrs: Vec<LLVMAttributeRef> = vec![ptr::null_mut(); count as usize];
 
@@ -385,11 +385,11 @@ impl<T: CallSite> AttributeGroups for T {
         attrs.into_iter().map(|attr| attr.into()).collect()
     }
 
-    fn get_enum_attribute(&self, kind: AttributeKind) -> EnumAttribute {
+    fn enum_attribute(&self, kind: AttributeKind) -> EnumAttribute {
         unsafe { LLVMGetCallSiteEnumAttribute(self.as_raw(), LLVMAttributeReturnIndex, kind.as_raw()) }.into()
     }
 
-    fn get_string_attribute(&self, kind: &str) -> StringAttribute {
+    fn string_attribute(&self, kind: &str) -> StringAttribute {
         unsafe {
             LLVMGetCallSiteStringAttribute(
                 self.as_raw(),

@@ -654,14 +654,14 @@ impl ExecutionEngine {
     /// This returns the address of the specified global value.
     ///
     /// This may involve code generation if it's a function.
-    pub fn get_ptr_to_global<V: GlobalValue, T>(&self, var: &V) -> *mut T {
+    pub fn ptr_to_global<V: GlobalValue, T>(&self, var: &V) -> *mut T {
         unsafe { LLVMGetPointerToGlobal(self.as_raw(), var.as_raw()) as *mut T }
     }
 
     /// Return the address of the specified global value.
     ///
     /// This may involve code generation.
-    pub fn get_global_value_address<S: AsRef<str>>(&self, name: S) -> Option<u64> {
+    pub fn global_value_address<S: AsRef<str>>(&self, name: S) -> Option<u64> {
         let addr = unsafe { LLVMGetGlobalValueAddress(self.0, cstr!(name)) };
 
         (addr != 0).as_some(addr)
@@ -670,7 +670,7 @@ impl ExecutionEngine {
     /// Return the address of the specified function.
     ///
     /// This may involve code generation.
-    pub fn get_function_address<S: AsRef<str>>(&self, name: S) -> Option<u64> {
+    pub fn function_address<S: AsRef<str>>(&self, name: S) -> Option<u64> {
         let addr = unsafe { LLVMGetFunctionAddress(self.0, cstr!(name)) };
 
         (addr != 0).as_some(addr)
@@ -756,9 +756,9 @@ mod tests {
         let ee = MCJITCompiler::for_module(m, opts).unwrap();
 
         // get the function's arguments
-        let x = f.get_param(0).unwrap();
-        let y = f.get_param(1).unwrap();
-        let z = f.get_param(2).unwrap();
+        let x = f.param(0).unwrap();
+        let y = f.param(1).unwrap();
+        let z = f.param(2).unwrap();
 
         let sum = add(x, y, "sum.1").emit_to(&builder);
         let sum = add(sum, z, "sum.2").emit_to(&builder);
@@ -769,7 +769,7 @@ mod tests {
         // call with address
         assert_eq!(ee.find_function("sum"), Some(f));
 
-        let addr = ee.get_function_address("sum").unwrap();
+        let addr = ee.function_address("sum").unwrap();
 
         let sum: extern "C" fn(u64, u64, u64) -> u64 = unsafe { mem::transmute(addr) };
 
@@ -818,7 +818,7 @@ mod tests {
         let bb = main.append_basic_block_in_context("entry", &c);
         builder.position_at_end(bb);
 
-        let argc = main.get_param(0).unwrap();
+        let argc = main.param(0).unwrap();
 
         builder <<= ret!(argc);
 
@@ -843,8 +843,8 @@ mod tests {
             ee.add_global_mapping(&x, &v);
         }
 
-        assert_eq!(unsafe { ptr::read::<i64>(ee.get_ptr_to_global(&x)) }, 123);
-        assert_eq!(ee.get_global_value_address("x").unwrap() as *const i64, &v);
+        assert_eq!(unsafe { ptr::read::<i64>(ee.ptr_to_global(&x)) }, 123);
+        assert_eq!(ee.global_value_address("x").unwrap() as *const i64, &v);
     }
 
     #[test]
@@ -864,7 +864,7 @@ mod tests {
         let bb = f.append_basic_block_in_context("entry", &c);
         builder.position_at_end(bb);
 
-        let arg0_i64 = f.get_param(0).unwrap();
+        let arg0_i64 = f.param(0).unwrap();
 
         let n = mul(arg0_i64, arg0_i64, "n").emit_to(&builder);
 
@@ -878,7 +878,7 @@ mod tests {
         opts.MCJMM = MCJITMemoryManager::from(&mut mm).into_raw();
         let ee = MCJITCompiler::for_module(m, opts).unwrap();
 
-        let addr = ee.get_function_address("test").unwrap();
+        let addr = ee.function_address("test").unwrap();
 
         let test: extern "C" fn(i64) -> i64 = unsafe { mem::transmute(addr) };
 

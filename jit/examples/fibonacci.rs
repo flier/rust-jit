@@ -35,7 +35,7 @@ fn create_fib_function(context: &Context, module: &Module) -> Function {
     let two = i32_t.int(2);
 
     // Get the integer argument of the add1 function...
-    let argx = fib_f.get_param(0).unwrap(); // Get the arg
+    let argx = fib_f.param(0).unwrap(); // Get the arg
     argx.set_name("AnArg"); // Give it a nice symbolic name for fun.
 
     // Add a basic block to the function.

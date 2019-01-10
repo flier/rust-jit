@@ -329,7 +329,7 @@ mod parser {
         }
 
         /// Get the precedence of the pending binary operator token.
-        fn get_tok_precedence(&self) -> Option<i32> {
+        fn tok_precedence(&self) -> Option<i32> {
             if let Some(op) = self.cur_token.as_bin_op() {
                 Some(op as i32)
             } else {
@@ -430,7 +430,7 @@ mod parser {
         fn parse_bin_op_rhs(&mut self, expr_prec: i32, mut lhs: Box<ast::Expr>) -> Result<Box<ast::Expr>> {
             // If this is a binop, find its precedence.
             loop {
-                let tok_prec = self.get_tok_precedence().unwrap_or(-1);
+                let tok_prec = self.tok_precedence().unwrap_or(-1);
 
                 // If this is a binop that binds at least as tightly as the current binop,
                 // consume it, otherwise we are done.
@@ -448,7 +448,7 @@ mod parser {
 
                 // If BinOp binds less tightly with RHS than the operator after RHS,
                 // let the pending operator take RHS as its LHS.
-                let next_prec = self.get_tok_precedence().unwrap_or(-1);
+                let next_prec = self.tok_precedence().unwrap_or(-1);
 
                 if tok_prec < next_prec {
                     rhs = self.parse_bin_op_rhs(tok_prec + 1, rhs)?;
@@ -852,7 +852,7 @@ impl KaleidoscopeJIT {
     }
 
     pub fn add_symbol<S: AsRef<str>>(&self, symbol: S, addr: Option<ExternFn>) {
-        let name = self.engine.get_mangled_symbol(symbol);
+        let name = self.engine.mangled_symbol(symbol);
         let addr: *const c_void = unsafe { mem::transmute(addr) };
 
         jit::Symbols::add_symbol(name, addr)
@@ -865,7 +865,7 @@ impl KaleidoscopeJIT {
 
         let addr = self
             .engine
-            .get_symbol_address(symbol)?
+            .symbol_address(symbol)?
             .map(|addr| {
                 trace!("got symbol `{}` from JIT engine @ {:?}", symbol, addr);
 

@@ -165,7 +165,7 @@ impl BranchInst {
     }
 
     /// Return the condition of a branch instruction.
-    pub fn get_cond(&self) -> Option<ValueRef> {
+    pub fn cond(&self) -> Option<ValueRef> {
         unsafe { LLVMGetCondition(self.as_raw()) }.ok()
     }
 

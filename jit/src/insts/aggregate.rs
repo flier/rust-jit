@@ -171,8 +171,8 @@ mod tests {
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position_at_end(bb);
 
-        let arg0_array = function.get_param(0).unwrap();
-        let arg1_struct = function.get_param(1).unwrap();
+        let arg0_array = function.param(0).unwrap();
+        let arg1_struct = function.param(1).unwrap();
 
         assert_eq!(
             extract_value!(arg0_array, 1).emit_to(&builder).to_string().trim(),

@@ -198,7 +198,7 @@ impl Module {
     }
 
     /// Obtain a global variable value from a Module by its name.
-    pub fn get_global_var<S: AsRef<str>>(&self, name: S) -> Option<GlobalVar> {
+    pub fn global_var<S: AsRef<str>>(&self, name: S) -> Option<GlobalVar> {
         unsafe { LLVMGetNamedGlobal(self.as_raw(), cstr!(name)) }.ok()
     }
 
@@ -208,7 +208,7 @@ impl Module {
     }
 
     /// Obtain a `GlobalAlias` value from a Module by its name.
-    pub fn get_global_alias<S: AsRef<str>>(&self, name: S) -> Option<GlobalAlias> {
+    pub fn global_alias<S: AsRef<str>>(&self, name: S) -> Option<GlobalAlias> {
         let name = name.as_ref();
 
         // NOTE: `LLVMGetNamedGlobalAlias` has a bug that not use the `NameLen`, we need NUL at end
@@ -258,7 +258,7 @@ mod tests {
         let c = Context::new();
         let m = c.create_module("global_var");
 
-        assert_eq!(m.get_global_var("x"), None);
+        assert_eq!(m.global_var("x"), None);
 
         let i64_t = c.int64_t();
         let f64_t = c.double_t();
@@ -266,8 +266,8 @@ mod tests {
         m.add_global_var("x", i64_t);
         m.add_global_var("y", f64_t);
 
-        let x = m.get_global_var("x").unwrap();
-        let y = m.get_global_var("y").unwrap();
+        let x = m.global_var("x").unwrap();
+        let y = m.global_var("y").unwrap();
 
         assert_eq!(m.global_vars().collect::<Vec<GlobalVar>>(), vec![x, y]);
 
@@ -351,13 +351,13 @@ mod tests {
         let i8_ptr_t = i8_t.ptr_t();
 
         let foo = m.add_global_var("foo", i8_t);
-        assert_eq!(m.get_global_var("foo"), Some(foo));
+        assert_eq!(m.global_var("foo"), Some(foo));
         foo.set_initializer(i8_t.uint(42));
 
         let aliasee = foo.bit_cast(i8_ptr_t);
 
         let bar = m.add_global_alias(i8_ptr_t, aliasee, "bar");
-        assert_eq!(m.get_global_alias("bar"), Some(bar));
+        assert_eq!(m.global_alias("bar"), Some(bar));
         assert_eq!(bar.aliasee(), foo.into());
 
         assert_eq!(m.global_aliases().collect::<Vec<_>>(), vec![bar]);

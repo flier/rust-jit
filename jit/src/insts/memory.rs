@@ -470,7 +470,7 @@ mod tests {
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position_at_end(bb);
 
-        let arg0_p_i64 = function.get_param(0).unwrap();
+        let arg0_p_i64 = function.param(0).unwrap();
 
         let p = malloc!(i64_t);
 

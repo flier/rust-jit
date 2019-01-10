@@ -74,8 +74,8 @@ impl State {
         let i32_t = ctxt.int32_t();
         let uint32 = |v: u64| -> ConstantInt { i32_t.uint(v) };
 
-        let pkt = f.get_param(0).unwrap();
-        let len = f.get_param(1).unwrap();
+        let pkt = f.param(0).unwrap();
+        let len = f.param(1).unwrap();
 
         pkt.set_name("pkt");
         len.set_name("len");
@@ -355,7 +355,7 @@ mod tests {
         opts.MCJMM = jit::engine::MCJITMemoryManager::from(&mut mm).into_raw();
         let engine = jit::engine::MCJITCompiler::for_module(m, opts).unwrap();
 
-        let addr = engine.get_function_address(fname).unwrap() as *const u8;
+        let addr = engine.function_address(fname).unwrap() as *const u8;
         let section = mm.code_sections.iter().find(|section| section.contains(addr)).unwrap();
         let size = section.len();
 

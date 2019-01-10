@@ -79,7 +79,7 @@ impl Metadata {
 
 impl Module {
     /// Obtain the named metadata operands for a module.
-    pub fn get_named_operands<S: AsRef<str>>(&self, name: S) -> Vec<MetadataAsValue> {
+    pub fn named_operands<S: AsRef<str>>(&self, name: S) -> Vec<MetadataAsValue> {
         let name = name.as_ref();
         let count = unsafe { LLVMGetNamedMetadataNumOperands(self.as_raw(), cstr!(name)) };
 
@@ -101,7 +101,7 @@ impl Module {
     }
 
     /// Get a module-level flag to the module-level flags metadata.
-    pub fn get_flag<S: AsRef<str>>(&self, key: S) -> Metadata {
+    pub fn flag<S: AsRef<str>>(&self, key: S) -> Metadata {
         let key = key.as_ref();
 
         unsafe { LLVMGetModuleFlag(self.as_raw(), key.as_ptr() as *const libc::c_char, key.len()) }.into()

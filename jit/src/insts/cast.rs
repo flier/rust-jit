@@ -241,14 +241,14 @@ mod tests {
         let bb = f.append_basic_block_in_context("entry", &c);
         b.position(Position::AtEnd(bb));
 
-        let arg0_i64 = f.get_param(0).unwrap();
-        let _arg1_i64 = f.get_param(1).unwrap();
-        let arg2_f64 = f.get_param(2).unwrap();
-        let _arg3_f64 = f.get_param(3).unwrap();
-        let arg4_i32 = f.get_param(4).unwrap();
-        let arg5_f32 = f.get_param(5).unwrap();
-        let arg6_p_i64 = f.get_param(6).unwrap();
-        let arg7_p_f64 = f.get_param(7).unwrap();
+        let arg0_i64 = f.param(0).unwrap();
+        let _arg1_i64 = f.param(1).unwrap();
+        let arg2_f64 = f.param(2).unwrap();
+        let _arg3_f64 = f.param(3).unwrap();
+        let arg4_i32 = f.param(4).unwrap();
+        let arg5_f32 = f.param(5).unwrap();
+        let arg6_p_i64 = f.param(6).unwrap();
+        let arg7_p_f64 = f.param(7).unwrap();
 
         test_instruction!(b, trunc!(arg0_i64, i32_t), "%trunc = trunc i64 %0 to i32");
         test_instruction!(b, zext!(arg4_i32, i64_t), "%zext = zext i32 %4 to i64");

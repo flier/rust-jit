@@ -463,7 +463,7 @@ impl Example {
 
         let func = self.module.get_or_insert_function(our_id, void_t, &[i32_t]);
 
-        let except_type = func.get_param(0).unwrap();
+        let except_type = func.param(0).unwrap();
 
         except_type.set_name("except_typeToThrow");
 
@@ -556,7 +556,7 @@ impl Example {
         for i in exception_types_to_catch {
             caught_result.add_clause(
                 self.module
-                    .get_global_var(self.our_type_info_names[*i as usize].as_str())
+                    .global_var(self.our_type_info_names[*i as usize].as_str())
                     .unwrap(),
             );
         }
@@ -792,7 +792,7 @@ impl Example {
 
         let func = self.module.get_or_insert_function(our_id, void_t, &[i32_t]);
 
-        let exception_type = func.get_param(0).unwrap();
+        let exception_type = func.param(0).unwrap();
 
         exception_type.set_name("except_typeToThrow");
 
@@ -1062,7 +1062,7 @@ extern "C" fn panic_in_rust(_: i32) {
 ///        indicator to cause foreign exception to be thrown.
 fn run_exception_throw(ee: &ExecutionEngine, func: &Function, type_to_throw: i32) {
     // Find test's function pointer
-    let addr: *const u8 = ee.get_ptr_to_global(func);
+    let addr: *const u8 = ee.ptr_to_global(func);
     let func: extern "C" fn(type_to_throw: i32) = unsafe { mem::transmute(addr) };
 
     let result = panic::catch_unwind(|| func(type_to_throw));

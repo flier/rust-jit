@@ -462,8 +462,8 @@ mod tests {
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position_at_end(bb);
 
-        let lhs = function.get_param(0).unwrap();
-        let rhs = function.get_param(1).unwrap();
+        let lhs = function.param(0).unwrap();
+        let rhs = function.param(1).unwrap();
 
         test_icmp!(builder, eq(lhs, rhs));
         test_icmp!(builder, ne(lhs, rhs));
@@ -491,8 +491,8 @@ mod tests {
         let bb = function.append_basic_block_in_context("entry", &context);
         builder.position_at_end(bb);
 
-        let lhs = function.get_param(0).unwrap();
-        let rhs = function.get_param(1).unwrap();
+        let lhs = function.param(0).unwrap();
+        let rhs = function.param(1).unwrap();
 
         test_fcmp!(builder, oeq(lhs, rhs));
         test_fcmp!(builder, ogt(lhs, rhs));

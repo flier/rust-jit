@@ -110,7 +110,7 @@ impl Module {
     }
 
     /// Obtain a Type from a module by its registered name.
-    pub fn get_type<S: AsRef<str>>(&self, name: S) -> Option<TypeRef> {
+    pub fn ty<S: AsRef<str>>(&self, name: S) -> Option<TypeRef> {
         unsafe { LLVMGetTypeByName(self.as_raw(), cstr!(name)) }.ok()
     }
 }
@@ -219,7 +219,7 @@ mod tests {
         let md = GlobalContext::md_string("value").as_metadata();
         m.add_flag(LLVMModuleFlagBehavior::LLVMModuleFlagBehaviorError, "key", md);
 
-        assert_eq!(m.get_flag("key"), md);
+        assert_eq!(m.flag("key"), md);
         assert_eq!(
             m.flags().collect::<Vec<_>>(),
             vec![ModuleFlagEntry {
