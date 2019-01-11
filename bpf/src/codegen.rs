@@ -46,15 +46,14 @@ impl Program {
     }
 }
 
-struct Generator<'a> {
+struct Generator {
     ctxt: jit::Context,
-    m: &'a jit::Module,
     func: jit::Function,
     dbg: DbgInfo,
     state: State,
 }
 
-impl<'a> Deref for Generator<'a> {
+impl Deref for Generator {
     type Target = State;
 
     fn deref(&self) -> &Self::Target {
@@ -70,7 +69,6 @@ struct State {
     x: AllocaInst,
     mem: AllocaInst,
     labels: Rc<RefCell<HashMap<usize, BasicBlock>>>,
-    subprogram: DISubprogram,
     entry_block: DILexicalBlock,
 }
 
@@ -170,7 +168,6 @@ impl State {
             x,
             mem,
             labels,
-            subprogram,
             entry_block,
         }
     }
@@ -179,7 +176,6 @@ impl State {
 struct DbgInfo {
     builder: DIBuilder,
     file: DIFile,
-    unit: DICompileUnit,
     module: DIModule,
     u32_t: DIBasicType,
     u8_ptr_t: DIDerivedType,
@@ -189,7 +185,7 @@ impl DbgInfo {
     pub fn new(m: &Module) -> Self {
         let builder = m.create_di_builder();
         let file = builder.create_file("__JIT__");
-        let unit = builder.create_compile_unit(LLVMDWARFSourceLanguageC, file, "llvm-bpf");
+        let _unit = builder.create_compile_unit(LLVMDWARFSourceLanguageC, file, "llvm-bpf");
         let module = builder.create_module::<DIModule, _>(None, m.name());
         let u32_t = builder.create_basic_type("u32", 32, encoding::UNSIGNED_INT);
         let u8_t = builder.create_basic_type("u8", 8, encoding::UNSIGNED_INT);
@@ -198,7 +194,6 @@ impl DbgInfo {
         DbgInfo {
             builder,
             file,
-            unit,
             module,
             u32_t,
             u8_ptr_t,
@@ -223,8 +218,8 @@ impl DbgInfo {
     }
 }
 
-impl<'a> Generator<'a> {
-    pub fn new<S: AsRef<str>>(m: &'a jit::Module, name: S) -> Self {
+impl Generator {
+    pub fn new<S: AsRef<str>>(m: &jit::Module, name: S) -> Self {
         let ctxt = m.context();
         let name = name.as_ref();
 
@@ -245,7 +240,6 @@ impl<'a> Generator<'a> {
 
         Generator {
             ctxt,
-            m,
             func,
             dbg,
             state,
