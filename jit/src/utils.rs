@@ -325,15 +325,8 @@ macro_rules! inherit_from {
 
     (__impl_from_raw $ty:ident, $raw:ty) => {
         impl ::std::convert::From<$raw> for $ty {
-            fn from(f: $raw) -> Self {
-                $ty::from_raw(f)
-            }
-        }
-
-        impl $ty {
-            /// Wrap a raw $ty reference.
-            pub fn from_raw(v: $raw) -> Self {
-                $ty(v.into())
+            fn from(raw: $raw) -> Self {
+                $ty(raw.into())
             }
         }
     };
