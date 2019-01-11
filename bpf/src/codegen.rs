@@ -63,6 +63,8 @@ impl Deref for Generator {
 
 struct State {
     builder: jit::IRBuilder,
+    bswap16: FunctionType,
+    bswap32: FunctionType,
     pkt: ValueRef,
     len: ValueRef,
     a: AllocaInst,
@@ -74,6 +76,7 @@ struct State {
 
 impl State {
     pub fn new(ctxt: &jit::Context, func: &jit::Function, dbg: &DbgInfo, subprogram: DISubprogram) -> Self {
+        let i16_t = ctxt.int16_t();
         let i32_t = ctxt.int32_t();
 
         let uint32 = |v: u64| -> ConstantInt { i32_t.uint(v) };
@@ -158,10 +161,15 @@ impl State {
 
         builder.within(entry, || (store!(uint32(0), a), store!(uint32(0), x)));
 
+        let bswap16 = IntrinsicId::bswap.function_type(&ctxt, &[i16_t]).unwrap();
+        let bswap32 = IntrinsicId::bswap.function_type(&ctxt, &[i32_t]).unwrap();
+
         let labels = Rc::new(RefCell::new(HashMap::new()));
 
         State {
             builder,
+            bswap16,
+            bswap32,
             pkt,
             len,
             a,
@@ -225,6 +233,7 @@ impl Generator {
 
         let i8_t = ctxt.int8_t();
         let i8_ptr_t = i8_t.ptr_t();
+        let i16_t = ctxt.int16_t();
         let i32_t = ctxt.int32_t();
 
         let func = m.add_function(name, func!(|i8_ptr_t, i32_t| -> i32_t));
@@ -501,7 +510,10 @@ mod tests {
 
         let func: Filter = unsafe { mem::transmute(addr) };
 
-        let pkt = &[];
+        let pkt = hex::decode("204e71fc92148c85900bcb9e0800\
+45000047a58100004011b5870a06058808080808\
+f685003500339561\
+9bf5012000010000000000010377777706676f6f676c6503636f6d00000100010000291000000000000000").unwrap();
         let res = func(pkt.as_ptr(), pkt.len() as u32);
 
         assert_eq!(res, 65535);
