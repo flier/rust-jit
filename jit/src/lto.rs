@@ -1,3 +1,8 @@
+//! This file declares functions and classes used to support LTO.
+//!
+//! It is intended to be used both by LTO classes as well as by clients (gold-plugin)
+//! that don't utilize the LTO code generator interfaces.
+
 use std::borrow::Cow;
 use std::iter::ExactSizeIterator;
 use std::mem;
@@ -13,7 +18,7 @@ use llvm_sys::lto::*;
 use crate::errors::Result;
 use crate::utils::{AsRaw, AsResult, IntoRaw, UncheckedCStr};
 
-pub trait AsBool {
+trait AsBool {
     type Boolean;
 
     fn as_bool(self) -> Self::Boolean;
@@ -66,17 +71,18 @@ pub fn api_version() -> u32 {
     unsafe { lto_api_version() }
 }
 
-/// Returns the last error string or NULL if last operation was successful.
+/// Returns the last error string or None if last operation was successful.
 pub fn error_message() -> Option<Cow<'static, str>> {
     NonNull::new(unsafe { lto_get_error_message() as *mut _ }).map(|msg| UncheckedCStr::as_str(msg.as_ptr()))
 }
 
-pub fn report_last_error() -> failure::Error {
+fn report_last_error() -> failure::Error {
     error_message()
         .map(failure::err_msg)
         .unwrap_or_else(|| failure::err_msg("unexpected LTO error"))
 }
 
+/// A loadable object file.
 pub trait ObjectFile {
     /// Checks if a file or memory is a loadable object file.
     fn is_object_file(&self) -> bool;
@@ -136,6 +142,7 @@ pub fn is_object_file_for_target<T: AsRef<O>, O: ObjectFile, S: AsRef<str>>(
     target.as_ref().is_object_file_for_target(target_triple_prefix)
 }
 
+/// A loaded object module.
 #[repr(transparent)]
 #[derive(Debug)]
 pub struct Module(lto_module_t);
@@ -217,6 +224,7 @@ impl Module {
 }
 
 bitflags! {
+    /// The attributes of the symbol.
     pub struct SymbolAttrs: u32 {
         const LTO_SYMBOL_ALIGNMENT_MASK = 31;
         const LTO_SYMBOL_PERMISSIONS_MASK = 224;
@@ -246,6 +254,7 @@ impl SymbolAttrs {
     }
 }
 
+/// An iterator over the symbols of a module.
 pub struct Symbols<'a> {
     module: &'a Module,
     len: u32,
@@ -281,12 +290,14 @@ impl<'a> ExactSizeIterator for Symbols<'a> {
     }
 }
 
+/// The debug model.
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum DebugModel {
     Dwarf = lto_debug_model::LTO_DEBUG_MODEL_DWARF as u32,
 }
 
+/// The PIC code model.
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CodeGenModel {
@@ -296,6 +307,7 @@ pub enum CodeGenModel {
     Default = lto_codegen_model::LTO_CODEGEN_PIC_MODEL_DEFAULT as u32,
 }
 
+/// A code generator
 #[repr(transparent)]
 #[derive(Debug)]
 pub struct CodeGenerator(lto_code_gen_t);
@@ -422,6 +434,7 @@ impl CodeGenerator {
     }
 }
 
+/// A thin code generator
 #[repr(transparent)]
 #[derive(Debug)]
 pub struct ThinCodeGenerator(thinlto_code_gen_t);
@@ -587,10 +600,14 @@ impl Module {
     }
 }
 
+/// the cache pruning action.
 #[derive(Debug)]
 pub enum CachePruning {
+    /// The cache pruning interval
     Interval(Duration),
+    /// Force prunning to occur
     ForcePruning,
+    /// Disables the pruning.
     Disable,
 }
 
@@ -606,11 +623,12 @@ impl From<CachePruning> for i32 {
 
 #[repr(C)]
 #[allow(non_snake_case)]
-pub struct LTOObjectBuffer {
+struct LTOObjectBuffer {
     pub buf: *const ::libc::c_char,
     pub len: ::libc::size_t,
 }
 
+/// An iterator over the object of a thin code generator.
 pub struct Objects<'a> {
     gen: &'a ThinCodeGenerator,
     len: u32,
@@ -644,6 +662,7 @@ impl<'a> ExactSizeIterator for Objects<'a> {
     }
 }
 
+/// An iterator over the object files of a thin code generator.
 pub struct ObjectFiles<'a> {
     gen: &'a ThinCodeGenerator,
     len: u32,
