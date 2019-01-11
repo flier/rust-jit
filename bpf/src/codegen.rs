@@ -218,6 +218,7 @@ impl DbgInfo {
         self.builder
             .create_function_builder(self.module, name, self.file, 0, func_t, 0)
             .with_flags(LLVMDIFlagPrototyped)
+            .with_definition()
             .build()
     }
 }
@@ -279,9 +280,9 @@ impl<'a> Generator<'a> {
             self.gen_inst(idx, inst).emit_to(&self.builder);
         }
 
-        self.func.verify()?;
-
         self.dbg.build();
+
+        self.func.verify()?;
 
         Ok(self.func)
     }

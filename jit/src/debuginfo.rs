@@ -1729,18 +1729,18 @@ impl<'a, S, N> DIFunctionBuilder<'a, S, N> {
         self
     }
 
-    pub fn with_local_to_unit(mut self, v: bool) -> Self {
-        self.local_to_unit = v;
+    pub fn local_to_unit(mut self) -> Self {
+        self.local_to_unit = true;
         self
     }
 
-    pub fn with_definition(mut self, v: bool) -> Self {
-        self.definition = v;
+    pub fn with_definition(mut self) -> Self {
+        self.definition = true;
         self
     }
 
-    pub fn with_optimized(mut self, v: bool) -> Self {
-        self.optimized = v;
+    pub fn with_optimized(mut self) -> Self {
+        self.optimized = true;
         self
     }
 
