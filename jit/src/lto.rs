@@ -307,6 +307,38 @@ pub enum CodeGenModel {
     Default = lto_codegen_model::LTO_CODEGEN_PIC_MODEL_DEFAULT as u32,
 }
 
+/// Diagnostic severity.
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DiagnosticSeverity {
+    Error = lto_codegen_diagnostic_severity_t::LTO_DS_ERROR as u32,
+    Warning = lto_codegen_diagnostic_severity_t::LTO_DS_WARNING as u32,
+    Remark = lto_codegen_diagnostic_severity_t::LTO_DS_REMARK as u32,
+    Note = lto_codegen_diagnostic_severity_t::LTO_DS_NOTE as u32,
+}
+
+/// Diagnostic handler type.
+pub type DiagnosticHandler<T> = fn(severity: DiagnosticSeverity, diag: &str, data: Option<&T>);
+
+struct DiagnosticContext<T> {
+    handler: DiagnosticHandler<T>,
+    data: Option<T>,
+}
+
+extern "C" fn diagnostic_handler_stub<T>(
+    severity: lto_codegen_diagnostic_severity_t,
+    diag: *const ::libc::c_char,
+    ctxt: *mut ::libc::c_void,
+) {
+    unsafe {
+        let ctxt = Box::from_raw(ctxt as *mut DiagnosticContext<T>);
+
+        (ctxt.handler)(mem::transmute(severity), &diag.as_str(), ctxt.data.as_ref());
+
+        mem::forget(ctxt);
+    }
+}
+
 /// A code generator
 #[repr(transparent)]
 #[derive(Debug)]
@@ -329,6 +361,13 @@ impl CodeGenerator {
     /// Instantiate a code generator in its own context.
     pub fn with_local_context() -> Result<Self> {
         unsafe { lto_codegen_create_in_local_context() }.ok_or_else(report_last_error)
+    }
+
+    /// Set a diagnostic handler and the related context.
+    pub fn set_diagnostic_handler<T>(&self, handler: DiagnosticHandler<T>, data: Option<T>) {
+        let ctxt = Box::into_raw(Box::new(DiagnosticContext { handler, data }));
+
+        unsafe { lto_codegen_set_diagnostic_handler(self.as_raw(), Some(diagnostic_handler_stub::<T>), ctxt as *mut _) }
     }
 
     /// Add an object module to the set of modules for which code will be generated.
