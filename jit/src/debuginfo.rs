@@ -1,3 +1,8 @@
+//! This file defines a bunch of datatypes that are useful for creating and
+//! walking debug info in LLVM IR form. They essentially provide wrappers around
+//! the information in the global variables that's needed when constructing the
+//! DWARF information.
+
 use std::alloc::Layout;
 use std::fmt;
 use std::ops::{Deref, Range};
@@ -9,16 +14,19 @@ use std::str;
 use crate::llvm::core::*;
 use crate::llvm::debuginfo::*;
 use crate::llvm::prelude::*;
+
 use crate::metadata::{MDNode, MetadataAsValue};
 use crate::prelude::*;
 use crate::utils::{AsBool, AsLLVMBool, AsRaw, AsResult, IntoRaw};
 
-use self::dwarf::DwTag;
+use self::dwarf::{DwAte, DwTag};
 
-pub type DWARFSourceLanguage = LLVMDWARFSourceLanguage;
-pub type DWARFEmissionKind = LLVMDWARFEmissionKind;
-pub type DWARFTypeEncoding = LLVMDWARFTypeEncoding;
+/// The kind of debug information to generate.
+pub use llvm_sys::debuginfo::LLVMDWARFEmissionKind as EmissionKind;
+/// Source languages known by DWARF.
+pub use llvm_sys::debuginfo::LLVMDWARFSourceLanguage as SourceLanguage;
 
+#[doc(hidden)]
 pub mod dwarf {
     #![allow(non_camel_case_types)]
 
@@ -200,19 +208,22 @@ pub mod dwarf {
     }
 }
 
-pub use self::type_modifier::TypeModifier;
+/// Type modifier tags
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TypeModifier(DwTag);
+
+impl From<TypeModifier> for u32 {
+    fn from(tm: TypeModifier) -> u32 {
+        tm.0 as u32
+    }
+}
 
 pub mod type_modifier {
-    use super::dwarf::DwTag::{self, *};
+    //! A base or user-defined type may be modified in different ways in different languages.
+    //! A type modifier is represented in DWARF by a debugging information entry with one of the tags.
 
-    #[derive(Clone, Copy, Debug, PartialEq)]
-    pub struct TypeModifier(DwTag);
-
-    impl From<TypeModifier> for u32 {
-        fn from(tm: TypeModifier) -> u32 {
-            tm.0 as u32
-        }
-    }
+    use super::dwarf::DwTag::*;
+    use super::TypeModifier;
 
     /// atomic qualified type (for example, in C)
     pub const ATOMIC: TypeModifier = TypeModifier(DW_TAG_atomic_type);
@@ -237,19 +248,21 @@ pub mod type_modifier {
 
 }
 
-pub use self::encoding::Encoding;
+/// Base type encoding
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Encoding(DwAte);
+
+impl From<Encoding> for u32 {
+    fn from(encoding: Encoding) -> u32 {
+        encoding.0 as u32
+    }
+}
 
 pub mod encoding {
-    use super::dwarf::DwAte::{self, *};
+    //! The encodings of the constants used in the DW_AT_encoding attribute
 
-    #[derive(Clone, Copy, Debug, PartialEq)]
-    pub struct Encoding(DwAte);
-
-    impl From<Encoding> for u32 {
-        fn from(encoding: Encoding) -> u32 {
-            encoding.0 as u32
-        }
-    }
+    use super::dwarf::DwAte::*;
+    use super::Encoding;
 
     /// true or false
     pub const BOOLEAN: Encoding = Encoding(DW_ATE_boolean);
@@ -370,6 +383,7 @@ impl IRBuilder {
     }
 }
 
+/// DIBuilder is useful for creating debugging information entries in LLVM IR form.
 #[repr(transparent)]
 #[derive(Debug)]
 pub struct DIBuilder(LLVMDIBuilderRef);
@@ -392,7 +406,7 @@ impl DIBuilder {
 
     /// Create a CompileUnit which provides an anchor
     /// for all debugging information generated during this instance of compilation.
-    pub fn create_compile_unit<N>(&self, lang: DWARFSourceLanguage, file: DIFile, producer: N) -> DICompileUnit
+    pub fn create_compile_unit<N>(&self, lang: SourceLanguage, file: DIFile, producer: N) -> DICompileUnit
     where
         N: AsRef<str>,
     {
@@ -403,7 +417,7 @@ impl DIBuilder {
     /// for all debugging information generated during this instance of compilation.
     pub fn create_compile_unit_builder<N>(
         &self,
-        lang: DWARFSourceLanguage,
+        lang: SourceLanguage,
         file: DIFile,
         producer: N,
     ) -> DICompileUnitBuilder<N> {
@@ -854,8 +868,8 @@ impl DIBuilder {
         line: u32,
         layout: Layout,
         offset: u64,
-    ) -> DIMemberBuilder<S, N> {
-        DIMemberBuilder::new(self, scope, name, file, line, layout, offset)
+    ) -> DIMemberTypeBuilder<S, N> {
+        DIMemberTypeBuilder::new(self, scope, name, file, line, layout, offset)
     }
 
     /// Create debugging information entry for a C++ static data member.
@@ -887,8 +901,8 @@ impl DIBuilder {
         line: u32,
         ty: T,
         value: V,
-    ) -> DIStaticMemberBuilder<S, N, T, V> {
-        DIStaticMemberBuilder::new(self, scope, name, file, line, ty, value)
+    ) -> DIStaticMemberTypeBuilder<S, N, T, V> {
+        DIStaticMemberTypeBuilder::new(self, scope, name, file, line, ty, value)
     }
 
     /// Create debugging information entry for a pointer to member.
@@ -1018,12 +1032,12 @@ impl DIBuilder {
         scope: S,
         file: DIFile,
         line: u32,
-    ) -> ReplaceableCompositeTypeBuilder<N, S>
+    ) -> DIReplaceableCompositeTypeBuilder<N, S>
     where
         N: AsRef<str>,
         S: Deref<Target = DIScope>,
     {
-        ReplaceableCompositeTypeBuilder::new(self, tag, name, scope, file, line)
+        DIReplaceableCompositeTypeBuilder::new(self, tag, name, scope, file, line)
     }
 
     /// Create debugging information entry for a bit field member.
@@ -1094,8 +1108,8 @@ impl DIBuilder {
         layout: Layout,
         offset_in_bits: u64,
         elements: I,
-    ) -> ClassTypeBuilder<S, N, I> {
-        ClassTypeBuilder::new(self, scope, name, file, line, layout, offset_in_bits, elements)
+    ) -> DIClassTypeBuilder<S, N, I> {
+        DIClassTypeBuilder::new(self, scope, name, file, line, layout, offset_in_bits, elements)
     }
 
     /// Create a uniqued DIType* clone with FlagArtificial set.
@@ -1122,7 +1136,9 @@ impl DIBuilder {
     }
 
     /// Create a new descriptor for the specified variable which has a complex
-    pub fn create_expression(&self, addr: &[i64]) -> DIExpression {
+    pub fn create_expression<T: AsRef<[i64]>>(&self, addr: T) -> DIExpression {
+        let addr = addr.as_ref();
+
         unsafe { LLVMDIBuilderCreateExpression(self.as_raw(), addr.as_ptr() as *mut _, addr.len()) }.into()
     }
 
@@ -1364,83 +1380,160 @@ impl DIBuilder {
     }
 }
 
-macro_rules! define_debug_info_class {
-    (__def_struct $name:ident, $parent:ty) => {
+macro_rules! def_class {
+    (__def_struct $(#[$meta:meta])* $name:ident, $parent:ty) => {
+        $(#[$meta])*
         #[repr(transparent)]
         #[derive(Clone, Copy, Debug, PartialEq)]
         pub struct $name($parent);
     };
 
-    ($name:ident) => {
-        define_debug_info_class!(__def_struct $name, MDNode);
+    ($(#[$meta:meta])* $name:ident) => {
+        def_class!(__def_struct $(#[$meta])* $name, MDNode);
 
         inherit_from!($name, MDNode, Metadata; LLVMMetadataRef);
     };
 
-    ($name:ident, $parent:ident $( , $base:ident )*) => {
-        define_debug_info_class!(__def_struct $name, $parent);
+    ($(#[$meta:meta])* $name:ident, $parent:ident $( , $base:ident )*) => {
+        def_class!(__def_struct $(#[$meta])* $name, $parent);
 
         inherit_from!($name, $parent, $( $base, )* MDNode, Metadata; LLVMMetadataRef);
     };
 }
 
-macro_rules! define_debug_info_node {
-    ( $( $name:ident ),* ) => {
-        define_debug_info_class!( $( $name, )* DINode);
+macro_rules! def_node {
+    ( $(#[$meta:meta])* $( $name:ident ),* ) => {
+        def_class!( $(#[$meta])* $( $name, )* DINode);
     };
 }
 
-macro_rules! define_debug_info_scope {
-    ( $( $name:ident ),* ) => {
-        define_debug_info_node!( $( $name, )* DIScope);
+macro_rules! def_scope {
+    ( $(#[$meta:meta])* $( $name:ident ),* ) => {
+        def_node!( $(#[$meta])* $( $name, )* DIScope);
     };
 }
 
-macro_rules! define_debug_info_local_scope {
-    ( $( $name:ident ),* ) => {
-        define_debug_info_scope!( $( $name, )* DILocalScope);
+macro_rules! def_local_scope {
+    ( $(#[$meta:meta])* $( $name:ident ),* ) => {
+        def_scope!($(#[$meta])*  $( $name, )* DILocalScope);
     };
 }
 
-macro_rules! define_debug_info_type {
-    ( $( $name:ident ),* ) => {
-        define_debug_info_node!( $( $name, )* DIType);
+macro_rules! def_type {
+    ( $(#[$meta:meta])* $( $name:ident ),* ) => {
+        def_node!( $(#[$meta])* $( $name, )* DIType);
     };
 }
 
-define_debug_info_class!(DINode);
+/// A typeref array.
+#[repr(transparent)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DITypeRefArray(Metadata);
 
-define_debug_info_node!(DIScope);
+inherit_from!(DITypeRefArray, Metadata; LLVMMetadataRef);
 
-define_debug_info_scope!(DICompileUnit);
-define_debug_info_scope!(DIFile);
-define_debug_info_scope!(DIModule);
-define_debug_info_scope!(DINamespace);
+def_class!(
+    #[doc = "Tagged DWARF-like metadata node."]
+    DINode
+);
 
-define_debug_info_scope!(DILocalScope);
-define_debug_info_local_scope!(DILexicalBlock);
-define_debug_info_local_scope!(DILexicalBlockFile);
-define_debug_info_local_scope!(DISubprogram);
+def_node!(
+    #[doc = "Base class for scope-like contexts."]
+    DIScope
+);
 
-define_debug_info_node!(DIImportedEntity);
+def_scope!(
+    #[doc = "Compile unit."]
+    DICompileUnit
+);
+def_scope!(
+    #[doc = "File."]
+    DIFile
+);
+def_scope!(
+    #[doc = "A module that has been imported by the compile unit."]
+    DIModule
+);
+def_scope!(
+    #[doc = "Namespace."]
+    DINamespace
+);
 
-define_debug_info_class!(DILocation);
+def_scope!(
+    #[doc = "A scope for locals."]
+    DILocalScope
+);
+def_local_scope!(
+    #[doc = "A lexical block."]
+    DILexicalBlock
+);
+def_local_scope!(
+    #[doc = "A lexical block with a new file attached."]
+    DILexicalBlockFile
+);
+def_local_scope!(
+    #[doc = "Subprogram description."]
+    DISubprogram
+);
 
-define_debug_info_class!(DITypeRefArray);
-define_debug_info_class!(DINodeArray);
-define_debug_info_class!(DIExpression);
-define_debug_info_class!(DIGlobalVariableExpression);
+def_node!(
+    #[doc = "An imported module (C++ using directive or similar)."]
+    DIImportedEntity
+);
 
-define_debug_info_node!(DISubrange);
+def_class!(
+    #[doc = "A debug location in source code, used for debug info and otherwise."]
+    DILocation
+);
 
-define_debug_info_node!(DIVariable);
-define_debug_info_node!(DILocalVariable, DIVariable);
+def_class!(
+    #[doc = "A node array."]
+    DINodeArray
+);
+def_class!(
+    #[doc = "A DWARF expression."]
+    DIExpression
+);
+def_class!(
+    #[doc = "A pair of DIGlobalVariable and DIExpression."]
+    DIGlobalVariableExpression
+);
 
-define_debug_info_scope!(DIType);
-define_debug_info_type!(DICompositeType);
-define_debug_info_type!(DIBasicType);
-define_debug_info_type!(DIDerivedType);
-define_debug_info_type!(DISubroutineType);
+def_node!(
+    #[doc = "Array subrange."]
+    DISubrange
+);
+
+def_node!(
+    #[doc = "Base class for variables."]
+    DIVariable
+);
+def_node!(
+    #[doc = "Local variable."]
+    DILocalVariable,
+    DIVariable
+);
+
+def_scope!(
+    #[doc = "Base class for types."]
+    DIType
+);
+def_type!(
+    #[doc = "Composite types."]
+    DICompositeType
+);
+def_type!(
+    #[doc = "Basic type, like 'int' or 'float'."]
+    DIBasicType
+);
+def_type!(
+    #[doc = "Derived types."]
+    DIDerivedType
+);
+def_type!(
+    #[doc = "Type array for a subprogram."]
+    DISubroutineType
+);
 
 impl DILocation {
     /// Get the line number of this debug location.
@@ -1473,14 +1566,13 @@ macro_rules! ditypes {
 
 impl DIType {
     /// Get the name of this DIType.
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> Option<&str> {
         let mut len = 0;
         let data = unsafe { LLVMDITypeGetName(self.as_raw(), &mut len) };
 
         NonNull::new(data as *mut _)
             .map(|data| unsafe { slice::from_raw_parts(data.as_ptr(), len) })
             .and_then(|data| str::from_utf8(data).ok())
-            .unwrap_or_default()
     }
 
     /// Get the size of this DIType in bits.
@@ -1509,28 +1601,24 @@ impl DIType {
     }
 }
 
+/// A builder used to create a compile unit
 pub struct DICompileUnitBuilder<'a, N> {
     builder: &'a DIBuilder,
-    lang: DWARFSourceLanguage,
+    lang: SourceLanguage,
     file: DIFile,
     producer: N,
     optimized: bool,
     flags: &'a str,
     runtime_version: u32,
     split_name: &'a str,
-    emission_kind: DWARFEmissionKind,
+    emission_kind: EmissionKind,
     dwoid: u32,
     split_debug_inlining: bool,
     for_profiling: bool,
 }
 
 impl<'a, N> DICompileUnitBuilder<'a, N> {
-    pub fn new(
-        builder: &'a DIBuilder,
-        lang: DWARFSourceLanguage,
-        file: DIFile,
-        producer: N,
-    ) -> DICompileUnitBuilder<'a, N> {
+    pub fn new(builder: &'a DIBuilder, lang: SourceLanguage, file: DIFile, producer: N) -> DICompileUnitBuilder<'a, N> {
         DICompileUnitBuilder {
             builder,
             lang,
@@ -1567,7 +1655,7 @@ impl<'a, N> DICompileUnitBuilder<'a, N> {
         self
     }
 
-    pub fn with_emission_kind(mut self, kind: DWARFEmissionKind) -> Self {
+    pub fn with_emission_kind(mut self, kind: EmissionKind) -> Self {
         self.emission_kind = kind;
         self
     }
@@ -1618,6 +1706,7 @@ where
     }
 }
 
+/// A builder used to create a module.
 pub struct DIModuleBuilder<'a, S, N> {
     builder: &'a DIBuilder,
     scope: Option<S>,
@@ -1683,6 +1772,7 @@ where
     }
 }
 
+/// A builder used to create a subprogram.
 pub struct DIFunctionBuilder<'a, S, N> {
     builder: &'a DIBuilder,
     scope: S,
@@ -1781,6 +1871,7 @@ where
     }
 }
 
+/// A builder used to create a pointer type.
 pub struct DIPointerTypeBuilder<'a, T> {
     builder: &'a DIBuilder,
     pointee_ty: T,
@@ -1841,6 +1932,7 @@ where
     }
 }
 
+/// A builder used to create a structure type.
 pub struct DIStructTypeBuilder<'a, S, N, I> {
     builder: &'a DIBuilder,
     scope: S,
@@ -1942,7 +2034,8 @@ where
     }
 }
 
-pub struct DIMemberBuilder<'a, S, N> {
+/// A builder used to create a member type.
+pub struct DIMemberTypeBuilder<'a, S, N> {
     builder: &'a DIBuilder,
     scope: S,
     name: N,
@@ -1954,7 +2047,7 @@ pub struct DIMemberBuilder<'a, S, N> {
     parent_ty: Option<DIType>,
 }
 
-impl<'a, S, N> DIMemberBuilder<'a, S, N> {
+impl<'a, S, N> DIMemberTypeBuilder<'a, S, N> {
     pub fn new(
         builder: &'a DIBuilder,
         scope: S,
@@ -1964,7 +2057,7 @@ impl<'a, S, N> DIMemberBuilder<'a, S, N> {
         layout: Layout,
         offset: u64,
     ) -> Self {
-        DIMemberBuilder {
+        DIMemberTypeBuilder {
             builder,
             scope,
             name,
@@ -1991,7 +2084,7 @@ impl<'a, S, N> DIMemberBuilder<'a, S, N> {
     }
 }
 
-impl<'a, S, N> DIMemberBuilder<'a, S, N>
+impl<'a, S, N> DIMemberTypeBuilder<'a, S, N>
 where
     S: Deref<Target = DIScope>,
     N: AsRef<str>,
@@ -2018,7 +2111,8 @@ where
     }
 }
 
-pub struct DIStaticMemberBuilder<'a, S, N, T, V> {
+/// A builder used to create a static member type.
+pub struct DIStaticMemberTypeBuilder<'a, S, N, T, V> {
     builder: &'a DIBuilder,
     scope: S,
     name: N,
@@ -2030,9 +2124,9 @@ pub struct DIStaticMemberBuilder<'a, S, N, T, V> {
     align: Option<u32>,
 }
 
-impl<'a, S, N, T, V> DIStaticMemberBuilder<'a, S, N, T, V> {
+impl<'a, S, N, T, V> DIStaticMemberTypeBuilder<'a, S, N, T, V> {
     pub fn new(builder: &'a DIBuilder, scope: S, name: N, file: DIFile, line: u32, ty: T, value: V) -> Self {
-        DIStaticMemberBuilder {
+        DIStaticMemberTypeBuilder {
             builder,
             scope,
             name,
@@ -2056,7 +2150,7 @@ impl<'a, S, N, T, V> DIStaticMemberBuilder<'a, S, N, T, V> {
     }
 }
 
-impl<'a, S, N, T, V> DIStaticMemberBuilder<'a, S, N, T, V>
+impl<'a, S, N, T, V> DIStaticMemberTypeBuilder<'a, S, N, T, V>
 where
     S: Deref<Target = DIScope>,
     N: AsRef<str>,
@@ -2084,6 +2178,7 @@ where
     }
 }
 
+/// A builder used to create a member pointer type.
 pub struct DIMemberPointerTypeBuilder<'a, T, C> {
     builder: &'a DIBuilder,
     pointee_ty: T,
@@ -2136,6 +2231,7 @@ where
     }
 }
 
+/// A builder used to create a forward declartion.
 pub struct DIForwardDeclBuilder<'a, N, S> {
     builder: &'a DIBuilder,
     tag: DwTag,
@@ -2215,7 +2311,8 @@ where
     }
 }
 
-pub struct ReplaceableCompositeTypeBuilder<'a, N, S> {
+/// A builder used to create a replaceable composite type.
+pub struct DIReplaceableCompositeTypeBuilder<'a, N, S> {
     builder: &'a DIBuilder,
     tag: DwTag,
     name: N,
@@ -2229,9 +2326,9 @@ pub struct ReplaceableCompositeTypeBuilder<'a, N, S> {
     id: Option<&'a str>,
 }
 
-impl<'a, N, S> ReplaceableCompositeTypeBuilder<'a, N, S> {
+impl<'a, N, S> DIReplaceableCompositeTypeBuilder<'a, N, S> {
     pub fn new(builder: &'a DIBuilder, tag: DwTag, name: N, scope: S, file: DIFile, line: u32) -> Self {
-        ReplaceableCompositeTypeBuilder {
+        DIReplaceableCompositeTypeBuilder {
             builder,
             tag,
             name,
@@ -2272,7 +2369,7 @@ impl<'a, N, S> ReplaceableCompositeTypeBuilder<'a, N, S> {
     }
 }
 
-impl<'a, N, S> ReplaceableCompositeTypeBuilder<'a, N, S>
+impl<'a, N, S> DIReplaceableCompositeTypeBuilder<'a, N, S>
 where
     N: AsRef<str>,
     S: Deref<Target = DIScope>,
@@ -2302,7 +2399,8 @@ where
     }
 }
 
-pub struct ClassTypeBuilder<'a, S, N, I> {
+/// A builder used to create a class type.
+pub struct DIClassTypeBuilder<'a, S, N, I> {
     builder: &'a DIBuilder,
     scope: S,
     name: N,
@@ -2318,7 +2416,7 @@ pub struct ClassTypeBuilder<'a, S, N, I> {
     id: Option<&'a str>,
 }
 
-impl<'a, S, N, I> ClassTypeBuilder<'a, S, N, I> {
+impl<'a, S, N, I> DIClassTypeBuilder<'a, S, N, I> {
     pub fn new(
         builder: &'a DIBuilder,
         scope: S,
@@ -2329,7 +2427,7 @@ impl<'a, S, N, I> ClassTypeBuilder<'a, S, N, I> {
         offset_in_bits: u64,
         elements: I,
     ) -> Self {
-        ClassTypeBuilder {
+        DIClassTypeBuilder {
             builder,
             scope,
             name,
@@ -2373,7 +2471,7 @@ impl<'a, S, N, I> ClassTypeBuilder<'a, S, N, I> {
     }
 }
 
-impl<'a, S, N, I> ClassTypeBuilder<'a, S, N, I>
+impl<'a, S, N, I> DIClassTypeBuilder<'a, S, N, I>
 where
     S: Deref<Target = DIScope>,
     N: AsRef<str>,
@@ -2409,6 +2507,7 @@ where
     }
 }
 
+/// A builder used to create a global variable expression.
 pub struct DIGlobalVariableExpressionBuilder<'a, S, N, T> {
     builder: &'a DIBuilder,
     scope: S,
@@ -2497,6 +2596,7 @@ where
     }
 }
 
+/// A builder used to create a tempary global variable forward declaration;
 pub struct DITempGlobalVariableFwdDeclBuilder<'a, S, N, T> {
     builder: &'a DIBuilder,
     scope: S,
@@ -2577,6 +2677,7 @@ where
     }
 }
 
+/// A builder used to create a auto variable.
 pub struct DIAutoVariableBuilder<'a, S, N, T> {
     builder: &'a DIBuilder,
     scope: S,
@@ -2647,6 +2748,7 @@ where
     }
 }
 
+/// A builder used to create a parameter variable.
 pub struct DIParameterVariableBuilder<'a, S, N, T> {
     builder: &'a DIBuilder,
     scope: S,
