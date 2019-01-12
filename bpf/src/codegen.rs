@@ -70,12 +70,12 @@ struct State {
     a: AllocaInst,
     x: AllocaInst,
     mem: AllocaInst,
+    entry: BasicBlock,
     labels: Rc<RefCell<HashMap<usize, BasicBlock>>>,
-    entry_block: DILexicalBlock,
 }
 
 impl State {
-    pub fn new(ctxt: &jit::Context, func: jit::Function, dbg: &DbgInfo, subprogram: DISubprogram) -> Self {
+    pub fn new(ctxt: &jit::Context, func: jit::Function) -> Self {
         let i32_t = ctxt.int32_t();
 
         let uint32 = |v: u64| -> ConstantInt { i32_t.uint(v) };
@@ -90,35 +90,6 @@ impl State {
 
         let entry = func.append_basic_block_in_context("entry", &ctxt);
 
-        let expr = dbg.builder.create_expression(&[]);
-        let loc = ctxt.create_debug_location(0, 0, subprogram, None);
-
-        builder.set_current_debug_location(loc, &ctxt);
-
-        dbg.builder.insert_declare_at_end(
-            pkt,
-            dbg.builder
-                .create_parameter_variable_builder(subprogram, pkt.name().unwrap(), 1, dbg.file, 0, dbg.u8_ptr_t)
-                .with_always_preserve()
-                .build(),
-            expr,
-            loc,
-            entry,
-        );
-
-        dbg.builder.insert_declare_at_end(
-            len,
-            dbg.builder
-                .create_parameter_variable_builder(subprogram, len.name().unwrap(), 2, dbg.file, 0, dbg.u32_t)
-                .with_always_preserve()
-                .build(),
-            expr,
-            loc,
-            entry,
-        );
-
-        let entry_block = dbg.builder.create_lexical_block(subprogram, dbg.file, 0, 0);
-
         let (a, x, mem) = builder.within(entry, || {
             (
                 alloca!(i32_t; "A"),
@@ -126,37 +97,6 @@ impl State {
                 alloca!(i32_t.array_t(BPF_MEMWORDS as usize); "M"),
             )
         });
-
-        dbg.builder.insert_declare_at_end(
-            a,
-            dbg.builder
-                .create_auto_variable(entry_block, "A", dbg.file, 0, dbg.u32_t),
-            expr,
-            loc,
-            entry,
-        );
-        dbg.builder.insert_declare_at_end(
-            x,
-            dbg.builder
-                .create_auto_variable(entry_block, "X", dbg.file, 0, dbg.u32_t),
-            expr,
-            loc,
-            entry,
-        );
-        dbg.builder.insert_declare_at_end(
-            mem,
-            dbg.builder.create_auto_variable(
-                entry_block,
-                "M",
-                dbg.file,
-                0,
-                dbg.builder
-                    .create_array_type(Layout::new::<u32>(), dbg.u32_t, vec![(0..i64::from(BPF_MEMWORDS))]),
-            ),
-            expr,
-            loc,
-            entry,
-        );
 
         builder.within(entry, || (store!(uint32(0), a), store!(uint32(0), x)));
 
@@ -169,8 +109,8 @@ impl State {
             a,
             x,
             mem,
+            entry,
             labels,
-            entry_block,
         }
     }
 }
@@ -181,6 +121,7 @@ struct DbgInfo {
     module: DIModule,
     u32_t: DIBasicType,
     u8_ptr_t: DIDerivedType,
+    current: Option<DILocalScope>,
 }
 
 impl DbgInfo {
@@ -199,6 +140,7 @@ impl DbgInfo {
             module,
             u32_t,
             u8_ptr_t,
+            current: None,
         }
     }
 
@@ -206,17 +148,81 @@ impl DbgInfo {
         self.builder.finalize();
     }
 
-    pub fn create_subprogram(&self, name: &str) -> DISubprogram {
+    pub fn create_subprogram(&mut self, ctxt: &Context, state: &State, name: &str) -> DISubprogram {
         let func_t = self.builder.create_subroutine_type(
             self.file,
             ditypes![self.u32_t, self.u8_ptr_t, self.u32_t],
             LLVMDIFlagZero,
         );
-        self.builder
+        let sp = self
+            .builder
             .create_function_builder(self.module, name, self.file, 0, func_t, 0)
             .with_flags(LLVMDIFlagPrototyped)
             .with_definition()
-            .build()
+            .build();
+        let entry = self.builder.create_lexical_block(sp, self.file, 0, 0);
+        let expr = self.builder.create_expression(&[]);
+        let loc = ctxt.create_debug_location(0, 0, sp, None);
+
+        state.builder.set_current_debug_location(loc, &ctxt);
+
+        self.builder.insert_declare_at_end(
+            state.pkt,
+            self.builder
+                .create_parameter_variable_builder(sp, state.pkt.name().unwrap(), 1, self.file, 0, self.u8_ptr_t)
+                .with_always_preserve()
+                .build(),
+            expr,
+            loc,
+            state.entry,
+        );
+        self.builder.insert_declare_at_end(
+            state.len,
+            self.builder
+                .create_parameter_variable_builder(sp, state.len.name().unwrap(), 2, self.file, 0, self.u32_t)
+                .with_always_preserve()
+                .build(),
+            expr,
+            loc,
+            state.entry,
+        );
+        self.builder.insert_declare_at_end(
+            state.a,
+            self.builder.create_auto_variable(entry, "A", self.file, 0, self.u32_t),
+            expr,
+            loc,
+            state.entry,
+        );
+        self.builder.insert_declare_at_end(
+            state.x,
+            self.builder.create_auto_variable(entry, "X", self.file, 0, self.u32_t),
+            expr,
+            loc,
+            state.entry,
+        );
+        self.builder.insert_declare_at_end(
+            state.mem,
+            self.builder.create_auto_variable(
+                entry,
+                "M",
+                self.file,
+                0,
+                self.builder
+                    .create_array_type(Layout::new::<u32>(), self.u32_t, vec![(0..i64::from(BPF_MEMWORDS))]),
+            ),
+            expr,
+            loc,
+            state.entry,
+        );
+
+        self.current = Some(entry.into());
+
+        sp
+    }
+
+    pub fn create_lexical_block(&self, line: u32, column: u32) -> DILexicalBlock {
+        self.builder
+            .create_lexical_block(self.current.unwrap(), self.file, line, column)
     }
 }
 
@@ -234,12 +240,10 @@ impl Generator {
 
         info!("generate BPF function `{}` with signature: {}", name, *func);
 
-        let dbg = DbgInfo::new(m);
-        let sp = dbg.create_subprogram(name);
-
-        func.set_subprogram(sp);
-
-        let state = State::new(&ctxt, func, &dbg, sp);
+        let state = State::new(&ctxt, func);
+        let mut dbg = DbgInfo::new(m);
+        let subprogram = dbg.create_subprogram(&ctxt, &state, name);
+        func.set_subprogram(subprogram);
 
         Generator {
             ctxt,
@@ -255,10 +259,7 @@ impl Generator {
     where
         I: Iterator<Item = Inst>,
     {
-        let mut current_block = self
-            .dbg
-            .builder
-            .create_lexical_block(self.state.entry_block, self.dbg.file, 1, 0);
+        let mut current_block = self.dbg.create_lexical_block(1, 0);
 
         for (idx, inst) in insts.enumerate() {
             let line_no = idx as u32 + 1;
@@ -266,10 +267,7 @@ impl Generator {
             if let Some(label) = self.labels.borrow().get(&idx) {
                 self.builder.position_at_end(*label);
 
-                current_block =
-                    self.dbg
-                        .builder
-                        .create_lexical_block(self.state.entry_block, self.dbg.file, line_no, 0);
+                current_block = self.dbg.create_lexical_block(line_no, 0);
             }
 
             let loc = self.ctxt.create_debug_location(line_no, 0, current_block, None);
