@@ -73,7 +73,8 @@ pub mod target;
 
 pub use crate::attribute::{attrs, Attribute, AttributeIndex, EnumAttribute, StringAttribute};
 pub use crate::constant::{
-    Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString, ConstantStruct, ConstantVector, InlineAsm,
+    AsConstant, Constant, ConstantArray, ConstantFP, ConstantInt, ConstantString, ConstantStruct, ConstantVector,
+    InlineAsm,
 };
 pub use crate::context::{Context, GlobalContext};
 pub use crate::disasm::Disasm;
@@ -94,35 +95,31 @@ pub use crate::symbols::Symbols;
 pub use crate::types::{
     ArrayType, FloatingPointType, IntegerType, OtherType, PointerType, StructType, TypeKind, TypeRef, VectorType,
 };
-pub use crate::value::{BlockAddress, Instruction, Opcode, ValueKind, ValueRef};
+pub use crate::value::{AsInstruction, AsValueRef, BlockAddress, Instruction, Opcode, ValueKind, ValueRef};
 
 pub mod prelude {
     //! A prelude for writing LLVM JIT code.
 
+    pub use crate::attribute::AttributeGroups;
     pub use crate::block::BasicBlock;
+    pub use crate::constant::{
+        AsConstant, Constant, ConstantFP, ConstantFPs, ConstantInt, ConstantInts, ConstantString, ConstantStrings,
+        Constants, ToConstantArray, ToConstantStruct, ToConstantVector, ToNamedConstantStruct,
+    };
+    pub use crate::constexpr::ConstantExpr;
     pub use crate::context::Context;
     pub use crate::engine::{ExecutionEngine, GenericValue};
     pub use crate::function::{Function, FunctionType};
-    pub use crate::insts::{IRBuilder, Position};
+    pub use crate::global::GlobalValue;
+    pub use crate::insts::{IRBuilder, InstructionBuilder, Position};
+    pub use crate::intrinsics::IntrinsicId;
     pub use crate::metadata::Metadata;
     pub use crate::module::Module;
-    pub use crate::types::TypeRef;
-    pub use crate::value::ValueRef;
-
-    pub use crate::attribute::AttributeGroups;
-    pub use crate::constant::{
-        Constant, ConstantFP, ConstantFPs, ConstantInt, ConstantInts, ConstantString, ConstantStrings, Constants,
-        ToConstantArray, ToConstantStruct, ToConstantVector, ToNamedConstantStruct,
-    };
-    pub use crate::constexpr::ConstantExpr;
-    pub use crate::global::GlobalValue;
-    pub use crate::insts::InstructionBuilder;
-    pub use crate::intrinsics::IntrinsicId;
     pub use crate::target::{targets, Target, TargetMachine};
     pub use crate::types::{
         ArrayType, AsTypeRef, FloatingPointTypes, IntegerType, IntegerTypes, OtherType, OtherTypes, PointerType,
-        StructType, ToArrayType, ToPointerType, ToStructType, ToVectorType, VectorType,
+        StructType, ToArrayType, ToPointerType, ToStructType, ToVectorType, TypeRef, VectorType,
     };
     pub use crate::utils::{AsRaw, IntoRaw};
-    pub use crate::value::{AsValueRef, Instruction};
+    pub use crate::value::{AsInstruction, AsValueRef, Instruction, ValueRef};
 }

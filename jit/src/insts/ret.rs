@@ -175,7 +175,7 @@ mod tests {
         let i64_t = context.int64_t();
         let f64_t = context.double_t();
         let ret = context.struct_t(&[i64_t, f64_t], false);
-        let function_type = FunctionType::new(ret.into(), &[], false);
+        let function_type = FunctionType::new(ret, &[], false);
         let function = module.add_function("test", function_type);
 
         let bb = function.append_basic_block_in_context("entry", &context);

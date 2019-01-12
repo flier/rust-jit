@@ -178,7 +178,7 @@ impl Module {
     }
 
     /// Loads an object file from disk. The seek point of fd is not preserved.
-    pub fn from_fd<T: AsRawFd, P: AsRef<Path>>(f: T, path: P, file_size: usize) -> Result<Self> {
+    pub fn from_fd<T: AsRawFd, P: AsRef<Path>>(f: &T, path: P, file_size: usize) -> Result<Self> {
         unsafe { lto_module_create_from_fd(f.as_raw_fd(), cpath!(path), file_size) }.ok_or_else(report_last_error)
     }
 

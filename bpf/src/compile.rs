@@ -14,7 +14,7 @@ pub fn compile<S: AsRef<str>>(link_type: u32, code: S) -> Result<Program> {
     let code = CString::new(code.as_ref())?;
 
     unsafe {
-        let p = pcap_open_dead(link_type as i32, u16::max_value() as i32);
+        let p = pcap_open_dead(link_type as i32, i32::from(u16::max_value()));
         let ret = if pcap_compile(p, &mut program, code.as_ptr(), 1, PCAP_NETMASK_UNKNOWN) == 0 {
             (&program).into()
         } else {
@@ -105,12 +105,12 @@ impl RVal {
 struct OpCode(u8);
 
 impl OpCode {
-    fn class(self) -> u8 {
-        self.0 & 0x07
+    fn class(self) -> u32 {
+        u32::from(self.0 & 0x07)
     }
 
     fn size(self) -> Size {
-        match (self.0 & 0x18) as u32 {
+        match u32::from(self.0 & 0x18) {
             BPF_W => Size::Word,
             BPF_H => Size::Half,
             BPF_B => Size::Byte,
@@ -118,16 +118,16 @@ impl OpCode {
         }
     }
 
-    fn mode(self) -> u8 {
-        self.0 & 0xe0
+    fn mode(self) -> u32 {
+        u32::from(self.0 & 0xe0)
     }
 
-    fn op(self) -> u8 {
-        self.0 & 0xf0
+    fn op(self) -> u32 {
+        u32::from(self.0 & 0xf0)
     }
 
     fn src(self, k: Off) -> Src {
-        match (self.0 & 0x08) as u32 {
+        match u32::from(self.0 & 0x08) {
             BPF_K => Src::K(k),
             BPF_X => Src::X,
             _ => unreachable!(),
@@ -135,15 +135,15 @@ impl OpCode {
     }
 
     fn rval(self, k: Off) -> Option<RVal> {
-        match (self.0 & 0x18) as u32 {
+        match u32::from(self.0 & 0x18) {
             BPF_K => Some(RVal::K(k)),
             BPF_A => Some(RVal::A),
             _ => None,
         }
     }
 
-    fn misc_op(self) -> u8 {
-        self.0 & 0xf8
+    fn misc_op(self) -> u32 {
+        u32::from(self.0 & 0xf8)
     }
 }
 
@@ -152,8 +152,8 @@ impl From<&bpf_insn> for Result<Inst> {
         let inst = inst.borrow();
         let code = OpCode(inst.code as u8);
 
-        Ok(match code.class() as u32 {
-            BPF_LD => Inst::Load(match code.mode() as u32 {
+        Ok(match code.class() {
+            BPF_LD => Inst::Load(match code.mode() {
                 BPF_IMM => Mode::Imm(inst.k),
                 BPF_ABS => Mode::Abs(inst.k, code.size()),
                 BPF_IND => Mode::Ind(inst.k, code.size()),
@@ -161,7 +161,7 @@ impl From<&bpf_insn> for Result<Inst> {
                 BPF_LEN => Mode::Len,
                 _ => bail!("invalid BPF_LD mode: 0x{:x}, k = {}", code.mode(), inst.k),
             }),
-            BPF_LDX => Inst::LoadX(match code.mode() as u32 {
+            BPF_LDX => Inst::LoadX(match code.mode() {
                 BPF_IMM => Mode::Imm(inst.k),
                 BPF_MEM if inst.k < BPF_MEMWORDS => Mode::Mem(inst.k),
                 BPF_LEN => Mode::Len,
@@ -170,7 +170,7 @@ impl From<&bpf_insn> for Result<Inst> {
             }),
             BPF_ST if inst.k < BPF_MEMWORDS => Inst::Store(inst.k),
             BPF_STX if inst.k < BPF_MEMWORDS => Inst::StoreX(inst.k),
-            BPF_ALU => Inst::Alu(match code.op() as u32 {
+            BPF_ALU => Inst::Alu(match code.op() {
                 BPF_ADD => Op::Add(code.src(inst.k)),
                 BPF_SUB => Op::Sub(code.src(inst.k)),
                 BPF_MUL => Op::Mul(code.src(inst.k)),
@@ -184,7 +184,7 @@ impl From<&bpf_insn> for Result<Inst> {
                 BPF_XOR => Op::Xor(code.src(inst.k)),
                 _ => bail!("invalid BPF_ALU op: 0x{:x}", code.op()),
             }),
-            BPF_JMP => Inst::Jmp(match code.op() as u32 {
+            BPF_JMP => Inst::Jmp(match code.op() {
                 BPF_JA => Cond::Abs(inst.k),
                 BPF_JEQ => Cond::Eq(code.src(inst.k), inst.jt, inst.jf),
                 BPF_JGT => Cond::Gt(code.src(inst.k), inst.jt, inst.jf),
@@ -193,8 +193,8 @@ impl From<&bpf_insn> for Result<Inst> {
                 _ => bail!("invalid BPF_JMP cond: 0x{:x}", code.op()),
             }),
             BPF_RET => Inst::Ret(code.rval(inst.k)),
-            BPF_MISC if code.misc_op() == BPF_TAX as u8 => Inst::Misc(MiscOp::Tax),
-            BPF_MISC if code.misc_op() == BPF_TXA as u8 => Inst::Misc(MiscOp::Txa),
+            BPF_MISC if code.misc_op() == BPF_TAX => Inst::Misc(MiscOp::Tax),
+            BPF_MISC if code.misc_op() == BPF_TXA => Inst::Misc(MiscOp::Txa),
             _ => bail!("invalid BPF inst: {:#?}", inst),
         })
     }

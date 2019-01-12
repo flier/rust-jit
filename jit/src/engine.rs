@@ -13,7 +13,7 @@ use crate::function::Function;
 use crate::global::GlobalValue;
 use crate::module::Module;
 use crate::target::{self, TargetData, TargetMachine};
-use crate::types::TypeRef;
+use crate::types::AsTypeRef;
 use crate::utils::{unchecked_cstring, AsMutPtr, AsRaw, AsResult, DisposableMessage, IntoRaw, FALSE, TRUE};
 
 /// Deallocate and destroy all `ManagedStatic` variables.
@@ -37,8 +37,7 @@ impl Drop for GenericValue {
 }
 
 impl GenericValue {
-    pub fn from_uint<T: fmt::Debug + Into<TypeRef>>(ty: T, n: u64) -> Self {
-        let ty = ty.into();
+    pub fn from_uint<T: fmt::Display + AsTypeRef>(ty: T, n: u64) -> Self {
         let gv = unsafe { LLVMCreateGenericValueOfInt(ty.as_raw(), n, FALSE) }.into();
 
         trace!("{:?} from {} : {}", gv, n, ty);
@@ -46,8 +45,7 @@ impl GenericValue {
         gv
     }
 
-    pub fn from_int<T: fmt::Debug + Into<TypeRef>>(ty: T, n: i64) -> Self {
-        let ty = ty.into();
+    pub fn from_int<T: fmt::Display + AsTypeRef>(ty: T, n: i64) -> Self {
         let gv = unsafe { LLVMCreateGenericValueOfInt(ty.as_raw(), mem::transmute(n), TRUE) }.into();
 
         trace!("{:?} from {} : {}", gv, n, ty);
@@ -63,8 +61,7 @@ impl GenericValue {
         gv
     }
 
-    pub fn from_float<T: Into<TypeRef>>(ty: T, n: f64) -> Self {
-        let ty = ty.into();
+    pub fn from_float<T: fmt::Display + AsTypeRef>(ty: T, n: f64) -> Self {
         let gv = unsafe { LLVMCreateGenericValueOfFloat(ty.as_raw(), n) }.into();
 
         trace!("{:?} from {} : {}", gv, n, ty);
@@ -88,8 +85,8 @@ impl GenericValue {
         unsafe { LLVMGenericValueToPointer(self.0) as *mut T }
     }
 
-    pub fn to_float<T: Into<TypeRef>>(&self, ty: T) -> f64 {
-        unsafe { LLVMGenericValueToFloat(ty.into().as_raw(), self.0) }
+    pub fn to_float<T: AsTypeRef>(&self, ty: T) -> f64 {
+        unsafe { LLVMGenericValueToFloat(ty.into_raw(), self.0) }
     }
 }
 

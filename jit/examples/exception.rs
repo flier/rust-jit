@@ -867,7 +867,7 @@ impl Example {
     ///        generated, and is used to hold the constant string. A value of
     ///        false indicates that the constant string will be stored on the
     ///        stack.
-    fn generate_integer_print<S: AsRef<str>, V: Into<ValueRef>>(
+    fn generate_integer_print<S: AsRef<str>, V: AsValueRef>(
         &self,
         builder: &IRBuilder,
         print_func_t: Function,

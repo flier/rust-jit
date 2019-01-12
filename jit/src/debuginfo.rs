@@ -5,7 +5,7 @@
 
 use std::alloc::Layout;
 use std::fmt;
-use std::ops::{Deref, Range};
+use std::ops::Range;
 use std::path::Path;
 use std::ptr::{self, NonNull};
 use std::slice;
@@ -322,9 +322,9 @@ impl Context {
         inline_at: Option<DILocation>,
     ) -> DILocation
     where
-        S: Deref<Target = DILocalScope>,
+        S: AsDILocalScope,
     {
-        unsafe { LLVMDIBuilderCreateDebugLocation(self.as_raw(), line, column, scope.as_raw(), inline_at.as_raw()) }
+        unsafe { LLVMDIBuilderCreateDebugLocation(self.as_raw(), line, column, scope.into_raw(), inline_at.into_raw()) }
             .into()
     }
 }
@@ -366,7 +366,7 @@ impl Function {
 impl IRBuilder {
     /// Set location information used by debugging information.
     pub fn set_current_debug_location(&self, loc: DILocation, ctxt: &Context) {
-        unsafe { LLVMSetCurrentDebugLocation(self.as_raw(), loc.as_value(ctxt).as_raw()) }
+        unsafe { LLVMSetCurrentDebugLocation(self.as_raw(), loc.as_value(ctxt).into_raw()) }
     }
 
     /// Get location information used by debugging information.
@@ -377,9 +377,9 @@ impl IRBuilder {
     /// If this builder has a current debug location, set it on the specified instruction.
     pub fn set_inst_debug_location<T>(&self, inst: T)
     where
-        T: Deref<Target = Instruction>,
+        T: AsInstruction,
     {
-        unsafe { LLVMSetInstDebugLocation(self.as_raw(), inst.as_raw()) }
+        unsafe { LLVMSetInstDebugLocation(self.as_raw(), inst.into_raw()) }
     }
 }
 
@@ -448,7 +448,7 @@ impl DIBuilder {
     /// Creates a new descriptor for a module with the specified parent scope.
     pub fn create_module<S, N>(&self, scope: Option<S>, name: N) -> DIModule
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
         N: AsRef<str>,
     {
         self.create_module_builder(scope, name).build()
@@ -462,7 +462,7 @@ impl DIBuilder {
     /// Creates a new descriptor for a namespace with the specified parent scope.
     pub fn create_namespace<S, N>(&self, parent: S, name: N, export_symbols: bool) -> DINamespace
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
         N: AsRef<str>,
     {
         let name = name.as_ref();
@@ -470,7 +470,7 @@ impl DIBuilder {
         unsafe {
             LLVMDIBuilderCreateNameSpace(
                 self.as_raw(),
-                parent.as_raw(),
+                parent.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
                 export_symbols.as_bool(),
@@ -490,7 +490,7 @@ impl DIBuilder {
         scope_line: u32,
     ) -> DISubprogram
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
         N: AsRef<str>,
     {
         self.create_function_builder(scope, name, file, line_no, func_ty, scope_line)
@@ -513,23 +513,19 @@ impl DIBuilder {
     /// Create a descriptor for a lexical block with the specified parent context.
     pub fn create_lexical_block<S>(&self, scope: S, file: DIFile, line: u32, column: u32) -> DILexicalBlock
     where
-        S: Into<DIScope>,
+        S: AsDIScope,
     {
-        unsafe {
-            LLVMDIBuilderCreateLexicalBlock(self.as_raw(), scope.into().into_raw(), file.into_raw(), line, column)
-        }
-        .into()
+        unsafe { LLVMDIBuilderCreateLexicalBlock(self.as_raw(), scope.into_raw(), file.into_raw(), line, column) }
+            .into()
     }
 
     /// Create a descriptor for a lexical block with a new file attached.
     pub fn create_lexical_block_file<S>(&self, scope: S, file: DIFile, discriminator: u32) -> DILexicalBlockFile
     where
-        S: Into<DIScope>,
+        S: AsDIScope,
     {
-        unsafe {
-            LLVMDIBuilderCreateLexicalBlockFile(self.as_raw(), scope.into().into_raw(), file.into_raw(), discriminator)
-        }
-        .into()
+        unsafe { LLVMDIBuilderCreateLexicalBlockFile(self.as_raw(), scope.into_raw(), file.into_raw(), discriminator) }
+            .into()
     }
 
     /// Create a descriptor for an imported namespace. Suitable for e.g. C++ using declarations.
@@ -541,12 +537,12 @@ impl DIBuilder {
         line: u32,
     ) -> DIImportedEntity
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
     {
         unsafe {
             LLVMDIBuilderCreateImportedModuleFromNamespace(
                 self.as_raw(),
-                scope.as_raw(),
+                scope.into_raw(),
                 ns.into_raw(),
                 file.into_raw(),
                 line,
@@ -564,12 +560,12 @@ impl DIBuilder {
         line: u32,
     ) -> DIImportedEntity
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
     {
         unsafe {
             LLVMDIBuilderCreateImportedModuleFromAlias(
                 self.as_raw(),
-                scope.as_raw(),
+                scope.into_raw(),
                 imported.into_raw(),
                 file.into_raw(),
                 line,
@@ -587,12 +583,12 @@ impl DIBuilder {
         line: u32,
     ) -> DIImportedEntity
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
     {
         unsafe {
             LLVMDIBuilderCreateImportedModuleFromModule(
                 self.as_raw(),
-                scope.as_raw(),
+                scope.into_raw(),
                 m.into_raw(),
                 file.into_raw(),
                 line,
@@ -613,8 +609,8 @@ impl DIBuilder {
         name: N,
     ) -> DIImportedEntity
     where
-        S: Deref<Target = DIScope>,
-        D: Deref<Target = DINode>,
+        S: AsDIScope,
+        D: AsDINode,
         N: AsRef<str>,
     {
         let name = name.as_ref();
@@ -622,9 +618,9 @@ impl DIBuilder {
         unsafe {
             LLVMDIBuilderCreateImportedDeclaration(
                 self.as_raw(),
-                scope.as_raw(),
-                decl.as_raw(),
-                file.as_raw(),
+                scope.into_raw(),
+                decl.into_raw(),
+                file.into_raw(),
                 line,
                 name.as_ptr() as *const _,
                 name.len(),
@@ -638,7 +634,7 @@ impl DIBuilder {
     where
         I: IntoIterator<Item = DIType>,
     {
-        let elements = elements.into_iter().map(|param| param.as_raw()).collect::<Vec<_>>();
+        let elements = elements.into_iter().map(|param| param.into_raw()).collect::<Vec<_>>();
 
         unsafe { LLVMDIBuilderGetOrCreateTypeArray(self.as_raw(), elements.as_ptr() as *mut _, elements.len()) }.into()
     }
@@ -648,7 +644,7 @@ impl DIBuilder {
     where
         I: IntoIterator<Item = DIType>,
     {
-        let params = params.into_iter().map(|param| param.as_raw()).collect::<Vec<_>>();
+        let params = params.into_iter().map(|param| param.into_raw()).collect::<Vec<_>>();
 
         unsafe {
             LLVMDIBuilderCreateSubroutineType(
@@ -674,18 +670,18 @@ impl DIBuilder {
         ty: T,
     ) -> DICompositeType
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
         N: AsRef<str>,
         I: IntoIterator<Item = Metadata>,
-        T: Deref<Target = DIType>,
+        T: AsDIType,
     {
         let name = name.as_ref();
-        let elements = elements.into_iter().map(|md| md.as_raw()).collect::<Vec<_>>();
+        let elements = elements.into_iter().map(|md| md.into_raw()).collect::<Vec<_>>();
 
         unsafe {
             LLVMDIBuilderCreateEnumerationType(
                 self.as_raw(),
-                scope.as_raw(),
+                scope.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
                 file.into_raw(),
@@ -694,7 +690,7 @@ impl DIBuilder {
                 layout.align() as u32 * 8,
                 elements.as_ptr() as *mut _,
                 elements.len() as u32,
-                ty.as_raw(),
+                ty.into_raw(),
             )
         }
         .into()
@@ -712,17 +708,17 @@ impl DIBuilder {
         flags: LLVMDIFlags,
     ) -> DICompositeType
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
         N: AsRef<str>,
         I: IntoIterator<Item = Metadata>,
     {
         let name = name.as_ref();
-        let elements = elements.into_iter().map(|md| md.as_raw()).collect::<Vec<_>>();
+        let elements = elements.into_iter().map(|md| md.into_raw()).collect::<Vec<_>>();
 
         unsafe {
             LLVMDIBuilderCreateUnionType(
                 self.as_raw(),
-                scope.as_raw(),
+                scope.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
                 file.into_raw(),
@@ -743,7 +739,7 @@ impl DIBuilder {
     /// Create debugging information entry for an array.
     pub fn create_array_type<T, I>(&self, layout: Layout, ty: T, subscripts: I) -> DICompositeType
     where
-        T: Deref<Target = DIType>,
+        T: AsDIType,
         I: IntoIterator<Item = Range<i64>>,
     {
         let subscripts = subscripts
@@ -756,7 +752,7 @@ impl DIBuilder {
                 self.as_raw(),
                 layout.size() as u64 * 8,
                 layout.align() as u32 * 8,
-                ty.as_raw(),
+                ty.into_raw(),
                 subscripts.as_ptr() as *mut _,
                 subscripts.len() as u32,
             )
@@ -767,17 +763,17 @@ impl DIBuilder {
     /// Create debugging information entry for a vector type.
     pub fn create_vector_type<T, I>(&self, layout: Layout, ty: T, subscripts: I) -> DICompositeType
     where
-        T: Deref<Target = DIType>,
+        T: AsDIType,
         I: IntoIterator<Item = Metadata>,
     {
-        let subscripts = subscripts.into_iter().map(|md| md.as_raw()).collect::<Vec<_>>();
+        let subscripts = subscripts.into_iter().map(|md| md.into_raw()).collect::<Vec<_>>();
 
         unsafe {
             LLVMDIBuilderCreateVectorType(
                 self.as_raw(),
                 layout.size() as u64 * 8,
                 layout.align() as u32 * 8,
-                ty.as_raw(),
+                ty.into_raw(),
                 subscripts.as_ptr() as *mut _,
                 subscripts.len() as u32,
             )
@@ -817,7 +813,7 @@ impl DIBuilder {
     /// Create debugging information entry for a pointer.
     pub fn create_pointer_type<T>(&self, pointee_ty: T, size_in_bits: u64) -> DIDerivedType
     where
-        T: Deref<Target = DIType>,
+        T: AsDIType,
     {
         self.create_pointer_type_builder(pointee_ty, size_in_bits).build()
     }
@@ -838,7 +834,7 @@ impl DIBuilder {
         elements: I,
     ) -> DICompositeType
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
         N: AsRef<str>,
         I: IntoIterator<Item = DIType>,
     {
@@ -883,10 +879,10 @@ impl DIBuilder {
         value: V,
     ) -> DIDerivedType
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
         N: AsRef<str>,
-        T: Deref<Target = DIType>,
-        V: Deref<Target = Constant>,
+        T: AsDIType,
+        V: AsConstant,
     {
         self.create_static_member_builder(scope, name, file, line, ty, value)
             .build()
@@ -908,8 +904,8 @@ impl DIBuilder {
     /// Create debugging information entry for a pointer to member.
     pub fn create_member_pointer_type<T, C>(&self, pointee_ty: T, class_ty: C, size_in_bits: u64) -> DIDerivedType
     where
-        T: Deref<Target = DIType>,
-        C: Deref<Target = DIType>,
+        T: AsDIType,
+        C: AsDIType,
     {
         self.create_member_pointer_type_builder(pointee_ty, class_ty, size_in_bits)
             .build()
@@ -928,25 +924,25 @@ impl DIBuilder {
     /// Create a uniqued DIType* clone with FlagObjectPointer and FlagArtificial set.
     pub fn create_object_pointer_type<T>(&self, ty: T) -> DIType
     where
-        T: Deref<Target = DIType>,
+        T: AsDIType,
     {
-        unsafe { LLVMDIBuilderCreateObjectPointerType(self.as_raw(), ty.as_raw()) }.into()
+        unsafe { LLVMDIBuilderCreateObjectPointerType(self.as_raw(), ty.into_raw()) }.into()
     }
 
     /// Create debugging information entry for a qualified type, e.g. 'const int'.
     pub fn create_qualified_type<T>(&self, type_modifier: TypeModifier, ty: T) -> DIDerivedType
     where
-        T: Deref<Target = DIType>,
+        T: AsDIType,
     {
-        unsafe { LLVMDIBuilderCreateQualifiedType(self.as_raw(), type_modifier.into(), ty.as_raw()) }.into()
+        unsafe { LLVMDIBuilderCreateQualifiedType(self.as_raw(), type_modifier.into(), ty.into_raw()) }.into()
     }
 
     /// Create debugging information entry for a c++ style reference or rvalue reference type.
     pub fn create_reference_type<T>(&self, type_modifier: TypeModifier, ty: T) -> DIDerivedType
     where
-        T: Deref<Target = DIType>,
+        T: AsDIType,
     {
-        unsafe { LLVMDIBuilderCreateReferenceType(self.as_raw(), type_modifier.into(), ty.as_raw()) }.into()
+        unsafe { LLVMDIBuilderCreateReferenceType(self.as_raw(), type_modifier.into(), ty.into_raw()) }.into()
     }
 
     /// Create C++11 nullptr type.
@@ -957,16 +953,16 @@ impl DIBuilder {
     /// Create debugging information entry for a typedef.
     pub fn create_typedef<T, N, S>(&self, ty: T, name: N, file: DIFile, line: u32, scope: S) -> DIDerivedType
     where
-        T: Deref<Target = DIType>,
+        T: AsDIType,
         N: AsRef<str>,
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
     {
         let name = name.as_ref();
 
         unsafe {
             LLVMDIBuilderCreateTypedef(
                 self.as_raw(),
-                ty.as_raw(),
+                ty.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
                 file.into_raw(),
@@ -987,14 +983,14 @@ impl DIBuilder {
         flags: LLVMDIFlags,
     ) -> DIDerivedType
     where
-        T: Deref<Target = DIType>,
-        B: Deref<Target = DIType>,
+        T: AsDIType,
+        B: AsDIType,
     {
         unsafe {
             LLVMDIBuilderCreateInheritance(
                 self.as_raw(),
-                ty.as_raw(),
-                base_ty.as_raw(),
+                ty.into_raw(),
+                base_ty.into_raw(),
                 base_offset,
                 vtable_ptr_offset,
                 flags,
@@ -1007,7 +1003,7 @@ impl DIBuilder {
     pub fn create_forward_decl<N, S>(&self, tag: DwTag, name: N, scope: S, file: DIFile, line: u32) -> DICompositeType
     where
         N: AsRef<str>,
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
     {
         self.create_forward_decl_builder(tag, name, scope, file, line).build()
     }
@@ -1035,7 +1031,7 @@ impl DIBuilder {
     ) -> DIReplaceableCompositeTypeBuilder<N, S>
     where
         N: AsRef<str>,
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
     {
         DIReplaceableCompositeTypeBuilder::new(self, tag, name, scope, file, line)
     }
@@ -1054,25 +1050,25 @@ impl DIBuilder {
         ty: T,
     ) -> DIDerivedType
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
         N: AsRef<str>,
-        T: Deref<Target = DIType>,
+        T: AsDIType,
     {
         let name = name.as_ref();
 
         unsafe {
             LLVMDIBuilderCreateBitFieldMemberType(
                 self.as_raw(),
-                scope.as_raw(),
+                scope.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
-                file.as_raw(),
+                file.into_raw(),
                 line,
                 size_in_bits,
                 offset_in_bits,
                 storage_offset_in_bits,
                 flags,
-                ty.as_raw(),
+                ty.into_raw(),
             )
         }
         .into()
@@ -1090,7 +1086,7 @@ impl DIBuilder {
         elements: I,
     ) -> DICompositeType
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
         N: AsRef<str>,
         I: IntoIterator<Item = DIType>,
     {
@@ -1115,9 +1111,9 @@ impl DIBuilder {
     /// Create a uniqued DIType* clone with FlagArtificial set.
     pub fn create_artificial_type<T>(&self, ty: T) -> DIType
     where
-        T: Deref<Target = DIType>,
+        T: AsDIType,
     {
-        unsafe { LLVMDIBuilderCreateArtificialType(self.as_raw(), ty.as_raw()) }.into()
+        unsafe { LLVMDIBuilderCreateArtificialType(self.as_raw(), ty.into_raw()) }.into()
     }
 
     /// Create a descriptor for a value range.
@@ -1130,7 +1126,7 @@ impl DIBuilder {
     where
         I: IntoIterator<Item = Metadata>,
     {
-        let elements = elements.into_iter().map(|md| md.as_raw()).collect::<Vec<_>>();
+        let elements = elements.into_iter().map(|md| md.into_raw()).collect::<Vec<_>>();
 
         unsafe { LLVMDIBuilderGetOrCreateArray(self.as_raw(), elements.as_ptr() as *mut _, elements.len()) }.into()
     }
@@ -1158,9 +1154,9 @@ impl DIBuilder {
         local_to_unit: bool,
     ) -> DIGlobalVariableExpression
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
         N: AsRef<str>,
-        T: Deref<Target = DIType>,
+        T: AsDIType,
     {
         self.create_global_variable_expression_builder(scope, name, file, line, ty, local_to_unit)
             .build()
@@ -1190,9 +1186,9 @@ impl DIBuilder {
         local_to_unit: bool,
     ) -> DIGlobalVariableExpression
     where
-        S: Deref<Target = DIScope>,
+        S: AsDIScope,
         N: AsRef<str>,
-        T: Deref<Target = DIType>,
+        T: AsDIType,
     {
         self.create_temp_global_variable_forward_decl_builder(scope, name, file, line, ty, local_to_unit)
             .build()
@@ -1214,24 +1210,24 @@ impl DIBuilder {
     /// Insert a new llvm.dbg.declare intrinsic call before the given instruction.
     pub fn insert_declare_before<V, I>(
         &self,
-        storage: &V,
+        storage: V,
         var: DILocalVariable,
         expr: DIExpression,
         loc: DILocation,
         inst: I,
     ) -> Instruction
     where
-        V: AsRaw<RawType = LLVMValueRef>,
-        I: Deref<Target = Instruction>,
+        V: AsValueRef,
+        I: AsInstruction,
     {
         unsafe {
             LLVMDIBuilderInsertDeclareBefore(
                 self.as_raw(),
-                storage.as_raw(),
+                storage.into_raw(),
                 var.as_raw(),
-                expr.as_raw(),
-                loc.as_raw(),
-                inst.as_raw(),
+                expr.into_raw(),
+                loc.into_raw(),
+                inst.into_raw(),
             )
         }
         .into()
@@ -1241,23 +1237,23 @@ impl DIBuilder {
     /// If the basic block has a terminator instruction, the intrinsic is inserted before that terminator instruction.
     pub fn insert_declare_at_end<V>(
         &self,
-        storage: &V,
+        storage: V,
         var: DILocalVariable,
         expr: DIExpression,
         loc: DILocation,
         bb: BasicBlock,
     ) -> Instruction
     where
-        V: AsRaw<RawType = LLVMValueRef>,
+        V: AsValueRef,
     {
         unsafe {
             LLVMDIBuilderInsertDeclareAtEnd(
                 self.as_raw(),
-                storage.as_raw(),
+                storage.into_raw(),
                 var.as_raw(),
-                expr.as_raw(),
-                loc.as_raw(),
-                bb.as_raw(),
+                expr.into_raw(),
+                loc.into_raw(),
+                bb.into_raw(),
             )
         }
         .into()
@@ -1273,17 +1269,17 @@ impl DIBuilder {
         inst: I,
     ) -> Instruction
     where
-        V: Deref<Target = ValueRef>,
-        I: Deref<Target = Instruction>,
+        V: AsValueRef,
+        I: AsInstruction,
     {
         unsafe {
             LLVMDIBuilderInsertDbgValueBefore(
                 self.as_raw(),
-                value.as_raw(),
+                value.into_raw(),
                 var.as_raw(),
-                expr.as_raw(),
-                loc.as_raw(),
-                inst.as_raw(),
+                expr.into_raw(),
+                loc.into_raw(),
+                inst.into_raw(),
             )
         }
         .into()
@@ -1300,16 +1296,16 @@ impl DIBuilder {
         bb: BasicBlock,
     ) -> Instruction
     where
-        V: Deref<Target = ValueRef>,
+        V: AsValueRef,
     {
         unsafe {
             LLVMDIBuilderInsertDbgValueAtEnd(
                 self.as_raw(),
-                value.as_raw(),
+                value.into_raw(),
                 var.as_raw(),
-                expr.as_raw(),
-                loc.as_raw(),
-                bb.as_raw(),
+                expr.into_raw(),
+                loc.into_raw(),
+                bb.into_raw(),
             )
         }
         .into()
@@ -1318,9 +1314,9 @@ impl DIBuilder {
     /// Create a new descriptor for a local auto variable.
     pub fn create_auto_variable<S, N, T>(&self, scope: S, name: N, file: DIFile, line: u32, ty: T) -> DILocalVariable
     where
-        S: Deref<Target = DILocalScope>,
+        S: AsDILocalScope,
         N: AsRef<str>,
-        T: Deref<Target = DIType>,
+        T: AsDIType,
     {
         self.create_auto_variable_builder(scope, name, file, line, ty).build()
     }
@@ -1333,12 +1329,7 @@ impl DIBuilder {
         file: DIFile,
         line: u32,
         ty: T,
-    ) -> DIAutoVariableBuilder<S, N, T>
-    where
-        S: Deref<Target = DILocalScope>,
-        N: AsRef<str>,
-        T: Deref<Target = DIType>,
-    {
+    ) -> DIAutoVariableBuilder<S, N, T> {
         DIAutoVariableBuilder::new(self, scope, name, file, line, ty)
     }
 
@@ -1353,9 +1344,9 @@ impl DIBuilder {
         ty: T,
     ) -> DILocalVariable
     where
-        S: Deref<Target = DILocalScope>,
+        S: AsDILocalScope,
         N: AsRef<str>,
-        T: Deref<Target = DIType>,
+        T: AsDIType,
     {
         self.create_parameter_variable_builder(scope, name, arg_no, file, line, ty)
             .build()
@@ -1370,12 +1361,7 @@ impl DIBuilder {
         file: DIFile,
         line: u32,
         ty: T,
-    ) -> DIParameterVariableBuilder<S, N, T>
-    where
-        S: Deref<Target = DILocalScope>,
-        N: AsRef<str>,
-        T: Deref<Target = DIType>,
-    {
+    ) -> DIParameterVariableBuilder<S, N, T> {
         DIParameterVariableBuilder::new(self, scope, name, arg_no, file, line, ty)
     }
 }
@@ -1534,6 +1520,18 @@ def_type!(
     #[doc = "Type array for a subprogram."]
     DISubroutineType
 );
+
+pub trait AsDINode: AsRaw<RawType = LLVMMetadataRef> + Into<DINode> {}
+impl<T> AsDINode for T where T: AsRaw<RawType = LLVMMetadataRef> + Into<DINode> {}
+
+pub trait AsDIScope: AsRaw<RawType = LLVMMetadataRef> + Into<DIScope> {}
+impl<T> AsDIScope for T where T: AsRaw<RawType = LLVMMetadataRef> + Into<DIScope> {}
+
+pub trait AsDILocalScope: AsRaw<RawType = LLVMMetadataRef> + Into<DILocalScope> {}
+impl<T> AsDILocalScope for T where T: AsRaw<RawType = LLVMMetadataRef> + Into<DILocalScope> {}
+
+pub trait AsDIType: AsRaw<RawType = LLVMMetadataRef> + Into<DIType> {}
+impl<T> AsDIType for T where T: AsRaw<RawType = LLVMMetadataRef> + Into<DIType> {}
 
 impl DILocation {
     /// Get the line number of this debug location.
@@ -1746,7 +1744,7 @@ impl<'a, S, N> DIModuleBuilder<'a, S, N> {
 
 impl<'a, S, N> DIModuleBuilder<'a, S, N>
 where
-    S: Deref<Target = DIScope>,
+    S: AsDIScope,
     N: AsRef<str>,
 {
     pub fn build(self) -> DIModule {
@@ -1756,7 +1754,7 @@ where
             LLVMDIBuilderCreateModule(
                 self.builder.as_raw(),
                 self.scope
-                    .map(|scope| scope.as_raw())
+                    .map(|scope| scope.into_raw())
                     .unwrap_or(ptr::null_mut() as *mut _),
                 name.as_ptr() as *const _,
                 name.len(),
@@ -1842,7 +1840,7 @@ impl<'a, S, N> DIFunctionBuilder<'a, S, N> {
 
 impl<'a, S, N> DIFunctionBuilder<'a, S, N>
 where
-    S: Deref<Target = DIScope>,
+    S: AsDIScope,
     N: AsRef<str>,
 {
     pub fn build(self) -> DISubprogram {
@@ -1852,7 +1850,7 @@ where
         unsafe {
             LLVMDIBuilderCreateFunction(
                 self.builder.as_raw(),
-                self.scope.as_raw(),
+                self.scope.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
                 linkage_name.as_ptr() as *const _,
@@ -1911,7 +1909,7 @@ impl<'a, T> DIPointerTypeBuilder<'a, T> {
 
 impl<'a, T> DIPointerTypeBuilder<'a, T>
 where
-    T: Deref<Target = DIType>,
+    T: AsDIType,
 {
     /// Create debugging information entry for a pointer.
     pub fn build(self) -> DIDerivedType {
@@ -1979,7 +1977,7 @@ impl<'a, S, N, I> DIStructTypeBuilder<'a, S, N, I> {
 
     pub fn with_derived_from<T>(mut self, derived_from: T) -> Self
     where
-        T: Into<DIType>,
+        T: AsDIType,
     {
         self.derived_from = Some(derived_from.into());
         self
@@ -1987,7 +1985,7 @@ impl<'a, S, N, I> DIStructTypeBuilder<'a, S, N, I> {
 
     pub fn with_vtable<T>(mut self, vtable: T) -> Self
     where
-        T: Into<DIType>,
+        T: AsDIType,
     {
         self.vtable = Some(vtable.into());
         self
@@ -2001,31 +1999,31 @@ impl<'a, S, N, I> DIStructTypeBuilder<'a, S, N, I> {
 
 impl<'a, S, N, I> DIStructTypeBuilder<'a, S, N, I>
 where
-    S: Deref<Target = DIScope>,
+    S: AsDIScope,
     N: AsRef<str>,
     I: IntoIterator<Item = DIType>,
 {
     pub fn build(self) -> DICompositeType {
         let name = self.name.as_ref();
-        let elements = self.elements.into_iter().map(|md| md.as_raw()).collect::<Vec<_>>();
+        let elements = self.elements.into_iter().map(|md| md.into_raw()).collect::<Vec<_>>();
         let id = self.id.unwrap_or_default();
 
         unsafe {
             LLVMDIBuilderCreateStructType(
                 self.builder.as_raw(),
-                self.scope.as_raw(),
+                self.scope.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
-                self.file.as_raw(),
+                self.file.into_raw(),
                 self.line,
                 self.layout.size() as u64 * 8,
                 self.layout.align() as u32 * 8,
                 self.flags,
-                self.derived_from.as_raw(),
+                self.derived_from.into_raw(),
                 elements.as_ptr() as *mut _,
                 elements.len() as u32,
                 0,
-                self.vtable.as_raw(),
+                self.vtable.into_raw(),
                 id.as_ptr() as *const _,
                 id.len(),
             )
@@ -2077,7 +2075,7 @@ impl<'a, S, N> DIMemberTypeBuilder<'a, S, N> {
 
     pub fn with_parent_type<T>(mut self, parent_ty: T) -> Self
     where
-        T: Into<DIType>,
+        T: AsDIType,
     {
         self.parent_ty = Some(parent_ty.into());
         self
@@ -2086,7 +2084,7 @@ impl<'a, S, N> DIMemberTypeBuilder<'a, S, N> {
 
 impl<'a, S, N> DIMemberTypeBuilder<'a, S, N>
 where
-    S: Deref<Target = DIScope>,
+    S: AsDIScope,
     N: AsRef<str>,
 {
     pub fn build(self) -> DIDerivedType {
@@ -2095,16 +2093,16 @@ where
         unsafe {
             LLVMDIBuilderCreateMemberType(
                 self.builder.as_raw(),
-                self.scope.as_raw(),
+                self.scope.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
-                self.file.as_raw(),
+                self.file.into_raw(),
                 self.line,
                 self.layout.size() as u64 * 8,
                 self.layout.align() as u32 * 8,
                 self.offset,
                 self.flags,
-                self.parent_ty.as_raw(),
+                self.parent_ty.into_raw(),
             )
         }
         .into()
@@ -2152,10 +2150,10 @@ impl<'a, S, N, T, V> DIStaticMemberTypeBuilder<'a, S, N, T, V> {
 
 impl<'a, S, N, T, V> DIStaticMemberTypeBuilder<'a, S, N, T, V>
 where
-    S: Deref<Target = DIScope>,
+    S: AsDIScope,
     N: AsRef<str>,
-    T: Deref<Target = DIType>,
-    V: Deref<Target = Constant>,
+    T: AsDIType,
+    V: AsConstant,
 {
     pub fn build(self) -> DIDerivedType {
         let name = self.name.as_ref();
@@ -2163,10 +2161,10 @@ where
         unsafe {
             LLVMDIBuilderCreateStaticMemberType(
                 self.builder.as_raw(),
-                self.scope.as_raw(),
+                self.scope.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
-                self.file.as_raw(),
+                self.file.into_raw(),
                 self.line,
                 self.ty.as_raw(),
                 self.flags,
@@ -2213,8 +2211,8 @@ impl<'a, T, C> DIMemberPointerTypeBuilder<'a, T, C> {
 
 impl<'a, T, C> DIMemberPointerTypeBuilder<'a, T, C>
 where
-    T: Deref<Target = DIType>,
-    C: Deref<Target = DIType>,
+    T: AsDIType,
+    C: AsDIType,
 {
     pub fn build(self) -> DIDerivedType {
         unsafe {
@@ -2285,7 +2283,7 @@ impl<'a, N, S> DIForwardDeclBuilder<'a, N, S> {
 impl<'a, N, S> DIForwardDeclBuilder<'a, N, S>
 where
     N: AsRef<str>,
-    S: Deref<Target = DIScope>,
+    S: AsDIScope,
 {
     pub fn build(self) -> DICompositeType {
         let name = self.name.as_ref();
@@ -2297,7 +2295,7 @@ where
                 self.tag as u32,
                 name.as_ptr() as *const _,
                 name.len(),
-                self.scope.as_raw(),
+                self.scope.into_raw(),
                 self.file.into_raw(),
                 self.line,
                 self.runtime_lang.unwrap_or_default(),
@@ -2372,7 +2370,7 @@ impl<'a, N, S> DIReplaceableCompositeTypeBuilder<'a, N, S> {
 impl<'a, N, S> DIReplaceableCompositeTypeBuilder<'a, N, S>
 where
     N: AsRef<str>,
-    S: Deref<Target = DIScope>,
+    S: AsDIScope,
 {
     pub fn build(self) -> DICompositeType {
         let name = self.name.as_ref();
@@ -2384,7 +2382,7 @@ where
                 self.tag as u32,
                 name.as_ptr() as *const _,
                 name.len(),
-                self.scope.as_raw(),
+                self.scope.into_raw(),
                 self.file.into_raw(),
                 self.line,
                 self.runtime_lang.unwrap_or_default(),
@@ -2451,7 +2449,7 @@ impl<'a, S, N, I> DIClassTypeBuilder<'a, S, N, I> {
 
     pub fn with_derived_from<T>(mut self, derived_from: T) -> Self
     where
-        T: Into<DIType>,
+        T: AsDIType,
     {
         self.derived_from = Some(derived_from.into());
         self
@@ -2459,7 +2457,7 @@ impl<'a, S, N, I> DIClassTypeBuilder<'a, S, N, I> {
 
     pub fn with_vtable<T>(mut self, vtable: T) -> Self
     where
-        T: Into<DIType>,
+        T: AsDIType,
     {
         self.vtable = Some(vtable.into());
         self
@@ -2473,32 +2471,32 @@ impl<'a, S, N, I> DIClassTypeBuilder<'a, S, N, I> {
 
 impl<'a, S, N, I> DIClassTypeBuilder<'a, S, N, I>
 where
-    S: Deref<Target = DIScope>,
+    S: AsDIScope,
     N: AsRef<str>,
     I: IntoIterator<Item = DIType>,
 {
     pub fn build(self) -> DICompositeType {
         let name = self.name.as_ref();
-        let elements = self.elements.into_iter().map(|md| md.as_raw()).collect::<Vec<_>>();
+        let elements = self.elements.into_iter().map(|md| md.into_raw()).collect::<Vec<_>>();
         let id = self.id.unwrap_or_default();
 
         unsafe {
             LLVMDIBuilderCreateClassType(
                 self.builder.as_raw(),
-                self.scope.as_raw(),
+                self.scope.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
-                self.file.as_raw(),
+                self.file.into_raw(),
                 self.line,
                 self.layout.size() as u64,
                 self.layout.align() as u32,
                 self.offset_in_bits,
                 self.flags,
-                self.derived_from.as_raw(),
+                self.derived_from.into_raw(),
                 elements.as_ptr() as *mut _,
                 elements.len() as u32,
-                self.vtable.as_raw(),
-                self.template_params.as_raw(),
+                self.vtable.into_raw(),
+                self.template_params.into_raw(),
                 id.as_ptr() as *const _,
                 id.len(),
             )
@@ -2567,9 +2565,9 @@ impl<'a, S, N, T> DIGlobalVariableExpressionBuilder<'a, S, N, T> {
 
 impl<'a, S, N, T> DIGlobalVariableExpressionBuilder<'a, S, N, T>
 where
-    S: Deref<Target = DIScope>,
+    S: AsDIScope,
     N: AsRef<str>,
-    T: Deref<Target = DIType>,
+    T: AsDIType,
 {
     pub fn build(self) -> DIGlobalVariableExpression {
         let name = self.name.as_ref();
@@ -2578,7 +2576,7 @@ where
         unsafe {
             LLVMDIBuilderCreateGlobalVariableExpression(
                 self.builder.as_raw(),
-                self.scope.as_raw(),
+                self.scope.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
                 linkage_name.as_ptr() as *const _,
@@ -2587,8 +2585,8 @@ where
                 self.line,
                 self.ty.as_raw(),
                 self.local_to_unit.as_bool(),
-                self.expr.as_raw(),
-                self.decl.as_raw(),
+                self.expr.into_raw(),
+                self.decl.into_raw(),
                 self.align.unwrap_or_default(),
             )
         }
@@ -2649,9 +2647,9 @@ impl<'a, S, N, T> DITempGlobalVariableFwdDeclBuilder<'a, S, N, T> {
 
 impl<'a, S, N, T> DITempGlobalVariableFwdDeclBuilder<'a, S, N, T>
 where
-    S: Deref<Target = DIScope>,
+    S: AsDIScope,
     N: AsRef<str>,
-    T: Deref<Target = DIType>,
+    T: AsDIType,
 {
     pub fn build(self) -> DIGlobalVariableExpression {
         let name = self.name.as_ref();
@@ -2660,7 +2658,7 @@ where
         unsafe {
             LLVMDIBuilderCreateTempGlobalVariableFwdDecl(
                 self.builder.as_raw(),
-                self.scope.as_raw(),
+                self.scope.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
                 linkage_name.as_ptr() as *const _,
@@ -2669,7 +2667,7 @@ where
                 self.line,
                 self.ty.as_raw(),
                 self.local_to_unit.as_bool(),
-                self.decl.as_raw(),
+                self.decl.into_raw(),
                 self.align.unwrap_or_default(),
             )
         }
@@ -2723,9 +2721,9 @@ impl<'a, S, N, T> DIAutoVariableBuilder<'a, S, N, T> {
 
 impl<'a, S, N, T> DIAutoVariableBuilder<'a, S, N, T>
 where
-    S: Deref<Target = DILocalScope>,
+    S: AsDILocalScope,
     N: AsRef<str>,
-    T: Deref<Target = DIType>,
+    T: AsDIType,
 {
     pub fn build(self) -> DILocalVariable {
         let name = self.name.as_ref();
@@ -2733,12 +2731,12 @@ where
         unsafe {
             LLVMDIBuilderCreateAutoVariable(
                 self.builder.as_raw(),
-                self.scope.as_raw(),
+                self.scope.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
                 self.file.into_raw(),
                 self.line,
-                self.ty.into_raw(),
+                self.ty.as_raw(),
                 self.always_preserve.as_bool(),
                 self.flags,
                 self.align.unwrap_or_default(),
@@ -2789,9 +2787,9 @@ impl<'a, S, N, T> DIParameterVariableBuilder<'a, S, N, T> {
 
 impl<'a, S, N, T> DIParameterVariableBuilder<'a, S, N, T>
 where
-    S: Deref<Target = DILocalScope>,
+    S: AsDILocalScope,
     N: AsRef<str>,
-    T: Deref<Target = DIType>,
+    T: AsDIType,
 {
     pub fn build(self) -> DILocalVariable {
         let name = self.name.as_ref();
@@ -2799,13 +2797,13 @@ where
         unsafe {
             LLVMDIBuilderCreateParameterVariable(
                 self.builder.as_raw(),
-                self.scope.as_raw(),
+                self.scope.into_raw(),
                 name.as_ptr() as *const _,
                 name.len(),
                 self.arg_no,
                 self.file.into_raw(),
                 self.line,
-                self.ty.into_raw(),
+                self.ty.as_raw(),
                 self.always_preserve.as_bool(),
                 self.flags,
             )

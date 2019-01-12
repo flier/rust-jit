@@ -47,8 +47,10 @@ impl Program {
 }
 
 struct Generator {
-    ctxt: jit::Context,
-    func: jit::Function,
+    ctxt: Context,
+    func: Function,
+    bswap16: Function,
+    bswap32: Function,
     dbg: DbgInfo,
     state: State,
 }
@@ -63,8 +65,6 @@ impl Deref for Generator {
 
 struct State {
     builder: jit::IRBuilder,
-    bswap16: FunctionType,
-    bswap32: FunctionType,
     pkt: ValueRef,
     len: ValueRef,
     a: AllocaInst,
@@ -75,8 +75,7 @@ struct State {
 }
 
 impl State {
-    pub fn new(ctxt: &jit::Context, func: &jit::Function, dbg: &DbgInfo, subprogram: DISubprogram) -> Self {
-        let i16_t = ctxt.int16_t();
+    pub fn new(ctxt: &jit::Context, func: jit::Function, dbg: &DbgInfo, subprogram: DISubprogram) -> Self {
         let i32_t = ctxt.int32_t();
 
         let uint32 = |v: u64| -> ConstantInt { i32_t.uint(v) };
@@ -97,7 +96,7 @@ impl State {
         builder.set_current_debug_location(loc, &ctxt);
 
         dbg.builder.insert_declare_at_end(
-            &pkt,
+            pkt,
             dbg.builder
                 .create_parameter_variable_builder(subprogram, pkt.name().unwrap(), 1, dbg.file, 0, dbg.u8_ptr_t)
                 .with_always_preserve()
@@ -108,7 +107,7 @@ impl State {
         );
 
         dbg.builder.insert_declare_at_end(
-            &len,
+            len,
             dbg.builder
                 .create_parameter_variable_builder(subprogram, len.name().unwrap(), 2, dbg.file, 0, dbg.u32_t)
                 .with_always_preserve()
@@ -129,7 +128,7 @@ impl State {
         });
 
         dbg.builder.insert_declare_at_end(
-            &a,
+            a,
             dbg.builder
                 .create_auto_variable(entry_block, "A", dbg.file, 0, dbg.u32_t),
             expr,
@@ -137,7 +136,7 @@ impl State {
             entry,
         );
         dbg.builder.insert_declare_at_end(
-            &x,
+            x,
             dbg.builder
                 .create_auto_variable(entry_block, "X", dbg.file, 0, dbg.u32_t),
             expr,
@@ -145,14 +144,14 @@ impl State {
             entry,
         );
         dbg.builder.insert_declare_at_end(
-            &mem,
+            mem,
             dbg.builder.create_auto_variable(
                 entry_block,
                 "M",
                 dbg.file,
                 0,
                 dbg.builder
-                    .create_array_type(Layout::new::<u32>(), dbg.u32_t, vec![(0..BPF_MEMWORDS as i64)]),
+                    .create_array_type(Layout::new::<u32>(), dbg.u32_t, vec![(0..i64::from(BPF_MEMWORDS))]),
             ),
             expr,
             loc,
@@ -161,15 +160,10 @@ impl State {
 
         builder.within(entry, || (store!(uint32(0), a), store!(uint32(0), x)));
 
-        let bswap16 = IntrinsicId::bswap.function_type(&ctxt, &[i16_t]).unwrap();
-        let bswap32 = IntrinsicId::bswap.function_type(&ctxt, &[i32_t]).unwrap();
-
         let labels = Rc::new(RefCell::new(HashMap::new()));
 
         State {
             builder,
-            bswap16,
-            bswap32,
             pkt,
             len,
             a,
@@ -227,7 +221,7 @@ impl DbgInfo {
 }
 
 impl Generator {
-    pub fn new<S: AsRef<str>>(m: &jit::Module, name: S) -> Self {
+    pub fn new<S: AsRef<str>>(m: &Module, name: S) -> Self {
         let ctxt = m.context();
         let name = name.as_ref();
 
@@ -245,17 +239,19 @@ impl Generator {
 
         func.set_subprogram(sp);
 
-        let state = State::new(&ctxt, &func, &dbg, sp);
+        let state = State::new(&ctxt, func, &dbg, sp);
 
         Generator {
             ctxt,
             func,
+            bswap16: m.intrinsic_declaration(IntrinsicId::bswap, &[i16_t]),
+            bswap32: m.intrinsic_declaration(IntrinsicId::bswap, &[i32_t]),
             dbg,
             state,
         }
     }
 
-    pub fn gen<I>(self, insts: I) -> Result<jit::Function>
+    pub fn gen<I>(self, insts: I) -> Result<Function>
     where
         I: Iterator<Item = Inst>,
     {
@@ -294,8 +290,8 @@ impl Generator {
         let i8_t = self.ctxt.int8_t();
         let i32_t = self.ctxt.int32_t();
 
-        let uint8 = |k: u8| -> ConstantInt { i8_t.uint(k as u64) };
-        let uint32 = |k: u32| -> ConstantInt { i32_t.uint(k as u64) };
+        let uint8 = |k: u8| -> ConstantInt { i8_t.uint(u64::from(k)) };
+        let uint32 = |k: u32| -> ConstantInt { i32_t.uint(u64::from(k)) };
 
         let load_a = || load!(self.a; "a");
         let load_x = || load!(self.x; "x");
@@ -322,14 +318,26 @@ impl Generator {
                 let value: AstNode = match mode {
                     Mode::Abs(off, size) => {
                         let p = bit_cast!(gep!(self.pkt, uint32(off); "p"), size.ty(&self.ctxt); "p");
+                        let v = load!(p; format!("P[k:{}]", size.bytes()));
 
-                        zext!(load!(p; format!("P[k:{}]", size.bytes())), i32_t; "v").into()
+                        match size {
+                            Size::Byte => zext!(v, i32_t; "v").into(),
+                            Size::Half => zext!(call!(self.bswap16, v), i32_t; "v").into(),
+                            Size::Word => call!(self.bswap32, v).into(),
+                            _ => unreachable!(),
+                        }
                     }
                     Mode::Ind(off, size) => {
                         let p = gep!(self.pkt, add!(load_x(), uint32(off); "idx"); "p");
                         let p = bit_cast!(p, size.ty(&self.ctxt); "p");
+                        let v = load!(p; format!("P[X+k:{}]", size.bytes()));
 
-                        zext!(load!(p; format!("P[X+k:{}]", size.bytes())), i32_t; "v").into()
+                        match size {
+                            Size::Byte => zext!(v, i32_t; "v").into(),
+                            Size::Half => zext!(call!(self.bswap16, v), i32_t; "v").into(),
+                            Size::Word => call!(self.bswap32, v).into(),
+                            _ => unreachable!(),
+                        }
                     }
                     Mode::Len => self.len.into(),
                     Mode::Imm(off) => uint32(off).into(),
@@ -510,10 +518,13 @@ mod tests {
 
         let func: Filter = unsafe { mem::transmute(addr) };
 
-        let pkt = hex::decode("204e71fc92148c85900bcb9e0800\
-45000047a58100004011b5870a06058808080808\
-f685003500339561\
-9bf5012000010000000000010377777706676f6f676c6503636f6d00000100010000291000000000000000").unwrap();
+        let pkt = hex::decode(
+            "204e71fc92148c85900bcb9e0800\
+             45000047a58100004011b5870a06058808080808\
+             f685003500339561\
+             9bf5012000010000000000010377777706676f6f676c6503636f6d00000100010000291000000000000000",
+        )
+        .unwrap();
         let res = func(pkt.as_ptr(), pkt.len() as u32);
 
         assert_eq!(res, 65535);

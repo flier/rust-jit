@@ -1237,19 +1237,17 @@ mod codegen {
             self.builder.set_current_debug_location(loc, self.context)
         }
 
-        pub fn insert_declare_at_end<V: Into<ValueRef>>(
+        pub fn insert_declare_at_end<V: AsValueRef>(
             &self,
             init_val: V,
             var: DILocalVariable,
             span: Span,
         ) -> Instruction {
             self.builder
-                .emit(self.dbg_info.insert_declare_at_end(
-                    init_val.into(),
-                    var,
-                    span,
-                    self.builder.insert_block().unwrap(),
-                ))
+                .emit(
+                    self.dbg_info
+                        .insert_declare_at_end(init_val, var, span, self.builder.insert_block().unwrap()),
+                )
                 .into()
         }
     }
@@ -1859,7 +1857,7 @@ mod dbginfo {
         pub file: DIFile,
         pub compile_unit: DICompileUnit,
         pub double_ty: DIBasicType,
-        pub lexical_blocks: Vec<DIScope>,
+        pub lexical_blocks: Vec<DILocalScope>,
     }
 
     impl<'a> Deref for DebugInfo<'a> {
@@ -1905,12 +1903,14 @@ mod dbginfo {
         }
 
         pub fn create_debug_location(&self, item: Option<Span>) -> DILocation {
-            let (span, scope) = item.map(|span| (span, self.lexical_blocks.last())).unwrap_or_default();
+            let (span, scope) = item
+                .map(|span| (span, self.lexical_blocks.last().cloned()))
+                .unwrap_or_default();
 
             let loc = self.context.create_debug_location(
                 span.start.line as u32,
                 span.start.column as u32,
-                scope.unwrap_or(&self.compile_unit),
+                scope.unwrap(),
                 None,
             );
 
@@ -1921,13 +1921,14 @@ mod dbginfo {
 
         pub fn enter_lexical_block(&mut self, span: Span) {
             self.lexical_blocks.push(
-                self.create_lexical_block(
-                    self.lexical_blocks.last().unwrap(),
-                    self.file,
-                    span.start.line as u32,
-                    span.start.column as u32,
-                )
-                .into(),
+                self.builder
+                    .create_lexical_block(
+                        self.lexical_blocks.last().cloned().unwrap(),
+                        self.file,
+                        span.start.line as u32,
+                        span.start.column as u32,
+                    )
+                    .into(),
             )
         }
 
@@ -1937,7 +1938,7 @@ mod dbginfo {
 
         pub fn create_parameter_variable(&self, name: &str, arg_no: u32, line: usize) -> DILocalVariable {
             self.builder.create_parameter_variable(
-                self.lexical_blocks.last().unwrap(),
+                self.lexical_blocks.last().cloned().unwrap(),
                 name,
                 arg_no,
                 self.file,
@@ -1948,7 +1949,7 @@ mod dbginfo {
 
         pub fn create_auto_variable(&self, name: &str, line: usize) -> DILocalVariable {
             self.builder.create_auto_variable(
-                self.lexical_blocks.last().unwrap(),
+                self.lexical_blocks.last().cloned().unwrap(),
                 name,
                 self.file,
                 line as u32,
@@ -1956,17 +1957,15 @@ mod dbginfo {
             )
         }
 
-        pub fn insert_declare_at_end<V: Into<ValueRef>>(
+        pub fn insert_declare_at_end<V: AsValueRef>(
             &self,
             init_val: V,
             var: DILocalVariable,
             span: Span,
             bb: BasicBlock,
         ) -> Instruction {
-            let init_val = init_val.into();
-
             self.builder.insert_declare_at_end(
-                &init_val,
+                init_val,
                 var,
                 self.builder.create_expression(&[]),
                 self.create_debug_location(Some(span)),

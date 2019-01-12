@@ -8,7 +8,7 @@ use crate::function::Function;
 use crate::insts::{AstNode, IRBuilder, InstructionBuilder};
 use crate::types::TypeRef;
 use crate::utils::{AsLLVMBool, AsRaw, IntoRaw};
-use crate::value::{Instruction, ValueRef};
+use crate::value::{AsValueRef, Instruction, ValueRef};
 
 /// Subclasses of this class are all able to terminate a basic
 /// block. Thus, these are all the flow control type of operations.
@@ -86,8 +86,8 @@ inherit_from!(LandingPadInst, Instruction, ValueRef; LLVMValueRef);
 impl TerminatorInst for LandingPadInst {}
 
 impl LandingPadInst {
-    pub fn add_clause<V: Into<ValueRef>>(&self, clause: V) -> &Self {
-        unsafe { LLVMAddClause(self.as_raw(), clause.into().as_raw()) };
+    pub fn add_clause<V: AsValueRef>(&self, clause: V) -> &Self {
+        unsafe { LLVMAddClause(self.as_raw(), clause.into_raw()) };
         self
     }
 

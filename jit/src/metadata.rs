@@ -12,8 +12,8 @@ use llvm_sys::prelude::*;
 
 use crate::context::{Context, GlobalContext};
 use crate::module::Module;
-use crate::utils::{unchecked_cstr, AsBool, AsRaw, AsResult};
-use crate::value::{Instruction, ValueRef};
+use crate::utils::{unchecked_cstr, AsBool, AsRaw, AsResult, IntoRaw};
+use crate::value::{AsValueRef, Instruction, ValueRef};
 
 pub type MDKindId = libc::c_uint;
 
@@ -255,8 +255,8 @@ impl Instruction {
     }
 
     /// Set metadata associated with an instruction value.
-    pub fn set_metadata<T: Into<ValueRef>>(&self, kind_id: MDKindId, node: T) -> &Self {
-        unsafe { LLVMSetMetadata(self.as_raw(), kind_id, node.into().as_raw()) };
+    pub fn set_metadata<T: AsValueRef>(&self, kind_id: MDKindId, node: T) -> &Self {
+        unsafe { LLVMSetMetadata(self.as_raw(), kind_id, node.into_raw()) };
         self
     }
 }

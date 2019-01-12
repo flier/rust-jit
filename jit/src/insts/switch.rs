@@ -6,7 +6,7 @@ use crate::llvm::prelude::*;
 use crate::block::BasicBlock;
 use crate::insts::{AstNode, IRBuilder, InstructionBuilder, TerminatorInst};
 use crate::utils::{AsRaw, IntoRaw};
-use crate::value::{Instruction, ValueRef};
+use crate::value::{AsValueRef, Instruction, ValueRef};
 
 /// Create a switch instruction with the specified value, default dest,
 /// and with a hint for the number of cases that will be added (for efficient allocation).
@@ -88,8 +88,8 @@ impl SwitchInst {
     }
 
     /// Add a case to the switch instruction
-    pub fn add_case<V: Into<ValueRef>>(&self, on: V, dest: BasicBlock) -> &Self {
-        unsafe { LLVMAddCase(self.as_raw(), on.into().as_raw(), dest.as_raw()) };
+    pub fn add_case<V: AsValueRef>(&self, on: V, dest: BasicBlock) -> &Self {
+        unsafe { LLVMAddCase(self.as_raw(), on.into_raw(), dest.into_raw()) };
         self
     }
 }

@@ -40,9 +40,9 @@ macro_rules! inherit_value_ref {
     };
 }
 
-pub trait AsValueRef: AsRaw<RawType = LLVMValueRef> {}
+pub trait AsValueRef: AsRaw<RawType = LLVMValueRef> + Into<ValueRef> {}
 
-impl<T> AsValueRef for T where T: AsRaw<RawType = LLVMValueRef> {}
+impl<T> AsValueRef for T where T: AsRaw<RawType = LLVMValueRef> + Into<ValueRef> {}
 
 pub type ValueKind = LLVMValueKind;
 pub type Opcode = LLVMOpcode;
@@ -174,6 +174,10 @@ inherit_value_ref!(BlockAddress);
 pub struct Instruction(ValueRef);
 
 inherit_value_ref!(Instruction);
+
+pub trait AsInstruction: AsRaw<RawType = LLVMValueRef> + Into<Instruction> {}
+
+impl<T> AsInstruction for T where T: AsRaw<RawType = LLVMValueRef> + Into<Instruction> {}
 
 impl Instruction {
     /// Obtain the code opcode for an individual instruction.

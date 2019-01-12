@@ -8,7 +8,7 @@ use crate::llvm::prelude::*;
 use crate::llvm::*;
 
 use crate::constant::{AsConstant, Constant, ConstantFP, ConstantFPs, ConstantInt, ConstantInts, ConstantVector};
-use crate::types::TypeRef;
+use crate::types::{AsTypeRef, TypeRef};
 use crate::utils::{AsLLVMBool, AsRaw};
 
 pub trait ConstantExpr {
@@ -82,43 +82,43 @@ pub trait ConstantExpr {
 
     fn inbounds_gep(&self, indices: &[Constant]) -> Constant;
 
-    fn trunc<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn trunc<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn sext<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn sext<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn zext<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn zext<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn fptrunc<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn fptrunc<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn fpext<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn fpext<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn uitofp<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn uitofp<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn sitofp<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn sitofp<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn fptoui<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn fptoui<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn fptosi<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn fptosi<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn ptr_to_int<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn ptr_to_int<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn int_to_ptr<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn int_to_ptr<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn bit_cast<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn addrspace_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn addrspace_cast<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn zext_or_bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn zext_or_bit_cast<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn sext_or_bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn sext_or_bit_cast<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn trunc_or_bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn trunc_or_bit_cast<T: AsTypeRef>(&self, ty: T) -> Constant;
 
-    fn ptr_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn ptr_cast<T: AsTypeRef>(&self, ty: T) -> Constant;
 
     fn int_cast(&self, ty: TypeRef, signed: bool) -> Constant;
 
-    fn fp_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant;
+    fn fp_cast<T: AsTypeRef>(&self, ty: T) -> Constant;
 
     fn select(&self, then: Constant, or_else: Constant) -> Constant;
 
@@ -272,71 +272,71 @@ impl<C: AsConstant> ConstantExpr for C {
         unsafe { LLVMConstInBoundsGEP(self.as_raw(), indices.as_mut_ptr(), indices.len() as u32) }.into()
     }
 
-    fn trunc<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn trunc<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstTrunc(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn sext<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn sext<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstSExt(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn zext<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn zext<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstZExt(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn fptrunc<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn fptrunc<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstFPTrunc(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn fpext<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn fpext<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstFPExt(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn uitofp<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn uitofp<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstUIToFP(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn sitofp<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn sitofp<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstSIToFP(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn fptoui<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn fptoui<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstFPToUI(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn fptosi<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn fptosi<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstFPToSI(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn ptr_to_int<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn ptr_to_int<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstPtrToInt(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn int_to_ptr<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn int_to_ptr<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstIntToPtr(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn bit_cast<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstBitCast(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn addrspace_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn addrspace_cast<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstAddrSpaceCast(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn zext_or_bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn zext_or_bit_cast<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstZExtOrBitCast(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn sext_or_bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn sext_or_bit_cast<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstSExtOrBitCast(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn trunc_or_bit_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn trunc_or_bit_cast<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstTruncOrBitCast(self.as_raw(), ty.as_raw()) }.into()
     }
 
-    fn ptr_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn ptr_cast<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstPointerCast(self.as_raw(), ty.as_raw()) }.into()
     }
 
@@ -344,7 +344,7 @@ impl<C: AsConstant> ConstantExpr for C {
         unsafe { LLVMConstIntCast(self.as_raw(), ty.as_raw(), signed.as_bool()) }.into()
     }
 
-    fn fp_cast<T: AsRaw<RawType = LLVMTypeRef>>(&self, ty: T) -> Constant {
+    fn fp_cast<T: AsTypeRef>(&self, ty: T) -> Constant {
         unsafe { LLVMConstFPCast(self.as_raw(), ty.as_raw()) }.into()
     }
 

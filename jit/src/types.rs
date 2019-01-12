@@ -39,9 +39,9 @@ macro_rules! inherit_type_ref {
 
 pub type TypeKind = LLVMTypeKind;
 
-pub trait AsTypeRef: AsRaw<RawType = LLVMTypeRef> {}
+pub trait AsTypeRef: AsRaw<RawType = LLVMTypeRef> + Into<TypeRef> {}
 
-impl<T> AsTypeRef for T where T: AsRaw<RawType = LLVMTypeRef> {}
+impl<T> AsTypeRef for T where T: AsRaw<RawType = LLVMTypeRef> + Into<TypeRef> {}
 
 impl TypeRef {
     /// Dump a representation of a type to stderr.

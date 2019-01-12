@@ -112,8 +112,8 @@ impl TerminatorInst for CatchSwitchInst {}
 
 impl CatchSwitchInst {
     /// Add a destination to the `catchswitch` instruction
-    pub fn add_handler<B: AsRaw<RawType = LLVMBasicBlockRef>>(&self, handler: B) -> &Self {
-        unsafe { LLVMAddHandler(self.as_raw(), handler.as_raw()) };
+    pub fn add_handler<B: Into<BasicBlock>>(&self, handler: B) -> &Self {
+        unsafe { LLVMAddHandler(self.as_raw(), handler.into().into_raw()) };
         self
     }
 

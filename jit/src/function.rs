@@ -8,8 +8,8 @@ use crate::block::BasicBlock;
 use crate::context::Context;
 use crate::global::GlobalValue;
 use crate::module::Module;
-use crate::types::TypeRef;
-use crate::utils::{AsBool, AsRaw, AsResult};
+use crate::types::{AsTypeRef, TypeRef};
+use crate::utils::{AsBool, AsRaw, AsResult, IntoRaw};
 use crate::value::ValueRef;
 
 #[macro_export]
@@ -18,13 +18,13 @@ macro_rules! func {
         $crate::FunctionType::new($ret, &[], false)
     };
     ( | $( $arg:ident ),* | -> $ret:ident ) => {
-        $crate::FunctionType::new($ret.into(), &[$( $arg.into() ),*], false)
+        $crate::FunctionType::new($ret, &[$( $arg.into() ),*], false)
     };
     ( | ... | -> $ret:ident ) => {
-        $crate::FunctionType::new($ret.into(), &[], true)
+        $crate::FunctionType::new($ret, &[], true)
     };
     ( | $( $arg:ident ),* , ... | -> $ret:ident ) => {
-        $crate::FunctionType::new($ret.into(), &[$( $arg.into() ),*], true)
+        $crate::FunctionType::new($ret, &[$( $arg.into() ),*], true)
     };
 }
 
@@ -37,12 +37,15 @@ inherit_from!(FunctionType, TypeRef; LLVMTypeRef);
 
 impl FunctionType {
     /// Obtain a function type consisting of a specified signature.
-    pub fn new(return_type: TypeRef, params_type: &[TypeRef], var_arg: bool) -> Self {
-        let mut params = params_type.iter().map(|t| t.as_raw()).collect::<Vec<LLVMTypeRef>>();
+    pub fn new<T>(return_type: T, params_type: &[TypeRef], var_arg: bool) -> Self
+    where
+        T: AsTypeRef,
+    {
+        let mut params = params_type.iter().map(|t| t.as_raw()).collect::<Vec<_>>();
 
         let function: FunctionType = unsafe {
             LLVMFunctionType(
-                return_type.as_raw(),
+                return_type.into_raw(),
                 params.as_mut_ptr(),
                 params.len() as u32,
                 var_arg as i32,
@@ -200,14 +203,14 @@ impl Module {
     /// If it does not exist, add a prototype for the function and return it.
     /// This is nice because it allows most passes to get away with not handling
     /// the symbol table directly for this common task.
-    pub fn get_or_insert_function<S: AsRef<str>, T: Into<TypeRef>>(
+    pub fn get_or_insert_function<S: AsRef<str>, T: AsTypeRef>(
         &self,
         name: S,
         return_type: T,
         params_type: &[TypeRef],
     ) -> Function {
         self.get_function(name.as_ref())
-            .unwrap_or_else(|| self.add_function(name, FunctionType::new(return_type.into(), params_type, false)))
+            .unwrap_or_else(|| self.add_function(name, FunctionType::new(return_type, params_type, false)))
     }
 
     /// Add a function to a module under a specified name.

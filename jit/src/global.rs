@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt;
 
 use crate::llvm::core::*;
 use crate::llvm::prelude::*;
@@ -6,8 +7,8 @@ use crate::llvm::*;
 
 use crate::constant::{AsConstant, Constant};
 use crate::module::{AddressSpace, Module};
-use crate::types::TypeRef;
-use crate::utils::{AsBool, AsLLVMBool, AsRaw, AsResult, UncheckedCStr};
+use crate::types::AsTypeRef;
+use crate::utils::{AsBool, AsLLVMBool, AsRaw, AsResult, IntoRaw, UncheckedCStr};
 use crate::value::{AsValueRef, ValueRef};
 
 pub type Linkage = LLVMLinkage;
@@ -95,8 +96,8 @@ impl GlobalVar {
         unsafe { LLVMGetInitializer(self.as_raw()) }.ok()
     }
 
-    pub fn set_initializer<C: Into<Constant>>(&self, initializer: C) -> &Self {
-        unsafe { LLVMSetInitializer(self.as_raw(), initializer.into().as_raw()) };
+    pub fn set_initializer<C: AsConstant>(&self, initializer: C) -> &Self {
+        unsafe { LLVMSetInitializer(self.as_raw(), initializer.into_raw()) };
         self
     }
 
@@ -160,8 +161,8 @@ impl GlobalAlias {
     }
 
     /// Set the target value of an alias.
-    pub fn set_aliasee<V: AsRaw<RawType = LLVMValueRef>>(&self, aliasee: V) {
-        unsafe { LLVMAliasSetAliasee(self.as_raw(), aliasee.as_raw()) }
+    pub fn set_aliasee<V: AsValueRef>(&self, aliasee: V) {
+        unsafe { LLVMAliasSetAliasee(self.as_raw(), aliasee.into_raw()) }
     }
 }
 
@@ -170,10 +171,9 @@ impl Module {
     pub fn add_global_var<S, T>(&self, name: S, ty: T) -> GlobalVar
     where
         S: AsRef<str>,
-        T: Into<TypeRef>,
+        T: fmt::Debug + AsTypeRef,
     {
         let name = name.as_ref();
-        let ty = ty.into();
 
         let var = unsafe { LLVMAddGlobal(self.as_raw(), ty.as_raw(), cstr!(name)) };
 
@@ -183,12 +183,11 @@ impl Module {
     }
 
     /// Add a global variable to a module under a specified name.
-    pub fn add_global_var_in_address_space<S: AsRef<str>>(
-        &self,
-        name: S,
-        ty: TypeRef,
-        address_space: AddressSpace,
-    ) -> GlobalVar {
+    pub fn add_global_var_in_address_space<S, T>(&self, name: S, ty: T, address_space: AddressSpace) -> GlobalVar
+    where
+        S: AsRef<str>,
+        T: fmt::Debug + AsTypeRef,
+    {
         let name = name.as_ref();
         let var = unsafe { LLVMAddGlobalInAddressSpace(self.as_raw(), ty.as_raw(), cstr!(name), address_space) };
 
@@ -216,13 +215,13 @@ impl Module {
     }
 
     /// Add a `GlobalAlias` value to a Module by its name.
-    pub fn add_global_alias<T: AsRaw<RawType = LLVMTypeRef>, V: AsRaw<RawType = LLVMValueRef>, S: AsRef<str>>(
+    pub fn add_global_alias<T: AsTypeRef, V: AsValueRef, S: AsRef<str>>(
         &self,
         ty: T,
         aliasee: V,
         name: S,
     ) -> GlobalAlias {
-        unsafe { LLVMAddAlias(self.as_raw(), ty.as_raw(), aliasee.as_raw(), cstr!(name)) }.into()
+        unsafe { LLVMAddAlias(self.as_raw(), ty.into_raw(), aliasee.into_raw(), cstr!(name)) }.into()
     }
 
     /// Obtain an iterator to the global aliases in a module.

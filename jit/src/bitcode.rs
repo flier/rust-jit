@@ -80,7 +80,7 @@ impl Module {
     }
 
     ///  Write a module to the file.
-    pub fn write_bitcode_to_fd<F: AsRawFd>(&self, file: F) -> Result<()> {
+    pub fn write_bitcode_to_fd<F: AsRawFd>(&self, file: &F) -> Result<()> {
         let fd = file.as_raw_fd();
 
         (unsafe { LLVMWriteBitcodeToFD(self.as_raw(), fd, FALSE, FALSE) } == 0)
