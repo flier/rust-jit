@@ -185,7 +185,7 @@ macro_rules! br {
         $crate::insts::IndirectBr::on($addr) $( .jump_to($dest.into()) )*
     );
     ($cond:expr => $then:expr) => (
-         $crate::insts::CondBr::new($cond, Some($then.into()), None)
+        $crate::insts::CondBr::new($cond, Some($then.into()), None)
     );
     ($cond:expr => $then:expr, _ => $or_else:expr) => (
         $crate::insts::CondBr::new($cond, Some($then.into()), Some($or_else.into()))

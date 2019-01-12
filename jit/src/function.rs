@@ -53,7 +53,7 @@ impl FunctionType {
         }
         .into();
 
-        info!("create {:?} with signature: {}", function, *function,);
+        trace!("create {:?} with signature: {}", function, *function,);
 
         function
     }

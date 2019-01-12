@@ -16,7 +16,7 @@ impl Symbols {
     /// Use this instead of getPermanentLibrary() when you won't need to get
     /// symbols from the library itself.
     pub fn load_library<P: AsRef<Path>>(filename: P) -> Result<()> {
-        debug!("load library: {:?}", filename.as_ref());
+        trace!("load library: {:?}", filename.as_ref());
 
         unsafe { LLVMLoadLibraryPermanently(cpath!(filename)) }.ok_or_else(|| failure::err_msg("fail to load library"))
     }
@@ -25,7 +25,7 @@ impl Symbols {
     pub fn load_current_exe() -> Result<()> {
         let filename = env::current_exe()?;
 
-        debug!("load executable: {:?}", filename);
+        trace!("load executable: {:?}", filename);
 
         unsafe { LLVMLoadLibraryPermanently(ptr::null()) }.ok_or_else(|| failure::err_msg("fail to load executable"))
     }

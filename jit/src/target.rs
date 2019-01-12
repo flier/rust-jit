@@ -42,7 +42,7 @@ impl Target {
         unsafe { LLVMGetTargetFromName(cstr!(name)).as_mut() }.map(|target| {
             let target = Target(target);
 
-            debug!("create target for name `{}`: {:?}", name, target);
+            trace!("create target for name `{}`: {:?}", name, target);
 
             target
         })
@@ -59,7 +59,7 @@ impl Target {
             .map(|_| {
                 let target = target.into();
 
-                debug!("create target for triple `{}`: {:?}", triple, target);
+                trace!("create target for triple `{}`: {:?}", triple, target);
 
                 target
             })
