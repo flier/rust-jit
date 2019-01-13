@@ -6,7 +6,7 @@ use std::vec;
 /// A filter program is an array of instructions,
 /// with all branches forwardly directed, terminated by a return instruction.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct Program(pub(crate) Vec<Inst>);
+pub struct Program(pub Vec<Inst>);
 
 impl Deref for Program {
     type Target = [Inst];

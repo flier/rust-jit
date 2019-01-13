@@ -58,7 +58,7 @@ where
 #[macro_export]
 macro_rules! extract_value {
     ($aggregate: expr, $index: expr; $name: expr) => {
-        $crate::insts::extract_value($aggregate, $index as u32, $name)
+        $crate::insts::extract_value($aggregate, $index, $name)
     };
     ($aggregate: expr, $index: expr) => {
         extract_value!($aggregate, $index; "extract_value")
@@ -122,7 +122,7 @@ where
 #[macro_export]
 macro_rules! insert_value {
     ($aggregate: expr, $element: expr, $index: expr; $name: expr) => {
-        $crate::insts::insert_value($aggregate, $element, $index as u32, $name)
+        $crate::insts::insert_value($aggregate, $element, $index, $name)
     };
     ($aggregate: expr, $element: expr, $index: expr) => {
         insert_value!($aggregate, $element, $index; "insert_value")

@@ -41,8 +41,8 @@ impl Size {
 }
 
 impl Program {
-    pub fn gen<S: AsRef<str>>(self, m: &Module, name: S) -> Result<Function> {
-        Generator::new(m, name).gen(self.into_iter())
+    pub fn gen<S: AsRef<str>>(self, m: &Module, name: S, bounds_checking: bool) -> Result<Function> {
+        Generator::new(m, name, bounds_checking).gen(self.0)
     }
 }
 
@@ -71,11 +71,12 @@ struct State {
     x: AllocaInst,
     mem: AllocaInst,
     entry: BasicBlock,
+    out_out_range: Option<BasicBlock>,
     labels: Rc<RefCell<HashMap<usize, BasicBlock>>>,
 }
 
 impl State {
-    pub fn new(ctxt: &jit::Context, func: jit::Function) -> Self {
+    pub fn new(ctxt: &jit::Context, func: jit::Function, bounds_checking: bool) -> Self {
         let i32_t = ctxt.int32_t();
 
         let uint32 = |v: u64| -> ConstantInt { i32_t.uint(v) };
@@ -100,6 +101,18 @@ impl State {
 
         builder.within(entry, || (store!(uint32(0), a), store!(uint32(0), x)));
 
+        let out_out_range = if bounds_checking {
+            let bb = func.append_basic_block_in_context("out_of_range", &ctxt);
+
+            builder.within(bb, || ret!(uint32(0)));
+
+            builder.position_at_end(entry);
+
+            Some(bb)
+        } else {
+            None
+        };
+
         let labels = Rc::new(RefCell::new(HashMap::new()));
 
         State {
@@ -110,6 +123,7 @@ impl State {
             x,
             mem,
             entry,
+            out_out_range,
             labels,
         }
     }
@@ -227,7 +241,7 @@ impl DbgInfo {
 }
 
 impl Generator {
-    pub fn new<S: AsRef<str>>(m: &Module, name: S) -> Self {
+    pub fn new<S: AsRef<str>>(m: &Module, name: S, bounds_checking: bool) -> Self {
         let ctxt = m.context();
         let name = name.as_ref();
 
@@ -240,7 +254,7 @@ impl Generator {
 
         info!("generate BPF function `{}` with signature: {}", name, *func);
 
-        let state = State::new(&ctxt, func);
+        let state = State::new(&ctxt, func, bounds_checking);
         let mut dbg = DbgInfo::new(m);
         let subprogram = dbg.create_subprogram(&ctxt, &state, name);
         func.set_subprogram(subprogram);
@@ -255,13 +269,10 @@ impl Generator {
         }
     }
 
-    pub fn gen<I>(self, insts: I) -> Result<Function>
-    where
-        I: Iterator<Item = Inst>,
-    {
+    pub fn gen(self, insts: Vec<Inst>) -> Result<Function> {
         let mut current_block = self.dbg.create_lexical_block(1, 0);
 
-        for (idx, inst) in insts.enumerate() {
+        for (idx, inst) in insts.into_iter().enumerate() {
             let line_no = idx as u32 + 1;
 
             if let Some(label) = self.labels.borrow().get(&idx) {
@@ -274,7 +285,7 @@ impl Generator {
 
             self.state.builder.set_current_debug_location(loc, &self.ctxt);
 
-            self.gen_inst(idx, inst).emit_to(&self.builder);
+            self.gen_inst(idx, inst);
         }
 
         self.dbg.build();
@@ -284,7 +295,7 @@ impl Generator {
         Ok(self.func)
     }
 
-    pub fn gen_inst(&self, idx: usize, inst: Inst) -> AstNode {
+    pub fn gen_inst(&self, idx: usize, inst: Inst) {
         let i8_t = self.ctxt.int8_t();
         let i32_t = self.ctxt.int32_t();
 
@@ -311,10 +322,27 @@ impl Generator {
                 .or_insert_with(|| self.func.append_basic_block_in_context(format!("L{}", off), &self.ctxt))
         };
 
+        let check_pkt_bounds = |end: AstNode| {
+            if let Some(out_out_range) = self.out_out_range {
+                let cont = self
+                    .func
+                    .append_basic_block_in_context(format!("L{}.cont", idx + 1), &self.ctxt);
+
+                self.builder.emit(br!(
+                    uge!(end, self.len) => out_out_range,
+                    _ => cont
+                ));
+
+                self.builder.position_at_end(cont);
+            }
+        };
+
         match inst {
             Inst::Load(mode) => {
                 let value: AstNode = match mode {
                     Mode::Abs(off, size) => {
+                        check_pkt_bounds(uint32(off + size.bytes() as u32).into());
+
                         let p = bit_cast!(gep!(self.pkt, uint32(off); "p"), size.ty(&self.ctxt); "p");
                         let v = load!(p; format!("P[k:{}]", size.bytes()));
 
@@ -326,7 +354,10 @@ impl Generator {
                         }
                     }
                     Mode::Ind(off, size) => {
-                        let p = gep!(self.pkt, add!(load_x(), uint32(off); "idx"); "p");
+                        check_pkt_bounds(add!(load_x(), uint32(off + size.bytes() as u32)).into());
+
+                        let idx = self.builder.emit(add!(load_x(), uint32(off); "idx"));
+                        let p = gep!(self.pkt, idx; "p");
                         let p = bit_cast!(p, size.ty(&self.ctxt); "p");
                         let v = load!(p; format!("P[X+k:{}]", size.bytes()));
 
@@ -343,71 +374,77 @@ impl Generator {
                     _ => unreachable!(),
                 };
 
-                store!(value, self.a).into()
+                self.builder.emit(store!(value, self.a));
             }
             Inst::LoadX(mode) => {
                 let value: AstNode = match mode {
                     Mode::Len => self.len.into(),
                     Mode::Imm(off) => uint32(off).into(),
                     Mode::Mem(off) => extract_value!(self.mem, off; "M[k]").into(),
-                    Mode::Msh(off) => mul!(
-                        uint32(4),
-                        zext!(
-                            and!(
-                                load!(gep!(self.pkt, uint32(off); "p"); "P[k:1]"),
-                                uint8(0x0f);
-                                "P[k:1]&0xf"
-                            ),
-                            i32_t
-                        );
-                        "4*(P[k:1]&0xf)"
-                    )
-                    .into(),
+                    Mode::Msh(off) => {
+                        check_pkt_bounds(uint32(off + 1).into());
+
+                        mul!(
+                            uint32(4),
+                            zext!(
+                                and!(
+                                    load!(gep!(self.pkt, uint32(off); "p"); "P[k:1]"),
+                                    uint8(0x0f);
+                                    "P[k:1]&0xf"
+                                ),
+                                i32_t
+                            );
+                            "4*(P[k:1]&0xf)"
+                        )
+                        .into()
+                    }
                     _ => unreachable!(),
                 };
 
-                store!(value, self.x).into()
+                self.builder.emit(store!(value, self.x));
             }
 
-            Inst::Store(off) => store!(load_a(), gep!(self.mem, uint32(off); "M[k]")).into(),
-            Inst::StoreX(off) => store!(load_x(), gep!(self.mem, uint32(off); "M[k]")).into(),
+            Inst::Store(off) => {
+                self.builder.emit(insert_value!(self.mem, load_a(), off; "M[k] = A"));
+            }
+            Inst::StoreX(off) => {
+                self.builder.emit(insert_value!(self.mem, load_x(), off; "M[k] = X"));
+            }
 
-            Inst::Jmp(Cond::Abs(off)) => br!(get_or_insert_label_at_offset(off as usize)).into(),
+            Inst::Jmp(Cond::Abs(off)) => {
+                self.builder.emit(br!(get_or_insert_label_at_offset(off as usize)));
+            }
             Inst::Jmp(Cond::Gt(src, jt, jf)) => {
                 let cond = ugt!(load_a(), get_src_value(src));
 
-                br!(
+                self.builder.emit(br!(
                     cond => get_or_insert_label_at_offset(jt as usize),
                     _ =>get_or_insert_label_at_offset(jf as usize)
-                )
-                .into()
+                ));
             }
             Inst::Jmp(Cond::Ge(src, jt, jf)) => {
                 let cond = uge!(load_a(), get_src_value(src));
 
-                br!(
+                self.builder.emit(br!(
                     cond => get_or_insert_label_at_offset(jt as usize),
                     _ => get_or_insert_label_at_offset(jf as usize)
-                )
-                .into()
+                ));
             }
             Inst::Jmp(Cond::Eq(src, jt, jf)) => {
                 let cond = eq!(load_a(), get_src_value(src));
 
-                br!(
+                self.builder.emit(br!(
                     cond => get_or_insert_label_at_offset(jt as usize),
                     _ => get_or_insert_label_at_offset(jf as usize)
-                )
-                .into()
+                ));
             }
             Inst::Jmp(Cond::Set(src, jt, jf)) => {
                 let cond = eq!(and!(load_a(), get_src_value(src)), get_src_value(src));
 
-                br!(
+                self.builder.emit(br!(
                     cond => get_or_insert_label_at_offset(jt as usize),
                     _ => get_or_insert_label_at_offset(jf as usize)
-                )
-                .into()
+                ));
             }
             Inst::Alu(op) => {
                 let value: AstNode = match op {
@@ -424,7 +461,7 @@ impl Generator {
                     Op::Neg => sub!(uint32(0), load_a()).into(),
                 };
 
-                store!(value, self.a).into()
+                self.builder.emit(store!(value, self.a));
             }
             Inst::Ret(rval) => {
                 let result: AstNode = match rval {
@@ -433,10 +470,14 @@ impl Generator {
                     None => uint32(0).into(),
                 };
 
-                ret!(result).into()
+                self.builder.emit(ret!(result));
             }
-            Inst::Misc(MiscOp::Tax) => store!(load_a(), self.x).into(),
-            Inst::Misc(MiscOp::Txa) => store!(load_x(), self.a).into(),
+            Inst::Misc(MiscOp::Tax) => {
+                self.builder.emit(store!(load_a(), self.x));
+            }
+            Inst::Misc(MiscOp::Txa) => {
+                self.builder.emit(store!(load_x(), self.a));
+            }
         }
     }
 }
@@ -480,7 +521,7 @@ mod tests {
         // (012) ret	#0
 
         let fname = "filter";
-        let func = p.gen(&m, fname);
+        let func = p.gen(&m, fname, true);
 
         debug!("generated module:\n{}", m);
 
