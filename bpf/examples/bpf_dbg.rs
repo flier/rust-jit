@@ -51,7 +51,9 @@ struct State {
 }
 
 const CMD_USAGE: &str = r#"
-load bpf <code>         Load BPF program.
+load bpf <expr>         Load BPF program in expression.
+                        use 'tcpdump -ien0 -ddd port 22' to load as filter
+load code <code>        Load BPF program in bytecode.
                         use `tcpdump -ien0 -ddd port 22 | tr '\n' ','` to load as filter
 load pcap <file>        Load PCAP file as packets
 select <where>          Select the <where> packet to start.
@@ -78,6 +80,7 @@ impl Debugger {
                 Ok(())
             }
             Cmd::Load(Load::Bpf(code)) => self.load_bpf(&code),
+            Cmd::Load(Load::Code(code)) => self.load_code(&code),
             Cmd::Load(Load::Pcap(filename)) => self.load_pcap(&filename),
             Cmd::Select(idx) => self.select_packet(idx),
             Cmd::Breakpoint(Breakpoint::List) => self.list_breakpoints(),
@@ -96,7 +99,20 @@ impl Debugger {
         Ok(&self.state.program)
     }
 
-    fn load_bpf(&mut self, code: &[bpf_insn]) -> Result<()> {
+    fn load_bpf(&mut self, expr:&str) -> Result<()>{
+        let program = bpf::compile(bpf::raw::DLT_EN10MB, expr)?;
+
+        debug!("load BPF expression:\n{}", program);
+
+        self.state = State {
+            program,
+            ..State::default()
+        };
+
+        Ok(())        
+    }
+
+    fn load_code(&mut self, code: &[bpf_insn]) -> Result<()> {
         let program = bpf_program {
             bf_len: code.len() as u32,
             bf_insns: code.as_ptr() as *mut _,
@@ -104,7 +120,7 @@ impl Debugger {
 
         let program = Result::<bpf::Program>::from(&program)?;
 
-        debug!("load BPF:\n{}", program);
+        debug!("load BPF bytecode:\n{}", program);
 
         self.state = State {
             program,
@@ -219,7 +235,8 @@ enum Cmd {
 
 #[derive(Debug, PartialEq)]
 enum Load {
-    Bpf(Vec<bpf_insn>),
+    Bpf(String),
+    Code(Vec<bpf_insn>),
     Pcap(PathBuf),
 }
 
@@ -302,8 +319,11 @@ named!(cmd_breakpoint<&str, &str>, alt_complete!(tag!(CMD_BREAKPOINT) | tag!("br
 named!(cmd_disassemble<&str, &str>, alt_complete!(tag!(CMD_DISASSEMBLE) | tag!("dis") | tag!("d")));
 
 named!(parse_load<&str, Load>, alt_complete!(
-    tuple!(tag!("bpf"), multispace, parse_code) => {
-        |(_, _, code)| Load::Bpf(code)
+    tuple!(tag!("bpf"), multispace, rest_s) => {
+        |(_, _, expr):(_, _, &str)| Load::Bpf(expr.to_owned())
+    } |
+    tuple!(tag!("code"), multispace, parse_code) => {
+        |(_, _, code)| Load::Code(code)
     } |
     tuple!(tag!("pcap"), multispace, map!(map!(map_res!(rest_s, shellexpand::full), Cow::into_owned), PathBuf::from)) => {
         |(_, _, path)| Load::Pcap(path)
