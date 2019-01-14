@@ -47,7 +47,7 @@ struct State {
     pc: u32,
     a: u32,
     x: u32,
-    m: [u32; bpf::BPF_MEMWORDS],
+    m: [u32; bpf::raw::BPF_MEMWORDS as usize],
 }
 
 const CMD_USAGE: &str = r#"
@@ -99,7 +99,7 @@ impl Debugger {
         Ok(&self.state.program)
     }
 
-    fn load_bpf(&mut self, expr:&str) -> Result<()>{
+    fn load_bpf(&mut self, expr: &str) -> Result<()> {
         let program = bpf::compile(bpf::raw::DLT_EN10MB, expr)?;
 
         debug!("load BPF expression:\n{}", program);
@@ -109,7 +109,7 @@ impl Debugger {
             ..State::default()
         };
 
-        Ok(())        
+        Ok(())
     }
 
     fn load_code(&mut self, code: &[bpf_insn]) -> Result<()> {

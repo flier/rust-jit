@@ -2,7 +2,6 @@
 extern crate log;
 #[macro_use]
 extern crate failure;
-#[macro_use]
 extern crate llvm_jit as jit;
 
 pub mod raw {
@@ -12,13 +11,13 @@ pub mod raw {
 }
 mod ast;
 mod codegen;
+#[macro_use]
 mod compile;
 mod display;
 mod errors;
+mod parse;
 
 pub use self::ast::{Cond, Inst, MiscOp, Mode, Op, Program, RVal, Size, Src};
 pub use self::codegen::Filter;
 pub use self::compile::compile;
 pub use self::display::InstFmt;
-
-pub const BPF_MEMWORDS: usize = self::raw::BPF_MEMWORDS as usize;

@@ -9,6 +9,7 @@ use jit::debuginfo::*;
 use jit::insts::*;
 use jit::llvm::debuginfo::{LLVMDIFlags::*, LLVMDWARFSourceLanguage::*};
 use jit::prelude::*;
+use jit::*;
 
 use crate::ast::{
     Cond, Inst, MiscOp, Mode, Op, Program, RVal,

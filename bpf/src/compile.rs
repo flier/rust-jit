@@ -200,6 +200,7 @@ impl From<&bpf_insn> for Result<Inst> {
     }
 }
 
+#[macro_export]
 macro_rules! BPF_STMT {
     ($code:expr) => {
         bpf_insn {
@@ -219,6 +220,7 @@ macro_rules! BPF_STMT {
     };
 }
 
+#[macro_export]
 macro_rules! BPF_JUMP {
     ($code:expr, $k:expr) => {
         bpf_insn {

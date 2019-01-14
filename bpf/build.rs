@@ -4,7 +4,7 @@ extern crate log;
 use std::env;
 use std::path::{Path, PathBuf};
 
-#[cfg(feature = "gen")]
+#[cfg(all(feature = "libpcap", feature = "gen"))]
 fn gen_binding(out_file: &Path) {
     let libpcap = pkg_config::probe_library("libpcap").expect("libpcap installed");
 
@@ -42,7 +42,7 @@ fn gen_binding(out_file: &Path) {
         .expect("Couldn't write bindings!");
 }
 
-#[cfg(not(feature = "gen"))]
+#[cfg(all(feature = "libpcap", not(feature = "gen")))]
 fn gen_binding(out_file: &Path) {
     info!("copy pre-generated binding file to {:?}", out_file);
 
@@ -57,6 +57,9 @@ fn gen_binding(out_file: &Path) {
         println!("rustc-link-search={}", libpath.to_str().unwrap());
     }
 }
+
+#[cfg(not(feature = "libpcap"))]
+fn gen_binding(_out_file: &Path) {}
 
 fn main() {
     pretty_env_logger::init();
