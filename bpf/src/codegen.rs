@@ -19,6 +19,7 @@ use crate::ast::{
 use crate::errors::Result;
 use crate::raw::BPF_MEMWORDS;
 
+/// The filter function signature
 pub type Filter = extern "C" fn(*const u8, u32) -> u32;
 
 impl Size {

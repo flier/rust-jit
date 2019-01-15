@@ -1,10 +1,89 @@
 use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::rc::Rc;
+use std::collections::HashMap;
+use std::str::FromStr;
 
 use nom::*;
 
+use crate::ast::Program;
+use crate::compile::OpCode;
 use crate::raw::*;
+
+/// Parse BPF assembly code to program
+pub fn parse<S: AsRef<str>>(code: S) -> Result<Program, failure::Error> {
+    code.as_ref().parse()
+}
+
+impl FromStr for Program {
+    type Err = failure::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let labels = RefCell::new(Vec::new());
+        let (rest, prog) = prog(s, &labels).map_err(|err| format_err!("fail to parse BPF code, {}", err))?;
+
+        if rest.chars().any(|c| !c.is_whitespace()) {
+            bail!("unexpected code: {}", rest)
+        }
+
+        let labels = labels.into_inner();
+        let mut insns = vec![];
+        let mut offsets = HashMap::new();
+
+        for (label, insn, _) in prog {
+            if let Some(label) = label {
+                if offsets.contains_key(label) {
+                    bail!("duplicate label: {}", label);
+                }
+
+                offsets.insert(label, insns.len());
+            }
+
+            if let Some(insn) = insn {
+                insns.push(insn)
+            }
+        }
+
+        let relocate_label = |pos, id| {
+            if id > 0 {
+                let idx = id as usize - 1;
+
+                if let Some(label) = labels.get(idx) {
+                    if let Some(off) = offsets.get(label) {
+                        Ok((off - pos - 1) as u8)
+                    } else {
+                        bail!("invalid label name: {}", label)
+                    }
+                } else {
+                    bail!("invalid label id: {}", id)
+                }
+            } else {
+                Ok(0)
+            }
+        };
+
+        insns
+            .into_iter()
+            .enumerate()
+            .map(|(pos, insn)| {
+                let opcode = OpCode(insn.code as u8);
+
+                if opcode.class() == BPF_JMP {
+                    match opcode.op() {
+                        BPF_JA => Ok(BPF_JUMP!(insn.code, relocate_label(pos, insn.k as u8)? as u32)),
+                        BPF_JEQ | BPF_JGT | BPF_JGE | BPF_JSET => Ok(BPF_JUMP!(
+                            insn.code,
+                            relocate_label(pos, insn.jt)?,
+                            relocate_label(pos, insn.jf)?
+                        )),
+                        _ => Ok(insn),
+                    }
+                } else {
+                    Ok(insn)
+                }
+            })
+            .collect::<Result<Vec<_>, Self::Err>>()
+            .and_then(|insns| insns.iter().collect::<Result<Program, Self::Err>>())
+    }
+}
 
 macro_rules! next {
     ($i:expr, $submac:ident) => {
@@ -15,11 +94,11 @@ macro_rules! next {
     };
 }
 
-named_args!(prog(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, Vec<(Option<&str>, Option<bpf_insn>, Option<&str>)>>,
-    separated_list_complete!(eol, next!(apply!(line, labels.clone())))
+named_args!(prog<'a>(labels: &RefCell<Vec<&'a str>>)<&'a str, Vec<(Option<&'a str>, Option<bpf_insn>, Option<&'a str>)>>,
+    separated_list_complete!(eol, next!(apply!(line, labels)))
 );
 
-named_args!(line(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, (Option<&str>, Option<bpf_insn>, Option<&str>)>,
+named_args!(line<'a>(labels: &RefCell<Vec<&'a str>>)<&'a str, (Option<&'a str>, Option<bpf_insn>, Option<&'a str>)>,
     tuple!(opt!(complete!(labelled)), opt!(next!(apply!(instr, labels))), opt!(complete!(next!(comment))))
 );
 
@@ -30,7 +109,7 @@ named!(comment<&str, &str>, alt!(
 
 named!(labelled<&str, &str>, terminated!(label, tag!(":")));
 
-named_args!(instr(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>, alt_complete!(
+named_args!(instr<'a>(labels: &RefCell<Vec<&'a str>>)<&'a str, bpf_insn>, alt_complete!(
       load
     | st
     | apply!(jump, labels)
@@ -194,24 +273,34 @@ named!(st<&str, bpf_insn>, do_parse!(
     )
 ));
 
-named_args!(jump(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>, alt!(
-      apply!(jmp, labels.clone())
-    | apply!(jcond, labels.clone())
+named_args!(jump<'a>(labels: &RefCell<Vec<&'a str>>)<&'a str, bpf_insn>, alt!(
+      apply!(jmp, labels)
+    | apply!(jcond, labels)
     | apply!(jcond_neg, labels)
 ));
 
-named_args!(jmp(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>, do_parse!(
+fn get_or_insert_label_id<'a>(labels: &RefCell<Vec<&'a str>>, label: &'a str) -> usize {
+    let pos = labels.borrow().iter().position(|l| *l == label);
+
+    if let Some(pos) = pos {
+        pos + 1
+    } else {
+        labels.borrow_mut().push(label);
+        labels.borrow().len()
+    }
+}
+
+named_args!(jmp<'a>(labels: &RefCell<Vec<&'a str>>)<&'a str, bpf_insn>, do_parse!(
     tag!("jmp") >> multispace1 >>
     label: label >>
     ({
-        let next_id = labels.borrow().len() as u8 + 1;
-        let id = *labels.borrow_mut().entry(label.to_owned()).or_insert(next_id) as u32;
+        let id = get_or_insert_label_id(labels, label) as u32;
 
-        BPF_STMT!(BPF_JMP | BPF_JA, id)
+        BPF_JUMP!(BPF_JMP | BPF_JA, id)
     })
 ));
 
-named_args!(jcond(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>, do_parse!(
+named_args!(jcond<'a>(labels: &RefCell<Vec<&'a str>>)<&'a str, bpf_insn>, do_parse!(
     code: alt_complete!(
         tag!("jeq")  => { |_| BPF_JEQ } |
         tag!("jgt")  => { |_| BPF_JGT } |
@@ -225,19 +314,17 @@ named_args!(jcond(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>, do
     ({
         let (mut insn, then, or_else) = insn;
 
-        let next_id = labels.borrow().len() as u8 + 1;
-        insn.jt = *labels.borrow_mut().entry(then.to_owned()).or_insert(next_id);
+        insn.jt = get_or_insert_label_id(labels, then) as u8;
 
         if let Some(or_else) = or_else {
-            let next_id = labels.borrow().len() as u8 + 1;
-            insn.jf = *labels.borrow_mut().entry(or_else.to_owned()).or_insert(next_id);
+            insn.jf = get_or_insert_label_id(labels, or_else) as u8;
         }
 
         insn
     })
 ));
 
-named_args!(jcond_neg(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>, do_parse!(
+named_args!(jcond_neg<'a>(labels: &RefCell<Vec<&'a str>>)<&'a str, bpf_insn>, do_parse!(
     code: alt_complete!(
         tag!("jneq") => { |_| BPF_JEQ } |
         tag!("jne")  => { |_| BPF_JEQ } |
@@ -247,9 +334,8 @@ named_args!(jcond_neg(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>
     insn: apply!(then, code) >>
     ({
         let (mut insn, then) = insn;
-        let next_id = labels.borrow().len() as u8 + 1;
 
-        insn.jf = *labels.borrow_mut().entry(then.to_owned()).or_insert(next_id);
+        insn.jf = get_or_insert_label_id(labels, then) as u8;
 
         insn
     })
@@ -465,6 +551,7 @@ const SKF_AD_MAX: u32 = 64;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ast::{Cond::*, Inst::*, Mode, RVal, Size::*, Src::*};
 
     #[test]
     pub fn parse_number() {
@@ -554,70 +641,64 @@ mod tests {
 
     #[test]
     pub fn parse_jump() {
-        let labels = Rc::new(RefCell::new(BTreeMap::new()));
+        let labels = RefCell::new(vec![]);
 
-        assert_eq!(
-            jump("jmp drop\n", labels.clone()),
-            Ok(("\n", BPF_STMT!(BPF_JMP | BPF_JA, 1)))
-        );
-        assert_eq!(
-            jump("jmp L3\n", labels.clone()),
-            Ok(("\n", BPF_STMT!(BPF_JMP | BPF_JA, 2)))
-        );
+        assert_eq!(jump("jmp drop\n", &labels), Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JA, 1))));
+        assert_eq!(jump("jmp L3\n", &labels), Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JA, 2))));
     }
 
     #[test]
     pub fn parse_jump_with_condition() {
-        let labels = Rc::new(RefCell::new(BTreeMap::new()));
+        let labels = RefCell::new(vec![]);
 
         assert_eq!(
-            jump("jeq #0x16, pass, drop\n", labels.clone()),
-            Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 1, 2, 0x16)))
+            jump("jeq #0x16, pass, drop\n", &labels),
+            Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0x16, 1, 2)))
         );
         assert_eq!(
-            jump("jgt #0x16, pass, drop\n", labels.clone()),
-            Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JGT | BPF_K, 1, 2, 0x16)))
+            jump("jgt #0x16, pass, drop\n", &labels),
+            Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JGT | BPF_K, 0x16, 1, 2)))
         );
         assert_eq!(
-            jump("jge x, pass, drop\n", labels.clone()),
+            jump("jge x, pass, drop\n", &labels),
             Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JGE | BPF_X, 1, 2)))
         );
         assert_eq!(
-            jump("jset %x, pass, drop\n", labels.clone()),
+            jump("jset %x, pass, drop\n", &labels),
             Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JSET | BPF_X, 1, 2)))
         );
 
         assert_eq!(
-            jump("jeq #0x16, pass\n", labels.clone()),
-            Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 1, 0, 0x16)))
+            jump("jeq #0x16, pass\n", &labels),
+            Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0x16, 1, 0)))
         );
         assert_eq!(
-            jump("jgt #0x16, drop\n", labels.clone()),
-            Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JGT | BPF_K, 2, 0, 0x16)))
+            jump("jgt #0x16, drop\n", &labels),
+            Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JGT | BPF_K, 0x16, 2, 0)))
         );
         assert_eq!(
-            jump("jge x, pass\n", labels.clone()),
+            jump("jge x, pass\n", &labels),
             Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JGE | BPF_X, 1, 0)))
         );
         assert_eq!(
-            jump("jset %x, pass\n", labels.clone()),
+            jump("jset %x, pass\n", &labels),
             Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JSET | BPF_X, 1, 0)))
         );
 
         assert_eq!(
-            jump("jneq #0x16, pass\n", labels.clone()),
-            Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, 0x16)))
+            jump("jneq #0x16, pass\n", &labels),
+            Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0x16, 0, 1)))
         );
         assert_eq!(
-            jump("jne #0x16, drop\n", labels.clone()),
-            Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0, 2, 0x16)))
+            jump("jne #0x16, drop\n", &labels),
+            Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0x16, 0, 2)))
         );
         assert_eq!(
-            jump("jlt x, pass\n", labels.clone()),
+            jump("jlt x, pass\n", &labels),
             Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JGT | BPF_X, 0, 1)))
         );
         assert_eq!(
-            jump("jle %x, drop\n", labels.clone()),
+            jump("jle %x, drop\n", &labels),
             Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JGE | BPF_X, 0, 2)))
         );
     }
@@ -666,33 +747,44 @@ mod tests {
 
     #[test]
     pub fn parse_line() {
-        let labels = Rc::new(RefCell::new(BTreeMap::new()));
+        let labels = RefCell::new(vec![]);
 
         assert_eq!(
-            line("drop: add #5\n", labels.clone()),
-            Ok(("\n", (Some("drop"), Some(BPF_STMT!(BPF_ALU | BPF_ADD | BPF_K, 5)), None)))
+            line("drop: add #5\n", &labels),
+            Ok((
+                "\n",
+                (Some("drop"), Some(BPF_STMT!(BPF_ALU | BPF_ADD | BPF_K, 5)), None)
+            ))
         );
         assert_eq!(
-            line("tax", labels.clone()),
+            line("tax", &labels),
             Ok(("", (None, Some(BPF_STMT!(BPF_MISC | BPF_TAX)), None)))
         );
 
         assert_eq!(
-            line("drop: add #5 // hello\n", labels.clone()),
-            Ok(("\n", (Some("drop"), Some(BPF_STMT!(BPF_ALU | BPF_ADD | BPF_K, 5)), Some(" hello"))))
+            line("drop: add #5 // hello\n", &labels),
+            Ok((
+                "\n",
+                (
+                    Some("drop"),
+                    Some(BPF_STMT!(BPF_ALU | BPF_ADD | BPF_K, 5)),
+                    Some(" hello")
+                )
+            ))
         );
         assert_eq!(
-            line("tax /* world */", labels.clone()),
+            line("tax /* world */", &labels),
             Ok(("", (None, Some(BPF_STMT!(BPF_MISC | BPF_TAX)), Some(" world "))))
         );
     }
 
     #[test]
     pub fn parse_prog() {
-        let labels = Rc::new(RefCell::new(BTreeMap::new()));
+        let labels = RefCell::new(vec![]);
 
         assert_eq!(
-            prog(r#"
+            prog(
+                r#"
 ldh [12]
 jne #0x800, drop
 ldb [23]
@@ -706,25 +798,64 @@ ldh [x + 16]
 jne #0x16, drop
 pass: ret #-1
 drop: ret #0
-"#, labels.clone()),
+"#,
+                &labels
+            ),
             Ok((
                 "\n",
                 vec![
                     (None, Some(BPF_STMT!(BPF_LD | BPF_H | BPF_ABS, 12)), None),
-                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, 0x800)), None),
+                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0x800, 0, 1)), None),
                     (None, Some(BPF_STMT!(BPF_LD | BPF_B | BPF_ABS, 23)), None),
-                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, 6)), None),
+                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 6, 0, 1)), None),
                     (None, Some(BPF_STMT!(BPF_LD | BPF_H | BPF_ABS, 20)), None),
-                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JSET | BPF_K, 1, 0, 0x1FFF)), None),
+                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JSET | BPF_K, 0x1FFF, 1, 0)), None),
                     (None, Some(BPF_STMT!(BPF_LDX | BPF_MSH | BPF_B, 14)), None),
                     (None, Some(BPF_STMT!(BPF_LD | BPF_H | BPF_IND, 14)), None),
-                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 2, 0, 0x16)), None),
+                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0x16, 2, 0)), None),
                     (None, Some(BPF_STMT!(BPF_LD | BPF_H | BPF_IND, 16)), None),
-                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, 0x16)), None),
+                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0x16, 0, 1)), None),
                     (Some("pass"), Some(BPF_STMT!(BPF_RET | BPF_K, 0xffffffff)), None),
                     (Some("drop"), Some(BPF_STMT!(BPF_RET | BPF_K, 0)), None),
                 ]
             ))
+        );
+    }
+
+    #[test]
+    pub fn parse_program() {
+        assert_eq!(
+            r#"ldh [12]
+jne #0x800, drop
+ldb [23]
+jneq #6, drop
+ldh [20]
+jset #0x1fff, drop
+ldxb 4 * ([14] & 0xf)
+ldh [x + 14]
+jeq #0x16, pass
+ldh [x + 16]
+jne #0x16, drop
+pass: ret #-1
+drop: ret #0
+"#
+            .parse::<Program>()
+            .unwrap(),
+            Program(vec![
+                Load(Mode::Abs(12, Half)),
+                Jmp(Eq(K(0), 0, 10)),
+                Load(Mode::Abs(23, Byte)),
+                Jmp(Eq(K(0), 0, 8)),
+                Load(Mode::Abs(20, Half)),
+                Jmp(Set(K(0), 6, 0)),
+                LoadX(Mode::Msh(14)),
+                Load(Mode::Ind(14, Half)),
+                Jmp(Eq(K(0), 2, 0)),
+                Load(Mode::Ind(16, Half)),
+                Jmp(Eq(K(0), 0, 1)),
+                Ret(Some(RVal::K(0xffffffff))),
+                Ret(Some(RVal::K(0)))
+            ])
         );
     }
 }

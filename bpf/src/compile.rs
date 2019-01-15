@@ -8,7 +8,7 @@ use crate::ast::{Cond, Inst, MiscOp, Mode, Off, Op, Program, RVal, Size, Src};
 use crate::errors::Result;
 use crate::raw::*;
 
-/// compile the BPF expression into a filter program.
+/// Compile the BPF expression into a filter program.
 pub fn compile<S: AsRef<str>>(link_type: u32, code: S) -> Result<Program> {
     let mut program: bpf_program = unsafe { mem::zeroed() };
     let code = CString::new(code.as_ref())?;
@@ -104,14 +104,14 @@ impl RVal {
 
 #[repr(transparent)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-struct OpCode(u8);
+pub struct OpCode(pub u8);
 
 impl OpCode {
-    fn class(self) -> u32 {
+    pub fn class(self) -> u32 {
         u32::from(self.0 & 0x07)
     }
 
-    fn size(self) -> Size {
+    pub fn size(self) -> Size {
         match u32::from(self.0 & 0x18) {
             BPF_W => Size::Word,
             BPF_H => Size::Half,
@@ -120,15 +120,15 @@ impl OpCode {
         }
     }
 
-    fn mode(self) -> u32 {
+    pub fn mode(self) -> u32 {
         u32::from(self.0 & 0xe0)
     }
 
-    fn op(self) -> u32 {
+    pub fn op(self) -> u32 {
         u32::from(self.0 & 0xf0)
     }
 
-    fn src(self, k: Off) -> Src {
+    pub fn src(self, k: Off) -> Src {
         match u32::from(self.0 & 0x08) {
             BPF_K => Src::K(k),
             BPF_X => Src::X,
@@ -136,7 +136,7 @@ impl OpCode {
         }
     }
 
-    fn rval(self, k: Off) -> Option<RVal> {
+    pub fn rval(self, k: Off) -> Option<RVal> {
         match u32::from(self.0 & 0x18) {
             BPF_K => Some(RVal::K(k)),
             BPF_A => Some(RVal::A),
@@ -145,14 +145,13 @@ impl OpCode {
         }
     }
 
-    fn misc_op(self) -> u32 {
+    pub fn misc_op(self) -> u32 {
         u32::from(self.0 & 0xf8)
     }
 }
 
 impl From<&bpf_insn> for Result<Inst> {
     fn from(inst: &bpf_insn) -> Self {
-        let inst = inst.borrow();
         let code = OpCode(inst.code as u8);
 
         Ok(match code.class() {
@@ -203,6 +202,17 @@ impl From<&bpf_insn> for Result<Inst> {
     }
 }
 
+/// construct `bpf_insn` with `opcode` `operand`
+/// 
+/// ```
+/// # use llvm_bpf::{BPF_STMT, raw::*};
+/// 
+/// // tax
+/// BPF_STMT!(BPF_MISC | BPF_TAX);          
+/// 
+/// // ldb [x+5]
+/// BPF_STMT!(BPF_LD | BPF_B | BPF_IND, 5); 
+/// ```
 #[macro_export]
 macro_rules! BPF_STMT {
     ($code:expr) => {
@@ -223,15 +233,30 @@ macro_rules! BPF_STMT {
     };
 }
 
+/// construct `bpf_insn` with `opcode` `operand` `true_offset` `false_offset`
+/// 
+/// ```
+/// # use llvm_bpf::{BPF_JUMP, raw::*};
+/// 
+/// // jmp 2
+/// BPF_JUMP!(BPF_JMP | BPF_JA, 2);
+///
+/// // jge x, 1, 2
+/// BPF_JUMP!(BPF_JMP | BPF_JGE | BPF_X, 1, 2);
+/// 
+/// // jeq 0x16, 1, 2
+/// BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0x16, 1, 2);
+/// 
+/// ```
 #[macro_export]
 macro_rules! BPF_JUMP {
     ($code:expr, $k:expr) => {
-        BPF_JUMP!($code, 0, 0, $k)
+        BPF_JUMP!($code, $k, 0, 0)
     };
     ($code:expr, $jt:expr, $jf:expr) => {
-        BPF_JUMP!($code, $jt, $jf, 0)
+        BPF_JUMP!($code, 0, $jt, $jf)
     };
-    ($code:expr, $jt:expr, $jf:expr, $k:expr) => {
+    ($code:expr, $k:expr, $jt:expr, $jf:expr) => {
         bpf_insn {
             code: $code as u16,
             jt: $jt,
@@ -260,10 +285,10 @@ impl From<Inst> for bpf_insn {
             Inst::StoreX(off) => BPF_STMT!(BPF_STX, off),
 
             Inst::Jmp(Cond::Abs(off)) => BPF_JUMP!(BPF_JMP | BPF_JA, off),
-            Inst::Jmp(Cond::Gt(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JGT | src.code(), jt, jf, src.value()),
-            Inst::Jmp(Cond::Ge(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JGE | src.code(), jt, jf, src.value()),
-            Inst::Jmp(Cond::Eq(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JEQ | src.code(), jt, jf, src.value()),
-            Inst::Jmp(Cond::Set(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JSET | src.code(), jt, jf, src.value()),
+            Inst::Jmp(Cond::Gt(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JGT | src.code(), src.value(), jt, jf),
+            Inst::Jmp(Cond::Ge(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JGE | src.code(), src.value(), jt, jf),
+            Inst::Jmp(Cond::Eq(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JEQ | src.code(), src.value(), jt, jf),
+            Inst::Jmp(Cond::Set(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JSET | src.code(), src.value(), jt, jf),
 
             Inst::Alu(Op::Add(src)) => BPF_STMT!(BPF_ALU | BPF_ADD | src.code(), src.value()),
             Inst::Alu(Op::Sub(src)) => BPF_STMT!(BPF_ALU | BPF_SUB | src.code(), src.value()),
