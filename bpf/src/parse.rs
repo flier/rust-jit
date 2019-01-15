@@ -23,6 +23,11 @@ named_args!(line(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, (Option<&str>,
     pair!(opt!(complete!(labelled)), next!(apply!(instr, labels)))
 );
 
+named!(comment<&str, &str>, alt!(
+    preceded!(tag!("/*"), take_until_and_consume!("*/")) |
+    preceded!(tag!("//"), take_till!(|c| c == '\n'))
+));
+
 named!(labelled<&str, &str>, terminated!(label, tag!(":")));
 
 named_args!(instr(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>, alt_complete!(
@@ -630,6 +635,16 @@ mod tests {
         assert_eq!(alu("lsh x"), Ok(("", BPF_STMT!(BPF_ALU | BPF_LSH | BPF_X))));
         assert_eq!(alu("rsh #5\n"), Ok(("\n", BPF_STMT!(BPF_ALU | BPF_RSH | BPF_K, 5))));
         assert_eq!(alu("neg"), Ok(("", BPF_STMT!(BPF_ALU | BPF_NEG))));
+    }
+
+    #[test]
+    pub fn parse_ret() {
+        assert_eq!(ret("ret #0\n"), Ok(("\n", BPF_STMT!(BPF_RET | BPF_K, 0))));
+        assert_eq!(ret("ret #-1\n"), Ok(("\n", BPF_STMT!(BPF_RET | BPF_K, 0xFFFFFFFF))));
+        assert_eq!(ret("ret %a"), Ok(("", BPF_STMT!(BPF_RET | BPF_A))));
+        assert_eq!(ret("ret a"), Ok(("", BPF_STMT!(BPF_RET | BPF_A))));
+        assert_eq!(ret("ret %x"), Ok(("", BPF_STMT!(BPF_RET | BPF_X))));
+        assert_eq!(ret("ret x"), Ok(("", BPF_STMT!(BPF_RET | BPF_X))));
     }
 
     #[test]

@@ -468,6 +468,7 @@ impl Generator {
                 let result: AstNode = match rval {
                     Some(RVal::K(k)) => uint32(k).into(),
                     Some(RVal::A) => self.a.into(),
+                    Some(RVal::X) => self.x.into(),
                     None => uint32(0).into(),
                 };
 

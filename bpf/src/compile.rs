@@ -87,15 +87,17 @@ impl Src {
 impl RVal {
     fn code(&self) -> u32 {
         match self {
-            RVal::A => BPF_A,
             RVal::K(_) => BPF_K,
+            RVal::A => BPF_A,
+            RVal::X => BPF_X,
         }
     }
 
-    fn value(self) -> u32 {
+    fn value(self) -> Option<u32> {
         match self {
-            RVal::K(v) => v,
-            RVal::A => 0,
+            RVal::K(v) => Some(v),
+            RVal::A => None,
+            RVal::X => None,
         }
     }
 }
@@ -138,6 +140,7 @@ impl OpCode {
         match u32::from(self.0 & 0x18) {
             BPF_K => Some(RVal::K(k)),
             BPF_A => Some(RVal::A),
+            BPF_X => Some(RVal::X),
             _ => None,
         }
     }
@@ -274,7 +277,7 @@ impl From<Inst> for bpf_insn {
             Inst::Alu(Op::RShift(src)) => BPF_STMT!(BPF_ALU | BPF_RSH | src.code(), src.value()),
             Inst::Alu(Op::Neg) => BPF_STMT!(BPF_ALU | BPF_NEG),
 
-            Inst::Ret(Some(rval)) => BPF_STMT!(BPF_RET | rval.code(), rval.value()),
+            Inst::Ret(Some(rval)) => BPF_STMT!(BPF_RET | rval.code(), rval.value().unwrap_or_default()),
             Inst::Ret(None) => BPF_STMT!(BPF_RET),
 
             Inst::Misc(MiscOp::Tax) => BPF_STMT!(BPF_MISC | BPF_TAX),

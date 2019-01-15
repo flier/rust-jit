@@ -118,6 +118,8 @@ pub enum RVal {
     K(K),
     /// the accumulator A
     A,
+    /// the index X
+    X,
 }
 
 /// The MISC operations
