@@ -43,8 +43,8 @@ impl Size {
 }
 
 impl Program {
-    pub fn gen<S: AsRef<str>>(self, m: &Module, name: S, bounds_checking: bool) -> Result<Function> {
-        Generator::new(m, name, bounds_checking).gen(self.0)
+    pub fn codegen<S: AsRef<str>>(self, m: &Module, name: S, bounds_checking: bool) -> Result<Function> {
+        Generator::new(m, name, bounds_checking).codegen(self.0)
     }
 }
 
@@ -271,7 +271,7 @@ impl Generator {
         }
     }
 
-    pub fn gen(self, insts: Vec<Inst>) -> Result<Function> {
+    pub fn codegen(self, insts: Vec<Inst>) -> Result<Function> {
         let mut current_block = self.dbg.create_lexical_block(1, 0);
 
         for (idx, inst) in insts.into_iter().enumerate() {
@@ -524,7 +524,7 @@ mod tests {
         // (012) ret	#0
 
         let fname = "filter";
-        let func = p.gen(&m, fname, true);
+        let func = p.codegen(&m, fname, true);
 
         debug!("generated module:\n{}", m);
 
