@@ -42,7 +42,7 @@ impl FromStr for Program {
             }
         }
 
-        let relocate_label = |pos, id| {
+        let reduce_label = |pos, id| {
             if id > 0 {
                 let idx = id as usize - 1;
 
@@ -68,11 +68,11 @@ impl FromStr for Program {
 
                 if opcode.class() == BPF_JMP {
                     match opcode.op() {
-                        BPF_JA => Ok(BPF_JUMP!(insn.code, relocate_label(pos, insn.k as u8)? as u32)),
+                        BPF_JA => Ok(BPF_JUMP!(insn.code, reduce_label(pos, insn.k as u8)? as u32)),
                         BPF_JEQ | BPF_JGT | BPF_JGE | BPF_JSET => Ok(BPF_JUMP!(
                             insn.code,
-                            relocate_label(pos, insn.jt)?,
-                            relocate_label(pos, insn.jf)?
+                            reduce_label(pos, insn.jt)?,
+                            reduce_label(pos, insn.jf)?
                         )),
                         _ => Ok(insn),
                     }
@@ -95,17 +95,20 @@ macro_rules! next {
 }
 
 named_args!(prog<'a>(labels: &RefCell<Vec<&'a str>>)<&'a str, Vec<(Option<&'a str>, Option<bpf_insn>, Option<&'a str>)>>,
-    separated_list_complete!(eol, next!(apply!(line, labels)))
+    separated_list_complete!(eol, apply!(line, labels))
 );
 
 named_args!(line<'a>(labels: &RefCell<Vec<&'a str>>)<&'a str, (Option<&'a str>, Option<bpf_insn>, Option<&'a str>)>,
-    tuple!(opt!(complete!(labelled)), opt!(next!(apply!(instr, labels))), opt!(complete!(next!(comment))))
+    alt!(
+        full_line_comment => { |comment| (None, None, Some(comment)) } |
+        tuple!(opt!(complete!(labelled)), opt!(next!(apply!(instr, labels))), opt!(complete!(next!(inline_comment))))
+    )
 );
 
-named!(comment<&str, &str>, alt!(
-    preceded!(tag!("/*"), take_until_and_consume!("*/")) |
-    preceded!(tag!("//"), take_till!(|c| c == '\n'))
-));
+named!(inline_comment<&str, &str>, alt!(block_comment | end_of_line_comment));
+named!(block_comment<&str, &str>, preceded!(tag!("/*"), take_until_and_consume!("*/")));
+named!(end_of_line_comment<&str, &str>, preceded!(tag!(";"), take_until_and_consume!("\n")));
+named!(full_line_comment<&str, &str>, preceded!(tag!("#"), take_until_and_consume!("\n")));
 
 named!(labelled<&str, &str>, terminated!(label, tag!(":")));
 
@@ -291,7 +294,7 @@ fn get_or_insert_label_id<'a>(labels: &RefCell<Vec<&'a str>>, label: &'a str) ->
 }
 
 named_args!(jmp<'a>(labels: &RefCell<Vec<&'a str>>)<&'a str, bpf_insn>, do_parse!(
-    tag!("jmp") >> multispace1 >>
+    alt!(tag!("jmp") | tag!("ja")) >> multispace1 >>
     label: label >>
     ({
         let id = get_or_insert_label_id(labels, label) as u32;
@@ -644,7 +647,7 @@ mod tests {
         let labels = RefCell::new(vec![]);
 
         assert_eq!(jump("jmp drop\n", &labels), Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JA, 1))));
-        assert_eq!(jump("jmp L3\n", &labels), Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JA, 2))));
+        assert_eq!(jump("ja L3\n", &labels), Ok(("\n", BPF_JUMP!(BPF_JMP | BPF_JA, 2))));
     }
 
     #[test]
@@ -741,8 +744,8 @@ mod tests {
 
     #[test]
     pub fn parse_comment() {
-        assert_eq!(comment("/* hello */"), Ok(("", " hello ")));
-        assert_eq!(comment("// world\n"), Ok(("\n", " world")));
+        assert_eq!(inline_comment("/* hello */"), Ok(("", " hello ")));
+        assert_eq!(inline_comment("; world\n"), Ok(("", " world")));
     }
 
     #[test]
@@ -762,9 +765,9 @@ mod tests {
         );
 
         assert_eq!(
-            line("drop: add #5 // hello\n", &labels),
+            line("drop: add #5 ; hello\n", &labels),
             Ok((
-                "\n",
+                "",
                 (
                     Some("drop"),
                     Some(BPF_STMT!(BPF_ALU | BPF_ADD | BPF_K, 5)),
@@ -775,6 +778,10 @@ mod tests {
         assert_eq!(
             line("tax /* world */", &labels),
             Ok(("", (None, Some(BPF_STMT!(BPF_MISC | BPF_TAX)), Some(" world "))))
+        );
+        assert_eq!(
+            line("# hello world\n", &labels),
+            Ok(("", (None, None, Some(" hello world"))))
         );
     }
 
