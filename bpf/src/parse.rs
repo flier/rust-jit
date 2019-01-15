@@ -69,9 +69,7 @@ named!(ldi<&str, bpf_insn>, do_parse!(
 
 named_args!(load_arg(size: u32)<&str, bpf_insn>, do_parse!(
     value: alt_complete!(
-        load_value => {
-            |(ty, k)| (ty, k)
-        } |
+        load_value |
         extension => {
             |ext| (BPF_ABS, SKF_AD_OFF + ext)
         }
@@ -165,21 +163,14 @@ named!(
         verify!(number, |n| n == 4) >>
         next!(tag!("*")) >>
         next!(tag!("(")) >>
-        next!(tag!("[")) >>
-        k: next!(number) >>
-        next!(tag!("]")) >>
-        next!(tag!("&")) >>
-        verify!(next!(number), |n| n == 0x0f) >>
+            k: delimited!(next!(tag!("[")), next!(number), next!(tag!("]"))) >>
+            next!(tag!("&")) >>
+            verify!(next!(number), |n| n == 0x0f) >>
         next!(tag!(")")) >>
         (
             BPF_STMT!(BPF_LDX | BPF_MSH | BPF_B, k)
         )
     )
-);
-
-named_args!(
-    take_str_radix(radix: u32)<&str, u32>,
-    map_res!(take_while_s!(|c: char| c.is_digit(radix)), |s| u32::from_str_radix(s, radix))
 );
 
 // Copy A|X into M[]
@@ -195,24 +186,27 @@ named!(st<&str, bpf_insn>, do_parse!(
 ));
 
 named_args!(jump(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>, alt!(
-      jmp
+      apply!(jmp, labels.clone())
     | apply!(jcond, labels.clone())
     | apply!(jcond_neg, labels)
 ));
 
-named!(jmp<&str, bpf_insn>, do_parse!(
+named_args!(jmp(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>, do_parse!(
     tag!("jmp") >> multispace1 >>
     label: label >>
-    (
-        BPF_STMT!(BPF_JMP | BPF_JA)
-    )
+    ({
+        let next_id = labels.borrow().len() as u8 + 1;
+        let id = *labels.borrow_mut().entry(label.to_owned()).or_insert(next_id) as u32;
+
+        BPF_STMT!(BPF_JMP | BPF_JA, id)
+    })
 ));
 
 named_args!(jcond(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>, do_parse!(
     code: alt_complete!(
-        tag!("jeq") => { |_| BPF_JEQ } |
-        tag!("jgt") => { |_| BPF_JGT } |
-        tag!("jge") => { |_| BPF_JGE } |
+        tag!("jeq")  => { |_| BPF_JEQ } |
+        tag!("jgt")  => { |_| BPF_JGT } |
+        tag!("jge")  => { |_| BPF_JGE } |
         tag!("jset") => { |_| BPF_JSET }
     ) >> multispace1 >>
     insn: alt_complete!(
@@ -237,9 +231,9 @@ named_args!(jcond(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>, do
 named_args!(jcond_neg(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>, do_parse!(
     code: alt_complete!(
         tag!("jneq") => { |_| BPF_JEQ } |
-        tag!("jne") => { |_| BPF_JEQ } |
-        tag!("jlt") => { |_| BPF_JGT } |
-        tag!("jle") => { |_| BPF_JGE }
+        tag!("jne")  => { |_| BPF_JEQ } |
+        tag!("jlt")  => { |_| BPF_JGT } |
+        tag!("jle")  => { |_| BPF_JGE }
     ) >> multispace1 >>
     insn: apply!(then, code) >>
     ({
@@ -288,13 +282,7 @@ named_args!(then(code: u32)<&str, (bpf_insn, &str)>, alt_complete!(
     )
 ));
 
-named!(if_clause<&str, &str>, do_parse!(
-    tag!(",") >>
-    label: next!(label) >>
-    (
-        label
-    )
-));
+named!(if_clause<&str, &str>, preceded!(tag!(","), next!(label)));
 
 named!(alu<&str, bpf_insn>, alt!(bin_op | unary_op));
 
@@ -313,17 +301,14 @@ named!(bin_op<&str, bpf_insn>, do_parse!(
     ) >> multispace1 >>
     insn: alt_complete!(
         imm => { |k| BPF_STMT!(BPF_ALU | op | BPF_K, k) } |
-        idx => { |_| BPF_STMT!(BPF_ALU | op | BPF_X) } |
-        take_while!(|c: char| !c.is_whitespace())  => { |s| panic!("unexpected operand: {}", s) }
+        idx => { |_| BPF_STMT!(BPF_ALU | op | BPF_X) }
     ) >>
     (
         insn
     )
 ));
 
-named!(unary_op<&str, bpf_insn>, alt!(
-    tag!("neg") => { |_| BPF_STMT!(BPF_ALU | BPF_NEG) }
-));
+named!(unary_op<&str, bpf_insn>, map!(tag!("neg"), |_| BPF_STMT!(BPF_ALU | BPF_NEG)));
 
 named!(ret<&str, bpf_insn>, do_parse!(
     tag!("ret") >> multispace1 >>
@@ -337,9 +322,12 @@ named!(ret<&str, bpf_insn>, do_parse!(
     )
 ));
 
-named!(misc<&str, bpf_insn>, alt_complete!(
-    tag!("tax") => { |_| BPF_STMT!(BPF_MISC | BPF_TAX) } |
-    tag!("txa") => { |_| BPF_STMT!(BPF_MISC | BPF_TXA) }
+named!(misc<&str, bpf_insn>, map!(
+    alt!(
+        tag!("tax") => { |_| BPF_TAX } |
+        tag!("txa") => { |_| BPF_TXA }
+    ),
+    |op| BPF_STMT!(BPF_MISC | op)
 ));
 
 named!(
@@ -358,21 +346,11 @@ named!(
     len<&str, u32>, map!(preceded!(opt!(tag!("#")), alt_complete!(tag!("len") | tag!("pktlen"))), |_| BPF_LEN)
 );
 
-named!(
-    mem<&str, u32>, do_parse!(
-        tag!("M[") >>
-        k: next!(number) >>
-        next!(tag!("]")) >>
-        (
-            k
-        )
-    )
-);
+named!(mem<&str, u32>, delimited!(tag!("M["), next!(number), next!(tag!("]"))));
 
 named!(
-    extension<&str, u32>, do_parse!(
-        opt!(tag!("#")) >>
-        off: alt_complete!(
+    extension<&str, u32>, preceded!(opt!(tag!("#")),
+        alt_complete!(
             alt_complete!(
                 tag!("proto") |
                 tag!("pro")
@@ -402,9 +380,6 @@ named!(
             )                   => { |_| SKF_AD_VLAN_TAG_PRESENT } |
             tag!("tpid")        => { |_| SKF_AD_VLAN_TPID } |
             tag!("rand")        => { |_| SKF_AD_RANDOM }
-        ) >>
-        (
-            off
         )
     )
 );
@@ -434,6 +409,11 @@ named!(
             )
         )
     )
+);
+
+named_args!(
+    take_str_radix(radix: u32)<&str, u32>,
+    map_res!(take_while_s!(|c: char| c.is_digit(radix)), |s| u32::from_str_radix(s, radix))
 );
 
 /* RATIONALE. Negative offsets are invalid in BPF.
@@ -480,6 +460,8 @@ mod tests {
     #[test]
     pub fn parse_number() {
         assert_eq!(number("123\n"), Ok(("\n", 123)));
+        assert_eq!(number("+123\n"), Ok(("\n", 123)));
+        assert_eq!(number("-123\n"), Ok(("\n", 0xffffff85)));
         assert_eq!(number("0x1f\n"), Ok(("\n", 0x1f)));
         assert_eq!(number("0b01010101\n"), Ok(("\n", 0x55)));
         assert_eq!(number("0777\n"), Ok(("\n", 0o777)));
@@ -569,12 +551,17 @@ mod tests {
 
         assert_eq!(
             jump("jmp drop\n", labels.clone()),
-            Ok(("\n", BPF_STMT!(BPF_JMP | BPF_JA)))
+            Ok(("\n", BPF_STMT!(BPF_JMP | BPF_JA, 1)))
         );
         assert_eq!(
             jump("jmp L3\n", labels.clone()),
-            Ok(("\n", BPF_STMT!(BPF_JMP | BPF_JA)))
+            Ok(("\n", BPF_STMT!(BPF_JMP | BPF_JA, 2)))
         );
+    }
+
+    #[test]
+    pub fn parse_jump_with_condition() {
+        let labels = Rc::new(RefCell::new(BTreeMap::new()));
 
         assert_eq!(
             jump("jeq #0x16, pass, drop\n", labels.clone()),
@@ -651,6 +638,6 @@ mod tests {
 
     #[test]
     pub fn parse_labelled() {
-        assert_eq!(labelled("drop:"),  Ok(("", "drop")));
+        assert_eq!(labelled("drop:"), Ok(("", "drop")));
     }
 }
