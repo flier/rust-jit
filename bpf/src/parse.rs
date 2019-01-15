@@ -6,6 +6,21 @@ use nom::*;
 
 use crate::raw::*;
 
+macro_rules! next {
+    ($i:expr, $submac:ident) => {
+        preceded!($i, multispace0, $submac)
+    };
+    ($i:expr, $submac:ident!( $($args:tt)* )) => {
+        preceded!($i, multispace0, $submac !( $( $args )* ))
+    };
+}
+
+named_args!(line(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, (Option<&str>, bpf_insn)>,
+    pair!(opt!(labelled), next!(apply!(instr, labels)))
+);
+
+named!(labelled<&str, &str>, terminated!(label, tag!(":")));
+
 named_args!(instr(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>, alt_complete!(
       load
     | st
@@ -69,12 +84,12 @@ named_args!(load_arg(size: u32)<&str, bpf_insn>, do_parse!(
 ));
 
 named!(load_value<&str, (u32, u32)>, do_parse!(
-    tag!("[") >> multispace0 >>
-    value: alt!(
+    tag!("[") >>
+    value: next!(alt!(
         do_parse!(
-            idx >> multispace0 >>
-            tag!("+") >> multispace0 >>
-            k: number >> multispace0 >>
+            idx >>
+            next!(tag!("+")) >>
+            k: next!(number) >>
             (
                 k
             )
@@ -84,8 +99,8 @@ named!(load_value<&str, (u32, u32)>, do_parse!(
         number => {
             |k| (BPF_ABS, k)
         }
-    ) >> multispace0 >>
-    tag!("]") >>
+    )) >>
+    next!(tag!("]")) >>
     ( value )
 ));
 
@@ -147,15 +162,15 @@ named!(ldxb<&str, bpf_insn>, preceded!(tag!("ldxb"), preceded!(multispace1, msh)
 
 named!(
     msh<&str, bpf_insn>, do_parse!(
-        verify!(number, |n| n == 4) >> multispace0 >>
-        tag!("*") >>  multispace0 >>
-        tag!("(") >> multispace0 >>
-        tag!("[") >> multispace0 >>
-        k: number >> multispace0 >>
-        tag!("]") >> multispace0 >>
-        tag!("&") >>  multispace0 >>
-        verify!(number, |n| n == 0x0f) >> multispace0 >>
-        tag!(")") >>
+        verify!(number, |n| n == 4) >>
+        next!(tag!("*")) >>
+        next!(tag!("(")) >>
+        next!(tag!("[")) >>
+        k: next!(number) >>
+        next!(tag!("]")) >>
+        next!(tag!("&")) >>
+        verify!(next!(number), |n| n == 0x0f) >>
+        next!(tag!(")")) >>
         (
             BPF_STMT!(BPF_LDX | BPF_MSH | BPF_B, k)
         )
@@ -240,16 +255,16 @@ named_args!(jcond_neg(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, bpf_insn>
 named_args!(then_else(code: u32)<&str, (bpf_insn, &str, &str)>, alt_complete!(
     do_parse!(
         k: imm >>
-        then: if_clause >>
-        or_else: if_clause >>
+        then: next!(if_clause) >>
+        or_else: next!(if_clause) >>
         (
             BPF_STMT!(BPF_JMP | code | BPF_K, k), then, or_else
         )
     ) |
     do_parse!(
-        idx >> multispace0 >>
-        then: if_clause >>
-        or_else: if_clause >>
+        idx >>
+        then: next!(if_clause) >>
+        or_else: next!(if_clause) >>
         (
             BPF_STMT!(BPF_JMP | code | BPF_X), then, or_else
         )
@@ -259,14 +274,14 @@ named_args!(then_else(code: u32)<&str, (bpf_insn, &str, &str)>, alt_complete!(
 named_args!(then(code: u32)<&str, (bpf_insn, &str)>, alt_complete!(
     do_parse!(
         k: imm >>
-        then: if_clause >>
+        then: next!(if_clause) >>
         (
             BPF_STMT!(BPF_JMP | code | BPF_K, k), then
         )
     ) |
     do_parse!(
-        idx >> multispace0 >>
-        then: if_clause >>
+        idx >>
+        then: next!(if_clause) >>
         (
             BPF_STMT!(BPF_JMP | code | BPF_X), then
         )
@@ -274,10 +289,8 @@ named_args!(then(code: u32)<&str, (bpf_insn, &str)>, alt_complete!(
 ));
 
 named!(if_clause<&str, &str>, do_parse!(
-    multispace0 >>
     tag!(",") >>
-    multispace0 >>
-    label: label >>
+    label: next!(label) >>
     (
         label
     )
@@ -347,9 +360,9 @@ named!(
 
 named!(
     mem<&str, u32>, do_parse!(
-        tag!("M[") >> multispace0 >>
-        k: number >> multispace0 >>
-        tag!("]") >>
+        tag!("M[") >>
+        k: next!(number) >>
+        next!(tag!("]")) >>
         (
             k
         )
@@ -634,5 +647,10 @@ mod tests {
     pub fn parse_misc() {
         assert_eq!(misc("tax"), Ok(("", BPF_STMT!(BPF_MISC | BPF_TAX))));
         assert_eq!(misc("txa"), Ok(("", BPF_STMT!(BPF_MISC | BPF_TXA))));
+    }
+
+    #[test]
+    pub fn parse_labelled() {
+        assert_eq!(labelled("drop:"),  Ok(("", "drop")));
     }
 }
