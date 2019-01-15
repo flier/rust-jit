@@ -223,14 +223,12 @@ macro_rules! BPF_STMT {
 #[macro_export]
 macro_rules! BPF_JUMP {
     ($code:expr, $k:expr) => {
-        bpf_insn {
-            code: $code as u16,
-            jt: 0,
-            jf: 0,
-            k: $k,
-        }
+        BPF_JUMP!($code, 0, 0, $k)
     };
-    ($code:expr, $k:expr, $jt:expr, $jf:expr) => {
+    ($code:expr, $jt:expr, $jf:expr) => {
+        BPF_JUMP!($code, $jt, $jf, 0)
+    };
+    ($code:expr, $jt:expr, $jf:expr, $k:expr) => {
         bpf_insn {
             code: $code as u16,
             jt: $jt,
@@ -259,10 +257,10 @@ impl From<Inst> for bpf_insn {
             Inst::StoreX(off) => BPF_STMT!(BPF_STX, off),
 
             Inst::Jmp(Cond::Abs(off)) => BPF_JUMP!(BPF_JMP | BPF_JA, off),
-            Inst::Jmp(Cond::Gt(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JGT | src.code(), src.value(), jt, jf),
-            Inst::Jmp(Cond::Ge(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JGE | src.code(), src.value(), jt, jf),
-            Inst::Jmp(Cond::Eq(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JEQ | src.code(), src.value(), jt, jf),
-            Inst::Jmp(Cond::Set(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JSET | src.code(), src.value(), jt, jf),
+            Inst::Jmp(Cond::Gt(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JGT | src.code(), jt, jf, src.value()),
+            Inst::Jmp(Cond::Ge(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JGE | src.code(), jt, jf, src.value()),
+            Inst::Jmp(Cond::Eq(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JEQ | src.code(), jt, jf, src.value()),
+            Inst::Jmp(Cond::Set(src, jt, jf)) => BPF_JUMP!(BPF_JMP | BPF_JSET | src.code(), jt, jf, src.value()),
 
             Inst::Alu(Op::Add(src)) => BPF_STMT!(BPF_ALU | BPF_ADD | src.code(), src.value()),
             Inst::Alu(Op::Sub(src)) => BPF_STMT!(BPF_ALU | BPF_SUB | src.code(), src.value()),
