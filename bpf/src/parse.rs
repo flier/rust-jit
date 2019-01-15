@@ -15,12 +15,12 @@ macro_rules! next {
     };
 }
 
-named_args!(prog(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, Vec<(Option<&str>, bpf_insn)>>,
+named_args!(prog(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, Vec<(Option<&str>, Option<bpf_insn>, Option<&str>)>>,
     separated_list_complete!(eol, next!(apply!(line, labels.clone())))
 );
 
-named_args!(line(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, (Option<&str>, bpf_insn)>,
-    pair!(opt!(complete!(labelled)), next!(apply!(instr, labels)))
+named_args!(line(labels: Rc<RefCell<BTreeMap<String, u8>>>)<&str, (Option<&str>, Option<bpf_insn>, Option<&str>)>,
+    tuple!(opt!(complete!(labelled)), opt!(next!(apply!(instr, labels))), opt!(complete!(next!(comment))))
 );
 
 named!(comment<&str, &str>, alt!(
@@ -659,16 +659,31 @@ mod tests {
     }
 
     #[test]
+    pub fn parse_comment() {
+        assert_eq!(comment("/* hello */"), Ok(("", " hello ")));
+        assert_eq!(comment("// world\n"), Ok(("\n", " world")));
+    }
+
+    #[test]
     pub fn parse_line() {
         let labels = Rc::new(RefCell::new(BTreeMap::new()));
 
         assert_eq!(
             line("drop: add #5\n", labels.clone()),
-            Ok(("\n", (Some("drop"), BPF_STMT!(BPF_ALU | BPF_ADD | BPF_K, 5))))
+            Ok(("\n", (Some("drop"), Some(BPF_STMT!(BPF_ALU | BPF_ADD | BPF_K, 5)), None)))
         );
         assert_eq!(
             line("tax", labels.clone()),
-            Ok(("", (None, BPF_STMT!(BPF_MISC | BPF_TAX))))
+            Ok(("", (None, Some(BPF_STMT!(BPF_MISC | BPF_TAX)), None)))
+        );
+
+        assert_eq!(
+            line("drop: add #5 // hello\n", labels.clone()),
+            Ok(("\n", (Some("drop"), Some(BPF_STMT!(BPF_ALU | BPF_ADD | BPF_K, 5)), Some(" hello"))))
+        );
+        assert_eq!(
+            line("tax /* world */", labels.clone()),
+            Ok(("", (None, Some(BPF_STMT!(BPF_MISC | BPF_TAX)), Some(" world "))))
         );
     }
 
@@ -695,19 +710,19 @@ drop: ret #0
             Ok((
                 "\n",
                 vec![
-                    (None, BPF_STMT!(BPF_LD | BPF_H | BPF_ABS, 12)),
-                    (None, BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, 0x800)),
-                    (None, BPF_STMT!(BPF_LD | BPF_B | BPF_ABS, 23)),
-                    (None, BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, 6)),
-                    (None, BPF_STMT!(BPF_LD | BPF_H | BPF_ABS, 20)),
-                    (None, BPF_JUMP!(BPF_JMP | BPF_JSET | BPF_K, 1, 0, 0x1FFF)),
-                    (None, BPF_STMT!(BPF_LDX | BPF_MSH | BPF_B, 14)),
-                    (None, BPF_STMT!(BPF_LD | BPF_H | BPF_IND, 14)),
-                    (None, BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 2, 0, 0x16)),
-                    (None, BPF_STMT!(BPF_LD | BPF_H | BPF_IND, 16)),
-                    (None, BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, 0x16)),
-                    (Some("pass"), BPF_STMT!(BPF_RET | BPF_K, 0xffffffff)),
-                    (Some("drop"), BPF_STMT!(BPF_RET | BPF_K, 0)),
+                    (None, Some(BPF_STMT!(BPF_LD | BPF_H | BPF_ABS, 12)), None),
+                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, 0x800)), None),
+                    (None, Some(BPF_STMT!(BPF_LD | BPF_B | BPF_ABS, 23)), None),
+                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, 6)), None),
+                    (None, Some(BPF_STMT!(BPF_LD | BPF_H | BPF_ABS, 20)), None),
+                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JSET | BPF_K, 1, 0, 0x1FFF)), None),
+                    (None, Some(BPF_STMT!(BPF_LDX | BPF_MSH | BPF_B, 14)), None),
+                    (None, Some(BPF_STMT!(BPF_LD | BPF_H | BPF_IND, 14)), None),
+                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 2, 0, 0x16)), None),
+                    (None, Some(BPF_STMT!(BPF_LD | BPF_H | BPF_IND, 16)), None),
+                    (None, Some(BPF_JUMP!(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, 0x16)), None),
+                    (Some("pass"), Some(BPF_STMT!(BPF_RET | BPF_K, 0xffffffff)), None),
+                    (Some("drop"), Some(BPF_STMT!(BPF_RET | BPF_K, 0)), None),
                 ]
             ))
         );
