@@ -331,11 +331,9 @@ extern "C" fn diagnostic_handler_stub<T>(
     ctxt: *mut ::libc::c_void,
 ) {
     unsafe {
-        let ctxt = Box::from_raw(ctxt as *mut DiagnosticContext<T>);
+        let ctxt = mem::ManuallyDrop::new(Box::from_raw(ctxt as *mut DiagnosticContext<T>));
 
         (ctxt.handler)(mem::transmute(severity), &diag.as_str(), ctxt.data.as_ref());
-
-        mem::forget(ctxt);
     }
 }
 
